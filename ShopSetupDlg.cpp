@@ -611,24 +611,28 @@ void CShopSetupDlg::ApplyLayout()
         Move(IDC_STATIC_VAN_SERVER, innerX, y1, colW, capH);
         Move(IDC_COMBO_VAN_SERVER,  innerX, y1 + capH + capGap, colW, FIELD_H);
 
-        // Info icon button: right of VAN server label
+        // Info icon button: right next to label text
+        if (m_btnVanInfo.GetSafeHwnd())
         {
-            const int INFO_BTN_SZ  = S(20);
-            const int INFO_BTN_GAP = S(5);
-            // Shrink label to make room for icon
+            const int INFO_BTN_SZ = S(18);
+            const int INFO_BTN_GAP = S(4);
+            int btnX = innerX + INFO_BTN_GAP;  // fallback
+            int btnY = y1 + (capH - INFO_BTN_SZ) / 2;
+            // Measure text width to place button immediately after label
             CWnd* pLbl = GetDlgItem(IDC_STATIC_VAN_SERVER);
             if (pLbl && pLbl->GetSafeHwnd())
             {
-                CRect rcLbl; pLbl->GetWindowRect(&rcLbl); ScreenToClient(&rcLbl);
-                pLbl->MoveWindow(rcLbl.left, rcLbl.top, colW - INFO_BTN_SZ - INFO_BTN_GAP, capH);
+                CClientDC cdc(pLbl);
+                CFont* pFont = pLbl->GetFont();
+                CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+                CString strLbl;
+                pLbl->GetWindowText(strLbl);
+                CSize sz = cdc.GetTextExtent(strLbl);
+                if (pOld) cdc.SelectObject(pOld);
+                btnX = innerX + sz.cx + INFO_BTN_GAP;
             }
-            if (m_btnVanInfo.GetSafeHwnd())
-            {
-                int btnX = innerX + colW - INFO_BTN_SZ;
-                int btnY = y1 + (capH - INFO_BTN_SZ) / 2;
-                m_btnVanInfo.SetWindowPos(NULL, btnX, btnY, INFO_BTN_SZ, INFO_BTN_SZ,
-                    SWP_NOZORDER | SWP_NOACTIVATE);
-            }
+            m_btnVanInfo.SetWindowPos(NULL, btnX, btnY, INFO_BTN_SZ, INFO_BTN_SZ,
+                SWP_NOZORDER | SWP_NOACTIVATE);
         }
         // 우: 포트번호
         Move(IDC_STATIC_PORT,       innerX + colW + colGap, y1, colW, capH);

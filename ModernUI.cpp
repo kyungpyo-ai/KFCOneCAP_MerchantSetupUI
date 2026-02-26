@@ -162,6 +162,7 @@ CModernButton::CModernButton()
 	m_bPressed = FALSE;
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
+	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
 }
 
 CModernButton::~CModernButton()
@@ -1063,6 +1064,7 @@ CSkinnedComboBox::CSkinnedComboBox()
 	m_bInPaint = FALSE;
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
+	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
 	m_hList = NULL;
 	m_oldListProc = NULL;
 
@@ -1293,8 +1295,19 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	const COLORREF crBorderH = th.borderH;
 	const COLORREF crBorderF = th.borderF;
 
-	// 입력 영역 내부 배경: 항상 흰색 (라운드 rect 안쪽)
-	Gdiplus::Color bg(255, 255, 255, 255);
+	// 입력 영역 내부 배경:
+// - 기본은 흰색
+// - UnderlayColor가 지정된 경우(카드/섹션 배경이 실시간 변경되는 케이스)에는
+//   라운드 내부 채움도 UnderlayColor로 맞춰 "흰색 박스"처럼 보이는 현상을 제거한다.
+Gdiplus::Color bg(255, 255, 255, 255);
+
+    // 카드 배경과 컨트롤 배경을 일치시키기 위해 underlay가 설정된 경우 내부 fill도 underlay 색을 사용한다.
+    if (m_bUseUnderlayBg)
+        bg = Gdiplus::Color(255, GetRValue(m_clrUnderlayBg), GetGValue(m_clrUnderlayBg), GetBValue(m_clrUnderlayBg));
+if (m_bUseUnderlayBg)
+{
+    bg = Gdiplus::Color(255, GetRValue(m_clrUnderlayBg), GetGValue(m_clrUnderlayBg), GetBValue(m_clrUnderlayBg));
+}
 	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
 	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
 	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
@@ -1792,6 +1805,7 @@ BEGIN_MESSAGE_MAP(CSkinnedEdit, CEdit)
 	ON_MESSAGE(WM_SETFONT, OnSetFontMsg)
 	ON_MESSAGE(WM_SETTEXT, OnSetTextMsg)
 	ON_MESSAGE(WM_PRINTCLIENT, OnPrintClientMsg)
+    ON_WM_CTLCOLOR_REFLECT()
 END_MESSAGE_MAP()
 
 CSkinnedEdit::CSkinnedEdit()
@@ -1804,6 +1818,7 @@ CSkinnedEdit::CSkinnedEdit()
 	m_bInPaint = FALSE;
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
+	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
 
 	m_bUseGlobalTheme = TRUE;
 	m_localTheme = ModernUITheme::GetInputTheme();
@@ -1981,6 +1996,33 @@ LRESULT CSkinnedEdit::OnPrintClientMsg(WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(WM_PRINTCLIENT, wParam, lParam);
 }
 
+
+
+HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
+{
+    // Make the native text/background paint match our underlay so that
+    // WM_PRINTCLIENT (used to render text/caret/selection) does not repaint
+    // the client area with plain white.
+    const COLORREF bg = m_bUseUnderlayBg ? m_clrUnderlayBg : RGB(255, 255, 255);
+
+    if (pDC)
+    {
+        pDC->SetBkColor(bg);
+        // text color is managed by Windows theme; keep default window text
+        pDC->SetTextColor(::GetSysColor(COLOR_WINDOWTEXT));
+        pDC->SetBkMode(OPAQUE);
+    }
+
+    if (!m_brUnderlay.GetSafeHandle() || m_clrBrushBg != bg)
+    {
+        if (m_brUnderlay.GetSafeHandle())
+            m_brUnderlay.DeleteObject();
+        m_brUnderlay.CreateSolidBrush(bg);
+        m_clrBrushBg = bg;
+    }
+
+    return (HBRUSH)m_brUnderlay.GetSafeHandle();
+}
 void CSkinnedEdit::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, Gdiplus::REAL radius)
 {
 	path.Reset();
@@ -2042,6 +2084,10 @@ void CSkinnedEdit::OnPaint()
 
 	// 입력 영역 내부 배경: 항상 흰색 (라운드 rect 안쪽)
 	Gdiplus::Color bg(255, 255, 255, 255);
+
+    // 카드 배경과 컨트롤 배경을 일치시키기 위해 underlay가 설정된 경우 내부 fill도 underlay 색을 사용한다.
+    if (m_bUseUnderlayBg)
+        bg = Gdiplus::Color(255, GetRValue(m_clrUnderlayBg), GetGValue(m_clrUnderlayBg), GetBValue(m_clrUnderlayBg));
 	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
 	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
 	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
@@ -2637,7 +2683,7 @@ void CInfoIconButton::DrawItem(LPDRAWITEMSTRUCT lpDIS)
     Gdiplus::StringFormat sf;
     sf.SetAlignment(Gdiplus::StringAlignmentCenter);
     sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-    g.DrawString(L"i", -1, &font, rf, &sf, &brText);
+    g.DrawString(L"?", -1, &font, rf, &sf, &brText);
 }
 
 // ============================================================================
@@ -2750,87 +2796,78 @@ void CModernPopover::OnPaint()
     bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
     CBitmap* pOld = memDC.SelectObject(&bmp);
 
-    memDC.FillSolidRect(&rc, RGB(255,255,255));
+    memDC.FillSolidRect(&rc, RGB(255, 255, 255));
 
     Gdiplus::Graphics g(memDC.m_hDC);
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-    const int arrowH   = ModernUIDpi::Scale(m_hWnd, kArrowH);
-    const int arrowHW  = ModernUIDpi::Scale(m_hWnd, 8);
-    const float radius = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+    const int   arrowH  = ModernUIDpi::Scale(m_hWnd, kArrowH);
+    const int   arrowHW = ModernUIDpi::Scale(m_hWnd, 7);
+    const float radius  = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
 
-    Gdiplus::RectF body(0.75f, (float)arrowH, (float)rc.Width() - 1.5f,
+    Gdiplus::RectF body(0.75f, (float)arrowH,
+                        (float)rc.Width() - 1.5f,
                         (float)rc.Height() - arrowH - 0.75f);
 
-    // Arrow
+    // Border pen - subtle gray matching reference image
+    Gdiplus::Pen borderPen(Gdiplus::Color(255, 209, 213, 219), 1.0f);
+
+    // Arrow (pointing up toward the icon button)
     Gdiplus::PointF arrowPts[3] = {
-        Gdiplus::PointF((float)m_nArrowX,             (float)1),
-        Gdiplus::PointF((float)(m_nArrowX - arrowHW), (float)arrowH),
-        Gdiplus::PointF((float)(m_nArrowX + arrowHW), (float)arrowH),
+        Gdiplus::PointF((float)m_nArrowX,              (float)1),
+        Gdiplus::PointF((float)(m_nArrowX - arrowHW),  (float)arrowH),
+        Gdiplus::PointF((float)(m_nArrowX + arrowHW),  (float)arrowH),
     };
-    Gdiplus::SolidBrush brArrow(Gdiplus::Color(255, 255, 255, 255));
-    g.FillPolygon(&brArrow, arrowPts, 3);
-    Gdiplus::Pen borderPen(Gdiplus::Color(255,
-        GetRValue(BLUE_200), GetGValue(BLUE_200), GetBValue(BLUE_200)), 1.2f);
+    Gdiplus::SolidBrush brArrowFill(Gdiplus::Color(255, 255, 255, 255));
+    g.FillPolygon(&brArrowFill, arrowPts, 3);
     g.DrawLine(&borderPen, arrowPts[0], arrowPts[1]);
     g.DrawLine(&borderPen, arrowPts[0], arrowPts[2]);
 
-    // Body background
+    // Body background (white rounded rect + gray border)
     Gdiplus::GraphicsPath bodyPath;
     AddRoundRect(bodyPath, body, radius);
     Gdiplus::SolidBrush brWhite(Gdiplus::Color(255, 255, 255, 255));
     g.FillPath(&brWhite, &bodyPath);
     g.DrawPath(&borderPen, &bodyPath);
 
-    // Accent bar (top)
-    const float accentH = ModernUIDpi::ScaleF(m_hWnd, 36.0f);
-    Gdiplus::RectF accentRc(body.X, body.Y, body.Width, accentH);
-    Gdiplus::GraphicsPath accentPath;
-    float d = radius * 2.0f;
-    accentPath.AddArc(Gdiplus::RectF(accentRc.X, accentRc.Y, d, d), 180, 90);
-    accentPath.AddArc(Gdiplus::RectF(accentRc.X + accentRc.Width - d, accentRc.Y, d, d), 270, 90);
-    accentPath.AddLine(accentRc.X + accentRc.Width, accentRc.Y + accentH,
-                       accentRc.X, accentRc.Y + accentH);
-    accentPath.CloseFigure();
-    Gdiplus::LinearGradientBrush accentBrush(
-        Gdiplus::PointF(0, accentRc.Y),
-        Gdiplus::PointF(0, accentRc.Y + accentH),
-        Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)),
-        Gdiplus::Color(255, GetRValue(BLUE_400), GetGValue(BLUE_400), GetBValue(BLUE_400)));
-    g.FillPath(&accentBrush, &accentPath);
+    // Text layout
+    const float padX   = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
+    const float padTop = ModernUIDpi::ScaleF(m_hWnd, 13.0f);
+    const float gap    = ModernUIDpi::ScaleF(m_hWnd,  7.0f);
 
-    // Title text
     Gdiplus::FontFamily ff(L"Malgun Gothic");
+
+    // Title: bold 12px, near-black #111827
     Gdiplus::Font fTitle(&ff, ModernUIDpi::ScaleF(m_hWnd, 12.0f),
                          Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brWhiteText(Gdiplus::Color(255, 255, 255, 255));
-    Gdiplus::StringFormat sfLeft;
-    sfLeft.SetAlignment(Gdiplus::StringAlignmentNear);
-    sfLeft.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-    sfLeft.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-    sfLeft.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+    Gdiplus::SolidBrush brTitle(Gdiplus::Color(255, 17, 24, 39));
+    Gdiplus::StringFormat sfTitle;
+    sfTitle.SetAlignment(Gdiplus::StringAlignmentNear);
+    sfTitle.SetLineAlignment(Gdiplus::StringAlignmentNear);
+    sfTitle.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+    sfTitle.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
 
-    float padX = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
-    Gdiplus::RectF titleRc(body.X + padX, body.Y, body.Width - padX * 2.0f, accentH);
+    const float titleH = ModernUIDpi::ScaleF(m_hWnd, 17.0f);
+    Gdiplus::RectF titleRc(body.X + padX, body.Y + padTop,
+                           body.Width - padX * 2.0f, titleH);
     std::wstring wTitle = kftc_to_wide(m_strTitle);
-    g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfLeft, &brWhiteText);
+    g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfTitle, &brTitle);
 
-    // Body text
+    // Body text: regular 11px, gray #6B7280
     Gdiplus::Font fBody(&ff, ModernUIDpi::ScaleF(m_hWnd, 11.0f),
                         Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 55, 65, 81));
+    Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 107, 114, 128));
     Gdiplus::StringFormat sfBody;
     sfBody.SetAlignment(Gdiplus::StringAlignmentNear);
     sfBody.SetLineAlignment(Gdiplus::StringAlignmentNear);
 
-    float bodyTextTop = body.Y + accentH + ModernUIDpi::ScaleF(m_hWnd, 10.0f);
-    float bodyTextH   = body.Y + body.Height - bodyTextTop - ModernUIDpi::ScaleF(m_hWnd, 10.0f);
-    Gdiplus::RectF bodyTextRc(body.X + padX, bodyTextTop,
-                               body.Width - padX * 2.0f, bodyTextH);
-
+    float bodyTextTop = body.Y + padTop + titleH + gap;
+    float bodyTextH   = body.Y + body.Height - bodyTextTop - padTop;
+    Gdiplus::RectF bodyRc(body.X + padX, bodyTextTop,
+                          body.Width - padX * 2.0f, bodyTextH);
     std::wstring wBody = kftc_to_wide(m_strBody);
-    g.DrawString(wBody.c_str(), -1, &fBody, bodyTextRc, &sfBody, &brBodyText);
+    g.DrawString(wBody.c_str(), -1, &fBody, bodyRc, &sfBody, &brBodyText);
 
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
     memDC.SelectObject(pOld);
