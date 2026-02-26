@@ -2696,6 +2696,9 @@ BEGIN_MESSAGE_MAP(CModernPopover, CWnd)
     ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
+HHOOK           CModernPopover::s_hMouseHook  = NULL;
+CModernPopover* CModernPopover::s_pPopoverInst = NULL;
+
 CModernPopover::CModernPopover()
     : m_nArrowX(0), m_bVisible(FALSE)
 {
@@ -2737,7 +2740,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 
     if (!GetSafeHwnd())
     {
-        CreateEx(WS_EX_TOPMOST | WS_EX_NOACTIVATE,
+        CreateEx(WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_LAYERED,
                  _T("KFTCModernPopover"), _T(""),
                  WS_POPUP,
                  0, 0, kPopW, kPopH + kArrowH,
@@ -2762,29 +2765,27 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
     SetWindowPos(&wndTopMost, px, py, popW, popH,
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
-    // Clip window region to body + arrow (removes white corners at rounded edges)
-    {
-        const int aH  = ModernUIDpi::Scale(m_hWnd, kArrowH);
-        const int aHW = ModernUIDpi::Scale(m_hWnd, 8);
-        const int cr  = ModernUIDpi::Scale(m_hWnd, 20); // CreateRoundRectRgn corner diameter
-        POINT arrowPt[3] = { {m_nArrowX, 0}, {m_nArrowX - aHW, aH}, {m_nArrowX + aHW, aH} };
-        HRGN hArrow = CreatePolygonRgn(arrowPt, 3, ALTERNATE);
-        HRGN hBody  = CreateRoundRectRgn(0, aH, popW, popH, cr, cr);
-        HRGN hRgn   = CreateRectRgn(0, 0, 0, 0);
-        CombineRgn(hRgn, hArrow, hBody, RGN_OR);
-        SetWindowRgn(hRgn, FALSE); // CWnd::SetWindowRgn - OS takes ownership of hRgn
-        DeleteObject(hArrow);
-        DeleteObject(hBody);
-    }
-    Invalidate(FALSE);
-    UpdateWindow();
+    RefreshLayered();
     m_bVisible = TRUE;
+
+    // Low-level mouse hook: close popup on any click outside
+    if (!s_hMouseHook)
+    {
+        s_pPopoverInst = this;
+        s_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, NULL, 0);
+    }
 }
 
 void CModernPopover::Hide()
 {
     if (GetSafeHwnd()) ShowWindow(SW_HIDE);
     m_bVisible = FALSE;
+    if (s_hMouseHook)
+    {
+        UnhookWindowsHookEx(s_hMouseHook);
+        s_hMouseHook  = NULL;
+        s_pPopoverInst = NULL;
+    }
 }
 
 BOOL CModernPopover::OnEraseBkgnd(CDC* pDC)
@@ -2799,99 +2800,171 @@ void CModernPopover::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CModernPopover::OnPaint()
 {
-    CPaintDC dc(this);
-    CRect rc;
-    GetClientRect(&rc);
+    CPaintDC dc(this); // validate paint region
+    UNREFERENCED_PARAMETER(dc);
+    // Content rendered via UpdateLayeredWindow in RefreshLayered()
+}
+
+// ----------------------------------------------------------------------------
+// RefreshLayered -- draws popup to a 32-bpp DIB and calls UpdateLayeredWindow.
+// Per-pixel alpha gives smooth anti-aliased rounded corners with no clipping.
+// ----------------------------------------------------------------------------
+void CModernPopover::RefreshLayered()
+{
+    if (!GetSafeHwnd()) return;
+
+    CRect rcWin;
+    GetWindowRect(&rcWin);
+    const int W = rcWin.Width();
+    const int H = rcWin.Height();
+    if (W <= 0 || H <= 0) return;
+
+    HDC hdcScreen = ::GetDC(NULL);
+    HDC hdcMem    = ::CreateCompatibleDC(hdcScreen);
+
+    BITMAPINFO bmi   = {};
+    bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth       = W;
+    bmi.bmiHeader.biHeight      = -H;   // top-down
+    bmi.bmiHeader.biPlanes      = 1;
+    bmi.bmiHeader.biBitCount    = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    BYTE*   pvBits = NULL;
+    HBITMAP hBmp   = CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS,
+                                      (void**)&pvBits, NULL, 0);
+    if (!hBmp) { ::DeleteDC(hdcMem); ::ReleaseDC(NULL, hdcScreen); return; }
+
+    HBITMAP hOldBmp = (HBITMAP)::SelectObject(hdcMem, hBmp);
+    ::ZeroMemory(pvBits, W * H * 4);   // fully transparent initially
 
     ModernUIGfx::EnsureGdiplusStartup();
 
-    CDC memDC;
-    memDC.CreateCompatibleDC(&dc);
-    CBitmap bmp;
-    bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
-    CBitmap* pOld = memDC.SelectObject(&bmp);
+    {
+        // Gdiplus::Bitmap wraps the DIB (BGRA in memory == PixelFormat32bppARGB)
+        Gdiplus::Bitmap bmpGdi(W, H, W * 4, PixelFormat32bppARGB, pvBits);
+        Gdiplus::Graphics g(&bmpGdi);
+        g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
 
-    memDC.FillSolidRect(&rc, RGB(255,255,255));
+        const int   arrowH  = ModernUIDpi::Scale(m_hWnd, kArrowH);
+        const int   arrowHW = ModernUIDpi::Scale(m_hWnd, 8);
+        const float radius  = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
 
-    Gdiplus::Graphics g(memDC.m_hDC);
-    g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-    g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+        Gdiplus::RectF body(1.0f, (float)arrowH,
+                            (float)W - 2.0f,
+                            (float)H - arrowH - 1.0f);
 
-    const int arrowH   = ModernUIDpi::Scale(m_hWnd, kArrowH);
-    const int arrowHW  = ModernUIDpi::Scale(m_hWnd, 8);
-    const float radius = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+        // -- White body (rounded rect, no border) --
+        Gdiplus::GraphicsPath bodyPath;
+        AddRoundRect(bodyPath, body, radius);
+        Gdiplus::SolidBrush brBody(Gdiplus::Color(255, 255, 255, 255));
+        g.FillPath(&brBody, &bodyPath);
 
-    Gdiplus::RectF body(0.75f, (float)arrowH, (float)rc.Width() - 1.5f,
-                        (float)rc.Height() - arrowH - 0.75f);
+        // -- Arrow: filled blue (BLUE_500), no outline --
+        Gdiplus::PointF arrowPts[3] = {
+            Gdiplus::PointF((float)m_nArrowX,              1.0f),
+            Gdiplus::PointF((float)(m_nArrowX - arrowHW),  (float)arrowH),
+            Gdiplus::PointF((float)(m_nArrowX + arrowHW),  (float)arrowH),
+        };
+        Gdiplus::SolidBrush brArrow(Gdiplus::Color(255,
+            GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)));
+        g.FillPolygon(&brArrow, arrowPts, 3);
 
-    // Arrow
-    Gdiplus::PointF arrowPts[3] = {
-        Gdiplus::PointF((float)m_nArrowX,             (float)1),
-        Gdiplus::PointF((float)(m_nArrowX - arrowHW), (float)arrowH),
-        Gdiplus::PointF((float)(m_nArrowX + arrowHW), (float)arrowH),
-    };
-    Gdiplus::SolidBrush brArrow(Gdiplus::Color(255, 255, 255, 255));
-    g.FillPolygon(&brArrow, arrowPts, 3);
-    Gdiplus::Pen borderPen(Gdiplus::Color(255,
-        GetRValue(BLUE_200), GetGValue(BLUE_200), GetBValue(BLUE_200)), 1.2f);
-    g.DrawLine(&borderPen, arrowPts[0], arrowPts[1]);
-    g.DrawLine(&borderPen, arrowPts[0], arrowPts[2]);
+        // -- Accent bar (BLUE_500 -> BLUE_400 gradient) --
+        const float accentH = ModernUIDpi::ScaleF(m_hWnd, 36.0f);
+        Gdiplus::RectF accentRc(body.X, body.Y, body.Width, accentH);
+        Gdiplus::GraphicsPath accentPath;
+        float d = radius * 2.0f;
+        accentPath.AddArc(Gdiplus::RectF(accentRc.X, accentRc.Y, d, d), 180, 90);
+        accentPath.AddArc(Gdiplus::RectF(accentRc.X + accentRc.Width - d,
+                                         accentRc.Y, d, d), 270, 90);
+        accentPath.AddLine(accentRc.X + accentRc.Width, accentRc.Y + accentH,
+                           accentRc.X,                  accentRc.Y + accentH);
+        accentPath.CloseFigure();
+        Gdiplus::LinearGradientBrush accentBrush(
+            Gdiplus::PointF(0, accentRc.Y),
+            Gdiplus::PointF(0, accentRc.Y + accentH),
+            Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)),
+            Gdiplus::Color(255, GetRValue(BLUE_400), GetGValue(BLUE_400), GetBValue(BLUE_400)));
+        g.FillPath(&accentBrush, &accentPath);
 
-    // Body background
-    Gdiplus::GraphicsPath bodyPath;
-    AddRoundRect(bodyPath, body, radius);
-    Gdiplus::SolidBrush brWhite(Gdiplus::Color(255, 255, 255, 255));
-    g.FillPath(&brWhite, &bodyPath);
-    g.DrawPath(&borderPen, &bodyPath);
+        // -- Title (white bold 12px over accent) --
+        Gdiplus::FontFamily ff(L"Malgun Gothic");
+        Gdiplus::Font fTitle(&ff, ModernUIDpi::ScaleF(m_hWnd, 12.0f),
+                             Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+        Gdiplus::SolidBrush brWhiteText(Gdiplus::Color(255, 255, 255, 255));
+        Gdiplus::StringFormat sfTitle;
+        sfTitle.SetAlignment(Gdiplus::StringAlignmentNear);
+        sfTitle.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+        sfTitle.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+        sfTitle.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+        float padX = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
+        Gdiplus::RectF titleRc(body.X + padX, body.Y,
+                               body.Width - padX * 2.0f, accentH);
+        std::wstring wTitle = kftc_to_wide(m_strTitle);
+        g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfTitle, &brWhiteText);
 
-    // Accent bar (top)
-    const float accentH = ModernUIDpi::ScaleF(m_hWnd, 36.0f);
-    Gdiplus::RectF accentRc(body.X, body.Y, body.Width, accentH);
-    Gdiplus::GraphicsPath accentPath;
-    float d = radius * 2.0f;
-    accentPath.AddArc(Gdiplus::RectF(accentRc.X, accentRc.Y, d, d), 180, 90);
-    accentPath.AddArc(Gdiplus::RectF(accentRc.X + accentRc.Width - d, accentRc.Y, d, d), 270, 90);
-    accentPath.AddLine(accentRc.X + accentRc.Width, accentRc.Y + accentH,
-                       accentRc.X, accentRc.Y + accentH);
-    accentPath.CloseFigure();
-    Gdiplus::LinearGradientBrush accentBrush(
-        Gdiplus::PointF(0, accentRc.Y),
-        Gdiplus::PointF(0, accentRc.Y + accentH),
-        Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)),
-        Gdiplus::Color(255, GetRValue(BLUE_400), GetGValue(BLUE_400), GetBValue(BLUE_400)));
-    g.FillPath(&accentBrush, &accentPath);
+        // -- Body text (dark gray 11px) --
+        Gdiplus::Font fBody(&ff, ModernUIDpi::ScaleF(m_hWnd, 11.0f),
+                            Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+        Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 55, 65, 81));
+        Gdiplus::StringFormat sfBody;
+        sfBody.SetAlignment(Gdiplus::StringAlignmentNear);
+        sfBody.SetLineAlignment(Gdiplus::StringAlignmentNear);
+        float bodyTextTop = body.Y + accentH + ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+        float bodyTextH   = body.Y + body.Height - bodyTextTop
+                            - ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+        Gdiplus::RectF bodyRc(body.X + padX, bodyTextTop,
+                              body.Width - padX * 2.0f, bodyTextH);
+        std::wstring wBody = kftc_to_wide(m_strBody);
+        g.DrawString(wBody.c_str(), -1, &fBody, bodyRc, &sfBody, &brBodyText);
+    }
 
-    // Title (white bold text over accent)
-    Gdiplus::FontFamily ff(L"Malgun Gothic");
-    Gdiplus::Font fTitle(&ff, ModernUIDpi::ScaleF(m_hWnd, 12.0f),
-                         Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brWhiteText(Gdiplus::Color(255, 255, 255, 255));
-    Gdiplus::StringFormat sfLeft;
-    sfLeft.SetAlignment(Gdiplus::StringAlignmentNear);
-    sfLeft.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-    sfLeft.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-    sfLeft.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+    // Premultiply alpha (required for ULW_ALPHA / AC_SRC_ALPHA)
+    for (int i = 0; i < W * H; ++i)
+    {
+        BYTE a = pvBits[i*4 + 3];
+        if (a > 0 && a < 255)
+        {
+            pvBits[i*4+0] = static_cast<BYTE>(pvBits[i*4+0] * a / 255);
+            pvBits[i*4+1] = static_cast<BYTE>(pvBits[i*4+1] * a / 255);
+            pvBits[i*4+2] = static_cast<BYTE>(pvBits[i*4+2] * a / 255);
+        }
+    }
 
-    float padX = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
-    Gdiplus::RectF titleRc(body.X + padX, body.Y, body.Width - padX * 2.0f, accentH);
-    std::wstring wTitle = kftc_to_wide(m_strTitle);
-    g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfLeft, &brWhiteText);
+    POINT          ptDst = { rcWin.left, rcWin.top };
+    SIZE           szWnd = { W, H };
+    POINT          ptSrc = { 0, 0 };
+    BLENDFUNCTION  bf    = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+    ::UpdateLayeredWindow(m_hWnd, hdcScreen,
+                          &ptDst, &szWnd,
+                          hdcMem, &ptSrc, 0, &bf, ULW_ALPHA);
 
-    // Body text
-    Gdiplus::Font fBody(&ff, ModernUIDpi::ScaleF(m_hWnd, 11.0f),
-                        Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 55, 65, 81));
-    Gdiplus::StringFormat sfBody;
-    sfBody.SetAlignment(Gdiplus::StringAlignmentNear);
-    sfBody.SetLineAlignment(Gdiplus::StringAlignmentNear);
+    ::SelectObject(hdcMem, hOldBmp);
+    ::DeleteObject(hBmp);
+    ::DeleteDC(hdcMem);
+    ::ReleaseDC(NULL, hdcScreen);
+}
 
-    float bodyTextTop = body.Y + accentH + ModernUIDpi::ScaleF(m_hWnd, 10.0f);
-    float bodyTextH   = body.Y + body.Height - bodyTextTop - ModernUIDpi::ScaleF(m_hWnd, 10.0f);
-    Gdiplus::RectF bodyTextRc(body.X + padX, bodyTextTop,
-                               body.Width - padX * 2.0f, bodyTextH);
-    std::wstring wBody = kftc_to_wide(m_strBody);
-    g.DrawString(wBody.c_str(), -1, &fBody, bodyTextRc, &sfBody, &brBodyText);
-
-    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
-    memDC.SelectObject(pOld);
+// ----------------------------------------------------------------------------
+// MouseHookProc -- WH_MOUSE_LL: close popup on click outside its rect
+// ----------------------------------------------------------------------------
+/*static*/ LRESULT CALLBACK CModernPopover::MouseHookProc(int nCode,
+                                                           WPARAM wParam,
+                                                           LPARAM lParam)
+{
+    HHOOK hSave = s_hMouseHook;   // capture before Hide() may clear it
+    if (nCode == HC_ACTION &&
+        (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN ||
+         wParam == WM_NCLBUTTONDOWN || wParam == WM_NCRBUTTONDOWN) &&
+        s_pPopoverInst != NULL && s_pPopoverInst->IsVisible())
+    {
+        MSLLHOOKSTRUCT* p = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+        CRect rc;
+        s_pPopoverInst->GetWindowRect(&rc);
+        if (!rc.PtInRect(p->pt))
+            s_pPopoverInst->Hide();
+    }
+    return ::CallNextHookEx(hSave, nCode, wParam, lParam);
 }

@@ -141,6 +141,8 @@ private:
     // Underlay
     BOOL     m_bUseUnderlayBg;
     COLORREF m_clrUnderlayBg;
+    CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
+    COLORREF m_clrBrushBg;  // cached brush color
 };
 
 // ========================================
@@ -198,6 +200,8 @@ private:
     // Underlay
     BOOL     m_bUseUnderlayBg;
     COLORREF m_clrUnderlayBg;
+    CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
+    COLORREF m_clrBrushBg;  // cached brush color
 };
 
 // ========================================
@@ -374,6 +378,8 @@ private:
     // Underlay
     BOOL     m_bUseUnderlayBg;
     COLORREF m_clrUnderlayBg;
+    CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
+    COLORREF m_clrBrushBg;  // cached brush color
 };
 
 // ========================================
@@ -411,6 +417,8 @@ protected:
 
     afx_msg LRESULT OnPrintClientMsg(WPARAM wParam, LPARAM lParam);
 
+    afx_msg HBRUSH CtlColor(CDC* pDC, UINT nCtlColor);
+
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -436,6 +444,8 @@ private:
     // Underlay
     BOOL     m_bUseUnderlayBg;
     COLORREF m_clrUnderlayBg;
+    CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
+    COLORREF m_clrBrushBg;  // cached brush color
 };
 
 // ============================================================
@@ -572,11 +582,15 @@ protected:
 private:
     static void RegisterPopoverClass();
     void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, REAL radius);
+    void RefreshLayered();
+    static LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 
     CString m_strTitle;
     CString m_strBody;
     int     m_nArrowX;
     BOOL    m_bVisible;
+    static HHOOK           s_hMouseHook;
+    static CModernPopover* s_pPopoverInst;
 
     static const int kPopW   = 290;
     static const int kPopH   = 148;
