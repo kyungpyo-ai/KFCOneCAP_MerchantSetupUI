@@ -2855,9 +2855,20 @@ void CModernPopover::RefreshLayered()
                             (float)W - 2.0f,
                             (float)H - arrowH - 1.0f);
 
-        // -- White body (rounded rect, no border) --
+        // -- White body: square top corners, rounded bottom corners only --
+        // Top is flush with arrow base -> no transparent corner artifacts
         Gdiplus::GraphicsPath bodyPath;
-        AddRoundRect(bodyPath, body, radius);
+        {
+            float l  = body.X,             t  = body.Y;
+            float r2 = body.X + body.Width, b2 = body.Y + body.Height;
+            float d2 = radius * 2.0f;
+            bodyPath.AddLine(l, t, r2, t);                               // top (straight)
+            bodyPath.AddLine(r2, t, r2, b2 - radius);                   // right side
+            bodyPath.AddArc(r2 - d2, b2 - d2, d2, d2, 0.0f, 90.0f);   // bottom-right arc
+            bodyPath.AddArc(l,       b2 - d2, d2, d2, 90.0f, 90.0f);  // bottom-left arc
+            bodyPath.AddLine(l, b2 - radius, l, t);                     // left side
+            bodyPath.CloseFigure();
+        }
         Gdiplus::SolidBrush brBody(Gdiplus::Color(255, 255, 255, 255));
         g.FillPath(&brBody, &bodyPath);
 
@@ -2871,23 +2882,15 @@ void CModernPopover::RefreshLayered()
             GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)));
         g.FillPolygon(&brArrow, arrowPts, 3);
 
-        // -- Accent bar (BLUE_500 -> BLUE_400 gradient) --
+        // -- Accent bar (BLUE_500->BLUE_400 gradient), plain rect (top is already square) --
         const float accentH = ModernUIDpi::ScaleF(m_hWnd, 36.0f);
         Gdiplus::RectF accentRc(body.X, body.Y, body.Width, accentH);
-        Gdiplus::GraphicsPath accentPath;
-        float d = radius * 2.0f;
-        accentPath.AddArc(Gdiplus::RectF(accentRc.X, accentRc.Y, d, d), 180, 90);
-        accentPath.AddArc(Gdiplus::RectF(accentRc.X + accentRc.Width - d,
-                                         accentRc.Y, d, d), 270, 90);
-        accentPath.AddLine(accentRc.X + accentRc.Width, accentRc.Y + accentH,
-                           accentRc.X,                  accentRc.Y + accentH);
-        accentPath.CloseFigure();
         Gdiplus::LinearGradientBrush accentBrush(
-            Gdiplus::PointF(0, accentRc.Y),
-            Gdiplus::PointF(0, accentRc.Y + accentH),
+            Gdiplus::PointF(0.0f, accentRc.Y),
+            Gdiplus::PointF(0.0f, accentRc.Y + accentH),
             Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)),
             Gdiplus::Color(255, GetRValue(BLUE_400), GetGValue(BLUE_400), GetBValue(BLUE_400)));
-        g.FillPath(&accentBrush, &accentPath);
+        g.FillRectangle(&accentBrush, accentRc);
 
         // -- Title (white bold 12px over accent) --
         Gdiplus::FontFamily ff(L"Malgun Gothic");
