@@ -181,7 +181,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     // Info icon button for VAN server field
     m_btnVanInfo.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
         CRect(0, 0, S(22), S(22)), this, IDC_BTN_VAN_SERVER_INFO);
-    m_btnVanInfo.SetUnderlayColor(RGB(255, 255, 255));
+    // No SetUnderlayColor -> DrawItem auto-detects parent background via kftc_parent_bg_color
     m_tabCtrl.AddTab(_T("결제 설정"),       0);
     m_tabCtrl.AddTab(_T("장치 정보"),       1);
     m_tabCtrl.AddTab(_T("시스템 설정"),     2);

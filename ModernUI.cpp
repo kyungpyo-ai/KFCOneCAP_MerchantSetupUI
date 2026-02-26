@@ -2761,6 +2761,21 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 
     SetWindowPos(&wndTopMost, px, py, popW, popH,
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+    // Clip window region to body + arrow (removes white corners at rounded edges)
+    {
+        const int aH  = ModernUIDpi::Scale(m_hWnd, kArrowH);
+        const int aHW = ModernUIDpi::Scale(m_hWnd, 8);
+        const int cr  = ModernUIDpi::Scale(m_hWnd, 20); // CreateRoundRectRgn corner diameter
+        POINT arrowPt[3] = { {m_nArrowX, 0}, {m_nArrowX - aHW, aH}, {m_nArrowX + aHW, aH} };
+        HRGN hArrow = CreatePolygonRgn(arrowPt, 3, ALTERNATE);
+        HRGN hBody  = CreateRoundRectRgn(0, aH, popW, popH, cr, cr);
+        HRGN hRgn   = CreateRectRgn(0, 0, 0, 0);
+        CombineRgn(hRgn, hArrow, hBody, RGN_OR);
+        SetWindowRgn(hRgn, FALSE); // CWnd::SetWindowRgn - OS takes ownership of hRgn
+        DeleteObject(hArrow);
+        DeleteObject(hBody);
+    }
     Invalidate(FALSE);
     UpdateWindow();
     m_bVisible = TRUE;
@@ -2796,78 +2811,86 @@ void CModernPopover::OnPaint()
     bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
     CBitmap* pOld = memDC.SelectObject(&bmp);
 
-    memDC.FillSolidRect(&rc, RGB(255, 255, 255));
+    memDC.FillSolidRect(&rc, RGB(255,255,255));
 
     Gdiplus::Graphics g(memDC.m_hDC);
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-    const int   arrowH  = ModernUIDpi::Scale(m_hWnd, kArrowH);
-    const int   arrowHW = ModernUIDpi::Scale(m_hWnd, 7);
-    const float radius  = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+    const int arrowH   = ModernUIDpi::Scale(m_hWnd, kArrowH);
+    const int arrowHW  = ModernUIDpi::Scale(m_hWnd, 8);
+    const float radius = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
 
-    Gdiplus::RectF body(0.75f, (float)arrowH,
-                        (float)rc.Width() - 1.5f,
+    Gdiplus::RectF body(0.75f, (float)arrowH, (float)rc.Width() - 1.5f,
                         (float)rc.Height() - arrowH - 0.75f);
 
-    // Border pen - subtle gray matching reference image
-    Gdiplus::Pen borderPen(Gdiplus::Color(255, 209, 213, 219), 1.0f);
-
-    // Arrow (pointing up toward the icon button)
+    // Arrow
     Gdiplus::PointF arrowPts[3] = {
-        Gdiplus::PointF((float)m_nArrowX,              (float)1),
-        Gdiplus::PointF((float)(m_nArrowX - arrowHW),  (float)arrowH),
-        Gdiplus::PointF((float)(m_nArrowX + arrowHW),  (float)arrowH),
+        Gdiplus::PointF((float)m_nArrowX,             (float)1),
+        Gdiplus::PointF((float)(m_nArrowX - arrowHW), (float)arrowH),
+        Gdiplus::PointF((float)(m_nArrowX + arrowHW), (float)arrowH),
     };
-    Gdiplus::SolidBrush brArrowFill(Gdiplus::Color(255, 255, 255, 255));
-    g.FillPolygon(&brArrowFill, arrowPts, 3);
+    Gdiplus::SolidBrush brArrow(Gdiplus::Color(255, 255, 255, 255));
+    g.FillPolygon(&brArrow, arrowPts, 3);
+    Gdiplus::Pen borderPen(Gdiplus::Color(255,
+        GetRValue(BLUE_200), GetGValue(BLUE_200), GetBValue(BLUE_200)), 1.2f);
     g.DrawLine(&borderPen, arrowPts[0], arrowPts[1]);
     g.DrawLine(&borderPen, arrowPts[0], arrowPts[2]);
 
-    // Body background (white rounded rect + gray border)
+    // Body background
     Gdiplus::GraphicsPath bodyPath;
     AddRoundRect(bodyPath, body, radius);
     Gdiplus::SolidBrush brWhite(Gdiplus::Color(255, 255, 255, 255));
     g.FillPath(&brWhite, &bodyPath);
     g.DrawPath(&borderPen, &bodyPath);
 
-    // Text layout
-    const float padX   = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
-    const float padTop = ModernUIDpi::ScaleF(m_hWnd, 13.0f);
-    const float gap    = ModernUIDpi::ScaleF(m_hWnd,  7.0f);
+    // Accent bar (top)
+    const float accentH = ModernUIDpi::ScaleF(m_hWnd, 36.0f);
+    Gdiplus::RectF accentRc(body.X, body.Y, body.Width, accentH);
+    Gdiplus::GraphicsPath accentPath;
+    float d = radius * 2.0f;
+    accentPath.AddArc(Gdiplus::RectF(accentRc.X, accentRc.Y, d, d), 180, 90);
+    accentPath.AddArc(Gdiplus::RectF(accentRc.X + accentRc.Width - d, accentRc.Y, d, d), 270, 90);
+    accentPath.AddLine(accentRc.X + accentRc.Width, accentRc.Y + accentH,
+                       accentRc.X, accentRc.Y + accentH);
+    accentPath.CloseFigure();
+    Gdiplus::LinearGradientBrush accentBrush(
+        Gdiplus::PointF(0, accentRc.Y),
+        Gdiplus::PointF(0, accentRc.Y + accentH),
+        Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)),
+        Gdiplus::Color(255, GetRValue(BLUE_400), GetGValue(BLUE_400), GetBValue(BLUE_400)));
+    g.FillPath(&accentBrush, &accentPath);
 
+    // Title (white bold text over accent)
     Gdiplus::FontFamily ff(L"Malgun Gothic");
-
-    // Title: bold 12px, near-black #111827
     Gdiplus::Font fTitle(&ff, ModernUIDpi::ScaleF(m_hWnd, 12.0f),
                          Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brTitle(Gdiplus::Color(255, 17, 24, 39));
-    Gdiplus::StringFormat sfTitle;
-    sfTitle.SetAlignment(Gdiplus::StringAlignmentNear);
-    sfTitle.SetLineAlignment(Gdiplus::StringAlignmentNear);
-    sfTitle.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-    sfTitle.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+    Gdiplus::SolidBrush brWhiteText(Gdiplus::Color(255, 255, 255, 255));
+    Gdiplus::StringFormat sfLeft;
+    sfLeft.SetAlignment(Gdiplus::StringAlignmentNear);
+    sfLeft.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+    sfLeft.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+    sfLeft.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
 
-    const float titleH = ModernUIDpi::ScaleF(m_hWnd, 17.0f);
-    Gdiplus::RectF titleRc(body.X + padX, body.Y + padTop,
-                           body.Width - padX * 2.0f, titleH);
+    float padX = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
+    Gdiplus::RectF titleRc(body.X + padX, body.Y, body.Width - padX * 2.0f, accentH);
     std::wstring wTitle = kftc_to_wide(m_strTitle);
-    g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfTitle, &brTitle);
+    g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfLeft, &brWhiteText);
 
-    // Body text: regular 11px, gray #6B7280
+    // Body text
     Gdiplus::Font fBody(&ff, ModernUIDpi::ScaleF(m_hWnd, 11.0f),
                         Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 107, 114, 128));
+    Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 55, 65, 81));
     Gdiplus::StringFormat sfBody;
     sfBody.SetAlignment(Gdiplus::StringAlignmentNear);
     sfBody.SetLineAlignment(Gdiplus::StringAlignmentNear);
 
-    float bodyTextTop = body.Y + padTop + titleH + gap;
-    float bodyTextH   = body.Y + body.Height - bodyTextTop - padTop;
-    Gdiplus::RectF bodyRc(body.X + padX, bodyTextTop,
-                          body.Width - padX * 2.0f, bodyTextH);
+    float bodyTextTop = body.Y + accentH + ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+    float bodyTextH   = body.Y + body.Height - bodyTextTop - ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+    Gdiplus::RectF bodyTextRc(body.X + padX, bodyTextTop,
+                               body.Width - padX * 2.0f, bodyTextH);
     std::wstring wBody = kftc_to_wide(m_strBody);
-    g.DrawString(wBody.c_str(), -1, &fBody, bodyRc, &sfBody, &brBodyText);
+    g.DrawString(wBody.c_str(), -1, &fBody, bodyTextRc, &sfBody, &brBodyText);
 
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
     memDC.SelectObject(pOld);
