@@ -1,0 +1,27 @@
+# Build output
+Release/
+Debug/
+x64/
+x86/
+
+# Visual Studio
+.vs/
+*.user
+*.aps
+*.suo
+*.ncb
+*.sdf
+*.opensdf
+*.pdb
+*.ipdb
+*.iobj
+
+# Object files
+*.obj
+*.pch
+*.ilk
+*.exp
+*.lib
+
+# Zip files
+*.zip
