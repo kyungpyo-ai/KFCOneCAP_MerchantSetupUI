@@ -22,32 +22,39 @@ void CShopDownDlg::CardLayout::Compute(int clientWidth, HWND hwnd)
         cardM    = ModernUIDpi::Scale(hwnd, 0); // host is already inset by parent card padding
     cardPad  = ModernUIDpi::Scale(hwnd, 16);
     colGap   = ModernUIDpi::Scale(hwnd, 16);
-        idxW     = ModernUIDpi::Scale(hwnd, 34);
-editGap  = ModernUIDpi::Scale(hwnd, 10);
-    labelH   = ModernUIDpi::Scale(hwnd, 18);
+        idxW     = ModernUIDpi::Scale(hwnd, 34); // widened for 2-digit indices
+editGap  = ModernUIDpi::Scale(hwnd, 8);
+labelH   = ModernUIDpi::Scale(hwnd, 28);
     labelGap = ModernUIDpi::Scale(hwnd, 6);
     infoLineH= ModernUIDpi::Scale(hwnd, 22);
 
-        btnW = ModernUIDpi::Scale(hwnd, 92);
-            btnH = ModernUIDpi::Scale(hwnd, 42);
+        btnW = ModernUIDpi::Scale(hwnd, 140); // ensure "다운로드" fits on one line
+            btnH = ModernUIDpi::Scale(hwnd, 38);
 
     // item card available inner width
     // (section margin is handled by caller; here we just decide the split ratio)
     int innerW = clientWidth - cardM * 2 - cardPad * 2 - idxW;
 
     // left column: fixed-ish, but clamp for smaller windows
-    int leftMin = ModernUIDpi::Scale(hwnd, 360);
-        int leftMax = ModernUIDpi::Scale(hwnd, 420);
-int idealLeft = (int)(innerW * 0.52);
+    int leftMin = ModernUIDpi::Scale(hwnd, 280);
+    int leftMax = ModernUIDpi::Scale(hwnd, 380);
+int idealLeft = (int)(innerW * 0.48);
     if (idealLeft < leftMin) idealLeft = leftMin;
     if (idealLeft > leftMax) idealLeft = leftMax;
 
     leftW  = idealLeft;
     rightW = innerW - leftW - colGap;
-    if (rightW < ModernUIDpi::Scale(hwnd, 220))
+
+    // Ensure the right column is wide enough to keep action buttons readable.
+    // (Download/Delete should not wrap in normal window widths.)
+    const int btnPadR = ModernUIDpi::Scale(hwnd, 16);
+    const int btnGap  = ModernUIDpi::Scale(hwnd, 8);
+    const int rightMin = max(ModernUIDpi::Scale(hwnd, 220), (btnW * 2 + btnPadR + btnGap));
+
+    if (rightW < rightMin)
     {
         // fallback: squeeze left a bit if right is too small
-        int need = ModernUIDpi::Scale(hwnd, 220) - rightW;
+        int need = rightMin - rightW;
         leftW = max(leftMin, leftW - need);
         rightW = innerW - leftW - colGap;
     }
@@ -152,35 +159,33 @@ void CShopDownDlg::CreateControlsOnce()
     // ShopDownDlg는 행(row) 배경을 OnPaint()에서 직접 그리므로
     // WM_CTLCOLOR로 "진짜 배경"을 자동 추출할 수 없습니다.
     // 따라서 행 parity(짝/홀)에 맞춰 UnderlayColor를 강제 지정합니다.
-    const COLORREF crRowBg = RGB(255, 255, 255); // item card bg
+    // 초기 underlay는 현재 카드 상태에 따라 row별로 지정한다.
+    // (카드 배경은 OnPaint()에서 상태에 따라 바뀔 수 있음)
+    // NOTE: 실제 반영은 ApplyRowUnderlay()에서 일괄 처리된다.
 
     for (int i = 0; i < kRowCount; ++i)
     {
 m_editProd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
             edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+1);
-        m_editProd[i].SetUnderlayColor(crRowBg);
-
-        m_editBiz[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+m_editBiz[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
             edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+2);
-        m_editBiz[i].SetUnderlayColor(crRowBg);
-
-        m_editPwd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+m_editPwd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
             pwdStyle, CRect(0,0,10,10), this, 62000+(i*10)+3);
-        m_editPwd[i].SetUnderlayColor(crRowBg);
-
-        m_btnDownload[i].Create(_T("다운로드"),
+m_btnDownload[i].Create(_T("다운로드"),
             WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
             CRect(0,0,10,10), this, kBtnBase+i);
         m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
-        m_btnDownload[i].SetUnderlayColor(crRowBg);
-
-        m_editMerchantName[i].CreateEx(0, _T("EDIT"), _T(""),
+m_btnDelete[i].Create(_T("삭제"),
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+            CRect(0,0,10,10), this, kDelBase+i);
+        m_btnDelete[i].SetColors(RGB(235,236,240), RGB(225,226,230), RGB(40,40,40));
+m_editMerchantName[i].CreateEx(0, _T("EDIT"), _T(""),
             roStyle, CRect(0,0,10,10), this, 62000+(i*10)+4);
-        m_editMerchantName[i].SetUnderlayColor(crRowBg);
+       // m_editMerchantName[i].SetUnderlayColor(crRowBg);
 
         m_editEtc[i].CreateEx(0, _T("EDIT"), _T(""),
             roStyle, CRect(0,0,10,10), this, 62000+(i*10)+5);
-        m_editEtc[i].SetUnderlayColor(crRowBg);
+       // m_editEtc[i].SetUnderlayColor(crRowBg);
 
         m_editMerchantName[i].ShowWindow(SW_HIDE);
         m_editEtc[i].ShowWindow(SW_HIDE);
@@ -192,6 +197,10 @@ m_editProd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
 
         m_editProd[i].SetWindowText(*m_pPrdid[i]);
         m_editBiz[i].SetWindowText(*m_pRegno[i]);
+
+        // 대표가맹점명이 있으면 삭제 활성화, 없으면 비활성화
+        const bool hasRep = (m_pRetailName[i] && !m_pRetailName[i]->IsEmpty());
+        m_btnDelete[i].EnableWindow(hasRep ? TRUE : FALSE);
     }
 }
 
@@ -245,7 +254,11 @@ void CShopDownDlg::LayoutControls()
     CRect rc;
     GetClientRect(&rc);
 
-    m_card.Compute(rc.Width(), m_hWnd);
+    // NOTE:
+    // Layout width must match the actual card viewport width.
+    // If we compute column widths from the full client width while the row rect
+    // is reduced by scrollbars/gutters, right-side content (buttons) can spill
+    // outside the card.
 
     const int rowGap = ModernUIDpi::Scale(m_hWnd, kRowGap);
     const int ctrlH  = ModernUIDpi::Scale(m_hWnd, kCtrlH);
@@ -256,8 +269,23 @@ void CShopDownDlg::LayoutControls()
     int rowH         = (availH - rowGap) / 2; // 2 rows, 1 gap
 
     // Clamp to keep controls readable and consistent across DPI.
-    const int rowMin = ModernUIDpi::Scale(m_hWnd, 192);
-    const int rowMax = ModernUIDpi::Scale(m_hWnd, 240);
+    // Right column layout requires:
+    //   대표 가맹점 (라벨+값) 2줄 + 단말기별 (라벨+값) 2줄 + 버튼 1줄
+    const int baseRowMin = ModernUIDpi::Scale(m_hWnd, 192);
+
+    const int yInfo1Off        = m_card.labelH + m_card.labelGap;
+    const int repValBottomOff  = yInfo1Off + m_card.infoLineH;
+    const int yTermLabelOff    = repValBottomOff + m_card.editGap;
+    const int yTermValOff      = yTermLabelOff + m_card.labelH + m_card.labelGap;
+    const int termValBottomOff = yTermValOff + m_card.infoLineH;
+    const int btnBottomOff     = termValBottomOff + m_card.editGap + ctrlH;
+
+    const int rowMinNeeded = btnBottomOff + m_card.cardPad * 2;
+    const int rowMin = max(baseRowMin, rowMinNeeded);
+
+    // Allow a bit more headroom than earlier versions (font/DPI differences)
+    const int rowMax = ModernUIDpi::Scale(m_hWnd, 320);
+
     if (rowH < rowMin) rowH = rowMin;
     if (rowH > rowMax) rowH = rowMax;
 
@@ -266,18 +294,25 @@ void CShopDownDlg::LayoutControls()
     m_nTotalContentH = padY * 2 + kRowCount * (rowH + rowGap) - rowGap;
     m_nViewH         = rc.Height();
 
+    const bool hasVScroll = (m_nTotalContentH > m_nViewH);
+    const int  sbW        = hasVScroll ? ::GetSystemMetrics(SM_CXVSCROLL) : 0;
+
+    // Reduce outer margins so cards get a bit wider, and keep left/right padding symmetric.
+    const int padX = ModernUIDpi::Scale(m_hWnd, 8);
+    int layoutW = rc.Width() - (hasVScroll ? sbW : 0) - padX * 2;
+    if (layoutW < ModernUIDpi::Scale(m_hWnd, 320)) layoutW = ModernUIDpi::Scale(m_hWnd, 320);
+    m_card.Compute(layoutW, m_hWnd);
+
     int y = contentStartY - m_nScrollPos;
 
     // prod/biz/pwd/button + (merchant/term edits are kept but always hidden)
-    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 6);
+    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 8);
 
     for (int i = 0; i < kRowCount; ++i)
     {
-                // Reserve a right gutter when the vertical scrollbar is visible
-        const bool hasVScroll = (m_nTotalContentH > m_nViewH);
-        const int sbW = hasVScroll ? ::GetSystemMetrics(SM_CXVSCROLL) : 0;
-        const int rightGutter = hasVScroll ? (sbW + ModernUIDpi::Scale(m_hWnd, 12)) : 0;
-        m_rcRow[i].SetRect(m_card.cardM, y, rc.right - m_card.cardM - rightGutter, y + rowH);
+        // Keep left/right padding symmetric; only reserve the native scrollbar width on the right.
+        m_rcRow[i].SetRect(padX, y,
+                          rc.right - padX - (hasVScroll ? sbW : 0), y + rowH);
 
         // viewport clip: section card body
         const int viewTop    = contentStartY;
@@ -309,38 +344,74 @@ void CShopDownDlg::LayoutControls()
         const int y2Edit  = y2Label + labelH + labelGap;
         m_rcPwd[i].SetRect(xL, y2Edit, xL + m_card.leftW, y2Edit + ctrlH);
 
-        // button (align with password row to keep a clean grid and avoid
-        // stealing space from the 대표 가맹점 line when it is long)
-        const int btnY = y2Edit; // align with "비밀번호" edit/value baseline
-        m_rcBtn[i].SetRect(xR + m_card.rightW - m_card.btnW, btnY, xR + m_card.rightW, btnY + m_card.btnH);
+        int termRight = xR + m_card.rightW;
+
+        // buttons row: Download/Delete on its own line (below terminal merchant value)
+        {
+            const int btnPadR = ModernUIDpi::Scale(m_hWnd, 16);
+            const int btnGap  = ModernUIDpi::Scale(m_hWnd, 8);
+            const int btnH    = ctrlH;
+
+            // Fit 2 buttons into the right column without overlap
+            int btnW = m_card.btnW;
+            const int maxFit = (m_card.rightW - btnPadR - btnGap) / 2;
+            if (maxFit > 0)
+            {
+                // Prefer the desired width; only shrink if the window is extremely narrow.
+                btnW = min(btnW, maxFit);
+            }
+            else
+            {
+                btnW = ModernUIDpi::Scale(m_hWnd, 40);
+            }
+
+            // Buttons are placed below: 대표(라벨+값) 2줄 + 단말기별(라벨+값) 2줄
+            const int yInfo1        = inner.top + labelH + labelGap;
+            const int repValBottom  = yInfo1 + m_card.infoLineH;
+            const int yTermLabel    = repValBottom + editGap;
+            const int yTermVal      = yTermLabel + labelH + labelGap;
+            const int termValBottom = yTermVal + m_card.infoLineH;
+
+            const int btnY  = termValBottom + editGap;
+            const int right = xR + m_card.rightW - btnPadR;
+
+            // Download on the left, Delete on the right (same size)
+            m_rcDel[i].SetRect(right - btnW, btnY, right, btnY + btnH);
+            m_rcBtn[i].SetRect(m_rcDel[i].left - btnGap - btnW, btnY, m_rcDel[i].left - btnGap, btnY + btnH);
+
+            // Term text uses full right column width (buttons are on their own row)
+            termRight = xR + m_card.rightW;
+        }
 
         // info text rectangles (value line area)
         const int yInfo1 = inner.top + labelH + labelGap;
         m_rcInfoRep[i].SetRect(xR, yInfo1, xR + m_card.rightW, yInfo1 + m_card.infoLineH);
 
-        // Reserve space for the button on the 2nd line so the right-side value
-        // does not run underneath the CTA.
-        const int gapBtn = ModernUIDpi::Scale(m_hWnd, 12);
-        const int yInfo2 = y2Edit; // align with password edit
-        m_rcInfoTerm[i].SetRect(xR, yInfo2, m_rcBtn[i].left - gapBtn, yInfo2 + m_card.infoLineH);
+        // 2nd block (right): terminal merchant (label + value) 2 lines
+        const int repValBottom = yInfo1 + m_card.infoLineH;
+        const int yTermLabel   = repValBottom + editGap; // 대표 가맹점 값 바로 아래
+        m_rcInfoTerm[i].SetRect(xR, yTermLabel, termRight, yTermLabel + m_card.labelH);
 
-        // Enabled/disabled visual states (match other tabs)
+        const int yTermVal = yTermLabel + m_card.labelH + labelGap;
+        m_rcInfoTermVal[i].SetRect(xR, yTermVal, termRight, yTermVal + m_card.infoLineH);
+
+// Enabled/disabled visual states (match other tabs)
         {
-            const BOOL enProd = ::IsWindowEnabled(m_editProd[i].m_hWnd);
-            const BOOL enBiz  = ::IsWindowEnabled(m_editBiz[i].m_hWnd);
-            const BOOL enPwd  = ::IsWindowEnabled(m_editPwd[i].m_hWnd);
-            const COLORREF crEdEn  = RGB(255,255,255);
-            const COLORREF crEdDis = RGB(245,246,248);
-            m_editProd[i].SetUnderlayColor(enProd ? crEdEn : crEdDis);
-            m_editBiz[i].SetUnderlayColor (enBiz  ? crEdEn : crEdDis);
-            m_editPwd[i].SetUnderlayColor (enPwd  ? crEdEn : crEdDis);
-
-            const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
+            // 카드 배경과 컨트롤 Underlay를 항상 일치시킨다.
+            // (Edit 내부 채움도 UnderlayColor를 사용하도록 ModernUI.cpp에서 처리)
+            ApplyRowUnderlay(i, TRUE);
+const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
             if (enBtn)
                 m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
             else
                 m_btnDownload[i].SetColors(RGB(235,237,240), RGB(235,237,240), RGB(160,165,175));
-        }
+        
+            const BOOL enDel = ::IsWindowEnabled(m_btnDelete[i].m_hWnd);
+            if (enDel)
+                m_btnDelete[i].SetColors(RGB(235,236,240), RGB(225,226,230), RGB(40,40,40));
+            else
+                m_btnDelete[i].SetColors(RGB(245,246,248), RGB(245,246,248), RGB(160,160,160));
+}
 
         const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
         const UINT showHide  = bInView ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
@@ -352,6 +423,7 @@ void CShopDownDlg::LayoutControls()
             hdwp = ::DeferWindowPos(hdwp, m_editPwd[i].m_hWnd,     NULL, m_rcPwd[i].left,  m_rcPwd[i].top,  m_rcPwd[i].Width(),  m_rcPwd[i].Height(),  baseFlags | showHide);
             hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
 
+            hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd, NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
             // keep these hidden (we draw text ourselves for a cleaner "info" look)
             hdwp = ::DeferWindowPos(hdwp, m_editMerchantName[i].m_hWnd, NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
             hdwp = ::DeferWindowPos(hdwp, m_editEtc[i].m_hWnd,          NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
@@ -578,20 +650,74 @@ BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
     UINT nID   = LOWORD(wParam);
     UINT nCode = HIWORD(wParam);
-    if (nCode == BN_CLICKED && nID >= kBtnBase && nID < kBtnBase + kRowCount)
+    if (nCode == BN_CLICKED)
     {
-        OnDownloadClick(nID - kBtnBase);
-        return TRUE;
+        if (nID >= kBtnBase && nID < kBtnBase + kRowCount)
+        {
+            OnDownloadClick((int)(nID - kBtnBase));
+            return TRUE;
+        }
+        if (nID >= kDelBase && nID < kDelBase + kRowCount)
+        {
+            OnDeleteClick((int)(nID - kDelBase));
+            return TRUE;
+        }
     }
     return CDialog::OnCommand(wParam, lParam);
 }
 
 void CShopDownDlg::OnDownloadClick(int index)
 {
-    CString msg;
-    msg.Format(_T("가맹점%d 다운로드"), index + 1);
-    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    if (index < 0 || index >= kRowCount) return;
+
+    // 테스트용: 다운로드 시 대표가맹점명(RetailName)에 "TEST"를 채워 카드 상태(배경)를 즉시 전환
+    if (m_pRetailName[index])
+        *m_pRetailName[index] = _T("TEST");
+
+    // 필요 시 단말기별 가맹점도 동일하게 표시(빈칸이면 보기 어색해서 같이 채움)
+    if (m_pSecondName[index] && m_pSecondName[index]->IsEmpty())
+        *m_pSecondName[index] = _T("TEST");
+
+    // 화면/컨트롤 underlay 즉시 동기화
+    // 다운로드되면 삭제 버튼 활성화
+    if (m_btnDelete[index].GetSafeHwnd()) m_btnDelete[index].EnableWindow(TRUE);
+
+    ApplyRowUnderlay(index, TRUE);
+
+    // 카드 자체 다시 그리기(배경/우측 텍스트)
+    if (index >= 0 && index < kRowCount)
+    {
+        InvalidateRect(&m_rcRow[index], FALSE);
+        UpdateWindow();
+    }
 }
+
+void CShopDownDlg::OnDeleteClick(int index)
+{
+    if (index < 0 || index >= kRowCount) return;
+
+    // 해당 카드(행)의 모든 데이터 초기화
+    if (m_pRetailName[index])  *m_pRetailName[index]  = _T("");
+    if (m_pSecondName[index])  *m_pSecondName[index]  = _T("");
+    if (m_pPrdid[index])       *m_pPrdid[index]       = _T("");
+    if (m_pRegno[index])       *m_pRegno[index]       = _T("");
+    if (m_pPasswd[index])      *m_pPasswd[index]      = _T("");
+
+    if (m_editProd[index].GetSafeHwnd()) m_editProd[index].SetWindowText(_T(""));
+    if (m_editBiz[index].GetSafeHwnd())  m_editBiz[index].SetWindowText(_T(""));
+    if (m_editPwd[index].GetSafeHwnd())  m_editPwd[index].SetWindowText(_T(""));
+
+    // 삭제되면 삭제 버튼 비활성화
+    if (m_btnDelete[index].GetSafeHwnd()) m_btnDelete[index].EnableWindow(FALSE);
+
+    // 화면/컨트롤 underlay 즉시 동기화 (빈 상태 → 연한 톤)
+    ApplyRowUnderlay(index, TRUE);
+
+    // 카드 자체 다시 그리기
+    InvalidateRect(&m_rcRow[index], FALSE);
+    UpdateWindow();
+}
+
 
 BOOL CShopDownDlg::OnEraseBkgnd(CDC*) { return TRUE; }
 
@@ -668,7 +794,7 @@ void CShopDownDlg::OnPaint()
     // Text helpers
     // ----------------------------------------------------------------
     Gdiplus::FontFamily ff(L"Malgun Gothic");
-    const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
+    const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 12);
     const float valPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
 
     Gdiplus::Font fLbl(&ff, lblPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
@@ -682,7 +808,7 @@ void CShopDownDlg::OnPaint()
         Gdiplus::StringFormat sf;
         sf.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
         sf.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-                sf.SetLineAlignment(Gdiplus::StringAlignmentNear);
+                        sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
         sf.SetAlignment(Gdiplus::StringAlignmentNear);
 
 #ifdef UNICODE
@@ -751,20 +877,39 @@ void CShopDownDlg::OnPaint()
             Gdiplus::RectF l1((float)m_rcInfoRep[i].left,  yLbl, (float)m_rcInfoRep[i].Width(), hLbl);
             DrawEllips(_T("대표 가맹점"), l1, &fLbl, cLbl);
 
-            const float y2Lbl = (float)m_rcInfoTerm[i].top - (float)m_card.labelGap - (float)m_card.labelH;
-            Gdiplus::RectF l2((float)m_rcInfoTerm[i].left, y2Lbl, (float)m_rcInfoTerm[i].Width(), hLbl);
+            // '단말기별 가맹점'은 2줄(라벨/값) 유지:
+            //  - 라벨: 비밀번호 라벨 줄(y2Label)
+            //  - 값  : 비밀번호 Edit 줄(y2Edit), 버튼과 동일한 Y (좌측 공간에 표시)
+            Gdiplus::RectF l2((float)m_rcInfoTerm[i].left,    (float)m_rcInfoTerm[i].top,    (float)m_rcInfoTerm[i].Width(),    (float)m_rcInfoTerm[i].Height());
             DrawEllips(_T("단말기별 가맹점"), l2, &fLbl, cLbl);
 
             CString rep  = *m_pRetailName[i];
             CString term = *m_pSecondName[i];
 
             // value rects
-            Gdiplus::RectF v1((float)m_rcInfoRep[i].left,  (float)m_rcInfoRep[i].top,  (float)m_rcInfoRep[i].Width(),  (float)m_rcInfoRep[i].Height());
-            Gdiplus::RectF v2((float)m_rcInfoTerm[i].left, (float)m_rcInfoTerm[i].top, (float)m_rcInfoTerm[i].Width(), (float)m_rcInfoTerm[i].Height());
+            Gdiplus::RectF v1((float)m_rcInfoRep[i].left,      (float)m_rcInfoRep[i].top,      (float)m_rcInfoRep[i].Width(),      (float)m_rcInfoRep[i].Height());
+            Gdiplus::RectF v2((float)m_rcInfoTermVal[i].left,  (float)m_rcInfoTermVal[i].top,  (float)m_rcInfoTermVal[i].Width(),  (float)m_rcInfoTermVal[i].Height());
 
-            DrawEllips(rep,  v1, &fValBold, cVal);
-            DrawEllips(term, v2, &fVal,     cVal);
+            // Values: make it obvious these are filled by '다운로드'
+            if (rep.IsEmpty())
+                DrawEllips(_T("다운로드 후 표시"), v1, &fVal, cPh);
+            else
+                DrawEllips(rep, v1, &fValBold, cVal);
+
+            if (term.IsEmpty())
+            {
+                // 단말기별 가맹점은 다운로드 후에도 값이 비어 있을 수 있음.
+                // 대표 가맹점 값이 존재하면 '없음' 표시로 '-'를 보여준다.
+                if (!rep.IsEmpty())
+                    DrawEllips(_T("-"), v2, &fValBold, cVal);
+                else
+                    DrawEllips(_T("다운로드 후 표시"), v2, &fVal, cPh);
             }
+            else
+            {
+                DrawEllips(term, v2, &fValBold, cVal);
+            }
+}
 
         // row number (fixed gutter, more legible, no overlap)
         {
@@ -791,4 +936,52 @@ void CShopDownDlg::OnPaint()
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
     memDC.SelectObject(pOldBmp);
 }
+
+// ============================================================================
+// Card/Control background sync (UnderlayColor)
+// ============================================================================
+COLORREF CShopDownDlg::GetRowCardBg(int index) const
+{
+    // OnPaint()와 동일한 규칙을 사용해야 화면과 컨트롤 underlay가 일치한다.
+    // Normal: white, Pending/Empty: very light blue tint (quiet)
+    if (index < 0 || index >= kRowCount) return RGB(255, 255, 255);
+
+    CString rep;
+    if (m_pRetailName[index]) rep = *m_pRetailName[index];
+    const bool hasRep = !rep.IsEmpty();
+    return hasRep ? RGB(255, 255, 255) : RGB(246, 248, 251);
+}
+
+void CShopDownDlg::ApplyRowUnderlay(int index, BOOL bRedraw /*= TRUE*/)
+{
+    if (index < 0 || index >= kRowCount) return;
+
+    const COLORREF cr = GetRowCardBg(index);
+
+    if (m_editProd[index].GetSafeHwnd()) m_editProd[index].SetUnderlayColor(cr);
+    if (m_editBiz[index].GetSafeHwnd())  m_editBiz[index].SetUnderlayColor(cr);
+    if (m_editPwd[index].GetSafeHwnd())  m_editPwd[index].SetUnderlayColor(cr);
+
+    if (m_btnDownload[index].GetSafeHwnd()) m_btnDownload[index].SetUnderlayColor(cr);
+
+    
+    if (m_btnDelete[index].GetSafeHwnd())  m_btnDelete[index].SetUnderlayColor(cr);
+if (bRedraw)
+    {
+        // 즉시 반영 (실시간 카드 배경 변경 대응)
+        if (m_editProd[index].GetSafeHwnd()) m_editProd[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
+    if (m_editBiz[index].GetSafeHwnd())  m_editBiz[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
+    if (m_editPwd[index].GetSafeHwnd())  m_editPwd[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
+    if (m_btnDownload[index].GetSafeHwnd()) m_btnDownload[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW);
+    
+    if (m_btnDelete[index].GetSafeHwnd())  m_btnDelete[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW);
+}
+}
+
+void CShopDownDlg::ApplyAllRowUnderlays()
+{
+    for (int i = 0; i < kRowCount; ++i)
+        ApplyRowUnderlay(i, TRUE);
+}
+
 

@@ -1,0 +1,322 @@
+﻿msbuild 踰꾩쟾 17.13.19+0d9f5a35a(.NET Framework??
+
+  MerchantSetupApp.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(40,9): warning C4005: 'CREATEPROCESS_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(283,9):
+      'CREATEPROCESS_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(41,9): warning C4005: 'MINIMUM_RESERVED_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(288,9):
+      'MINIMUM_RESERVED_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(224,9): warning C4005: 'ISOLATIONAWARE_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(284,9):
+      'ISOLATIONAWARE_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(312,9): warning C4005: 'ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(285,9):
+      'ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(346,9): warning C4005: 'ISOLATIONPOLICY_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(286,9):
+      'ISOLATIONPOLICY_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(396,9): warning C4005: 'ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(287,9):
+      'ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(543,9): warning C4005: 'MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(289,9):
+      'MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(607,9): warning C4005: 'RT_MANIFEST': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(282,9):
+      'RT_MANIFEST'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1530,9): warning C4005: '_WIN32_WINNT': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\atlmfc\include\afxv_w32.h(28,9):
+      '_WIN32_WINNT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1531,9): warning C4005: '_WIN32_IE': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\atlmfc\include\afxdlgs.h(30,9):
+      '_WIN32_IE'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1570,9): warning C4005: 'IDI_APPLICATION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11092,9):
+      'IDI_APPLICATION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1573,9): warning C4005: 'IDI_HAND': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11093,9):
+      'IDI_HAND'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1576,9): warning C4005: 'IDI_QUESTION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11094,9):
+      'IDI_QUESTION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1579,9): warning C4005: 'IDI_EXCLAMATION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11095,9):
+      'IDI_EXCLAMATION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1582,9): warning C4005: 'IDI_ASTERISK': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11096,9):
+      'IDI_ASTERISK'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1584,9): warning C4005: 'IDI_WINLOGO': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11098,9):
+      'IDI_WINLOGO'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1586,9): warning C4005: 'IDI_SHIELD': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11101,9):
+      'IDI_SHIELD'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1661,9): warning C4005: 'HTERROR': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2568,9):
+      'HTERROR'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1662,9): warning C4005: 'PWR_FAIL': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2078,9):
+      'PWR_FAIL'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1664,9): warning C4005: 'HTTRANSPARENT': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'MerchantSetupApp.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2569,9):
+      'HTTRANSPARENT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+  ShopDownDlg.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(40,9): warning C4005: 'CREATEPROCESS_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(283,9):
+      'CREATEPROCESS_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(41,9): warning C4005: 'MINIMUM_RESERVED_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(288,9):
+      'MINIMUM_RESERVED_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(224,9): warning C4005: 'ISOLATIONAWARE_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(284,9):
+      'ISOLATIONAWARE_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(312,9): warning C4005: 'ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(285,9):
+      'ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(346,9): warning C4005: 'ISOLATIONPOLICY_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(286,9):
+      'ISOLATIONPOLICY_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(396,9): warning C4005: 'ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(287,9):
+      'ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(543,9): warning C4005: 'MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(289,9):
+      'MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(607,9): warning C4005: 'RT_MANIFEST': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(282,9):
+      'RT_MANIFEST'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1530,9): warning C4005: '_WIN32_WINNT': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\atlmfc\include\afxv_w32.h(28,9):
+      '_WIN32_WINNT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1531,9): warning C4005: '_WIN32_IE': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\atlmfc\include\afxdlgs.h(30,9):
+      '_WIN32_IE'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1570,9): warning C4005: 'IDI_APPLICATION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11092,9):
+      'IDI_APPLICATION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1573,9): warning C4005: 'IDI_HAND': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11093,9):
+      'IDI_HAND'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1576,9): warning C4005: 'IDI_QUESTION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11094,9):
+      'IDI_QUESTION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1579,9): warning C4005: 'IDI_EXCLAMATION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11095,9):
+      'IDI_EXCLAMATION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1582,9): warning C4005: 'IDI_ASTERISK': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11096,9):
+      'IDI_ASTERISK'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1584,9): warning C4005: 'IDI_WINLOGO': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11098,9):
+      'IDI_WINLOGO'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1586,9): warning C4005: 'IDI_SHIELD': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11101,9):
+      'IDI_SHIELD'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1661,9): warning C4005: 'HTERROR': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2568,9):
+      'HTERROR'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1662,9): warning C4005: 'PWR_FAIL': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2078,9):
+      'PWR_FAIL'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1664,9): warning C4005: 'HTTRANSPARENT': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopDownDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2569,9):
+      'HTTRANSPARENT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+  ShopSetupDlg.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(40,9): warning C4005: 'CREATEPROCESS_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(283,9):
+      'CREATEPROCESS_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(41,9): warning C4005: 'MINIMUM_RESERVED_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(288,9):
+      'MINIMUM_RESERVED_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(224,9): warning C4005: 'ISOLATIONAWARE_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(284,9):
+      'ISOLATIONAWARE_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(312,9): warning C4005: 'ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(285,9):
+      'ISOLATIONAWARE_NOSTATICIMPORT_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(346,9): warning C4005: 'ISOLATIONPOLICY_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(286,9):
+      'ISOLATIONPOLICY_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(396,9): warning C4005: 'ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(287,9):
+      'ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(543,9): warning C4005: 'MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(289,9):
+      'MAXIMUM_RESERVED_MANIFEST_RESOURCE_ID'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(607,9): warning C4005: 'RT_MANIFEST': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(282,9):
+      'RT_MANIFEST'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1530,9): warning C4005: '_WIN32_WINNT': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\atlmfc\include\afxv_w32.h(28,9):
+      '_WIN32_WINNT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1531,9): warning C4005: '_WIN32_IE': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\atlmfc\include\afxdlgs.h(30,9):
+      '_WIN32_IE'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1570,9): warning C4005: 'IDI_APPLICATION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11092,9):
+      'IDI_APPLICATION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1573,9): warning C4005: 'IDI_HAND': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11093,9):
+      'IDI_HAND'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1576,9): warning C4005: 'IDI_QUESTION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11094,9):
+      'IDI_QUESTION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1579,9): warning C4005: 'IDI_EXCLAMATION': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11095,9):
+      'IDI_EXCLAMATION'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1582,9): warning C4005: 'IDI_ASTERISK': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11096,9):
+      'IDI_ASTERISK'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1584,9): warning C4005: 'IDI_WINLOGO': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11098,9):
+      'IDI_WINLOGO'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1586,9): warning C4005: 'IDI_SHIELD': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(11101,9):
+      'IDI_SHIELD'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1661,9): warning C4005: 'HTERROR': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2568,9):
+      'HTERROR'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1662,9): warning C4005: 'PWR_FAIL': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2078,9):
+      'PWR_FAIL'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Resource.h(1664,9): warning C4005: 'HTTRANSPARENT': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  (?뚯뒪 ?뚯씪 'ShopSetupDlg.cpp'??瑜? 而댄뙆?쇳븯??以?
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2569,9):
+      'HTTRANSPARENT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
+  
+  stdafx.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+  ModernUI.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+  肄붾뱶瑜??앹꽦?섍퀬 ?덉뒿?덈떎...
+resource.h(1661): warning RC4005: 'HTERROR' : redefinition [C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  
+resource.h(1662): warning RC4005: 'PWR_FAIL' : redefinition [C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  
+resource.h(1664): warning RC4005: 'HTTRANSPARENT' : redefinition [C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]
+  
+  MerchantSetup.vcxproj -> C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Release\MerchantSetup.exe
+  'pwsh.exe'?(?? ?대? ?먮뒗 ?몃? 紐낅졊, ?ㅽ뻾?????덈뒗 ?꾨줈洹몃옩, ?먮뒗
+  諛곗튂 ?뚯씪???꾨떃?덈떎.

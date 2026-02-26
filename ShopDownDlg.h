@@ -34,6 +34,15 @@ private:
     void ApplyScroll(int newPos);
     void QueueScroll(int newPos);
     void OnDownloadClick(int index);
+    void OnDeleteClick(int index);
+
+    // ---------- Card/Control background sync ---------------------------------
+    // 카드(행) 배경색이 상태에 따라 바뀌는 경우, 각 컨트롤의 UnderlayColor도
+    // 즉시 동일한 색으로 맞춰 라운드 모서리 halo(흰색 테두리) / 배경 불일치를 제거한다.
+    COLORREF GetRowCardBg(int index) const;
+    void ApplyRowUnderlay(int index, BOOL bRedraw = TRUE);
+    void ApplyAllRowUnderlays();
+
 
     // ---------- Column layout -------------------------------------------------
     // Single source of truth - used by LayoutControls AND OnPaint.
@@ -74,6 +83,7 @@ private:
 
     static const int kRowCount = 25;
     static const int kBtnBase  = 61001;
+    static const int kDelBase  = 61101;
 
 private:
     // ---------- Brushes -------------------------------------------------------
@@ -122,6 +132,7 @@ private:
     CSkinnedEdit  m_editBiz[kRowCount];
     CSkinnedEdit  m_editPwd[kRowCount];
     CModernButton m_btnDownload[kRowCount];
+    CModernButton m_btnDelete[kRowCount];
     CSkinnedEdit  m_editMerchantName[kRowCount];
     CSkinnedEdit  m_editEtc[kRowCount];
 
@@ -139,8 +150,10 @@ private:
     CRect m_rcBiz[kRowCount];
     CRect m_rcPwd[kRowCount];
     CRect m_rcBtn[kRowCount];
+    CRect m_rcDel[kRowCount];
     CRect m_rcInfoRep[kRowCount];
     CRect m_rcInfoTerm[kRowCount];
+    CRect m_rcInfoTermVal[kRowCount];
 
     // ---------- Scroll state --------------------------------------------------
     int  m_nScrollPos;

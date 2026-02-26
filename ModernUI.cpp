@@ -1300,14 +1300,6 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 // - UnderlayColor가 지정된 경우(카드/섹션 배경이 실시간 변경되는 케이스)에는
 //   라운드 내부 채움도 UnderlayColor로 맞춰 "흰색 박스"처럼 보이는 현상을 제거한다.
 Gdiplus::Color bg(255, 255, 255, 255);
-
-    // 카드 배경과 컨트롤 배경을 일치시키기 위해 underlay가 설정된 경우 내부 fill도 underlay 색을 사용한다.
-    if (m_bUseUnderlayBg)
-        bg = Gdiplus::Color(255, GetRValue(m_clrUnderlayBg), GetGValue(m_clrUnderlayBg), GetBValue(m_clrUnderlayBg));
-if (m_bUseUnderlayBg)
-{
-    bg = Gdiplus::Color(255, GetRValue(m_clrUnderlayBg), GetGValue(m_clrUnderlayBg), GetBValue(m_clrUnderlayBg));
-}
 	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
 	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
 	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
@@ -2003,7 +1995,7 @@ HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
     // Make the native text/background paint match our underlay so that
     // WM_PRINTCLIENT (used to render text/caret/selection) does not repaint
     // the client area with plain white.
-    const COLORREF bg = m_bUseUnderlayBg ? m_clrUnderlayBg : RGB(255, 255, 255);
+    const COLORREF bg = RGB(255, 255, 255);
 
     if (pDC)
     {
@@ -2084,10 +2076,6 @@ void CSkinnedEdit::OnPaint()
 
 	// 입력 영역 내부 배경: 항상 흰색 (라운드 rect 안쪽)
 	Gdiplus::Color bg(255, 255, 255, 255);
-
-    // 카드 배경과 컨트롤 배경을 일치시키기 위해 underlay가 설정된 경우 내부 fill도 underlay 색을 사용한다.
-    if (m_bUseUnderlayBg)
-        bg = Gdiplus::Color(255, GetRValue(m_clrUnderlayBg), GetGValue(m_clrUnderlayBg), GetBValue(m_clrUnderlayBg));
 	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
 	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
 	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
