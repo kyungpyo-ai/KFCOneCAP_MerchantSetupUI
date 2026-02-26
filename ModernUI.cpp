@@ -2564,3 +2564,274 @@ void CInfoText::OnPaint()
 
     dc.SelectObject(pOldFont);
 }
+// ============================================================================
+// CInfoIconButton - circular "i" info icon button
+// ============================================================================
+
+BEGIN_MESSAGE_MAP(CInfoIconButton, CButton)
+    ON_WM_MOUSEMOVE()
+    ON_WM_MOUSELEAVE()
+END_MESSAGE_MAP()
+
+CInfoIconButton::CInfoIconButton()
+    : m_bHover(FALSE), m_bTracking(FALSE)
+    , m_bUseUnderlay(FALSE), m_clrUnderlay(RGB(249,250,252))
+{
+}
+
+void CInfoIconButton::OnMouseMove(UINT nFlags, CPoint point)
+{
+    if (!m_bTracking)
+    {
+        TRACKMOUSEEVENT tme = { sizeof(TRACKMOUSEEVENT) };
+        tme.dwFlags   = TME_LEAVE | TME_HOVER;
+        tme.hwndTrack = m_hWnd;
+        tme.dwHoverTime = 1;
+        TrackMouseEvent(&tme);
+        m_bTracking = TRUE;
+    }
+    if (!m_bHover) { m_bHover = TRUE; Invalidate(FALSE); }
+    CButton::OnMouseMove(nFlags, point);
+}
+
+void CInfoIconButton::OnMouseLeave()
+{
+    m_bTracking = FALSE;
+    if (m_bHover) { m_bHover = FALSE; Invalidate(FALSE); }
+}
+
+void CInfoIconButton::DrawItem(LPDRAWITEMSTRUCT lpDIS)
+{
+    ModernUIGfx::EnsureGdiplusStartup();
+
+    CDC* pDC = CDC::FromHandle(lpDIS->hDC);
+    CRect rect(lpDIS->rcItem);
+
+    COLORREF crBg = m_bUseUnderlay ? m_clrUnderlay
+                                   : kftc_parent_bg_color(m_hWnd, lpDIS->hDC);
+    pDC->FillSolidRect(&rect, crBg);
+
+    Gdiplus::Graphics g(lpDIS->hDC);
+    g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+
+    float sz  = (float)min(rect.Width(), rect.Height()) - 2.0f;
+    float ox  = (rect.Width()  - sz) * 0.5f;
+    float oy  = (rect.Height() - sz) * 0.5f;
+    Gdiplus::RectF rf(ox, oy, sz, sz);
+
+    COLORREF cirFill = m_bHover ? BLUE_100 : RGB(220, 232, 248);
+    Gdiplus::SolidBrush brFill(Gdiplus::Color(255,
+        GetRValue(cirFill), GetGValue(cirFill), GetBValue(cirFill)));
+    g.FillEllipse(&brFill, rf);
+
+    Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(BLUE_300),
+                                        GetGValue(BLUE_300),
+                                        GetBValue(BLUE_300)), 1.0f);
+    g.DrawEllipse(&pen, rf);
+
+    Gdiplus::FontFamily ff(L"Malgun Gothic");
+    Gdiplus::Font font(&ff, sz * 0.52f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush brText(Gdiplus::Color(255,
+        GetRValue(KFTC_PRIMARY), GetGValue(KFTC_PRIMARY), GetBValue(KFTC_PRIMARY)));
+    Gdiplus::StringFormat sf;
+    sf.SetAlignment(Gdiplus::StringAlignmentCenter);
+    sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+    g.DrawString(L"i", -1, &font, rf, &sf, &brText);
+}
+
+// ============================================================================
+// CModernPopover - floating info popover
+// ============================================================================
+
+BEGIN_MESSAGE_MAP(CModernPopover, CWnd)
+    ON_WM_PAINT()
+    ON_WM_ERASEBKGND()
+    ON_WM_LBUTTONDOWN()
+END_MESSAGE_MAP()
+
+CModernPopover::CModernPopover()
+    : m_nArrowX(0), m_bVisible(FALSE)
+{
+}
+
+/*static*/ void CModernPopover::RegisterPopoverClass()
+{
+    static bool s_registered = false;
+    if (s_registered) return;
+    s_registered = true;
+
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX) };
+    wc.style         = CS_DROPSHADOW | CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc   = ::DefWindowProc;
+    wc.hInstance     = AfxGetInstanceHandle();
+    wc.hbrBackground = NULL;
+    wc.lpszClassName = _T("KFTCModernPopover");
+    ::RegisterClassEx(&wc);
+}
+
+void CModernPopover::AddRoundRect(Gdiplus::GraphicsPath& path,
+                                   const Gdiplus::RectF& r, REAL radius)
+{
+    const float d = radius * 2.0f;
+    Gdiplus::RectF a(r.X, r.Y, d, d);
+    path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
+    path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
+    path.AddArc(a,   0, 90); a.X = r.X;
+    path.AddArc(a,  90, 90); path.CloseFigure();
+}
+
+void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
+                             LPCTSTR body, CWnd* pParent)
+{
+    m_strTitle = title;
+    m_strBody  = body;
+
+    RegisterPopoverClass();
+
+    if (!GetSafeHwnd())
+    {
+        CreateEx(WS_EX_TOPMOST | WS_EX_NOACTIVATE,
+                 _T("KFTCModernPopover"), _T(""),
+                 WS_POPUP,
+                 0, 0, kPopW, kPopH + kArrowH,
+                 pParent ? pParent->GetSafeHwnd() : NULL, NULL);
+    }
+
+    HWND hRef = pParent ? pParent->GetSafeHwnd() : m_hWnd;
+    int popW = ModernUIDpi::Scale(hRef, kPopW);
+    int popH = ModernUIDpi::Scale(hRef, kPopH + kArrowH);
+
+    int px = anchorScrRc.CenterPoint().x - popW / 2;
+    int py = anchorScrRc.bottom + 2;
+
+    int screenH = ::GetSystemMetrics(SM_CYSCREEN);
+    if (py + popH > screenH - 10)
+        py = anchorScrRc.top - popH - 2;
+
+    m_nArrowX = anchorScrRc.CenterPoint().x - px;
+    if (m_nArrowX < 14) m_nArrowX = 14;
+    if (m_nArrowX > popW - 14) m_nArrowX = popW - 14;
+
+    SetWindowPos(&wndTopMost, px, py, popW, popH,
+                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    Invalidate(FALSE);
+    UpdateWindow();
+    m_bVisible = TRUE;
+}
+
+void CModernPopover::Hide()
+{
+    if (GetSafeHwnd()) ShowWindow(SW_HIDE);
+    m_bVisible = FALSE;
+}
+
+BOOL CModernPopover::OnEraseBkgnd(CDC* pDC)
+{
+    return TRUE;
+}
+
+void CModernPopover::OnLButtonDown(UINT nFlags, CPoint point)
+{
+    Hide();
+}
+
+void CModernPopover::OnPaint()
+{
+    CPaintDC dc(this);
+    CRect rc;
+    GetClientRect(&rc);
+
+    ModernUIGfx::EnsureGdiplusStartup();
+
+    CDC memDC;
+    memDC.CreateCompatibleDC(&dc);
+    CBitmap bmp;
+    bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+    CBitmap* pOld = memDC.SelectObject(&bmp);
+
+    memDC.FillSolidRect(&rc, RGB(255,255,255));
+
+    Gdiplus::Graphics g(memDC.m_hDC);
+    g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+
+    const int arrowH   = ModernUIDpi::Scale(m_hWnd, kArrowH);
+    const int arrowHW  = ModernUIDpi::Scale(m_hWnd, 8);
+    const float radius = ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+
+    Gdiplus::RectF body(0.75f, (float)arrowH, (float)rc.Width() - 1.5f,
+                        (float)rc.Height() - arrowH - 0.75f);
+
+    // Arrow
+    Gdiplus::PointF arrowPts[3] = {
+        Gdiplus::PointF((float)m_nArrowX,             (float)1),
+        Gdiplus::PointF((float)(m_nArrowX - arrowHW), (float)arrowH),
+        Gdiplus::PointF((float)(m_nArrowX + arrowHW), (float)arrowH),
+    };
+    Gdiplus::SolidBrush brArrow(Gdiplus::Color(255, 255, 255, 255));
+    g.FillPolygon(&brArrow, arrowPts, 3);
+    Gdiplus::Pen borderPen(Gdiplus::Color(255,
+        GetRValue(BLUE_200), GetGValue(BLUE_200), GetBValue(BLUE_200)), 1.2f);
+    g.DrawLine(&borderPen, arrowPts[0], arrowPts[1]);
+    g.DrawLine(&borderPen, arrowPts[0], arrowPts[2]);
+
+    // Body background
+    Gdiplus::GraphicsPath bodyPath;
+    AddRoundRect(bodyPath, body, radius);
+    Gdiplus::SolidBrush brWhite(Gdiplus::Color(255, 255, 255, 255));
+    g.FillPath(&brWhite, &bodyPath);
+    g.DrawPath(&borderPen, &bodyPath);
+
+    // Accent bar (top)
+    const float accentH = ModernUIDpi::ScaleF(m_hWnd, 36.0f);
+    Gdiplus::RectF accentRc(body.X, body.Y, body.Width, accentH);
+    Gdiplus::GraphicsPath accentPath;
+    float d = radius * 2.0f;
+    accentPath.AddArc(Gdiplus::RectF(accentRc.X, accentRc.Y, d, d), 180, 90);
+    accentPath.AddArc(Gdiplus::RectF(accentRc.X + accentRc.Width - d, accentRc.Y, d, d), 270, 90);
+    accentPath.AddLine(accentRc.X + accentRc.Width, accentRc.Y + accentH,
+                       accentRc.X, accentRc.Y + accentH);
+    accentPath.CloseFigure();
+    Gdiplus::LinearGradientBrush accentBrush(
+        Gdiplus::PointF(0, accentRc.Y),
+        Gdiplus::PointF(0, accentRc.Y + accentH),
+        Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)),
+        Gdiplus::Color(255, GetRValue(BLUE_400), GetGValue(BLUE_400), GetBValue(BLUE_400)));
+    g.FillPath(&accentBrush, &accentPath);
+
+    // Title text
+    Gdiplus::FontFamily ff(L"Malgun Gothic");
+    Gdiplus::Font fTitle(&ff, ModernUIDpi::ScaleF(m_hWnd, 12.0f),
+                         Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush brWhiteText(Gdiplus::Color(255, 255, 255, 255));
+    Gdiplus::StringFormat sfLeft;
+    sfLeft.SetAlignment(Gdiplus::StringAlignmentNear);
+    sfLeft.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+    sfLeft.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+    sfLeft.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+
+    float padX = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
+    Gdiplus::RectF titleRc(body.X + padX, body.Y, body.Width - padX * 2.0f, accentH);
+    std::wstring wTitle = kftc_to_wide(m_strTitle);
+    g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfLeft, &brWhiteText);
+
+    // Body text
+    Gdiplus::Font fBody(&ff, ModernUIDpi::ScaleF(m_hWnd, 11.0f),
+                        Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 55, 65, 81));
+    Gdiplus::StringFormat sfBody;
+    sfBody.SetAlignment(Gdiplus::StringAlignmentNear);
+    sfBody.SetLineAlignment(Gdiplus::StringAlignmentNear);
+
+    float bodyTextTop = body.Y + accentH + ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+    float bodyTextH   = body.Y + body.Height - bodyTextTop - ModernUIDpi::ScaleF(m_hWnd, 10.0f);
+    Gdiplus::RectF bodyTextRc(body.X + padX, bodyTextTop,
+                               body.Width - padX * 2.0f, bodyTextH);
+
+    std::wstring wBody = kftc_to_wide(m_strBody);
+    g.DrawString(wBody.c_str(), -1, &fBody, bodyTextRc, &sfBody, &brBodyText);
+
+    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+    memDC.SelectObject(pOld);
+}

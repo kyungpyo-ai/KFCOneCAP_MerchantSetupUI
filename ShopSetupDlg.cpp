@@ -60,6 +60,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_LBUTTONDOWN()
     ON_WM_TIMER()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
+    ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO, OnBnClickedVanServerInfo)
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -176,6 +177,11 @@ BOOL CShopSetupDlg::OnInitDialog()
     // 탭 컨트롤 생성 (다이얼로그 리소스에 없으므로 동적 생성)
     // --------------------------------------------------------
     m_tabCtrl.Create(this, IDC_TAB_MAIN, CRect(0, 0, 10, 10));
+
+    // Info icon button for VAN server field
+    m_btnVanInfo.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
+        CRect(0, 0, S(22), S(22)), this, IDC_BTN_VAN_SERVER_INFO);
+    m_btnVanInfo.SetUnderlayColor(RGB(255, 255, 255));
     m_tabCtrl.AddTab(_T("결제 설정"),       0);
     m_tabCtrl.AddTab(_T("장치 정보"),       1);
     m_tabCtrl.AddTab(_T("시스템 설정"),     2);
@@ -605,6 +611,25 @@ void CShopSetupDlg::ApplyLayout()
         Move(IDC_STATIC_VAN_SERVER, innerX, y1, colW, capH);
         Move(IDC_COMBO_VAN_SERVER,  innerX, y1 + capH + capGap, colW, FIELD_H);
 
+        // Info icon button: right of VAN server label
+        {
+            const int INFO_BTN_SZ  = S(20);
+            const int INFO_BTN_GAP = S(5);
+            // Shrink label to make room for icon
+            CWnd* pLbl = GetDlgItem(IDC_STATIC_VAN_SERVER);
+            if (pLbl && pLbl->GetSafeHwnd())
+            {
+                CRect rcLbl; pLbl->GetWindowRect(&rcLbl); ScreenToClient(&rcLbl);
+                pLbl->MoveWindow(rcLbl.left, rcLbl.top, colW - INFO_BTN_SZ - INFO_BTN_GAP, capH);
+            }
+            if (m_btnVanInfo.GetSafeHwnd())
+            {
+                int btnX = innerX + colW - INFO_BTN_SZ;
+                int btnY = y1 + (capH - INFO_BTN_SZ) / 2;
+                m_btnVanInfo.SetWindowPos(NULL, btnX, btnY, INFO_BTN_SZ, INFO_BTN_SZ,
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
         // 우: 포트번호
         Move(IDC_STATIC_PORT,       innerX + colW + colGap, y1, colW, capH);
         Move(IDC_EDIT_PORT,         innerX + colW + colGap, y1 + capH + capGap, colW, FIELD_H);
@@ -885,6 +910,9 @@ void CShopSetupDlg::ShowTab(int nTab)
 {
     m_nActiveTab = nTab;
 
+    // Close popover on tab switch
+    if (m_popover.GetSafeHwnd()) m_popover.Hide();
+
     // Tab 0: 결제 설정
     //   [서버 설정] : 금융결제원 서버 / 포트번호
     //   [결제 방식] : 통신방식 / 우선 거래 설정 / 무서명 기준금액 / 세금 자동 역산 / 현금영수증
@@ -952,6 +980,10 @@ void CShopSetupDlg::ShowTab(int nTab)
         if (m_staticShopContainer.GetSafeHwnd())
             m_staticShopContainer.ShowWindow(SW_SHOW);
     }
+
+    // Info button: visible only on Tab 0
+    if (m_btnVanInfo.GetSafeHwnd())
+        m_btnVanInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
 
     Invalidate();
     UpdateWindow();
@@ -1367,12 +1399,14 @@ void CShopSetupDlg::OnDestroy()
 // ============================================================================
 void CShopSetupDlg::OnOK()
 {
+    if (m_popover.GetSafeHwnd()) m_popover.Hide();
     UpdateData(TRUE);
     CDialog::OnOK();
 }
 
 void CShopSetupDlg::OnCancel()
 {
+    if (m_popover.GetSafeHwnd()) m_popover.Hide();
     CDialog::OnCancel();
 }
 
@@ -1380,6 +1414,24 @@ void CShopSetupDlg::OnCancel()
 // DrawInputBorders (하위 호환 stub)
 // ============================================================================
 void CShopSetupDlg::DrawInputBorders() {}
+
+// ============================================================================
+// OnBnClickedVanServerInfo - toggle popover
+// ============================================================================
+void CShopSetupDlg::OnBnClickedVanServerInfo()
+{
+    if (m_popover.IsVisible())
+    {
+        m_popover.Hide();
+        return;
+    }
+    CRect rc;
+    m_btnVanInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("금융결제원 서버"),
+        _T("KFTCOneCAP이 연결할 VAN 서버를 선택합니다.\n- 운영: 실제 거래를 처리하는 금융결제원 서버입니다.\n- 테스트: 개발 검증용 서버로 실제 결제가 처리되지 않습니다."),
+        this);
+}
 void CShopSetupDlg::DrawInputBorders(CDC* /*pDC*/) {}
 void CShopSetupDlg::DrawOneInputBorder(int /*ctrlId*/) {}
 void CShopSetupDlg::DrawOneInputBorder(CDC* /*pDC*/, int /*ctrlId*/) {}

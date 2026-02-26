@@ -1,6 +1,10 @@
 // ShopSetupDlg.h - ÅÇ UI ¹öÀü
 
 #pragma once
+
+#ifndef IDC_BTN_VAN_SERVER_INFO
+#define IDC_BTN_VAN_SERVER_INFO  60100
+#endif
 #include "ModernUI.h"
 #include "resource.h"
 #include "ShopDownDlg.h"
@@ -70,6 +74,10 @@ public:
     // ShopDownDlg
     CStatic m_staticShopContainer;
 
+    // Popover info button (VAN server)
+    CInfoIconButton m_btnVanInfo;
+    CModernPopover  m_popover;
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
@@ -85,6 +93,7 @@ protected:
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnBnClickedVanServerInfo();
 
     DECLARE_MESSAGE_MAP()
 

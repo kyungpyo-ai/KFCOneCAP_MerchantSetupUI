@@ -526,4 +526,59 @@ private:
                   REAL sz, bool active);
     void EnsureTrack();
 };
+// ========================================
+// CInfoIconButton - small circular "i" info icon button
+// ========================================
+class CInfoIconButton : public CButton
+{
+public:
+    CInfoIconButton();
+    virtual ~CInfoIconButton() {}
 
+    void SetUnderlayColor(COLORREF clr) { m_bUseUnderlay = TRUE; m_clrUnderlay = clr; }
+
+protected:
+    virtual void DrawItem(LPDRAWITEMSTRUCT lpDIS);
+    afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg void OnMouseLeave();
+    DECLARE_MESSAGE_MAP()
+
+private:
+    BOOL     m_bHover;
+    BOOL     m_bTracking;
+    BOOL     m_bUseUnderlay;
+    COLORREF m_clrUnderlay;
+};
+
+// ========================================
+// CModernPopover - floating info popover (Toss/Kakao style)
+// ========================================
+class CModernPopover : public CWnd
+{
+public:
+    CModernPopover();
+    virtual ~CModernPopover() {}
+
+    void ShowAt(const CRect& anchorScreenRect, LPCTSTR title, LPCTSTR body, CWnd* pParent);
+    void Hide();
+    BOOL IsVisible() const { return m_bVisible; }
+
+protected:
+    afx_msg void OnPaint();
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    DECLARE_MESSAGE_MAP()
+
+private:
+    static void RegisterPopoverClass();
+    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, REAL radius);
+
+    CString m_strTitle;
+    CString m_strBody;
+    int     m_nArrowX;
+    BOOL    m_bVisible;
+
+    static const int kPopW   = 290;
+    static const int kPopH   = 148;
+    static const int kArrowH = 7;
+};
