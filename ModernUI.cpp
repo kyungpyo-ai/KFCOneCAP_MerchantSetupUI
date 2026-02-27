@@ -182,7 +182,7 @@ void CModernButton::SetUnderlayColor(COLORREF underlayBg)
 {
 	m_bUseUnderlayBg = TRUE;
 	m_clrUnderlayBg = underlayBg;
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
+	Invalidate(FALSE);
 }
 
 void CModernButton::ClearUnderlayColor()

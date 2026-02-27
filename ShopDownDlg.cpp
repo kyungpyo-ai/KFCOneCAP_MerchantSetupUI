@@ -69,7 +69,8 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_nScrollPos(0)
     , m_nTotalContentH(0)
     , m_nViewH(0)
-    , m_nPendingScrollPos(-1)
+    
+    , m_bInLayout(FALSE)
     , m_bScrollTimerActive(FALSE){
     InitPointerArrays();
 }
@@ -247,9 +248,8 @@ void CShopDownDlg::ApplyFonts()
 // ============================================================================
 void CShopDownDlg::LayoutControls()
 {
-    static BOOL s_bInLayout = FALSE;
-    if (s_bInLayout) return;
-    s_bInLayout = TRUE;
+    if (m_bInLayout) return;
+    m_bInLayout = TRUE;
 
     CRect rc;
     GetClientRect(&rc);
@@ -399,7 +399,7 @@ void CShopDownDlg::LayoutControls()
         {
             // 카드 배경과 컨트롤 Underlay를 항상 일치시킨다.
             // (Edit 내부 채움도 UnderlayColor를 사용하도록 ModernUI.cpp에서 처리)
-            ApplyRowUnderlay(i, TRUE);
+            ApplyRowUnderlay(i, FALSE);
 const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
             if (enBtn)
                 m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
@@ -416,28 +416,22 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
         const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
         const UINT showHide  = bInView ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
 
-        if (hdwp)
-        {
-            hdwp = ::DeferWindowPos(hdwp, m_editProd[i].m_hWnd,    NULL, m_rcProd[i].left, m_rcProd[i].top, m_rcProd[i].Width(), m_rcProd[i].Height(), baseFlags | showHide);
-            hdwp = ::DeferWindowPos(hdwp, m_editBiz[i].m_hWnd,     NULL, m_rcBiz[i].left,  m_rcBiz[i].top,  m_rcBiz[i].Width(),  m_rcBiz[i].Height(),  baseFlags | showHide);
-            hdwp = ::DeferWindowPos(hdwp, m_editPwd[i].m_hWnd,     NULL, m_rcPwd[i].left,  m_rcPwd[i].top,  m_rcPwd[i].Width(),  m_rcPwd[i].Height(),  baseFlags | showHide);
-            hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
-
-            hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd, NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
-            // keep these hidden (we draw text ourselves for a cleaner "info" look)
-            hdwp = ::DeferWindowPos(hdwp, m_editMerchantName[i].m_hWnd, NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
-            hdwp = ::DeferWindowPos(hdwp, m_editEtc[i].m_hWnd,          NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
-        }
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[i].m_hWnd,    NULL, m_rcProd[i].left, m_rcProd[i].top, m_rcProd[i].Width(), m_rcProd[i].Height(), baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[i].m_hWnd,     NULL, m_rcBiz[i].left,  m_rcBiz[i].top,  m_rcBiz[i].Width(),  m_rcBiz[i].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[i].m_hWnd,     NULL, m_rcPwd[i].left,  m_rcPwd[i].top,  m_rcPwd[i].Width(),  m_rcPwd[i].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd,   NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editMerchantName[i].m_hWnd, NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editEtc[i].m_hWnd,          NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
 
         y += rowH + rowGap;
     }
 
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
-    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
-
-    s_bInLayout = FALSE;
     UpdateScrollBar();
+    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+    m_bInLayout = FALSE;
 }
 
 
