@@ -1,72 +1,103 @@
 # CLAUDE.md
 
-이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 안내 문서입니다.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 빌드 방법
+## Build Commands
 
-**Visual Studio (GUI):** MerchantSetup.sln 열기 -> 빌드 -> Release|Win32
+**GUI:** Open `MerchantSetup.sln` → Build → Release|Win32
 
-**MSBuild (CLI):**
+**CLI:**
 ```
 msbuild MerchantSetup.sln /p:Configuration=Release /p:Platform=Win32
 msbuild MerchantSetup.sln /p:Configuration=Debug /p:Platform=Win32
 ```
 
-출력 파일: Release/MerchantSetup.exe 또는 Debug/MerchantSetup.exe
+Output: `Release/MerchantSetup.exe` or `Debug/MerchantSetup.exe`
 
-- 대상 플랫폼: Win32 (x86 전용), Windows 10 SDK, MSVC v143 (VS2022)
-- MFC: 동적 연결 (UseOfMfc=Dynamic)
-- 문자셋: MultiByte (CP949) - 소스 파일은 CP949(한국어) 인코딩. UTF-8로 변환 금지.
-- 미리 컴파일된 헤더 미사용 (PrecompiledHeader=NotUsing)
+Convenience scripts: `build.bat` (cmd) or `build.ps1` (PowerShell) both run a Release rebuild via MSBuild.
 
-## 아키텍처
+**Toolchain constraints:**
+- Win32 (x86) only ? do not change to x64
+- MSVC v143 (VS2022), Windows 10 SDK
+- MFC Dynamic linking (`UseOfMfc=Dynamic`)
+- Character set: **MultiByte (CP949)** ? source files are CP949-encoded Korean. Do NOT convert to UTF-8.
+- Precompiled headers disabled (`PrecompiledHeader=NotUsing`) ? each `.cpp` includes headers explicitly.
 
-**실행 흐름:** CMerchantSetupApp::InitInstance() -> CShopSetupDlg 모달 다이얼로그 생성 -> 다이얼로그 종료 시 앱 종료.
+> **참고 (한국어):**
+> - 대상 플랫폼: Win32 (x86 전용), Windows 10 SDK, MSVC v143 (VS2022)
+> - MFC: 동적 연결 (UseOfMfc=Dynamic)
+> - 문자셋: MultiByte (CP949) ? 소스 파일은 CP949(한국어) 인코딩. UTF-8로 변환 금지.
+> - 미리 컴파일된 헤더 미사용
 
-### 다이얼로그 구조
+## Architecture Overview
 
-- **CShopSetupDlg** (메인 다이얼로그, IDD_SHOP_SETUP_DLG): 4탭 구성
-  - 탭 0: VAN 서버 / 카드결제 설정
-  - 탭 1: 주변기기 (사인패드, 스캐너, MSR)
-  - 탭 2: 시스템 / 알람 / 단축키 설정
-  - 탭 3: 가맹점 다운로드 - CShopDownDlg를 CStatic 컨테이너 안에 자식 다이얼로그로 삽입
+### Application Flow
 
-- **CShopDownDlg** (IDD_SHOP_DOWN_DIALOG): 가맹점 25행 스크롤 목록.
-  각 행에 제품ID / 사업자번호 / 비밀번호 / 가맹점명 입력란과 다운로드 버튼.
-  컨트롤은 CreateControlsOnce()에서 동적 생성, LayoutControls()에서 배치.
+`CMerchantSetupApp::InitInstance()` → creates modal `CShopSetupDlg` → blocks until user closes.
 
-### ModernUI 컨트롤 라이브러리 (ModernUI.h / ModernUI.cpp)
+### Dialog Structure
 
-KFTC 블루 테마를 구현하는 커스텀 오너드로우 컨트롤. 모든 렌더링은 GDI+(Gdiplus) 사용.
+**`CShopSetupDlg`** (main dialog, `IDD_SHOP_SETUP_DLG`) ? 4-tab configuration UI:
+- Tab 0: VAN server / card reader settings
+- Tab 1: Peripheral devices (signature pad, scanner, MSR)
+- Tab 2: System / alarm / hotkey settings
+- Tab 3: Merchant data download ? hosts `CShopDownDlg` as a child dialog inside `m_staticShopContainer`
 
-| 클래스              | 베이스     | 역할                                             |
-|---------------------|------------|--------------------------------------------------|
-| CModernButton       | CButton    | 둥근 버튼 (호버/누름 상태 포함)                  |
-| CModernCheckBox     | CButton    | 커스텀 체크박스                                  |
-| CPortToggleButton   | CButton    | 포트 선택 토글 버튼                              |
-| CModernToggleSwitch | CButton    | 토스/카카오 스타일 ON/OFF 스위치                 |
-| CSkinnedComboBox    | CComboBox  | 오너드로우 드롭다운 (팝업 리스트박스 서브클래싱) |
-| CSkinnedEdit        | CEdit      | 둥근 테두리 에디트 (호버/포커스 상태 포함)       |
-| CModernTabCtrl      | CWnd       | 커스텀 탭바 (아이콘 직접 드로잉)                 |
-| CInfoText           | CStatic    | 읽기 전용 값 표시 (플레이스홀더 지원)            |
+**`CShopDownDlg`** (child dialog, `IDD_SHOP_DOWN_DIALOG`) ? scrollable 25-row merchant data grid:
+- Columns: Product ID / Business Reg No / Password / Merchant Name / Secondary Name + Download & Delete buttons per row
+- Controls created dynamically in `CreateControlsOnce()`, positioned in `LayoutControls()`
+- Uses `CardLayout` struct as single source of truth for column widths (used by both layout and painting)
 
-**핵심 설계 패턴:**
-- 모든 컨트롤은 SetUnderlayColor(COLORREF)를 제공해 둥근 모서리 뒤 배경을 채워 헤일로 현상 방지.
-- 레이아웃 픽셀값은 96-DPI 기준으로 작성하고 런타임에 ModernUIDpi::Scale(hwnd, px) / ScaleF()로 스케일.
-- GDI+ 수명은 ModernUIGfx::EnsureGdiplusStartup() / ShutdownGdiplus()로 관리. OnInitDialog/OnDestroy에서 호출.
-- 전역 입력 테마(KFTCInputTheme)는 ModernUITheme::GetInputTheme()으로 공유. 컨트롤별 로컬 테마 오버라이드 가능.
+### ModernUI Library (`ModernUI.h` / `ModernUI.cpp`)
 
-### 색상 팔레트
+Custom owner-drawn controls with KFTC blue design system. All rendering uses GDI+ (`Gdiplus`).
 
-ModernUI.h에 BLUE_50 ~ BLUE_900 매크로로 정의, 시맨틱 별칭:
-- KFTC_PRIMARY = BLUE_500 = RGB(0,100,221)
-- KFTC_TEXT_DARK = BLUE_800
-- KFTC_BG_LIGHT = BLUE_50 (다이얼로그 배경 틴트)
-- KFTC_BORDER = RGB(214,228,247) (블루 계열 테두리)
+| Class | Base | Role |
+|---|---|---|
+| `CModernButton` | `CButton` | Rounded button with hover/pressed states |
+| `CModernCheckBox` | `CButton` | Custom checkbox |
+| `CPortToggleButton` | `CButton` | Port-selection toggle |
+| `CModernToggleSwitch` | `CButton` | ON/OFF switch (TOSS/Kakao style) |
+| `CSkinnedComboBox` | `CComboBox` | Owner-drawn dropdown with rounded border |
+| `CSkinnedEdit` | `CEdit` | Rounded-border text input |
+| `CModernTabCtrl` | `CWnd` | Custom tab bar with icons |
+| `CInfoText` | `CStatic` | Read-only value display with placeholder |
+| `CInfoIconButton` | `CButton` | Circular "i" button that shows a popover |
+| `CModernPopover` | `CWnd` | Floating tooltip with directional arrow |
 
-입력 테두리 상태: KFTC_INPUT_BORDER_N (기본) -> KFTC_INPUT_BORDER_H (호버) -> KFTC_INPUT_BORDER_F (포커스, 2px).
+**Helper namespaces:**
+- `ModernUITheme` ? global `KFTCInputTheme` struct shared by all input controls
+- `ModernUIGfx` ? GDI+ startup/shutdown (`EnsureGdiplusStartup` / `ShutdownGdiplus`), call in `OnInitDialog`/`OnDestroy`
+- `ModernUIDpi` ? `Scale(hwnd, px)` / `ScaleF(hwnd, px)` convert 96-DPI base values to current monitor DPI
 
-### 리소스 파일
+### Color Palette
 
-MerchantSetup.rc (CP949)에 모든 다이얼로그 템플릿 및 리소스 ID 정의.
-resource.h에 ID 상수 선언.
+Defined as `BLUE_50`?`BLUE_900` macros in `ModernUI.h`:
+- `KFTC_PRIMARY` = `BLUE_500` = `RGB(0, 100, 221)`
+- `KFTC_TEXT_DARK` = `BLUE_800` = `RGB(6, 52, 109)`
+- `KFTC_BG_LIGHT` = `BLUE_50` = `RGB(235, 244, 255)` (dialog tint)
+- `KFTC_BORDER` = `RGB(214, 228, 247)` (section group borders)
+
+Input border states: `KFTC_INPUT_BORDER_N` (normal, 1px) → `KFTC_INPUT_BORDER_H` (hover, 1px) → `KFTC_INPUT_BORDER_F` (focus, 2px, blue).
+
+## Key Patterns
+
+**DPI scaling:** All hard-coded pixel values are 96-DPI base. Convert at runtime with `ModernUIDpi::Scale(m_hWnd, px)`. Never hard-code scaled values.
+
+**Underlay color (rounded corner halo fix):** GDI+ anti-aliasing bleeds into the area behind rounded corners. Call `SetUnderlayColor(COLORREF)` on every custom control to match the control's container background. When controls move to a different background, update their underlay color.
+
+**Hover coalescing:** `CShopSetupDlg` and `CShopDownDlg` both use `SetTimer` (16ms) to coalesce rapid `WM_MOUSEMOVE` events before redrawing input borders. Do not remove this pattern ? it prevents excessive redraws.
+
+**Child dialog hosting:** `CShopDownDlg` is created in `OnInitDialog` with `m_staticShopContainer` (a placeholder Static) as parent. Its position tracks the container rect. This keeps the 25-row grid's scroll/paint logic isolated.
+
+**Pointer arrays in `CShopDownDlg`:** 25 rows × 5 columns = 125 individual `CString` member variables (`m_prdid1`…`m_prdid25`, etc.). `InitPointerArrays()` sets up `CString* m_pPrdid[25]` pointer arrays so row iteration can use loops instead of switch-case.
+
+**GDI+ rounded rendering:** `AddRoundRect(GraphicsPath&, RectF, REAL radius)` is the shared helper for all rounded-rectangle drawing. Use it for any new rounded elements instead of GDI `RoundRect`.
+
+**`CModernPopover`:** Uses `SetWindowsHookEx(WH_MOUSE_LL, ...)` (global mouse hook) to auto-dismiss when the user clicks outside. The hook is installed on `ShowAt()` and removed on hide. The popover is a layered window (`WS_EX_LAYERED`) with a directional arrow painted relative to the anchor button.
+
+## Resources
+
+- `MerchantSetup.rc` ? all dialog layouts and string table (CP949 encoded; edit in Visual Studio, not a text editor)
+- `resource.h` ? all resource ID `#define`s; edit here when adding new controls or dialogs
+- Layout pixel values in `.rc` dialogs are logical units at 96 DPI; actual pixel positioning is recalculated by `ApplyLayout()` / `LayoutControls()` at runtime.

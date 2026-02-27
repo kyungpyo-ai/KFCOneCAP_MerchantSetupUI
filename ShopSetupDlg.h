@@ -3,7 +3,59 @@
 #pragma once
 
 #ifndef IDC_BTN_VAN_SERVER_INFO
-#define IDC_BTN_VAN_SERVER_INFO  60100
+#define IDC_BTN_VAN_SERVER_INFO      60100
+#endif
+#ifndef IDC_BTN_PORT_INFO
+#define IDC_BTN_PORT_INFO            60101
+#endif
+#ifndef IDC_BTN_COMM_TYPE_INFO
+#define IDC_BTN_COMM_TYPE_INFO       60102
+#endif
+#ifndef IDC_BTN_CASH_RECEIPT_INFO
+#define IDC_BTN_CASH_RECEIPT_INFO    60103
+#endif
+#ifndef IDC_BTN_CARD_TIMEOUT_INFO
+#define IDC_BTN_CARD_TIMEOUT_INFO    60104
+#endif
+#ifndef IDC_BTN_INTERLOCK_INFO
+#define IDC_BTN_INTERLOCK_INFO       60105
+#endif
+#ifndef IDC_BTN_MULTI_VOICE_INFO
+#define IDC_BTN_MULTI_VOICE_INFO     60109
+#endif
+#ifndef IDC_BTN_CARD_DETECT_INFO
+#define IDC_BTN_CARD_DETECT_INFO     60110
+#endif
+#ifndef IDC_BTN_SCANNER_USE_INFO
+#define IDC_BTN_SCANNER_USE_INFO     60111
+#endif
+#ifndef IDC_BTN_AUTO_RESET_INFO
+#define IDC_BTN_AUTO_RESET_INFO     60112
+#endif
+#ifndef IDC_BTN_AUTO_REBOOT_INFO
+#define IDC_BTN_AUTO_REBOOT_INFO     60113
+#endif
+#ifndef IDC_BTN_ALARM_GRAPH_INFO
+#define IDC_BTN_ALARM_GRAPH_INFO     60114
+#endif
+#ifndef IDC_BTN_ALARM_DUAL_INFO
+#define IDC_BTN_ALARM_DUAL_INFO     60115
+#endif
+#ifndef IDC_BTN_TAX_PERCENT_INFO
+#define IDC_BTN_TAX_PERCENT_INFO     60116
+#endif
+#ifndef IDC_BTN_SIGN_PAD_PORT_INFO
+#define IDC_BTN_SIGN_PAD_PORT_INFO   60117
+#endif
+
+#ifndef IDC_BTN_SIGN_PAD_USE_INFO
+#define IDC_BTN_SIGN_PAD_USE_INFO    60106
+#endif
+#ifndef IDC_BTN_SIGN_PAD_SPEED_INFO
+#define IDC_BTN_SIGN_PAD_SPEED_INFO  60107
+#endif
+#ifndef IDC_BTN_ALARM_SIZE_INFO
+#define IDC_BTN_ALARM_SIZE_INFO      60108
 #endif
 #include "ModernUI.h"
 #include "resource.h"
@@ -74,8 +126,25 @@ public:
     // ShopDownDlg
     CStatic m_staticShopContainer;
 
-    // Popover info button (VAN server)
-    CInfoIconButton m_btnVanInfo;
+    // Popover info buttons
+    CInfoIconButton m_btnVanInfo;           // Tab0: 금융결제원 서버
+    CInfoIconButton m_btnPortInfo;          // Tab0: 포트번호
+    CInfoIconButton m_btnTaxPercentInfo;   // Tab0: 세금 자동 역산
+    CInfoIconButton m_btnCommTypeInfo;      // Tab0: 통신방식
+    CInfoIconButton m_btnCashReceiptInfo;   // Tab0: 현금영수증 거래
+    CInfoIconButton m_btnCardTimeoutInfo;   // Tab1: 카드입력 Timeout
+    CInfoIconButton m_btnInterlockInfo;     // Tab1: 장치 연동 방식
+    CInfoIconButton m_btnMultiVoiceInfo;    // Tab1: 멀티패드 음성 출력
+    CInfoIconButton m_btnCardDetectInfo;   // Tab0: 우선 거래
+    CInfoIconButton m_btnScannerUseInfo;   // Tab1: 스캐너 사용
+    CInfoIconButton m_btnAutoResetInfo;    // Tab2: 자동 재실행
+    CInfoIconButton m_btnAutoRebootInfo;   // Tab2: 자동 리부팅
+    CInfoIconButton m_btnAlarmGraphInfo;   // Tab2: 알림창 그림
+    CInfoIconButton m_btnAlarmDualInfo;    // Tab2: 알림창 듀얼
+    CInfoIconButton m_btnSignPadUseInfo;    // Tab1: 서명패드 사용
+    CInfoIconButton m_btnSignPadPortInfo;   // Tab1: 서명패드 포트번호
+    CInfoIconButton m_btnSignPadSpeedInfo;  // Tab1: 서명패드 속도
+    CInfoIconButton m_btnAlarmSizeInfo;     // Tab2: 알림창 크기
     CModernPopover  m_popover;
 
 protected:
@@ -94,6 +163,23 @@ protected:
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnBnClickedVanServerInfo();
+    afx_msg void OnBnClickedPortInfo();
+    afx_msg void OnBnClickedTaxPercentInfo();
+    afx_msg void OnBnClickedCommTypeInfo();
+    afx_msg void OnBnClickedCashReceiptInfo();
+    afx_msg void OnBnClickedCardTimeoutInfo();
+    afx_msg void OnBnClickedInterlockInfo();
+    afx_msg void OnBnClickedMultiVoiceInfo();
+    afx_msg void OnBnClickedCardDetectInfo();
+    afx_msg void OnBnClickedScannerUseInfo();
+    afx_msg void OnBnClickedAutoResetInfo();
+    afx_msg void OnBnClickedAutoRebootInfo();
+    afx_msg void OnBnClickedAlarmGraphInfo();
+    afx_msg void OnBnClickedAlarmDualInfo();
+    afx_msg void OnBnClickedSignPadUseInfo();
+    afx_msg void OnBnClickedSignPadPortInfo();
+    afx_msg void OnBnClickedSignPadSpeedInfo();
+    afx_msg void OnBnClickedAlarmSizeInfo();
 
     DECLARE_MESSAGE_MAP()
 

@@ -1,4 +1,4 @@
-// ShopSetupDlg.cpp - 탭 UI 버전
+// ShopSetupDlg.cpp - 탭 UI 버전 (v1.8)
 // 4개 탭(서버 연결 / 장치 정보 / 시스템 코드 / 가맹점 다운로드)
 
 #include "stdafx.h"
@@ -60,7 +60,24 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_LBUTTONDOWN()
     ON_WM_TIMER()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
-    ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO, OnBnClickedVanServerInfo)
+    ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO,     OnBnClickedVanServerInfo)
+    ON_BN_CLICKED(IDC_BTN_PORT_INFO,           OnBnClickedPortInfo)
+    ON_BN_CLICKED(IDC_BTN_TAX_PERCENT_INFO,   OnBnClickedTaxPercentInfo)
+    ON_BN_CLICKED(IDC_BTN_COMM_TYPE_INFO,      OnBnClickedCommTypeInfo)
+    ON_BN_CLICKED(IDC_BTN_CASH_RECEIPT_INFO,   OnBnClickedCashReceiptInfo)
+    ON_BN_CLICKED(IDC_BTN_CARD_TIMEOUT_INFO,   OnBnClickedCardTimeoutInfo)
+    ON_BN_CLICKED(IDC_BTN_INTERLOCK_INFO,      OnBnClickedInterlockInfo)
+    ON_BN_CLICKED(IDC_BTN_MULTI_VOICE_INFO,    OnBnClickedMultiVoiceInfo)
+    ON_BN_CLICKED(IDC_BTN_CARD_DETECT_INFO,   OnBnClickedCardDetectInfo)
+    ON_BN_CLICKED(IDC_BTN_SCANNER_USE_INFO,   OnBnClickedScannerUseInfo)
+    ON_BN_CLICKED(IDC_BTN_AUTO_RESET_INFO,    OnBnClickedAutoResetInfo)
+    ON_BN_CLICKED(IDC_BTN_AUTO_REBOOT_INFO,   OnBnClickedAutoRebootInfo)
+    ON_BN_CLICKED(IDC_BTN_ALARM_GRAPH_INFO,   OnBnClickedAlarmGraphInfo)
+    ON_BN_CLICKED(IDC_BTN_ALARM_DUAL_INFO,    OnBnClickedAlarmDualInfo)
+    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_USE_INFO,   OnBnClickedSignPadUseInfo)
+    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_PORT_INFO,  OnBnClickedSignPadPortInfo)
+    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_SPEED_INFO, OnBnClickedSignPadSpeedInfo)
+    ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO,     OnBnClickedAlarmSizeInfo)
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -178,10 +195,29 @@ BOOL CShopSetupDlg::OnInitDialog()
     // --------------------------------------------------------
     m_tabCtrl.Create(this, IDC_TAB_MAIN, CRect(0, 0, 10, 10));
 
-    // Info icon button for VAN server field
-    m_btnVanInfo.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
-        CRect(0, 0, S(22), S(22)), this, IDC_BTN_VAN_SERVER_INFO);
-    // No SetUnderlayColor -> DrawItem auto-detects parent background via kftc_parent_bg_color
+    // Info icon buttons
+    auto CreateInfoBtn = [&](CInfoIconButton& btn, UINT id) {
+        btn.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
+            CRect(0, 0, S(22), S(22)), this, id);
+    };
+    CreateInfoBtn(m_btnVanInfo,          IDC_BTN_VAN_SERVER_INFO);
+    CreateInfoBtn(m_btnPortInfo,         IDC_BTN_PORT_INFO);
+    CreateInfoBtn(m_btnTaxPercentInfo,  IDC_BTN_TAX_PERCENT_INFO);
+    CreateInfoBtn(m_btnCommTypeInfo,     IDC_BTN_COMM_TYPE_INFO);
+    CreateInfoBtn(m_btnCashReceiptInfo,  IDC_BTN_CASH_RECEIPT_INFO);
+    CreateInfoBtn(m_btnCardTimeoutInfo,  IDC_BTN_CARD_TIMEOUT_INFO);
+    CreateInfoBtn(m_btnInterlockInfo,    IDC_BTN_INTERLOCK_INFO);
+CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
+    CreateInfoBtn(m_btnCardDetectInfo,  IDC_BTN_CARD_DETECT_INFO);
+    CreateInfoBtn(m_btnScannerUseInfo,  IDC_BTN_SCANNER_USE_INFO);
+    CreateInfoBtn(m_btnAutoResetInfo,   IDC_BTN_AUTO_RESET_INFO);
+    CreateInfoBtn(m_btnAutoRebootInfo,  IDC_BTN_AUTO_REBOOT_INFO);
+    CreateInfoBtn(m_btnAlarmGraphInfo,  IDC_BTN_ALARM_GRAPH_INFO);
+    CreateInfoBtn(m_btnAlarmDualInfo,   IDC_BTN_ALARM_DUAL_INFO);
+    CreateInfoBtn(m_btnSignPadUseInfo,   IDC_BTN_SIGN_PAD_USE_INFO);
+    CreateInfoBtn(m_btnSignPadPortInfo,  IDC_BTN_SIGN_PAD_PORT_INFO);
+    CreateInfoBtn(m_btnSignPadSpeedInfo, IDC_BTN_SIGN_PAD_SPEED_INFO);
+    CreateInfoBtn(m_btnAlarmSizeInfo,    IDC_BTN_ALARM_SIZE_INFO);
     m_tabCtrl.AddTab(_T("결제 설정"),       0);
     m_tabCtrl.AddTab(_T("장치 정보"),       1);
     m_tabCtrl.AddTab(_T("시스템 설정"),     2);
@@ -506,6 +542,27 @@ void CShopSetupDlg::ApplyLayout()
 
     auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
 
+    // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
+    auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
+        if (!btn.GetSafeHwnd()) return;
+        const int BtnSz  = S(18);
+        const int BtnGap = S(4);
+        int bx = lx + BtnGap;
+        int by = ly + (lcapH - BtnSz) / 2;
+        CWnd* pLbl = GetDlgItem(labelId);
+        if (pLbl && pLbl->GetSafeHwnd()) {
+            CClientDC cdc(pLbl);
+            CFont* pFont = pLbl->GetFont();
+            CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+            CString strLbl;
+            pLbl->GetWindowText(strLbl);
+            CSize sz = cdc.GetTextExtent(strLbl);
+            if (pOld) cdc.SelectObject(pOld);
+            bx = lx + sz.cx + BtnGap;
+        }
+        btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+    };
+
     const int MARGIN   = S(kTabPadLeft);
     const int LABEL_W  = S(92);
     const int FIELD_W  = S(120);
@@ -636,6 +693,7 @@ void CShopSetupDlg::ApplyLayout()
         }
         // 우: 포트번호
         Move(IDC_STATIC_PORT,       innerX + colW + colGap, y1, colW, capH);
+        PlaceInfoBtn(m_btnPortInfo, IDC_STATIC_PORT, innerX + colW + colGap, y1, capH);
         Move(IDC_EDIT_PORT,         innerX + colW + colGap, y1 + capH + capGap, colW, FIELD_H);
 
         y1 += capH + capGap + FIELD_H;
@@ -656,6 +714,7 @@ void CShopSetupDlg::ApplyLayout()
         // 통신방식 / 우선 거래 설정 (2열)
         colW = (innerW - colGap) / 2;
         Move(IDC_STATIC_COMM_TYPE, innerX, y2, colW, capH);
+        PlaceInfoBtn(m_btnCommTypeInfo, IDC_STATIC_COMM_TYPE, innerX, y2, capH);
         Move(IDC_COMBO_COMM_TYPE,  innerX, y2 + capH + capGap, colW, FIELD_H);
 
         // 우선 거래: 토글(라벨+스위치) + 입력(같은 줄)
@@ -675,8 +734,25 @@ void CShopSetupDlg::ApplyLayout()
         }
 
         int rx = innerX + colW + colGap;
-        Move(IDC_CHECK_CARD_DETECT,      rx,                 y2 + capH + capGap, toggleW, FIELD_H);
-        Move(IDC_EDIT_CARD_DETECT_PARAM, rx + toggleW + inGap, y2 + capH + capGap, editW, FIELD_H);
+                // 우선 거래: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+        {
+            const int BtnSz  = S(18);
+            const int BtnGap = S(4);
+            int iconNeed = BtnSz + BtnGap;
+            int tW = toggleW;
+            int eW = editW;
+            // 아이콘 공간을 위해 편집폭에서 먼저 확보
+            if (eW > 90 + iconNeed) eW -= iconNeed;
+            else if (tW > 70 + iconNeed) tW -= iconNeed;
+            Move(IDC_CHECK_CARD_DETECT,      rx,                   y2 + capH + capGap, tW, FIELD_H);
+            if (m_btnCardDetectInfo.GetSafeHwnd())
+            {
+                int ibX = rx + tW + BtnGap;
+                int ibY = (y2 + capH + capGap) + (FIELD_H - BtnSz) / 2;
+                m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            Move(IDC_EDIT_CARD_DETECT_PARAM, rx + tW + iconNeed + inGap, y2 + capH + capGap, eW, FIELD_H);
+        }
 
         y2 += capH + capGap + FIELD_H + rowGap;
 
@@ -685,12 +761,14 @@ void CShopSetupDlg::ApplyLayout()
         Move(IDC_EDIT_NO_SIGN_AMOUNT,   innerX, y2 + capH + capGap, colW, FIELD_H);
 
         Move(IDC_STATIC_TAX_PERCENT,    innerX + colW + colGap, y2, colW, capH);
+        PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX + colW + colGap, y2, capH);
         Move(IDC_EDIT_TAX_PERCENT,      innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
 
         y2 += capH + capGap + FIELD_H + rowGap;
 
         // 현금영수증 (1열, 반 폭)
         Move(IDC_STATIC_CASH_RECEIPT, innerX, y2, colW, capH);
+        PlaceInfoBtn(m_btnCashReceiptInfo, IDC_STATIC_CASH_RECEIPT, innerX, y2, capH);
         Move(IDC_COMBO_CASH_RECEIPT,  innerX, y2 + capH + capGap, colW, FIELD_H);
         y2 += capH + capGap + FIELD_H;
 
@@ -731,8 +809,10 @@ void CShopSetupDlg::ApplyLayout()
             int fy = curY + cPadY + cHdrH;
             // 행1: 카드 응답 타임아웃 / 연동 방식 (2열)
             Move(IDC_STATIC_CARD_TIMEOUT, inX,          fy, col2W, capH);
+            PlaceInfoBtn(m_btnCardTimeoutInfo, IDC_STATIC_CARD_TIMEOUT, inX, fy, capH);
             Move(IDC_EDIT_CARD_TIMEOUT,   inX,          fy+capH+capG, col2W, FIELD_H);
             Move(IDC_STATIC_INTERLOCK,    inX+col2W+cG, fy, col2W, capH);
+            PlaceInfoBtn(m_btnInterlockInfo, IDC_STATIC_INTERLOCK, inX+col2W+cG, fy, capH);
             Move(IDC_COMBO_INTERLOCK,     inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
             fy += capH + capG + FIELD_H + rG;
 
@@ -746,12 +826,15 @@ void CShopSetupDlg::ApplyLayout()
             int fy = curY + cPadY + cHdrH;
             // 행1: 서명패드 사용 / 포트번호 (2열)
             Move(IDC_STATIC_SIGN_PAD_USE,  inX,          fy, col2W, capH);
+            PlaceInfoBtn(m_btnSignPadUseInfo, IDC_STATIC_SIGN_PAD_USE, inX, fy, capH);
             Move(IDC_COMBO_SIGN_PAD_USE,   inX,          fy+capH+capG, col2W, FIELD_H);
             Move(IDC_STATIC_SIGN_PAD_PORT, inX+col2W+cG, fy, col2W, capH);
+            PlaceInfoBtn(m_btnSignPadPortInfo, IDC_STATIC_SIGN_PAD_PORT, inX+col2W+cG, fy, capH);
             Move(IDC_EDIT_SIGN_PAD_PORT,   inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
             fy += capH + capG + FIELD_H + rG;
             // 행2: 통신속도 (1열, 반폭)
             Move(IDC_STATIC_SIGN_PAD_SPEED, inX, fy, col2W, capH);
+            PlaceInfoBtn(m_btnSignPadSpeedInfo, IDC_STATIC_SIGN_PAD_SPEED, inX, fy, capH);
             Move(IDC_COMBO_SIGN_PAD_SPEED,  inX, fy+capH+capG, col2W, FIELD_H);
             fy += capH + capG + FIELD_H;
 
@@ -777,11 +860,41 @@ void CShopSetupDlg::ApplyLayout()
                 toggleW2 = col2W - editW2 - inGap2;
             }
 
-            Move(IDC_CHECK_SCANNER_USE,  inX,                  fy, toggleW2, FIELD_H);
-            Move(IDC_EDIT_SCANNER_PORT,  inX + toggleW2 + inGap2, fy, editW2, FIELD_H);
+                        // 스캐너 사용: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            {
+                const int BtnSz  = S(18);
+                const int BtnGap = S(4);
+                int iconNeed = BtnSz + BtnGap;
+                int tW = toggleW2;
+                int eW = editW2;
+                if (eW > 70 + iconNeed) eW -= iconNeed;
+                else if (tW > 60 + iconNeed) tW -= iconNeed;
+                Move(IDC_CHECK_SCANNER_USE,   inX,                 fy, tW, FIELD_H);
+                if (m_btnScannerUseInfo.GetSafeHwnd())
+                {
+                    int ibX = inX + tW + BtnGap;
+                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    m_btnScannerUseInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+                Move(IDC_EDIT_SCANNER_PORT,   inX + tW + iconNeed + inGap2, fy, eW, FIELD_H);
+            }
 
             // 멀티보이스 토글(우측, 전체 폭)
-            Move(IDC_CHECK_MULTI_VOICE,  inX+col2W+cG,         fy, col2W, FIELD_H);
+                        // 멀티패드 음성 출력: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            {
+                const int BtnSz  = S(18);
+                const int BtnGap = S(6);
+                int mvX = inX + col2W + cG;
+                int mvW = col2W - (BtnSz + BtnGap);
+                if (mvW < S(60)) mvW = max(1, col2W - (BtnSz + BtnGap));
+                Move(IDC_CHECK_MULTI_VOICE, mvX, fy, mvW, FIELD_H);
+                if (m_btnMultiVoiceInfo.GetSafeHwnd())
+                {
+                    int ibX = mvX + mvW + BtnGap;
+                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    m_btnMultiVoiceInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+            }
 
             fy += FIELD_H;
 
@@ -800,14 +913,39 @@ void CShopSetupDlg::ApplyLayout()
             int fy = curY + cPadY + cHdrH;
             // 행1: 알림창 크기 / 알림창 위치 (2열)
             Move(IDC_STATIC_ALARM_SIZE, inX,          fy, col2W, capH);
+            PlaceInfoBtn(m_btnAlarmSizeInfo, IDC_STATIC_ALARM_SIZE, inX, fy, capH);
             Move(IDC_COMBO_ALARM_SIZE,  inX,          fy+capH+capG, col2W, FIELD_H);
             Move(IDC_STATIC_ALARM_POS,  inX+col2W+cG, fy, col2W, capH);
             Move(IDC_COMBO_ALARM_POS,   inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
             fy += capH + capG + FIELD_H + rG;
             // 행2: 체크박스 3개 (그래프/원상복구/듀얼모니터)
-            int chk2W = (inW - cG) / 2;
-            Move(IDC_CHECK_ALARM_GRAPH,   inX,          fy, chk2W, FIELD_H);
-            Move(IDC_CHECK_ALARM_DUAL,    inX+chk2W+cG, fy, chk2W, FIELD_H);
+                        int chk2W = (inW - cG) / 2;
+            // 알림창 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            {
+                const int BtnSz  = S(18);
+                const int BtnGap = S(4);
+                int iconNeed = BtnSz + BtnGap;
+                int wL = chk2W;
+                int wR = chk2W;
+                if (wL > S(80) + iconNeed) wL -= iconNeed;
+                if (wR > S(80) + iconNeed) wR -= iconNeed;
+                int xL = inX;
+                int xR = inX + chk2W + cG;
+                Move(IDC_CHECK_ALARM_GRAPH, xL, fy, wL, FIELD_H);
+                if (m_btnAlarmGraphInfo.GetSafeHwnd())
+                {
+                    int ibX = xL + wL + BtnGap;
+                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    m_btnAlarmGraphInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+                Move(IDC_CHECK_ALARM_DUAL,  xR, fy, wR, FIELD_H);
+                if (m_btnAlarmDualInfo.GetSafeHwnd())
+                {
+                    int ibX = xR + wR + BtnGap;
+                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    m_btnAlarmDualInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+            }
             fy += FIELD_H;
 
             int cardH = (fy + cPadY) - curY;
@@ -819,9 +957,33 @@ void CShopSetupDlg::ApplyLayout()
         {
             int fy = curY + cPadY + cHdrH;
             // 체크박스 2개: 자동 리셋 / 자동 재부팅
-            int chk2W = (inW - cG) / 2;
-            Move(IDC_CHECK_AUTO_RESET,  inX,          fy, chk2W, FIELD_H);
-            Move(IDC_CHECK_AUTO_REBOOT, inX+chk2W+cG, fy, chk2W, FIELD_H);
+                        int chk2W = (inW - cG) / 2;
+            // 자동 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            {
+                const int BtnSz  = S(18);
+                const int BtnGap = S(4);
+                int iconNeed = BtnSz + BtnGap;
+                int wL = chk2W;
+                int wR = chk2W;
+                if (wL > S(80) + iconNeed) wL -= iconNeed;
+                if (wR > S(80) + iconNeed) wR -= iconNeed;
+                int xL = inX;
+                int xR = inX + chk2W + cG;
+                Move(IDC_CHECK_AUTO_RESET,  xL, fy, wL, FIELD_H);
+                if (m_btnAutoResetInfo.GetSafeHwnd())
+                {
+                    int ibX = xL + wL + BtnGap;
+                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    m_btnAutoResetInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+                Move(IDC_CHECK_AUTO_REBOOT, xR, fy, wR, FIELD_H);
+                if (m_btnAutoRebootInfo.GetSafeHwnd())
+                {
+                    int ibX = xR + wR + BtnGap;
+                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    m_btnAutoRebootInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+            }
             fy += FIELD_H;
 
             int cardH = (fy + cPadY) - curY;
@@ -917,6 +1079,10 @@ void CShopSetupDlg::ShowTab(int nTab)
     // Close popover on tab switch
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
 
+    // [1.7] 탭 전환 플리커 최소화: redraw 일시 중지
+    SetRedraw(FALSE);
+    if (m_tabCtrl.GetSafeHwnd()) m_tabCtrl.SetRedraw(FALSE);
+
     // Tab 0: 결제 설정
     //   [서버 설정] : 금융결제원 서버 / 포트번호
     //   [결제 방식] : 통신방식 / 우선 거래 설정 / 무서명 기준금액 / 세금 자동 역산 / 현금영수증
@@ -985,12 +1151,52 @@ void CShopSetupDlg::ShowTab(int nTab)
             m_staticShopContainer.ShowWindow(SW_SHOW);
     }
 
-    // Info button: visible only on Tab 0
+    // Info button visibility per tab
     if (m_btnVanInfo.GetSafeHwnd())
         m_btnVanInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (m_btnPortInfo.GetSafeHwnd())
+        m_btnPortInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (m_btnTaxPercentInfo.GetSafeHwnd())
+        m_btnTaxPercentInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (m_btnCommTypeInfo.GetSafeHwnd())
+        m_btnCommTypeInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (m_btnCashReceiptInfo.GetSafeHwnd())
+        m_btnCashReceiptInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (m_btnCardTimeoutInfo.GetSafeHwnd())
+        m_btnCardTimeoutInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnInterlockInfo.GetSafeHwnd())
+        m_btnInterlockInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnMultiVoiceInfo.GetSafeHwnd())
+        m_btnMultiVoiceInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnScannerUseInfo.GetSafeHwnd())
+        m_btnScannerUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnCardDetectInfo.GetSafeHwnd())
+        m_btnCardDetectInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (m_btnAlarmGraphInfo.GetSafeHwnd())
+        m_btnAlarmGraphInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    if (m_btnAlarmDualInfo.GetSafeHwnd())
+        m_btnAlarmDualInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    if (m_btnAutoResetInfo.GetSafeHwnd())
+        m_btnAutoResetInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    if (m_btnAutoRebootInfo.GetSafeHwnd())
+        m_btnAutoRebootInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    if (m_btnSignPadUseInfo.GetSafeHwnd())
+        m_btnSignPadUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnSignPadPortInfo.GetSafeHwnd())
+        m_btnSignPadPortInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnSignPadSpeedInfo.GetSafeHwnd())
+        m_btnSignPadSpeedInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (m_btnAlarmSizeInfo.GetSafeHwnd())
+        m_btnAlarmSizeInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
 
-    Invalidate();
-    UpdateWindow();
+    // [1.7] redraw 재개 후, 탭 영역(탭바+컨텐츠)만 갱신
+    if (m_tabCtrl.GetSafeHwnd()) m_tabCtrl.SetRedraw(TRUE);
+    SetRedraw(TRUE);
+
+    CRect rcRedraw;
+    GetClientRect(&rcRedraw);
+    rcRedraw.top = kTabBarTop - 2; // 탭바 포함(살짝 위로)
+    RedrawWindow(&rcRedraw, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 
 // ============================================================================
@@ -1433,7 +1639,173 @@ void CShopSetupDlg::OnBnClickedVanServerInfo()
     m_btnVanInfo.GetWindowRect(&rc);
     m_popover.ShowAt(rc,
         _T("금융결제원 서버"),
-        _T("KFTCOneCAP이 연결할 VAN 서버를 선택합니다.\n- 운영: 실제 거래를 처리하는 금융결제원 서버입니다.\n- 테스트: 개발 검증용 서버로 실제 결제가 처리되지 않습니다."),
+        _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용"),
+        this);
+}
+// ============================================================================
+// 팝오버 아이콘 핸들러 - 탭0
+// ============================================================================
+void CShopSetupDlg::OnBnClickedPortInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnPortInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("포트번호"),
+        _T("금융결제원 서버 접속 포트번호\n· 기본값 : 8002"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedCommTypeInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnCommTypeInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("통신방식"),
+        _T("포스 프로그램 통신 방식 선택\n· CS 방식: 윈도우 포스 프로그램 (기본값)\n· WEB 방식: WEB 포스 프로그램 (EASYPOS 포함)"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedCashReceiptInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnCashReceiptInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("현금영수증 거래"),
+        _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력"),
+        this);
+}
+
+void CShopSetupDlg::OnBnClickedTaxPercentInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnTaxPercentInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("세금 자동역산 설정"),
+        _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"),
+        this);
+}
+
+// ============================================================================
+// 팝오버 아이콘 핸들러 - 탭1
+// ============================================================================
+void CShopSetupDlg::OnBnClickedCardTimeoutInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnCardTimeoutInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("카드입력 Timeout"),
+        _T("카드 입력 대기 시간 (초 단위)\n· 권장값: 100초 / 0 입력 시 자동 100초 설정"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedInterlockInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnInterlockInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("장치 연동 방식"),
+        _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· 멀티패드(씨큐프라임용): 씨큐프라임 포스 전용\n· 멀티패드(키오스크): 사용 중지\n· AOP 리더기: AOP 리더기(Naver Connect 포함)"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedMultiVoiceInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnMultiVoiceInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("음성출력"),
+        _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※ SPAY-8800Q, DP636X 모델만 가능"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedCardDetectInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnCardDetectInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("우선 거래 설정"),
+        _T("카드 우선 거래 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedScannerUseInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnScannerUseInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("스캐너 사용"),
+        _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※ KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedAutoResetInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnAutoResetInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("자동 재실행"),
+        _T("KFTCOneCAP 종료 시 자동 재실행 여부\n· 기본값 : 사용"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedAutoRebootInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnAutoRebootInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("자동 리부팅"),
+        _T("특정 조건에서 단말/PC를 자동 리부팅할지 설정합니다.\n- 사용: 자동 리부팅\n- 미사용: 리부팅하지 않음"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedAlarmGraphInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnAlarmGraphInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("알림창 그림"),
+        _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedAlarmDualInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnAlarmDualInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("알림창 듀얼"),
+        _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용"),
+        this);
+}
+void CShopSetupDlg::OnBnClickedSignPadUseInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnSignPadUseInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("서명패드 사용"),
+        _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력"),
+        this);
+}
+
+void CShopSetupDlg::OnBnClickedSignPadPortInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnSignPadPortInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("서명패드 포트번호"),
+        _T("서명패드가 연결된 COM 포트번호"),
+        this);
+}
+
+void CShopSetupDlg::OnBnClickedSignPadSpeedInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnSignPadSpeedInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("서명패드 속도"),
+        _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시"),
+        this);
+}
+// ============================================================================
+// 팝오버 아이콘 핸들러 - 탭2
+// ============================================================================
+void CShopSetupDlg::OnBnClickedAlarmSizeInfo()
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc; m_btnAlarmSizeInfo.GetWindowRect(&rc);
+    m_popover.ShowAt(rc,
+        _T("알림창 크기"),
+        _T("알림창의 표시 크기를 설정합니다.\n매우 작게로 설정하면 화면 공간을 최소화합니다."),
         this);
 }
 void CShopSetupDlg::DrawInputBorders(CDC* /*pDC*/) {}

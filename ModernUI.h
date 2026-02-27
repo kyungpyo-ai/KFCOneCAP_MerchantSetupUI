@@ -1,6 +1,6 @@
-// ModernUI.h - 최신 버전 (체크박스 포함)
+// ModernUI.h -   ( )
 
-// ModernUI.h 상단에 추가됨
+// ModernUI.h  
 #pragma once
 #include <afxwin.h>
 #include <commctrl.h>
@@ -16,12 +16,19 @@ using namespace Gdiplus;
 typedef float REAL;
 #endif
 
-// ── Blue Palette ──────────────────────────────────────────
+//  Blue Palette 
 #define BLUE_100   RGB(168, 208, 255)   // #A8D0FF
 #define BLUE_200   RGB(117, 180, 255)   // #75B4FF
 #define BLUE_300   RGB( 66, 152, 255)   // #4298FF
 #define BLUE_400   RGB( 15, 124, 255)   // #0F7CFF
 #define BLUE_500   RGB(  0, 100, 221)   // #0064DD
+// Gray Palette
+#define GRAY_50    RGB(249,250,251)
+#define GRAY_100   RGB(243,244,246)
+#define GRAY_200   RGB(229,231,235)
+#define GRAY_300   RGB(209,213,219)
+#define GRAY_500   RGB(107,114,128)
+#define GRAY_800   RGB(31,41,55)
 #define BLUE_600   RGB(  0,  76, 168)   // #004CA8
 #define BLUE_700   RGB(  9,  63, 129)   // #093F81
 #define BLUE_800   RGB(  6,  52, 109)   // #06346D
@@ -36,44 +43,44 @@ typedef float REAL;
 #define KFTC_BORDER          RGB(214, 228, 247)   // blue-tinted border
 
 // ========================================
-// Input theme (Combo/Edit 공통)
+// Input theme (Combo/Edit )
 // ========================================
-#define KFTC_INPUT_BORDER_N      RGB(214, 228, 247)   // 기본 테두리 (blue-tinted)
-#define KFTC_INPUT_BORDER_H      RGB(168, 208, 255)   // 호버 (BLUE_100)
-#define KFTC_INPUT_BORDER_F      RGB( 15, 124, 255)   // 포커스 (BLUE_400)
-#define KFTC_INPUT_RADIUS        6                   // 라운드 반경(px)
-#define KFTC_INPUT_THICK_N       1.0f                // 기본 두께(px)
-#define KFTC_INPUT_THICK_F       2.0f                // 포커스 두께(+1px)
+#define KFTC_INPUT_BORDER_N      GRAY_200
+#define KFTC_INPUT_BORDER_H      GRAY_300
+#define KFTC_INPUT_BORDER_F      BLUE_500
+#define KFTC_INPUT_RADIUS        6                   //  (px)
+#define KFTC_INPUT_THICK_N       1.0f                //  β(px)
+#define KFTC_INPUT_THICK_F       2.0f
 
 
 // ========================================
-// Reusable input theme (Edit/Combo 공통)
-//  - 기본값은 기존 KFTC_INPUT_* 매크로와 동일
+// Reusable input theme (Edit/Combo )
+//  -   KFTC_INPUT_* ο 
 // ========================================
 struct KFTCInputTheme
 {
-    COLORREF borderN;   // 기본
+    COLORREF borderN;   // 
     COLORREF borderH;   // hover
     COLORREF borderF;   // focus/pressed
     int      radius;    // round radius(px)
     float    thickN;    // normal thickness(px)
     float    thickF;    // focus thickness(px) (normal + 1px)
-    int      marginLR;  // Edit 좌/우 padding(px)
+    int      marginLR;  // Edit / padding(px)
 
     KFTCInputTheme()
         : borderN(KFTC_INPUT_BORDER_N),
-          borderH(KFTC_INPUT_BORDER_H),
-          borderF(KFTC_INPUT_BORDER_F),
-          radius(KFTC_INPUT_RADIUS),
-          thickN(KFTC_INPUT_THICK_N),
-          thickF(KFTC_INPUT_THICK_F),
-          marginLR(10)
+        borderH(KFTC_INPUT_BORDER_H),
+        borderF(KFTC_INPUT_BORDER_F),
+        radius(KFTC_INPUT_RADIUS),
+        thickN(KFTC_INPUT_THICK_N),
+        thickF(KFTC_INPUT_THICK_F),
+        marginLR(10)
     {}
 };
 
 namespace ModernUITheme
 {
-    // 전역 테마 (프로세스 전체에서 공통으로 사용)
+    //   (μ   )
     const KFTCInputTheme& GetInputTheme();
     void SetInputTheme(const KFTCInputTheme& t);
 }
@@ -97,7 +104,7 @@ namespace ModernUIDpi
 
 
 // ========================================
-// CModernButton - 카드 스타일 버튼
+// CModernButton -   
 // ========================================
 class CModernButton : public CButton
 {
@@ -121,6 +128,8 @@ protected:
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 
+
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -133,7 +142,7 @@ private:
     BOOL m_bHover;
     BOOL m_bTracking;
 
-    // (추가) 텍스트 옵션
+    // ()  
     int  m_nTextPx;
     BOOL m_bNoWrapEllipsis;
     BOOL m_bPressed;
@@ -146,7 +155,7 @@ private:
 };
 
 // ========================================
-// CModernCheckBox - 모던 체크박스
+// CModernCheckBox -  
 // ========================================
 class CModernCheckBox : public CButton
 {
@@ -160,15 +169,15 @@ public:
     // Underlay (background behind control) to avoid rounded-corner halo
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
-    // (추가) 체크박스 텍스트 옵션 - 기본값은 기존 동작과 동일
+    // ()    -    
     void SetTextSizePx(int px) { m_nTextPx = px; Invalidate(); }
     void SetNoWrapEllipsis(BOOL bEnable) { m_bNoWrapEllipsis = bEnable; Invalidate(); }
 
 
 
-    // (추가) 콤보박스(Windows 기본 컨트롤) 텍스트와 기준선/힌팅을 최대한 동일하게 맞추기 위한 옵션
-    //  - 기본값(FALSE): 기존 GDI+ 텍스트 렌더링 유지 (다른 화면 영향 최소)
-    //  - TRUE: GDI(DrawText)로 텍스트를 그림 (콤보박스와 가장 유사)
+    // () (Windows  )  /     
+    //  - (FALSE):  GDI+    (   )
+    //  - TRUE: GDI(DrawText)   (  )
     void SetUseGdiText(BOOL bUse) { m_bUseGdiText = bUse; Invalidate(); }
     void SetGdiTextYOffset(int y) { m_nGdiTextYOffset = y; Invalidate(); }
 protected:
@@ -190,11 +199,11 @@ private:
     BOOL m_bHover;
     BOOL m_bTracking;
 
-    // (추가) 텍스트 옵션
+    // ()  
     int  m_nTextPx;
     BOOL m_bNoWrapEllipsis;
-    BOOL m_bUseGdiText;      // TRUE면 GDI(DrawText)로 텍스트 렌더링
-    int  m_nGdiTextYOffset;  // GDI 텍스트 기준선 미세 조정(px)
+    BOOL m_bUseGdiText;      // TRUE GDI(DrawText)  
+    int  m_nGdiTextYOffset;  // GDI    (px)
     BOOL m_bPressed;
     COLORREF m_clrCardBg;
     // Underlay
@@ -205,7 +214,7 @@ private:
 };
 
 // ========================================
-// CPortToggleButton - 토글 스타일 버튼
+// CPortToggleButton -   
 // ========================================
 class CPortToggleButton : public CButton
 {
@@ -234,7 +243,7 @@ private:
     BOOL m_bHover;
     BOOL m_bTracking;
 
-    // (추가) 텍스트 옵션
+    // ()  
     int  m_nTextPx;
     BOOL m_bNoWrapEllipsis;
 };
@@ -297,7 +306,7 @@ public:
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
 
-    // (재사용) 테마 고정: 기본은 전역 테마 사용
+    // ()  :    
     void UseGlobalInputTheme(BOOL bUse = TRUE) { m_bUseGlobalTheme = bUse; Invalidate(FALSE); }
     void SetInputTheme(const KFTCInputTheme& t) { m_localTheme = t; m_bHasLocalTheme = TRUE; Invalidate(FALSE); }
     void ClearLocalInputTheme() { m_bHasLocalTheme = FALSE; Invalidate(FALSE); }
@@ -358,14 +367,14 @@ private:
     BOOL m_bInPaint;
     // popup list subclass
     HWND m_hList;
-	WNDPROC m_oldListProc;
+    WNDPROC m_oldListProc;
 
-	// cached font for GDI+ text (avoid per-paint CreateFontIndirect)
-	HFONT   m_hTextFontCache;
-	LOGFONT m_lfTextCache;
-	BOOL    m_bHasTextFontCache;
+    // cached font for GDI+ text (avoid per-paint CreateFontIndirect)
+    HFONT   m_hTextFontCache;
+    LOGFONT m_lfTextCache;
+    BOOL    m_bHasTextFontCache;
 
-	// theme
+    // theme
     BOOL m_bUseGlobalTheme;
     BOOL m_bHasLocalTheme;
     KFTCInputTheme m_localTheme;
@@ -383,8 +392,8 @@ private:
 };
 
 // ========================================
-// CSkinnedEdit - 콤보박스와 동일한 입력 테두리(Edit)
-//  - 테두리/반경/포커스 두께를 Combo와 완전 동일하게
+// CSkinnedEdit -    θ(Edit)
+//  - θ//Ŀ β Combo  
 // ========================================
 class CSkinnedEdit : public CEdit
 {
@@ -449,7 +458,7 @@ private:
 };
 
 // ============================================================
-// CModernTabCtrl - 커스텀 탭 컨트롤
+// CModernTabCtrl - Ŀ  
 // ============================================================
 struct ModernTabItem
 {
@@ -461,22 +470,22 @@ struct ModernTabItem
 
 // ========================================
 // Info Text (Read-only value display)
-//  - 입력(Edit)처럼 보이지 않게, 설정/조회 화면에서 정보 값을 표시
-//  - 배경은 Row/Section 배경색과 동일하게 채워 라운드 모서리 주변 이질감 방지
+//  - (Edit)  , /    
+//  -  Row/Section        
 // ========================================
 class CInfoText : public CStatic
 {
 public:
     CInfoText() : m_crUnderlay(::GetSysColor(COLOR_3DFACE)), m_crText(RGB(55, 65, 81)),
-                  m_crPlaceholder(RGB(156, 163, 175)),
-                  m_nPadX(8), m_nPadY(0), m_bBold(FALSE) {}
+        m_crPlaceholder(RGB(156, 163, 175)),
+        m_nPadX(8), m_nPadY(0), m_bBold(FALSE) {}
 
     void SetUnderlayColor(COLORREF cr) { m_crUnderlay = cr; Invalidate(FALSE); }
-    void SetTextColor(COLORREF cr)     { m_crText = cr;     Invalidate(FALSE); }
+    void SetTextColor(COLORREF cr) { m_crText = cr;     Invalidate(FALSE); }
     void SetPadding(int padX, int padY = 0) { m_nPadX = padX; m_nPadY = padY; Invalidate(FALSE); }
     void SetBold(BOOL bBold) { m_bBold = bBold; Invalidate(FALSE); }
 
-    // text가 비어있을 때 표시할 안내 문구(placeholder)
+    // text     (placeholder)
     void SetPlaceholder(LPCTSTR s) { m_strPlaceholder = s; Invalidate(FALSE); }
     void SetPlaceholderColor(COLORREF cr) { m_crPlaceholder = cr; Invalidate(FALSE); }
 
@@ -507,7 +516,7 @@ public:
     void SetCurSel(int n);
     int  GetCount()  const { return (int)m_items.size(); }
 
-    // 탭 바 높이 (px) - 부모가 컨텐츠 영역 계산에 사용
+    //    (px) - θ   꿡 
     static const int kBarH = 44;
 
 protected:
@@ -532,8 +541,8 @@ private:
     RectF GetTabRect(int idx) const;
     void DrawTab(Graphics& g, int idx, const RectF& rc);
     void DrawIcon(Graphics& g, int iconType,
-                  REAL cx, REAL cy,
-                  REAL sz, bool active);
+        REAL cx, REAL cy,
+        REAL sz, bool active);
     void EnsureTrack();
 };
 // ========================================
@@ -551,7 +560,8 @@ protected:
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDIS);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
-    DECLARE_MESSAGE_MAP()
+        afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+DECLARE_MESSAGE_MAP()
 
 private:
     BOOL     m_bHover;
@@ -582,17 +592,24 @@ protected:
 private:
     static void RegisterPopoverClass();
     void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, REAL radius);
-    void RefreshLayered();
+        void AddPopoverPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& cardRc, REAL radius, float arrowX, float arrowTipY, float arrowHalfW);
+void RefreshLayered();
     static LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 
     CString m_strTitle;
     CString m_strBody;
     int     m_nArrowX;
+    int     m_nCardW;   // DPI-scaled card width (without shadow padding)
+    int     m_nCardH;   // DPI-scaled card height (auto-sized from text)
     BOOL    m_bVisible;
     static HHOOK           s_hMouseHook;
     static CModernPopover* s_pPopoverInst;
 
-    static const int kPopW   = 290;
-    static const int kPopH   = 148;
-    static const int kArrowH = 7;
+    // Base sizes are in 96-DPI pixels. Actual window size is DPI-scaled.
+// Popover height is auto-sized from text (minimum kPopMinH).
+    static const int kPopW = 292; // toss-like width
+    static const int kPopMinH = 96;
+    static const int kArrowH = 10;
+    static const int kShadowPad = 16;
+    static const int kShadowOffY = 8;
 };
