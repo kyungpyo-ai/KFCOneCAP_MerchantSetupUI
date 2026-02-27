@@ -1307,15 +1307,21 @@ void CShopSetupDlg::OnPaint()
                 Gdiplus::Color(255, 28,  76, 210));
             gh.FillPath(&bg, &bp);
 
-            // 모니터 아이콘 (흰색 선)
-            Gdiplus::Pen ip(Gdiplus::Color(255,255,255,255), 1.7f);
-            ip.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapFlat);
-            ip.SetLineJoin(Gdiplus::LineJoinRound);
-            const float cx = bx+bsz*0.5f, cy = by+bsz*0.5f, hw = bsz*0.24f;
-            Gdiplus::RectF mon(cx-hw, cy-hw*0.72f, hw*2.0f, hw*1.42f);
-            gh.DrawRectangle(&ip, mon);
-            gh.DrawLine(&ip, cx-hw*0.42f, cy+hw*0.72f, cx+hw*0.42f, cy+hw*0.72f);
-            gh.DrawLine(&ip, cx, cy+hw*0.72f, cx, cy+hw);
+            // Modern store icon (Toss/Kakao/Naver style - white filled building silhouette)
+            const float cx=bx+bsz*0.5f, cy=by+bsz*0.5f;
+            Gdiplus::SolidBrush wBr(Gdiplus::Color(255,255,255,255));
+            const float iH=bsz*0.60f, iW=bsz*0.52f;
+            const float rH=iH*0.28f, bHh=iH-rH;
+            const float iX=cx-iW*0.5f, iY=cy-iH*0.5f+0.5f;
+            Gdiplus::PointF rf[3];
+            rf[0]=Gdiplus::PointF(cx,iY);
+            rf[1]=Gdiplus::PointF(iX-iW*0.14f,iY+rH+1.5f);
+            rf[2]=Gdiplus::PointF(iX+iW*1.14f,iY+rH+1.5f);
+            gh.FillPolygon(&wBr,rf,3);
+            gh.FillRectangle(&wBr,Gdiplus::RectF(iX,iY+rH,iW,bHh));
+            Gdiplus::SolidBrush dBr(Gdiplus::Color(130,28,76,210));
+            const float dW=iW*0.26f, dH=bHh*0.44f;
+            gh.FillRectangle(&dBr,Gdiplus::RectF(cx-dW*0.5f,iY+rH+bHh-dH,dW,dH));
         }
 
         // 타이틀 (GDI+ ClearType)
