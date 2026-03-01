@@ -71,7 +71,14 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_nViewH(0)
     
     , m_bInLayout(FALSE)
-    , m_bScrollTimerActive(FALSE){
+    , m_bScrollTimerActive(FALSE)
+    , m_nPendingScrollPos(-1)
+    , m_nCachedPaintDpi(0)
+    , m_pFontLbl(nullptr)
+    , m_pFontVal(nullptr)
+    , m_pFontValBold(nullptr)
+    , m_pFontFamily(nullptr)
+{
     InitPointerArrays();
 }
 
@@ -82,6 +89,10 @@ CShopDownDlg::~CShopDownDlg()
         KillTimer(kScrollTimerId);
         m_bScrollTimerActive = FALSE;
     }
+    delete m_pFontLbl;     m_pFontLbl     = nullptr;
+    delete m_pFontVal;     m_pFontVal     = nullptr;
+    delete m_pFontValBold; m_pFontValBold = nullptr;
+    delete m_pFontFamily;  m_pFontFamily  = nullptr;
     if (m_brushBg.GetSafeHandle())   m_brushBg.DeleteObject();
     if (m_brushCard.GetSafeHandle()) m_brushCard.DeleteObject();
 }
@@ -676,14 +687,10 @@ void CShopDownDlg::OnDownloadClick(int index)
     // 다운로드되면 삭제 버튼 활성화
     if (m_btnDelete[index].GetSafeHwnd()) m_btnDelete[index].EnableWindow(TRUE);
 
-    ApplyRowUnderlay(index, TRUE);
+    ApplyRowUnderlay(index, FALSE);
 
-    // 카드 자체 다시 그리기(배경/우측 텍스트)
-    if (index >= 0 && index < kRowCount)
-    {
-        InvalidateRect(&m_rcRow[index], FALSE);
-        UpdateWindow();
-    }
+    RedrawWindow(&m_rcRow[index], nullptr,
+        RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
 void CShopDownDlg::OnDeleteClick(int index)
@@ -705,11 +712,10 @@ void CShopDownDlg::OnDeleteClick(int index)
     if (m_btnDelete[index].GetSafeHwnd()) m_btnDelete[index].EnableWindow(FALSE);
 
     // 화면/컨트롤 underlay 즉시 동기화 (빈 상태 → 연한 톤)
-    ApplyRowUnderlay(index, TRUE);
+    ApplyRowUnderlay(index, FALSE);
 
-    // 카드 자체 다시 그리기
-    InvalidateRect(&m_rcRow[index], FALSE);
-    UpdateWindow();
+    RedrawWindow(&m_rcRow[index], nullptr,
+        RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
 
@@ -738,7 +744,6 @@ void CShopDownDlg::OnSize(UINT nType, int cx, int cy)
     CDialog::OnSize(nType, cx, cy);
     if (cx <= 0 || cy <= 0) return;
     if (m_editProd[0].GetSafeHwnd()) LayoutControls();
-    Invalidate(FALSE);
 }
 
 // ============================================================================
@@ -787,30 +792,38 @@ void CShopDownDlg::OnPaint()
     // ----------------------------------------------------------------
     // Text helpers
     // ----------------------------------------------------------------
-    Gdiplus::FontFamily ff(L"Malgun Gothic");
-    const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 12);
-    const float valPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
+    const int curDpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
+    if (m_nCachedPaintDpi != curDpi || !m_pFontFamily)
+    {
+        delete m_pFontLbl;     m_pFontLbl     = nullptr;
+        delete m_pFontVal;     m_pFontVal     = nullptr;
+        delete m_pFontValBold; m_pFontValBold = nullptr;
+        delete m_pFontFamily;  m_pFontFamily  = nullptr;
+        const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 12);
+        const float valPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
+        m_pFontFamily  = new Gdiplus::FontFamily(L"Malgun Gothic");
+        m_pFontLbl     = new Gdiplus::Font(m_pFontFamily, lblPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+        m_pFontVal     = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+        m_pFontValBold = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
+        m_nCachedPaintDpi = curDpi;
+    }
 
-    Gdiplus::Font fLbl(&ff, lblPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::Font fVal(&ff, valPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-    Gdiplus::Font fValBold(&ff, valPx, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    // StringFormat is always the same - create once, share across all DrawEllips calls
+    Gdiplus::StringFormat sfEllips;
+    sfEllips.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+    sfEllips.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+    sfEllips.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+    sfEllips.SetAlignment(Gdiplus::StringAlignmentNear);
 
     auto DrawEllips = [&](const CString& s, const Gdiplus::RectF& r, Gdiplus::Font* f, const Gdiplus::Color& c)
     {
         if (s.IsEmpty()) return;
         Gdiplus::SolidBrush br(c);
-        Gdiplus::StringFormat sf;
-        sf.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-        sf.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-                        sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        sf.SetAlignment(Gdiplus::StringAlignmentNear);
-
 #ifdef UNICODE
-        g.DrawString(s, -1, f, r, &sf, &br);
+        g.DrawString(s, -1, f, r, &sfEllips, &br);
 #else
-        // CP949 build: CString is ANSI, convert to wide
         CStringW ws(s);
-        g.DrawString(ws, -1, f, r, &sf, &br);
+        g.DrawString(ws, -1, f, r, &sfEllips, &br);
 #endif
     };
 
@@ -853,13 +866,13 @@ void CShopDownDlg::OnPaint()
 
             Gdiplus::RectF lp((float)m_rcProd[i].left, yLbl, (float)m_rcProd[i].Width(), hLbl);
             Gdiplus::RectF lb((float)m_rcBiz[i].left,  yLbl, (float)m_rcBiz[i].Width(),  hLbl);
-            DrawEllips(_T("단말기 제품번호"), lp, &fLbl, cLbl);
-            DrawEllips(_T("사업자번호"),     lb, &fLbl, cLbl);
+            DrawEllips(_T("단말기 제품번호"), lp, m_pFontLbl, cLbl);
+            DrawEllips(_T("사업자번호"),     lb, m_pFontLbl, cLbl);
 
             // pwd label
             const float yPwdLbl = (float)m_rcPwd[i].top - (float)m_card.labelGap - (float)m_card.labelH;
             Gdiplus::RectF lpwd((float)m_rcPwd[i].left, yPwdLbl, (float)m_rcPwd[i].Width(), hLbl);
-            DrawEllips(_T("비밀번호"), lpwd, &fLbl, cLbl);
+            DrawEllips(_T("비밀번호"), lpwd, m_pFontLbl, cLbl);
         }
 
         // right labels + values
@@ -869,13 +882,13 @@ void CShopDownDlg::OnPaint()
 
             // label rects align with value rects
             Gdiplus::RectF l1((float)m_rcInfoRep[i].left,  yLbl, (float)m_rcInfoRep[i].Width(), hLbl);
-            DrawEllips(_T("대표 가맹점"), l1, &fLbl, cLbl);
+            DrawEllips(_T("대표 가맹점"), l1, m_pFontLbl, cLbl);
 
             // '단말기별 가맹점'은 2줄(라벨/값) 유지:
             //  - 라벨: 비밀번호 라벨 줄(y2Label)
             //  - 값  : 비밀번호 Edit 줄(y2Edit), 버튼과 동일한 Y (좌측 공간에 표시)
             Gdiplus::RectF l2((float)m_rcInfoTerm[i].left,    (float)m_rcInfoTerm[i].top,    (float)m_rcInfoTerm[i].Width(),    (float)m_rcInfoTerm[i].Height());
-            DrawEllips(_T("단말기별 가맹점"), l2, &fLbl, cLbl);
+            DrawEllips(_T("단말기별 가맹점"), l2, m_pFontLbl, cLbl);
 
             CString rep  = *m_pRetailName[i];
             CString term = *m_pSecondName[i];
@@ -886,22 +899,22 @@ void CShopDownDlg::OnPaint()
 
             // Values: make it obvious these are filled by '다운로드'
             if (rep.IsEmpty())
-                DrawEllips(_T("다운로드 후 표시"), v1, &fVal, cPh);
+                DrawEllips(_T("다운로드 후 표시"), v1, m_pFontVal, cPh);
             else
-                DrawEllips(rep, v1, &fValBold, cVal);
+                DrawEllips(rep, v1, m_pFontValBold, cVal);
 
             if (term.IsEmpty())
             {
                 // 단말기별 가맹점은 다운로드 후에도 값이 비어 있을 수 있음.
                 // 대표 가맹점 값이 존재하면 '없음' 표시로 '-'를 보여준다.
                 if (!rep.IsEmpty())
-                    DrawEllips(_T("-"), v2, &fValBold, cVal);
+                    DrawEllips(_T("-"), v2, m_pFontValBold, cVal);
                 else
-                    DrawEllips(_T("다운로드 후 표시"), v2, &fVal, cPh);
+                    DrawEllips(_T("다운로드 후 표시"), v2, m_pFontVal, cPh);
             }
             else
             {
-                DrawEllips(term, v2, &fValBold, cVal);
+                DrawEllips(term, v2, m_pFontValBold, cVal);
             }
 }
 
@@ -919,10 +932,10 @@ void CShopDownDlg::OnPaint()
             sf.SetAlignment(Gdiplus::StringAlignmentFar);
             sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
 #ifdef UNICODE
-            g.DrawString(n, -1, &fValBold, nr, &sf, &br);
+            g.DrawString(n, -1, m_pFontValBold, nr, &sf, &br);
 #else
             CStringW wn(n);
-            g.DrawString(wn, -1, &fValBold, nr, &sf, &br);
+            g.DrawString(wn, -1, m_pFontValBold, nr, &sf, &br);
 #endif
         }
     }
@@ -960,16 +973,14 @@ void CShopDownDlg::ApplyRowUnderlay(int index, BOOL bRedraw /*= TRUE*/)
 
     
     if (m_btnDelete[index].GetSafeHwnd())  m_btnDelete[index].SetUnderlayColor(cr);
-if (bRedraw)
+    if (bRedraw)
     {
-        // 즉시 반영 (실시간 카드 배경 변경 대응)
-        if (m_editProd[index].GetSafeHwnd()) m_editProd[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
-    if (m_editBiz[index].GetSafeHwnd())  m_editBiz[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
-    if (m_editPwd[index].GetSafeHwnd())  m_editPwd[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
-    if (m_btnDownload[index].GetSafeHwnd()) m_btnDownload[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW);
-    
-    if (m_btnDelete[index].GetSafeHwnd())  m_btnDelete[index].RedrawWindow(nullptr, nullptr, RDW_INVALIDATE|RDW_UPDATENOW);
-}
+        if (m_editProd[index].GetSafeHwnd())    m_editProd[index].Invalidate(FALSE);
+        if (m_editBiz[index].GetSafeHwnd())     m_editBiz[index].Invalidate(FALSE);
+        if (m_editPwd[index].GetSafeHwnd())     m_editPwd[index].Invalidate(FALSE);
+        if (m_btnDownload[index].GetSafeHwnd()) m_btnDownload[index].Invalidate(FALSE);
+        if (m_btnDelete[index].GetSafeHwnd())   m_btnDelete[index].Invalidate(FALSE);
+    }
 }
 
 void CShopDownDlg::ApplyAllRowUnderlays()

@@ -21,7 +21,7 @@ protected:
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
     afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-    afx_msg void OnTimer(UINT_PTR nIDEvent);    virtual BOOL PreTranslateMessage(MSG* pMsg);  // ï¿½Ú½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ Ä¸Ã³
+    afx_msg void OnTimer(UINT_PTR nIDEvent);    virtual BOOL PreTranslateMessage(MSG* pMsg);  // ÀÚ½Ä ÄÁÆ®·Ñ À§ ÈÙ Ä¸Ã³
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()
@@ -37,8 +37,8 @@ private:
     void OnDeleteClick(int index);
 
     // ---------- Card/Control background sync ---------------------------------
-    // Ä«ï¿½ï¿½(ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Â¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½ ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ UnderlayColorï¿½ï¿½
-    // ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ð¼­¸ï¿½ halo(ï¿½ï¿½ï¿½ ï¿½×µÎ¸ï¿½) / ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
+     // Ä«µå(Çà) ¹è°æ»öÀÌ »óÅÂ¿¡ µû¶ó ¹Ù²î´Â °æ¿ì, °¢ ÄÁÆ®·ÑÀÇ UnderlayColorµµ
+    // Áï½Ã µ¿ÀÏÇÑ »öÀ¸·Î ¸ÂÃç ¶ó¿îµå ¸ð¼­¸® halo(Èò»ö Å×µÎ¸®) / ¹è°æ ºÒÀÏÄ¡¸¦ Á¦°ÅÇÑ´Ù.
     COLORREF GetRowCardBg(int index) const;
     void ApplyRowUnderlay(int index, BOOL bRedraw = TRUE);
     void ApplyAllRowUnderlays();
@@ -70,17 +70,17 @@ private:
     };
     CardLayout m_card;
 // ---------- Layout constants (96-DPI base, Scale() at runtime) -------------
-    static const int kHdrAreaH = 44;   // Å¸ï¿½ï¿½Æ² ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-    static const int kSecGapT  = 6;    // ï¿½ï¿½ï¿½~ï¿½ï¿½ï¿½ï¿½Ä«ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-    static const int kSecM     = 18;   // ï¿½ï¿½ï¿½ï¿½Ä«ï¿½ï¿½ ï¿½Â¿ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½Ù¸ï¿½ ï¿½Ç°ï¿½ ï¿½ï¿½ï¿½ï¿½)
-    static const int kColHdrH  = 0;   // ï¿½Ã·ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
-        static const int kRowH     = 190;  // data row height (approx) - show 2 cards in view
+    static const int kHdrAreaH = 44;   // Å¸ÀÌÆ² Çì´õ ¿µ¿ª ³ôÀÌ
+    static const int kSecGapT  = 6;    // Çì´õ~¼½¼ÇÄ«µå »ó´Ü °£°Ý
+    static const int kSecM     = 18;   // ¼½¼ÇÄ«µå ÁÂ¿ìÇÏ´Ü ¸¶Áø (´Ù¸¥ ÅÇ°ú µ¿ÀÏ)
+    static const int kColHdrH  = 0;   // ÄÃ·³ Çì´õ Çà ³ôÀÌ
+    
+    static const int kRowH     = 190;  // data row height (approx) - show 2 cards in view
     static const int kRowGap   = 12;   // gap between cards
-            static const int kCtrlH    = 42;   // control height inside row (match other tabs, taller)   // control height inside row (match other tabs, slightly taller)   // control height inside row (match other tabs)
+    static const int kCtrlH    = 42;   // control height inside row (match other tabs, taller)   // control height inside row (match other tabs, slightly taller)   // control height inside row (match other tabs)
 
     // contentStartY = kHdrAreaH + kSecGapT + Scale(kColHdrH)
-    // kHdrAreaH/kSecGapTï¿½ï¿½ fixed px, kColHdrHï¿½ï¿½ DPI ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-
+ // kHdrAreaH/kSecGapT´Â fixed px, kColHdrH¸¸ DPI ½ºÄÉÀÏ
     static const int kRowCount = 25;
     static const int kBtnBase  = 61001;
     static const int kDelBase  = 61101;
@@ -95,6 +95,13 @@ private:
     CFont m_fontHeader;   // column header labels
     CFont m_fontCell;     // edit / button text
     CFont m_fontBadge;    // row number badge
+
+    // Cached GDI+ paint fonts (recreated on DPI change)
+    int                  m_nCachedPaintDpi;
+    Gdiplus::Font*       m_pFontLbl;
+    Gdiplus::Font*       m_pFontVal;
+    Gdiplus::Font*       m_pFontValBold;
+    Gdiplus::FontFamily* m_pFontFamily;
 
     // ---------- Data strings --------------------------------------------------
     CString m_prdid1,  m_prdid2,  m_prdid3,  m_prdid4,  m_prdid5;

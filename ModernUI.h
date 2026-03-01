@@ -537,6 +537,9 @@ private:
     CFont  m_font;
     CFont  m_fontBold;
     CBrush m_brushBg;
+    Gdiplus::FontFamily* m_pTabFontFamily;
+    Gdiplus::Font*       m_pTabFontN;
+    Gdiplus::Font*       m_pTabFontB;
 
     RectF GetTabRect(int idx) const;
     void DrawTab(Graphics& g, int idx, const RectF& rc);

@@ -376,6 +376,10 @@ void CShopSetupDlg::InitializeFonts()
     m_fontLabel.DeleteObject();
     m_fontLabel.CreateFontIndirect(&lf);
 
+    lf.lfWeight = FW_BOLD;
+    m_fontGroupTitle.DeleteObject();
+    m_fontGroupTitle.CreateFontIndirect(&lf);
+
 }
 
 // ============================================================================
@@ -1368,13 +1372,8 @@ void CShopSetupDlg::OnPaint()
 // ============================================================================
 void CShopSetupDlg::DrawGroupLabels(CDC* pDC)
 {
-    LOGFONT lf = { 0 };
-    m_fontLabel.GetLogFont(&lf);
-    lf.lfWeight = FW_BOLD;
-    CFont fontGrp;
-    fontGrp.CreateFontIndirect(&lf);
-
-    CFont* pOld = pDC->SelectObject(&fontGrp);
+    CFont* pOld = m_fontGroupTitle.GetSafeHandle()
+        ? pDC->SelectObject(&m_fontGroupTitle) : nullptr;
     pDC->SetBkMode(TRANSPARENT);
 
     auto DrawGrp = [&](const CRect& r, LPCTSTR t)
@@ -1405,7 +1404,7 @@ void CShopSetupDlg::DrawGroupLabels(CDC* pDC)
     default: break;
     }
 
-    pDC->SelectObject(pOld);
+    if (pOld) pDC->SelectObject(pOld);
 }
 
 // ============================================================================

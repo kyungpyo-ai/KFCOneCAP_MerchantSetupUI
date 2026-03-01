@@ -98,17 +98,19 @@ namespace ModernUIDpi
 	static UINT GetDpiForHwndImpl(HWND hwnd)
 	{
 		// Prefer per-window DPI on Win10+; fall back safely.
-		HMODULE hUser32 = ::GetModuleHandle(_T("user32.dll"));
-		if (hUser32)
+		// Cache the function pointer so GetModuleHandle/GetProcAddress
+		// are only called once instead of on every Scale() invocation.
+		static PFN_GetDpiForWindow s_pfn = NULL;
+		static bool s_checked = false;
+		if (!s_checked)
 		{
-#ifdef UNICODE
-			PFN_GetDpiForWindow pGetDpiForWindow = (PFN_GetDpiForWindow)::GetProcAddress(hUser32, "GetDpiForWindow");
-#else
-			PFN_GetDpiForWindow pGetDpiForWindow = (PFN_GetDpiForWindow)::GetProcAddress(hUser32, "GetDpiForWindow");
-#endif
-			if (pGetDpiForWindow && hwnd)
-				return pGetDpiForWindow(hwnd);
+			s_checked = true;
+			HMODULE hUser32 = ::GetModuleHandle(_T("user32.dll"));
+			if (hUser32)
+				s_pfn = (PFN_GetDpiForWindow)::GetProcAddress(hUser32, "GetDpiForWindow");
 		}
+		if (s_pfn && hwnd)
+			return s_pfn(hwnd);
 
 		// System DPI fallback
 		HDC hdc = ::GetDC(hwnd);
@@ -1715,6 +1717,7 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 
 	if ((int)lpDIS->itemID < 0 || bEditArea)
 	{
+		dc.Detach();  // prevent ~CDC() from calling DeleteDC on Windows-owned DC
 		CClientDC clientDC(this);
 		PaintComboToDC(clientDC);
 		return;
@@ -2008,6 +2011,24 @@ HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
 		// text color is managed by Windows theme; keep default window text
 		pDC->SetTextColor(::GetSysColor(COLOR_WINDOWTEXT));
 		pDC->SetBkMode(OPAQUE);
+
+		// Clip to the inner (non-border) area so that selection-drag direct-painting
+		// (edit control calls GetDC and paints without going through OnPaint) does
+		// not overwrite the rounded border pixels.
+		CRect rcCtl;
+		GetClientRect(&rcCtl);
+		const KFTCInputTheme& th = GetActiveInputTheme();
+		const int thickI = m_bFocus ? (int)th.thickF : (int)th.thickN;
+		const int inset  = thickI + 1;
+		int rr = m_nRadius - thickI;
+		if (rr < 1) rr = 1;
+		HRGN hClip = ::CreateRoundRectRgn(
+			inset, inset,
+			rcCtl.Width()  - inset + 1,
+			rcCtl.Height() - inset + 1,
+			rr * 2, rr * 2);
+		::SelectClipRgn(pDC->GetSafeHdc(), hClip);
+		::DeleteObject(hClip);
 	}
 
 	if (!m_brUnderlay.GetSafeHandle() || m_clrBrushBg != bg)
@@ -2251,11 +2272,17 @@ END_MESSAGE_MAP()
 // -----------------------------------------------------------
 CModernTabCtrl::CModernTabCtrl()
 	: m_nSel(0), m_nHover(-1), m_bTrack(false)
+	, m_pTabFontFamily(nullptr)
+	, m_pTabFontN(nullptr)
+	, m_pTabFontB(nullptr)
 {
 }
 
 CModernTabCtrl::~CModernTabCtrl()
 {
+	delete m_pTabFontB;      m_pTabFontB      = nullptr;
+	delete m_pTabFontN;      m_pTabFontN      = nullptr;
+	delete m_pTabFontFamily; m_pTabFontFamily = nullptr;
 	if (m_font.GetSafeHandle())     m_font.DeleteObject();
 	if (m_fontBold.GetSafeHandle()) m_fontBold.DeleteObject();
 	if (m_brushBg.GetSafeHandle())  m_brushBg.DeleteObject();
@@ -2399,11 +2426,13 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 	const float kIconSz = 16.0f;
 	const float kIconGap = 6.0f;
 
-	Gdiplus::FontFamily ff(L"Malgun Gothic");
-
-	Gdiplus::Font fontN(&ff, 12.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-	Gdiplus::Font fontB(&ff, 12.5f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	Gdiplus::Font* pFont = bActive ? &fontB : &fontN;
+	if (!m_pTabFontFamily)
+	{
+		m_pTabFontFamily = new Gdiplus::FontFamily(L"Malgun Gothic");
+		m_pTabFontN = new Gdiplus::Font(m_pTabFontFamily, 12.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+		m_pTabFontB = new Gdiplus::Font(m_pTabFontFamily, 12.5f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	}
+	Gdiplus::Font* pFont = bActive ? m_pTabFontB : m_pTabFontN;
 
 	Gdiplus::RectF measRc(0.0f, 0.0f, 0.0f, 0.0f);
 	g.MeasureString(m_items[idx].text.GetString(), -1,
