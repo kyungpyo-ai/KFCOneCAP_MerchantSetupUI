@@ -45,6 +45,12 @@ typedef float REAL;
 #define KFTC_DISABLED_BORDER GRAY_200
 #define KFTC_DISABLED_TEXT   GRAY_500
 #define KFTC_DISABLED_ICON   GRAY_300
+#define KFTC_BTN_SECONDARY     RGB(235, 236, 240)   // secondary (Delete) btn normal
+#define KFTC_BTN_SECONDARY_HOV RGB(225, 226, 230)   // secondary (Delete) btn hover
+#define KFTC_BTN_DISABLED_BG   RGB(235, 237, 240)   // primary btn disabled bg
+#define KFTC_CARD_PENDING_BG   RGB(246, 248, 251)   // row card bg when no data
+#define KFTC_DLG_CONTENT_BG    RGB(250, 251, 253)   // ShopDownDlg content bg
+#define KFTC_CARD_DISABLED_BG  RGB(245, 246, 248)   // disabled control surface
 
 
 // ========================================
@@ -96,6 +102,8 @@ namespace ModernUIGfx
     void EnsureGdiplusStartup();
     void ShutdownGdiplus();
     bool IsGdiplusStarted();
+    // Shared rounded-rect path builder (use instead of per-class lambdas)
+    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, float radius);
 }
 
 // DPI scaling helpers (per-monitor DPI aware)

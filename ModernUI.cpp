@@ -86,6 +86,17 @@ namespace ModernUIGfx
 		s_gdiplusToken = 0;
 		s_started = false;
 	}
+
+	void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, float radius)
+	{
+		if (radius <= 0.f) { path.AddRectangle(r); return; }
+		const float d = radius * 2.f;
+		Gdiplus::RectF a(r.X, r.Y, d, d);
+		path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
+		path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
+		path.AddArc(a,   0, 90); a.X = r.X;
+		path.AddArc(a,  90, 90); path.CloseFigure();
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////

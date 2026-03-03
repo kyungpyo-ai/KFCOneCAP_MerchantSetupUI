@@ -35,6 +35,7 @@ private:
     void UpdateScrollBar();
     void ApplyScroll(int newPos);
     void QueueScroll(int newPos);
+    void ScrollByDelta(short zDelta);  // extracted from PreTranslateMessage / OnMouseWheel
     void OnDownloadClick(int index);
     void OnDeleteClick(int index);
 

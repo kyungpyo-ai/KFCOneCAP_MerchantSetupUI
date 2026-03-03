@@ -153,9 +153,9 @@ BOOL CShopDownDlg::OnInitDialog()
 
     ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
-    m_brushBg.CreateSolidBrush(RGB(250, 251, 253));
+    m_brushBg.CreateSolidBrush(KFTC_DLG_CONTENT_BG);
     m_brushCard.CreateSolidBrush(RGB(255, 255, 255));
-    m_brushCardDisabled.CreateSolidBrush(RGB(245, 246, 248));
+    m_brushCardDisabled.CreateSolidBrush(KFTC_CARD_DISABLED_BG);
 
     CreateControlsOnce();
     ApplyFonts();
@@ -203,7 +203,7 @@ m_btnDownload[i].Create(_T("다운로드"),
 m_btnDelete[i].Create(_T("삭제"),
             WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
             CRect(0,0,10,10), this, kDelBase+i);
-        m_btnDelete[i].SetColors(RGB(235,236,240), RGB(225,226,230), RGB(40,40,40));
+        m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
 m_editMerchantName[i].CreateEx(0, _T("EDIT"), _T(""),
             roStyle, CRect(0,0,10,10), this, 62000+(i*10)+4);
 
@@ -426,13 +426,13 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
             if (enBtn)
                 m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
             else
-                m_btnDownload[i].SetColors(RGB(235,237,240), RGB(235,237,240), RGB(160,165,175));
+                m_btnDownload[i].SetColors(KFTC_BTN_DISABLED_BG, KFTC_BTN_DISABLED_BG, RGB(160,165,175));
         
             const BOOL enDel = ::IsWindowEnabled(m_btnDelete[i].m_hWnd);
             if (enDel)
-                m_btnDelete[i].SetColors(RGB(235,236,240), RGB(225,226,230), RGB(40,40,40));
+                m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
             else
-                m_btnDelete[i].SetColors(RGB(245,246,248), RGB(245,246,248), RGB(160,160,160));
+                m_btnDelete[i].SetColors(KFTC_CARD_DISABLED_BG, KFTC_CARD_DISABLED_BG, RGB(160,160,160));
 }
 
         const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
@@ -628,14 +628,7 @@ BOOL CShopDownDlg::PreTranslateMessage(MSG* pMsg)
         // 메시지 수신 윈도우가 자신이거나 자식 컨트롤인 경우 모두 처리
         if (pMsg->hwnd == m_hWnd || ::IsChild(m_hWnd, pMsg->hwnd))
         {
-            short zDelta = (short)HIWORD(pMsg->wParam);
-            const int step  = ModernUIDpi::Scale(m_hWnd, kRowH + kRowGap);
-            const int lines = zDelta / WHEEL_DELTA;
-            SCROLLINFO si;
-            si.cbSize = sizeof(SCROLLINFO);
-            si.fMask  = SIF_ALL;
-            GetScrollInfo(SB_VERT, &si);
-            QueueScroll(si.nPos - lines * step);
+            ScrollByDelta((short)HIWORD(pMsg->wParam));
             return TRUE;  // 자식 컨트롤에 전달하지 않음
         }
     }
@@ -645,6 +638,13 @@ BOOL CShopDownDlg::PreTranslateMessage(MSG* pMsg)
 // ============================================================================
 BOOL CShopDownDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
+    ScrollByDelta(zDelta);
+    return TRUE;
+}
+
+// ============================================================================
+void CShopDownDlg::ScrollByDelta(short zDelta)
+{
     const int step  = ModernUIDpi::Scale(m_hWnd, kRowH + kRowGap);
     const int lines = zDelta / WHEEL_DELTA;
     SCROLLINFO si;
@@ -652,7 +652,6 @@ BOOL CShopDownDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
     si.fMask  = SIF_ALL;
     GetScrollInfo(SB_VERT, &si);
     QueueScroll(si.nPos - lines * step);
-    return TRUE;
 }
 
 // ============================================================================
@@ -775,23 +774,13 @@ void CShopDownDlg::OnPaint()
     memBmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
     CBitmap* pOldBmp = memDC.SelectObject(&memBmp);
 
-    memDC.FillSolidRect(&rc, RGB(250, 251, 253));
+    memDC.FillSolidRect(&rc, KFTC_DLG_CONTENT_BG);
 
     Gdiplus::Graphics g(memDC.m_hDC);
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-    auto RR = [](Gdiplus::GraphicsPath& path, Gdiplus::RectF r, float rad)
-    {
-        if (rad <= 0.f) { path.AddRectangle(r); return; }
-        const float d = rad * 2.f;
-        Gdiplus::RectF a(r.X, r.Y, d, d);
-        path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
-        path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
-        path.AddArc(a,   0, 90); a.X = r.X;
-        path.AddArc(a,  90, 90); path.CloseFigure();
-    };
 
     // ----------------------------------------------------------------
     // Section header/card background is drawn by parent dialog (ShopSetupDlg)
@@ -861,7 +850,7 @@ void CShopDownDlg::OnPaint()
         // item card
         Gdiplus::RectF rf((float)r.left, (float)r.top, (float)r.Width(), (float)r.Height());
         Gdiplus::GraphicsPath rp;
-        RR(rp, rf, 12.f);
+        ModernUIGfx::AddRoundRect(rp, rf, 12.f);
 
         // Normal: white, Pending/Empty: very light blue tint (quiet)
         Gdiplus::SolidBrush brCard(hasRep
