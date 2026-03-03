@@ -6,10 +6,199 @@
 #include "ShopSetupDlg.h"
 #include "ShopDownDlg.h"
 #include "ModernUI.h"
+#include "RegistryUtil.h"
 
 #include <gdiplus.h>
 #pragma comment(lib, "gdiplus.lib")
 
+// ============================================================================
+// Registry spec (Word 기준)
+// - 저장: AfxGetApp()->WriteProfileString(section, field, value) 그대로 사용
+// - 불러오기: GetRegisterData(section, field, outValue) 로만 접근
+// ============================================================================
+
+namespace
+{
+    // Sections
+    static LPCTSTR SEC_TCP        = _T("TCP");
+    static LPCTSTR SEC_SERIALPORT = _T("SERIALPORT");
+
+    // TCP
+    static LPCTSTR VAN_SERVER_IP_FIELD   = _T("VAN_SERVER_IP");
+    static LPCTSTR VAN_SERVER_PORT_FIELD = _T("VAN_SERVER_PORT");
+    static LPCTSTR TAX_SETTING_FIELD     = _T("TAX_SETTING");   // 세금 자동 역산 (IDC_EDIT_TAX_PERCENT)
+
+    // SERIALPORT
+    static LPCTSTR TIMEOUT_FIELD         = _T("TIMEOUT");
+    static LPCTSTR NOSIGN_AMT_FIELD      = _T("NOSIGN_AMT");
+    static LPCTSTR CASH_FIRST_FIELD      = _T("CASH_FIRST");
+    static LPCTSTR INTERLOCK_FIELD       = _T("INTERLOCK");
+    static LPCTSTR SOCKET_TYPE_FIELD     = _T("SOCKET_TYPE");
+    static LPCTSTR SIGNPAD_USE_FIELD     = _T("SIGNPAD_USE");
+    static LPCTSTR SIGNPAD_FIELD         = _T("SIGNPAD");
+    static LPCTSTR SIGNPAD_SPEED_FIELD   = _T("SIGNPAD_SPEED");
+    static LPCTSTR NOTIFY_POS_FIELD      = _T("NOTIFY_POS");
+    static LPCTSTR NOTIFY_SIZE_FIELD     = _T("NOTIFY_SIZE");
+    static LPCTSTR CANCEL_HOTKEY_FIELD   = _T("CANCEL_HOTKEY");
+    static LPCTSTR MSR_HOTKEY_FIELD      = _T("MSR_HOTKEY");
+    static LPCTSTR MULTIPAD_SOUND_FIELD  = _T("MULTIPAD_SOUND");
+    static LPCTSTR BARCODE_USE_FIELD     = _T("BARCODE_USE");
+    static LPCTSTR BARCODE_PORT_FIELD    = _T("BARCODE_PORT");
+    static LPCTSTR CARD_DETECT_FIELD     = _T("CARD_DETECT");
+    static LPCTSTR DETECT_PROGRAM_FIELD  = _T("DETECT_PROGRAM");
+    static LPCTSTR AUTO_RESTART_FIELD    = _T("AUTO_RESTART");
+    static LPCTSTR AUTO_REBOOT_FIELD     = _T("AUTO_REBOOT");
+    static LPCTSTR NOTIFY_IMG_FIELD      = _T("NOTIFY_IMG");
+    static LPCTSTR NOTIFY_DUAL_FIELD     = _T("NOTIFY_DUAL_MONITOR");
+
+    struct ComboItem
+    {
+        LPCTSTR text;   // 화면 표시값
+        LPCTSTR value;  // 저장값(레지스트리 데이터)
+    };
+
+    static void FillCombo(CSkinnedComboBox& cb, const ComboItem* items, int count)
+    {
+        cb.ResetContent();
+        for (int i = 0; i < count; ++i)
+            cb.AddString(items[i].text);
+        cb.SetCurSel(0);
+    }
+
+    static int FindIndexByValue(const ComboItem* items, int count, const CString& value)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            if (value.CompareNoCase(items[i].value) == 0)
+                return i;
+        }
+        return -1;
+    }
+
+    static void SelectComboByValue(CSkinnedComboBox& cb, const ComboItem* items, int count,
+                                   const CString& value, int defaultIndex)
+    {
+        int idx = FindIndexByValue(items, count, value);
+        if (idx < 0) idx = defaultIndex;
+        if (idx < 0) idx = 0;
+        if (idx >= count) idx = 0;
+        cb.SetCurSel(idx);
+    }
+
+    static CString GetSelectedComboValue(const CSkinnedComboBox& cb, const ComboItem* items, int count,
+                                        LPCTSTR defaultValue)
+    {
+        int idx = cb.GetCurSel();
+        if (idx < 0 || idx >= count)
+            return CString(defaultValue ? defaultValue : _T(""));
+        return CString(items[idx].value);
+    }
+
+    // Combo mappings (Word 기준)
+    static const ComboItem kVanServers[] =
+    {
+        { _T("운영 서버(www.kftcvan.or.kr)"), _T("www.kftcvan.or.kr") },
+        { _T("테스트 서버"),                 _T("203.175.190.145") },
+        { _T("테스트 서버(내부용)"),         _T("192.168.53.28") },
+    };
+
+    static const ComboItem kCashReceipt[] =
+    {
+        { _T("PINPAD/KEYIN"), _T("PINPAD/KEYIN") },
+        { _T("MS"),           _T("MS") },
+        { _T("KEYIN"),        _T("KEYIN") },
+    };
+
+    static const ComboItem kInterlock[] =
+    {
+        { _T("IC/MS 리더기"),          _T("NORMAL") },
+        { _T("LockType 리더기"),       _T("LOCKTYPE(TDR)") },
+        { _T("AutoDriven 리더기"),     _T("LOCKTYPE(TTM)") },
+        { _T("단말기(forPOS)"),        _T("FORPOS") },
+        { _T("멀티패드(복지단)"),      _T("DP636-MND") },
+        { _T("멀티패드(동반위)"),      _T("TRANSINFO") },
+        { _T("멀티패드(씨큐프라임)"),  _T("CQPRIME") },
+        { _T("멀티패드(키오스크)"),    _T("KIOSK") },
+        { _T("AOP 리더기"),            _T("AOP") },
+        { _T("연동 안함"),             _T("NOTHING") },
+    };
+
+    static const ComboItem kCommType[] =
+    {
+        { _T("CS 방식"),  _T("CS 방식") },
+        { _T("WEB 방식"), _T("WEB 방식") },
+    };
+
+    static const ComboItem kSignPadUse[] =
+    {
+        { _T("예"),       _T("YES") },
+        { _T("아니오"),   _T("NO") },
+        { _T("자체 서명"), _T("SELF") },
+    };
+
+    static const ComboItem kSignPadSpeed[] =
+    {
+        { _T("57600bps"),  _T("57600") },
+        { _T("115200bps"), _T("115200") },
+    };
+
+    static const ComboItem kAlarmPos[] =
+    {
+        { _T("기본"),      _T("default") },
+        { _T("중앙"),      _T("mid") },
+        { _T("표시 안함"), _T("hide") },
+    };
+
+    static const ComboItem kAlarmSize[] =
+    {
+        { _T("기본"),     _T("default") },
+        { _T("매우작게"), _T("verysmall") },
+        { _T("작게"),     _T("small") },
+        { _T("크게"),     _T("big") },
+        { _T("매우크게"), _T("very big") },
+    };
+
+    static const ComboItem kHotkeys[] =
+    {
+        { _T("기본"),      _T("NORMAL") },
+        { _T("F1"),        _T("VK_F1") },   { _T("F2"), _T("VK_F2") },   { _T("F3"), _T("VK_F3") },   { _T("F4"), _T("VK_F4") },
+        { _T("F5"),        _T("VK_F5") },   { _T("F6"), _T("VK_F6") },   { _T("F7"), _T("VK_F7") },   { _T("F8"), _T("VK_F8") },
+        { _T("F9"),        _T("VK_F9") },   { _T("F10"), _T("VK_F10") }, { _T("F11"), _T("VK_F11") }, { _T("F12"), _T("VK_F12") },
+        { _T("ESC"),       _T("VK_ESCAPE") },
+        { _T("ENTER"),     _T("VK_RETURN") },
+        { _T("SPACE"),     _T("VK_SPACE") },
+        { _T("TAB"),       _T("VK_TAB") },
+        { _T("BACKSPACE"), _T("VK_BACK") },
+        { _T("INSERT"),    _T("VK_INSERT") },
+        { _T("DELETE"),    _T("VK_DELETE") },
+        { _T("HOME"),      _T("VK_HOME") },
+        { _T("END"),       _T("VK_END") },
+        { _T("PAGEUP"),    _T("VK_PRIOR") },
+        { _T("PAGEDOWN"),  _T("VK_NEXT") },
+        { _T("UP"),        _T("VK_UP") },
+        { _T("DOWN"),      _T("VK_DOWN") },
+        { _T("LEFT"),      _T("VK_LEFT") },
+        { _T("RIGHT"),     _T("VK_RIGHT") },
+    };
+
+    // Toggle mapping helpers
+    static BOOL ReadToggle_DefaultOnWhenMissing(LPCTSTR field, BOOL bDefaultOn, LPCTSTR valueOn, LPCTSTR valueOff)
+    {
+        CString s;
+        if (!GetRegisterData(SEC_SERIALPORT, field, s))
+            return bDefaultOn;
+
+        if (s.CompareNoCase(valueOn) == 0) return TRUE;
+        if (s.CompareNoCase(valueOff) == 0) return FALSE;
+
+        return bDefaultOn;
+    }
+
+    static void WriteToggleValue(LPCTSTR field, BOOL bOn, LPCTSTR valueOn, LPCTSTR valueOff)
+    {
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, field, bOn ? valueOn : valueOff);
+    }
+} // namespace
 // ============================================================================
 // [TUNE] 헤더 / 탭 / 컨텐츠 레이아웃 튜닝 파라미터
 // ============================================================================
@@ -258,10 +447,7 @@ CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
     m_tabCtrl.AddTab(_T("가맹점 다운로드"), 3);
 
     InitializeControls();
-    UpdateData(FALSE);
-
-    // v10.1: enable/disable edits based on toggle states
-    UpdateToggleDependentEdits(FALSE);
+    LoadOptionsFromRegistry();
 
     // 다이얼로그 크기
     const int MARGIN_X = S(kTabPadLeft);
@@ -502,60 +688,25 @@ void CShopSetupDlg::InitializeControls()
         sw.SetNoWrapEllipsis(TRUE);
         sw.SetUnderlayColor(bgColor);
     };
-    SetupTgl(m_chkCardDetect,   IDC_CHECK_CARD_DETECT,   _T("우선 거래"),  TRUE);
+    SetupTgl(m_chkCardDetect,   IDC_CHECK_CARD_DETECT,   _T("우선 거래"),  FALSE);
     SetupTgl(m_chkMultiVoice,   IDC_CHECK_MULTI_VOICE,   _T("멀티패드 음성 출력"), FALSE);
     SetupTgl(m_chkScannerUse,   IDC_CHECK_SCANNER_USE,   _T("스캐너 사용"),    FALSE);
-    SetupTgl(m_chkAlarmGraph,   IDC_CHECK_ALARM_GRAPH,   _T("알림창 그림"),    FALSE);
+    SetupTgl(m_chkAlarmGraph,   IDC_CHECK_ALARM_GRAPH,   _T("알림창 그림"),    TRUE);
     SetupTgl(m_chkAlarmDual,    IDC_CHECK_ALARM_DUAL,    _T("알림창 듀얼"),    FALSE);
-    SetupTgl(m_chkAutoReset,    IDC_CHECK_AUTO_RESET,    _T("자동 재실행"),    FALSE);
-    SetupTgl(m_chkAutoReboot,   IDC_CHECK_AUTO_REBOOT,   _T("자동 리부팅"),    FALSE);
-
+    SetupTgl(m_chkAutoReset,    IDC_CHECK_AUTO_RESET,    _T("자동 재실행"),    TRUE);
+    SetupTgl(m_chkAutoReboot,   IDC_CHECK_AUTO_REBOOT,   _T("자동 리부팅"),    TRUE);
     // 콤보박스 초기화
-    m_comboVanServer.ResetContent();
-    m_comboVanServer.AddString(_T("운영 서버(www.kftcvan.or.kr)"));
-    m_comboVanServer.AddString(_T("테스트 서버"));
-    m_comboVanServer.SetCurSel(0);
-
-    m_comboCashReceipt.ResetContent();
-    m_comboCashReceipt.AddString(_T("PINPAD/KEVIN"));
-    m_comboCashReceipt.SetCurSel(0);
-
-    m_comboInterlock.ResetContent();
-    m_comboInterlock.AddString(_T("블루패드(동일킹)"));
-    m_comboInterlock.SetCurSel(0);
-
-    m_comboCommType.ResetContent();
-    m_comboCommType.AddString(_T("CS 방식"));
-    m_comboCommType.SetCurSel(0);
-
-    m_comboSignPadUse.ResetContent();
-    m_comboSignPadUse.AddString(_T("예"));
-    m_comboSignPadUse.AddString(_T("아니요"));
-    m_comboSignPadUse.SetCurSel(0);
-
-    m_comboSignPadSpeed.ResetContent();
-    m_comboSignPadSpeed.AddString(_T("576000bps"));
-    m_comboSignPadSpeed.AddString(_T("115200bps"));
-    m_comboSignPadSpeed.AddString(_T("1234200bps"));
-    m_comboSignPadSpeed.SetCurSel(0);
-
-    m_comboAlarmPos.ResetContent();
-    m_comboAlarmPos.AddString(_T("기본"));
-    m_comboAlarmPos.AddString(_T("매우 작게"));
-    m_comboAlarmPos.SetCurSel(0);
-
-    m_comboAlarmSize.ResetContent();
-    m_comboAlarmSize.AddString(_T("기본"));
-    m_comboAlarmSize.AddString(_T("매우 작게"));
-    m_comboAlarmSize.SetCurSel(0);
-
-    m_comboCancelKey.ResetContent();
-    m_comboCancelKey.AddString(_T("기본"));
-    m_comboCancelKey.SetCurSel(0);
-
-    m_comboMSRKey.ResetContent();
-    m_comboMSRKey.AddString(_T("기본"));
-    m_comboMSRKey.SetCurSel(0);
+    // 콤보박스 초기화 (Word 스펙 기준 목록)
+    FillCombo(m_comboVanServer,   kVanServers,   (int)(sizeof(kVanServers) / sizeof(kVanServers[0])));
+    FillCombo(m_comboCashReceipt, kCashReceipt,  (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])));
+    FillCombo(m_comboInterlock,   kInterlock,    (int)(sizeof(kInterlock) / sizeof(kInterlock[0])));
+    FillCombo(m_comboCommType,    kCommType,     (int)(sizeof(kCommType) / sizeof(kCommType[0])));
+    FillCombo(m_comboSignPadUse,  kSignPadUse,   (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])));
+    FillCombo(m_comboSignPadSpeed,kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])));
+    FillCombo(m_comboAlarmPos,    kAlarmPos,     (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])));
+    FillCombo(m_comboAlarmSize,   kAlarmSize,    (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])));
+    FillCombo(m_comboCancelKey,   kHotkeys,      (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])));
+    FillCombo(m_comboMSRKey,      kHotkeys,      (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])));
 
     // 라벨 폰트
     const int lblIds[] = {
@@ -585,7 +736,9 @@ void CShopSetupDlg::ApplyLayout()
 
     // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
-        if (!btn.GetSafeHwnd()) return;
+     
+
+   if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;
@@ -1108,6 +1261,217 @@ void CShopSetupDlg::ApplyLayout()
         m_btnOk.ShowWindow(SW_SHOW);
         m_btnCancel.ShowWindow(SW_SHOW);
     }
+}
+
+void CShopSetupDlg::LoadOptionsFromRegistry()
+{
+    CString s;
+
+    // -------------------------
+    // TCP
+    // -------------------------
+    if (GetRegisterData(SEC_TCP, VAN_SERVER_IP_FIELD, s))
+        SelectComboByValue(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])), s, 0);
+    else
+        SelectComboByValue(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])), _T("www.kftcvan.or.kr"), 0); // 기본: 운영 서버
+
+    if (GetRegisterData(SEC_TCP, VAN_SERVER_PORT_FIELD, s))
+        m_intPort = _ttoi(s);
+    else
+        m_intPort = 8002; // 기본값
+
+    if (GetRegisterData(SEC_TCP, TAX_SETTING_FIELD, s))
+        m_intTaxPercent = _ttoi(s);
+    else
+        m_intTaxPercent = 0; // 기본값
+
+    // -------------------------
+    // SERIALPORT
+    // -------------------------
+    if (GetRegisterData(SEC_SERIALPORT, TIMEOUT_FIELD, s))
+        m_intCardTimeout = _ttoi(s);
+    else
+        m_intCardTimeout = 100; // 기본값
+
+    if (GetRegisterData(SEC_SERIALPORT, NOSIGN_AMT_FIELD, s))
+        m_intNoSignAmount = _ttoi(s);
+    else
+        m_intNoSignAmount = 50000; // 기본값
+
+    if (GetRegisterData(SEC_SERIALPORT, SIGNPAD_FIELD, s))
+        m_intSignPadPort = _ttoi(s);
+    else
+        m_intSignPadPort = 0; // 기본값
+
+    if (GetRegisterData(SEC_SERIALPORT, BARCODE_PORT_FIELD, s))
+        m_intScannerPort = _ttoi(s);
+    else
+        m_intScannerPort = 0; // 기본값
+
+    if (GetRegisterData(SEC_SERIALPORT, DETECT_PROGRAM_FIELD, s))
+        m_strCardDetectParam = s;
+    else
+        m_strCardDetectParam = _T(""); // 기본값
+
+    // Combo: 현금영수증 거래 (기본: PINPAD/KEYIN)
+    if (GetRegisterData(SEC_SERIALPORT, CASH_FIRST_FIELD, s))
+        SelectComboByValue(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])), s, 0);
+    else
+        SelectComboByValue(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])), _T("PINPAD/KEYIN"), 0);
+
+    // Combo: 장치 연동 방식 (기본: NORMAL)
+    if (GetRegisterData(SEC_SERIALPORT, INTERLOCK_FIELD, s))
+        SelectComboByValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), s, 0);
+    else
+        SelectComboByValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"), 0);
+
+    // Combo: 통신방식 (기본: CS 방식)
+    if (GetRegisterData(SEC_SERIALPORT, SOCKET_TYPE_FIELD, s))
+        SelectComboByValue(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])), s, 0);
+    else
+        SelectComboByValue(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])), _T("CS 방식"), 0);
+
+    // Combo: 서명패드 사용 (기본: YES)
+    if (GetRegisterData(SEC_SERIALPORT, SIGNPAD_USE_FIELD, s))
+        SelectComboByValue(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), s, 0);
+    else
+        SelectComboByValue(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"), 0);
+
+    // Combo: 서명패드 속도 (기본: 57600)
+    if (GetRegisterData(SEC_SERIALPORT, SIGNPAD_SPEED_FIELD, s))
+        SelectComboByValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), s, 0);
+    else
+        SelectComboByValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), _T("57600"), 0);
+
+    // Combo: 알림창 표시 위치 (기본: mid)
+    if (GetRegisterData(SEC_SERIALPORT, NOTIFY_POS_FIELD, s))
+        SelectComboByValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), s, 1);
+    else
+        SelectComboByValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), _T("mid"), 1);
+
+    // Combo: 알림창 크기 (기본: verysmall)
+    if (GetRegisterData(SEC_SERIALPORT, NOTIFY_SIZE_FIELD, s))
+        SelectComboByValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), s, 1);
+    else
+        SelectComboByValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), _T("verysmall"), 1);
+
+    // Combo: 단축키 (요청취소/ MSR 전환) 기본: NORMAL
+    if (GetRegisterData(SEC_SERIALPORT, CANCEL_HOTKEY_FIELD, s))
+        SelectComboByValue(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), s, 0);
+    else
+        SelectComboByValue(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"), 0);
+
+    if (GetRegisterData(SEC_SERIALPORT, MSR_HOTKEY_FIELD, s))
+        SelectComboByValue(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), s, 0);
+    else
+        SelectComboByValue(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"), 0);
+
+    // Toggle 기본값(밑줄) 반영:
+    // - 우선 거래(CARD_DETECT): OFF(0)
+    // - 멀티패드 음성 출력(MULTIPAD_SOUND): OFF(0)
+    // - 스캐너 사용(BARCODE_USE): OFF(0)
+    // - 알림창 그림(NOTIFY_IMG): ON(0)
+    // - 알림창 듀얼(NOTIFY_DUAL_MONITOR): OFF(0)
+    // - 자동 재실행(AUTO_RESTART): ON(0)
+    // - 자동 리부팅(AUTO_REBOOT): ON(0)
+
+    m_chkCardDetect.SetToggled(ReadToggle_DefaultOnWhenMissing(CARD_DETECT_FIELD, FALSE, _T("1"), _T("0")));
+    m_chkMultiVoice.SetToggled(ReadToggle_DefaultOnWhenMissing(MULTIPAD_SOUND_FIELD, FALSE, _T("1"), _T("0")));
+    // BARCODE_USE: OFF=0 / ON=1
+    m_chkScannerUse.SetToggled(ReadToggle_DefaultOnWhenMissing(BARCODE_USE_FIELD, FALSE, _T("1"), _T("0")));
+    // NOTIFY_IMG: ON=0 / OFF=1
+    m_chkAlarmGraph.SetToggled(ReadToggle_DefaultOnWhenMissing(NOTIFY_IMG_FIELD, TRUE, _T("0"), _T("1")));
+    // NOTIFY_DUAL_MONITOR: ON=1 / OFF=0
+    m_chkAlarmDual.SetToggled(ReadToggle_DefaultOnWhenMissing(NOTIFY_DUAL_FIELD, FALSE, _T("1"), _T("0")));
+    // AUTO_*: ON=0 / OFF=1
+    m_chkAutoReset.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_RESTART_FIELD, TRUE, _T("0"), _T("1")));
+    m_chkAutoReboot.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_REBOOT_FIELD, TRUE, _T("0"), _T("1")));
+
+    // UI에 반영
+    UpdateData(FALSE);
+    UpdateToggleDependentEdits(FALSE);
+}
+
+// ============================================================================
+// SaveOptionsToRegistry - OK 버튼에서 일괄 저장
+// ============================================================================
+void CShopSetupDlg::SaveOptionsToRegistry()
+{
+    UpdateData(TRUE);
+
+    // TCP
+    {
+        CString v = GetSelectedComboValue(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])), _T("www.kftcvan.or.kr"));
+        AfxGetApp()->WriteProfileString(SEC_TCP, VAN_SERVER_IP_FIELD, v);
+
+        CString s; s.Format(_T("%d"), m_intPort);
+        AfxGetApp()->WriteProfileString(SEC_TCP, VAN_SERVER_PORT_FIELD, s);
+
+        CString t; t.Format(_T("%d"), m_intTaxPercent);
+        AfxGetApp()->WriteProfileString(SEC_TCP, TAX_SETTING_FIELD, t);
+    }
+
+    // SERIALPORT - Edit
+    {
+        CString s;
+        s.Format(_T("%d"), m_intCardTimeout);
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, TIMEOUT_FIELD, s);
+
+        s.Format(_T("%d"), m_intNoSignAmount);
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOSIGN_AMT_FIELD, s);
+
+        s.Format(_T("%d"), m_intSignPadPort);
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_FIELD, s);
+
+        s.Format(_T("%d"), m_intScannerPort);
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, BARCODE_PORT_FIELD, s);
+
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, DETECT_PROGRAM_FIELD, m_strCardDetectParam);
+    }
+
+    // SERIALPORT - Combo
+    {
+        CString v;
+
+        v = GetSelectedComboValue(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])), _T("PINPAD/KEYIN"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, CASH_FIRST_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, INTERLOCK_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])), _T("CS 방식"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SOCKET_TYPE_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_USE_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), _T("57600"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_SPEED_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), _T("mid"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_POS_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), _T("verysmall"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_SIZE_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, CANCEL_HOTKEY_FIELD, v);
+
+        v = GetSelectedComboValue(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, MSR_HOTKEY_FIELD, v);
+    }
+
+    // SERIALPORT - Toggle
+    WriteToggleValue(CARD_DETECT_FIELD, m_chkCardDetect.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
+    WriteToggleValue(MULTIPAD_SOUND_FIELD, m_chkMultiVoice.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
+    WriteToggleValue(BARCODE_USE_FIELD, m_chkScannerUse.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
+    WriteToggleValue(NOTIFY_DUAL_FIELD, m_chkAlarmDual.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
+
+    // NOTIFY_IMG: ON=0, OFF=1
+    AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_IMG_FIELD, m_chkAlarmGraph.IsToggled() ? _T("0") : _T("1"));
+    // AUTO_*: ON=0, OFF=1
+    AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_RESTART_FIELD, m_chkAutoReset.IsToggled() ? _T("0") : _T("1"));
+    AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_REBOOT_FIELD, m_chkAutoReboot.IsToggled() ? _T("0") : _T("1"));
 }
 
 // ============================================================================
@@ -1652,7 +2016,10 @@ void CShopSetupDlg::OnDestroy()
 void CShopSetupDlg::OnOK()
 {
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
-    UpdateData(TRUE);
+
+    // OK 버튼에서 일괄 저장 (Word 스펙)
+    SaveOptionsToRegistry();
+
     CDialog::OnOK();
 }
 

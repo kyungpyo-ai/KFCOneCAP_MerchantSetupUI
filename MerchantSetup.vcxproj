@@ -51,6 +51,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="MerchantSetupApp.cpp" />
+    <ClCompile Include="RegistryUtil.cpp" />
     <ClCompile Include="ShopDownDlg.cpp" />
     <ClCompile Include="ShopSetupDlg.cpp" />
     <ClCompile Include="stdafx.cpp" />
@@ -58,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MerchantSetupApp.h" />
+    <ClInclude Include="RegistryUtil.h" />
     <ClInclude Include="ShopDownDlg.h" />
     <ClInclude Include="ShopSetupDlg.h" />
     <ClInclude Include="resource.h" />

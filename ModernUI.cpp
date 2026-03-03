@@ -3236,6 +3236,17 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	if (m_nArrowX < totalPad + 14) m_nArrowX = totalPad + 14;
 	if (m_nArrowX > totalPad + cardW - 14) m_nArrowX = totalPad + cardW - 14;
 
+	// Store visible card+arrow screen rect for mouse-hook hit testing.
+	// Excludes transparent shadow padding so clicks near the anchor correctly dismiss.
+	{
+		int arrowHScaled = ModernUIDpi::Scale(hRef, kArrowH);
+		m_rcVisibleCard.SetRect(
+			px + totalPad,
+			py + totalPad,
+			px + totalPad + cardW,
+			py + totalPad + arrowHScaled + m_nCardH);
+	}
+
 	SetWindowPos(&wndTopMost, px, py, popW, popH,
 		SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
@@ -3516,9 +3527,8 @@ void CModernPopover::RefreshLayered()
 		s_pPopoverInst != NULL && s_pPopoverInst->IsVisible())
 	{
 		MSLLHOOKSTRUCT* p = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
-		CRect rc;
-		s_pPopoverInst->GetWindowRect(&rc);
-		if (!rc.PtInRect(p->pt))
+		// Use visible card rect (not full window rect with shadow padding).
+		if (!s_pPopoverInst->m_rcVisibleCard.PtInRect(p->pt))
 			s_pPopoverInst->Hide();
 	}
 	return ::CallNextHookEx(hSave, nCode, wParam, lParam);

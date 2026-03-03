@@ -193,6 +193,9 @@ private:
     // v10.1
     void UpdateToggleDependentEdits(BOOL bForceRedraw = TRUE);
 
+    void LoadOptionsFromRegistry();
+    void SaveOptionsToRegistry();
+
     enum SECTION_ICON_TYPE
     {
         ICON_SQUARE   = 0,

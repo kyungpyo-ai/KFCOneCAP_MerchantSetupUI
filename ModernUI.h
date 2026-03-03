@@ -613,6 +613,7 @@ void RefreshLayered();
     int     m_nCardH;   // DPI-scaled card height (auto-sized from text)
     int     m_nBlurPad; // extra pad for shadow blur (prevents clipping)
     BOOL    m_bVisible;
+    CRect   m_rcVisibleCard; // screen rect of visible card+arrow (excludes shadow padding)
     static HHOOK           s_hMouseHook;
     static CModernPopover* s_pPopoverInst;
 
