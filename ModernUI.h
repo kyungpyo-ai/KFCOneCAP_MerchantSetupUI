@@ -41,6 +41,11 @@ typedef float REAL;
 #define KFTC_TEXT_LIGHT      RGB( 74, 111, 165)
 #define KFTC_BG_LIGHT        BLUE_50
 #define KFTC_BORDER          RGB(214, 228, 247)   // blue-tinted border
+#define KFTC_DISABLED_BG     GRAY_100
+#define KFTC_DISABLED_BORDER GRAY_200
+#define KFTC_DISABLED_TEXT   GRAY_500
+#define KFTC_DISABLED_ICON   GRAY_300
+
 
 // ========================================
 // Input theme (Combo/Edit )
@@ -606,6 +611,7 @@ void RefreshLayered();
     int     m_nArrowX;
     int     m_nCardW;   // DPI-scaled card width (without shadow padding)
     int     m_nCardH;   // DPI-scaled card height (auto-sized from text)
+    int     m_nBlurPad; // extra pad for shadow blur (prevents clipping)
     BOOL    m_bVisible;
     static HHOOK           s_hMouseHook;
     static CModernPopover* s_pPopoverInst;
@@ -616,5 +622,6 @@ void RefreshLayered();
     static const int kPopMinH = 96;
     static const int kArrowH = 10;
     static const int kShadowPad = 16;
+    static const int kShadowBlurPad = 12; // extra blur room for layered shadow
     static const int kShadowOffY = 8;
 };

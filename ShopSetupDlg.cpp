@@ -60,6 +60,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_LBUTTONDOWN()
     ON_WM_TIMER()
     ON_WM_NCACTIVATE()          // [FIX v2.1] xxxSaveDlgFocus O(N^2) 차단
+    ON_WM_ACTIVATE()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
     ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO,     OnBnClickedVanServerInfo)
     ON_BN_CLICKED(IDC_BTN_PORT_INFO,           OnBnClickedPortInfo)
@@ -79,6 +80,8 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_BN_CLICKED(IDC_BTN_SIGN_PAD_PORT_INFO,  OnBnClickedSignPadPortInfo)
     ON_BN_CLICKED(IDC_BTN_SIGN_PAD_SPEED_INFO, OnBnClickedSignPadSpeedInfo)
     ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO,     OnBnClickedAlarmSizeInfo)
+    ON_BN_CLICKED(IDC_CHECK_CARD_DETECT,        OnBnClickedCardDetectToggle)
+    ON_BN_CLICKED(IDC_CHECK_SCANNER_USE,        OnBnClickedScannerUseToggle)
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -93,7 +96,22 @@ END_MESSAGE_MAP()
 //        타이틀바 활성/비활성 렌더링은 유지되고 버튼 순회는 생략된다.
 BOOL CShopSetupDlg::OnNcActivate(BOOL bActive)
 {
-    return (BOOL)::DefWindowProc(m_hWnd, WM_NCACTIVATE, (WPARAM)(BOOL)bActive, 0L);
+    // DefWindowProc(dialogHwnd) 는 결국 DefDlgProcA 로 라우팅되어
+    // xxxSaveDlgFocus -> 버튼 50개 BM_SETSTYLE SendMessage -> O(N^2) 연쇄
+    // -> "응답없음" 이 발생한다.
+    // TRUE 반환만으로 USER32 가 타이틀바를 다시 그리므로 DefProc 호출 불필요.
+    UNREFERENCED_PARAMETER(bActive);
+    return TRUE;
+}
+
+void CShopSetupDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+    // WM_ACTIVATE 도 DefDlgProcA -> xxxSaveDlgFocus -> 버튼 50개 BM_SETSTYLE
+    // -> O(N^2) 연쇄 -> "응답없음" 유발.
+    // base 클래스(CDialog::OnActivate) 호출 금지.
+    UNREFERENCED_PARAMETER(nState);
+    UNREFERENCED_PARAMETER(pWndOther);
+    UNREFERENCED_PARAMETER(bMinimized);
 }
 
 // ============================================================================
@@ -241,6 +259,9 @@ CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
 
     InitializeControls();
     UpdateData(FALSE);
+
+    // v10.1: enable/disable edits based on toggle states
+    UpdateToggleDependentEdits(FALSE);
 
     // 다이얼로그 크기
     const int MARGIN_X = S(kTabPadLeft);
@@ -1862,3 +1883,46 @@ void CShopSetupDlg::DrawSectionIcon(CDC* /*pDC*/, const CRect& /*rcIcon*/,
 // ============================================================================
 void CShopSetupDlg::OnTimer(UINT_PTR nIDEvent) { CDialog::OnTimer(nIDEvent); }
 void CShopSetupDlg::UpdateInputHoverByCursor() {}
+
+// ============================================================================
+// v10.1 - Toggle dependent edit enable/disable
+// ============================================================================
+
+void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
+{
+    // Card detect (priority transaction)
+    if (m_editCardDetectParam.GetSafeHwnd() && m_chkCardDetect.GetSafeHwnd())
+    {
+        const BOOL bEnable = m_chkCardDetect.IsToggled();
+        m_editCardDetectParam.EnableWindow(bEnable);
+
+        if (!bEnable && ::GetFocus() == m_editCardDetectParam.GetSafeHwnd())
+            m_tabCtrl.SetFocus();
+
+        if (bForceRedraw)
+            m_editCardDetectParam.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+    }
+
+    // Scanner use
+    if (m_editScannerPort.GetSafeHwnd() && m_chkScannerUse.GetSafeHwnd())
+    {
+        const BOOL bEnable = m_chkScannerUse.IsToggled();
+        m_editScannerPort.EnableWindow(bEnable);
+
+        if (!bEnable && ::GetFocus() == m_editScannerPort.GetSafeHwnd())
+            m_tabCtrl.SetFocus();
+
+        if (bForceRedraw)
+            m_editScannerPort.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+    }
+}
+
+void CShopSetupDlg::OnBnClickedCardDetectToggle()
+{
+    UpdateToggleDependentEdits(TRUE);
+}
+
+void CShopSetupDlg::OnBnClickedScannerUseToggle()
+{
+    UpdateToggleDependentEdits(TRUE);
+}

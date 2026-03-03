@@ -162,6 +162,7 @@ protected:
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg BOOL OnNcActivate(BOOL bActive);   // [FIX v2.1] DefDlgProc xxxSaveDlgFocus O(N^2) Â÷´Ü
+    afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     afx_msg void OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnBnClickedVanServerInfo();
     afx_msg void OnBnClickedPortInfo();
@@ -182,9 +183,16 @@ protected:
     afx_msg void OnBnClickedSignPadSpeedInfo();
     afx_msg void OnBnClickedAlarmSizeInfo();
 
+    // v10.1: toggle-dependent edits
+    afx_msg void OnBnClickedCardDetectToggle();
+    afx_msg void OnBnClickedScannerUseToggle();
+
     DECLARE_MESSAGE_MAP()
 
 private:
+    // v10.1
+    void UpdateToggleDependentEdits(BOOL bForceRedraw = TRUE);
+
     enum SECTION_ICON_TYPE
     {
         ICON_SQUARE   = 0,

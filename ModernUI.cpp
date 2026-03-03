@@ -221,6 +221,9 @@ LRESULT CModernButton::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
         return r;
     }
 
+    if (message == WM_ENABLE)
+        Invalidate(FALSE);
+
     return CButton::WindowProc(message, wParam, lParam);
 }
 
@@ -249,6 +252,7 @@ void CModernButton::ClearUnderlayColor()
 
 void CModernButton::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
 	if (!m_bTracking)
 	{
 		TRACKMOUSEEVENT tme;
@@ -282,6 +286,7 @@ LRESULT CModernButton::OnMouseHover(WPARAM wParam, LPARAM lParam)
 
 void CModernButton::OnLButtonDown(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonDown(nFlags, point); return; }
 	m_bPressed = TRUE;
 	Invalidate();
 	CButton::OnLButtonDown(nFlags, point);
@@ -289,6 +294,7 @@ void CModernButton::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CModernButton::OnLButtonUp(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonUp(nFlags, point); return; }
 	m_bPressed = FALSE;
 	Invalidate();
 	CButton::OnLButtonUp(nFlags, point);
@@ -307,8 +313,10 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	CRect rect = lpDrawItemStruct->rcItem;
 
 	// 
-	const bool pressed = (m_bPressed != FALSE) || ((lpDrawItemStruct->itemState & ODS_SELECTED) != 0);
-	const bool hover   = (m_bHover != FALSE);
+	const bool disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
+	const bool enabled = !disabled;
+	const bool pressed = (!disabled) && ((m_bPressed != FALSE) || ((lpDrawItemStruct->itemState & ODS_SELECTED) != 0));
+	const bool hover   = (!disabled) && (m_bHover != FALSE);
 
 	// :  DC      (hover/pressed  )
 	CDC memDC;
@@ -343,6 +351,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	CString t = strText; t.Trim();
 	BOOL isPrimary  = (t.Find(_T("확인")) >= 0);
 	BOOL isExit     = (t.Find(_T("취소")) >= 0) || (t.Find(_T("닫기")) >= 0) || (t.Find(_T("삭제")) >= 0);
+	BOOL isDanger   = (t.Find(_T("삭제")) >= 0);
 	BOOL isDownload = (t.Find(_T("다운")) >= 0);
 	BOOL isMini     = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
 //   (//ε)
@@ -350,17 +359,22 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	//  :    1px  
 	const int pressOffset = pressed ? 1 : 0;
 
+	// Safe padding to avoid right/bottom clipping even with AA + shadow.
+	CRect rcSafe = rc;
+	rcSafe.DeflateRect(0, 0, 1, 1);
+
 	const float rad = 8.0f;
 	Gdiplus::RectF rf(
-		(float)rc.left + 1.5f,
-		(float)rc.top  + 1.5f + (float)pressOffset,
-		(float)rc.Width()  - 3.0f,
-		(float)rc.Height() - 3.0f);
+		(float)rcSafe.left + 1.5f,
+		(float)rcSafe.top  + 1.5f + (float)pressOffset,
+		(float)rcSafe.Width()  - 3.0f,
+		(float)rcSafe.Height() - 3.0f);
 
 	//  (Pressed    "" )
 	{
 		const int shadowA = pressed ? 6 : 12;
-		Gdiplus::RectF sh(rf.X, rf.Y + 1.5f, rf.Width, rf.Height);
+		const float shDy = 1.0f;
+		Gdiplus::RectF sh(rf.X, rf.Y + shDy, rf.Width, rf.Height - shDy);
 		Gdiplus::GraphicsPath sp; AddRoundRect(sp, sh, rad);
 		Gdiplus::SolidBrush sb(Gdiplus::Color(shadowA, 0, 0, 0));
 		g.FillPath(&sb, &sp);
@@ -375,11 +389,33 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		// ==============================
 	// 배경/테두리: Primary / Secondary / Tint
 	// ==============================
-	if (isPrimary)
+	if (disabled)
+	{
+		// Disabled: muted background/border/text
+		COLORREF dbg = GRAY_100;
+		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(dbg), GetGValue(dbg), GetBValue(dbg)));
+		g.FillPath(&br, &bp);
+		COLORREF dborder = GRAY_200;
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(dborder), GetGValue(dborder), GetBValue(dborder)), 1.2f);
+		pen.SetLineJoin(Gdiplus::LineJoinRound);
+		g.DrawPath(&pen, &bp);
+	}
+	else 	if (isPrimary)
 	{
 		COLORREF c = pressed ? BLUE_700 : (hover ? BLUE_600 : BLUE_500);
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(c), GetGValue(c), GetBValue(c)));
 		g.FillPath(&br, &bp);
+	}
+	else if (isDanger)
+	{
+		// Danger (Delete): destructive action
+		COLORREF bg = pressed ? RGB(252, 205, 205) : (hover ? RGB(254, 235, 235) : RGB(255, 245, 245));
+		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
+		g.FillPath(&br, &bp);
+		COLORREF border = hover ? RGB(248, 113, 113) : RGB(252, 165, 165);
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
+		pen.SetLineJoin(Gdiplus::LineJoinRound);
+		g.DrawPath(&pen, &bp);
 	}
 	else if (isDownload)
 	{
@@ -390,9 +426,20 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
+	else if (isExit)
+	{
+		// Secondary (Cancel/Close): slightly filled for better affordance
+		COLORREF bg = pressed ? GRAY_200 : (hover ? GRAY_100 : GRAY_50);
+		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
+		g.FillPath(&br, &bp);
+		COLORREF border = hover ? GRAY_300 : GRAY_200;
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
+		pen.SetLineJoin(Gdiplus::LineJoinRound);
+		g.DrawPath(&pen, &bp);
+	}
 	else
 	{
-		// Secondary (취소/닫기/일반)
+		// Secondary (default)
 		COLORREF bg = pressed ? GRAY_100 : (hover ? GRAY_50 : RGB(255, 255, 255));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
@@ -402,11 +449,18 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		g.DrawPath(&pen, &bp);
 	}
 
-Gdiplus::Color txtColor = (isPrimary)
-		? Gdiplus::Color(255, 255, 255, 255)
-		: (isDownload
-			? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
-			: Gdiplus::Color(255, GetRValue(GRAY_800), GetGValue(GRAY_800), GetBValue(GRAY_800)));
+Gdiplus::Color txtColor;
+	if (disabled)
+		txtColor = Gdiplus::Color(255, GetRValue(GRAY_500), GetGValue(GRAY_500), GetBValue(GRAY_500));
+	else
+		txtColor = (isPrimary)
+			? Gdiplus::Color(255, 255, 255, 255)
+			: (isDanger
+				? Gdiplus::Color(255, 185, 28, 28)
+				: (isDownload
+					? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
+					: Gdiplus::Color(255, GetRValue(GRAY_800), GetGValue(GRAY_800), GetBValue(GRAY_800))));
+
 
 	Gdiplus::SolidBrush tb(txtColor);
 	Gdiplus::FontFamily ff(L"Malgun Gothic");
@@ -489,6 +543,7 @@ void CModernCheckBox::SetChecked(BOOL bChecked)
 
 void CModernCheckBox::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
 	if (!m_bTracking)
 	{
 		TRACKMOUSEEVENT tme;
@@ -546,6 +601,9 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rect = lpDrawItemStruct->rcItem;
 
+	const BOOL disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
+	if (disabled) { m_bHover = FALSE; }
+
 	Gdiplus::Graphics graphics(pDC->m_hDC);
 	graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 	graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
@@ -572,16 +630,26 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	if (m_bChecked)
 	{
 		//  
-		Gdiplus::LinearGradientBrush checkBrush(
+		if (disabled)
+		{
+			COLORREF c = GRAY_300;
+			Gdiplus::SolidBrush checkBrush(Gdiplus::Color(255, GetRValue(c), GetGValue(c), GetBValue(c)));
+			graphics.FillPath(&checkBrush, &boxPath);
+		}
+		else
+		{
+			Gdiplus::LinearGradientBrush checkBrush(
 			Gdiplus::PointF(boxRect.X, boxRect.Y),
 			Gdiplus::PointF(boxRect.X, boxRect.Y + boxRect.Height),
 			Gdiplus::Color(255, 0, 100, 221),
 			Gdiplus::Color(255, 15, 124, 255)
 		);
-		graphics.FillPath(&checkBrush, &boxPath);
+			graphics.FillPath(&checkBrush, &boxPath);
+		}
 
 		//  
-		Gdiplus::Pen checkPen(Gdiplus::Color(255, 255, 255, 255), (float)ModernUIDpi::Scale(m_hWnd, 2));
+		COLORREF chk = disabled ? GRAY_100 : RGB(255,255,255);
+		Gdiplus::Pen checkPen(Gdiplus::Color(255, GetRValue(chk), GetGValue(chk), GetBValue(chk)), (float)ModernUIDpi::Scale(m_hWnd, 2));
 		checkPen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
 
 		graphics.DrawLine(&checkPen,
@@ -594,15 +662,19 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	else
 	{
 		//   
-		Gdiplus::SolidBrush uncheckBrush(Gdiplus::Color(255, 255, 255, 255));
+		COLORREF ubg = disabled ? KFTC_DISABLED_BG : RGB(255,255,255);
+		Gdiplus::SolidBrush uncheckBrush(Gdiplus::Color(255, GetRValue(ubg), GetGValue(ubg), GetBValue(ubg)));
 		graphics.FillPath(&uncheckBrush, &boxPath);
 	}
 
 	// θ
 	Gdiplus::Color borderColor;
-	borderColor = m_bHover ? Gdiplus::Color(255, 15, 124, 255) : Gdiplus::Color(255, 168, 208, 255);
+	if (disabled)
+		borderColor = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
+	else
+		borderColor = m_bHover ? Gdiplus::Color(255, 15, 124, 255) : Gdiplus::Color(255, 168, 208, 255);
 
-	Gdiplus::Pen borderPen(borderColor, m_bHover ? ModernUIDpi::ScaleF(m_hWnd, 1.6f) : ModernUIDpi::ScaleF(m_hWnd, 1.2f));
+	Gdiplus::Pen borderPen(borderColor, (disabled || !m_bHover) ? ModernUIDpi::ScaleF(m_hWnd, 1.2f) : ModernUIDpi::ScaleF(m_hWnd, 1.6f));
 	graphics.DrawPath(&borderPen, &boxPath);
 
 	// 
@@ -718,6 +790,7 @@ void CPortToggleButton::SetToggled(BOOL bToggled)
 
 void CPortToggleButton::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
 	if (!m_bTracking)
 	{
 		TRACKMOUSEEVENT tme;
@@ -751,6 +824,7 @@ LRESULT CPortToggleButton::OnMouseHover(WPARAM wParam, LPARAM lParam)
 
 void CPortToggleButton::OnLButtonUp(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonUp(nFlags, point); return; }
 	m_bToggled = !m_bToggled;
 	Invalidate();
 
@@ -809,6 +883,9 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	const int w = rcItem.Width();
 	const int h = rcItem.Height();
 
+	const BOOL disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
+	if (disabled) { m_bHover = FALSE; }
+
 	// Double buffering (toggle click/focus flicker )
 	CDC memDC;
 	memDC.CreateCompatibleDC(pDC);
@@ -848,7 +925,12 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		// ON:   /      
 		Gdiplus::Color c1, c2;
-		if (m_bHover)
+		if (disabled)
+		{
+			c1 = Gdiplus::Color(255, GetRValue(GRAY_300), GetGValue(GRAY_300), GetBValue(GRAY_300));
+			c2 = Gdiplus::Color(255, GetRValue(GRAY_200), GetGValue(GRAY_200), GetBValue(GRAY_200));
+		}
+		else if (m_bHover)
 		{
 			c1 = Gdiplus::Color(255, 20, 118, 245);  // :   
 			c2 = Gdiplus::Color(255, 10, 140, 255);
@@ -867,9 +949,11 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	else
 	{
 		// OFF:   /     
-		Gdiplus::Color offColor = m_bHover
-			? Gdiplus::Color(255, 208, 218, 232)   // :   
-			: Gdiplus::Color(255, 230, 236, 245);   // 
+		Gdiplus::Color offColor = disabled
+			? Gdiplus::Color(255, GetRValue(GRAY_200), GetGValue(GRAY_200), GetBValue(GRAY_200))
+			: (m_bHover
+				? Gdiplus::Color(255, 208, 218, 232)   // :   
+				: Gdiplus::Color(255, 230, 236, 245));   // 
 		Gdiplus::SolidBrush trackBrush(offColor);
 		graphics.FillPath(&trackBrush, &switchPath);
 	}
@@ -895,9 +979,11 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	graphics.FillEllipse(&shadowBrush, shadowRect);
 
 	//   (,    )
-	Gdiplus::Color knobColor = m_bHover
-		? Gdiplus::Color(255, 252, 252, 255)   // :    
-		: Gdiplus::Color(255, 255, 255, 255);
+	Gdiplus::Color knobColor = disabled
+		? Gdiplus::Color(255, GetRValue(GRAY_100), GetGValue(GRAY_100), GetBValue(GRAY_100))
+		: (m_bHover
+			? Gdiplus::Color(255, 252, 252, 255)   // :    
+			: Gdiplus::Color(255, 255, 255, 255));
 	Gdiplus::SolidBrush knobBrush(knobColor);
 	graphics.FillEllipse(&knobBrush, knobRect);
 
@@ -915,7 +1001,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 		HFONT hOld = (HFONT)::SelectObject(memDC.GetSafeHdc(), hFont);
 		//   RGB(100, 112, 132) 
-		::SetTextColor(memDC.GetSafeHdc(), RGB(100, 112, 132));
+		::SetTextColor(memDC.GetSafeHdc(), disabled ? GRAY_500 : RGB(100, 112, 132));
 		::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
 
 		CRect rcText(0, 0, (int)switchX - 6, rect.Height());
@@ -933,6 +1019,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CModernToggleSwitch::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
 	if (!m_bTracking)
 	{
 		TRACKMOUSEEVENT tme;
@@ -972,6 +1059,7 @@ LRESULT CModernToggleSwitch::OnMouseHover(WPARAM wParam, LPARAM lParam)
 
 void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonUp(nFlags, point); return; }
 	m_bToggled = !m_bToggled;
 	Invalidate(FALSE);
 
@@ -986,6 +1074,9 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rect = lpDrawItemStruct->rcItem;
+
+	const BOOL disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
+	if (disabled) { m_bHover = FALSE; }
 
 	//     : θ  
 	pDC->FillSolidRect(&rect, kftc_parent_bg_color(m_hWnd, pDC->m_hDC));
@@ -1009,24 +1100,36 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	if (m_bToggled)
 	{
 		// ON  ()
-		Gdiplus::LinearGradientBrush bgBrush(
+		if (disabled)
+		{
+			COLORREF c = GRAY_300;
+			Gdiplus::SolidBrush bgBrush(Gdiplus::Color(255, GetRValue(c), GetGValue(c), GetBValue(c)));
+			graphics.FillPath(&bgBrush, &switchPath);
+		}
+		else
+		{
+			Gdiplus::LinearGradientBrush bgBrush(
 			Gdiplus::PointF(switchRect.X, switchRect.Y),
 			Gdiplus::PointF(switchRect.X, switchRect.Y + switchRect.Height),
 			Gdiplus::Color(255, 0, 100, 221),
 			Gdiplus::Color(255, 15, 124, 255)
 		);
-		graphics.FillPath(&bgBrush, &switchPath);
+			graphics.FillPath(&bgBrush, &switchPath);
+		}
 	}
 	else
 	{
 		// OFF  ()
-		Gdiplus::SolidBrush bgBrush(Gdiplus::Color(255, 184, 208, 238));
+		COLORREF offc = disabled ? GRAY_200 : RGB(184,208,238);
+		Gdiplus::SolidBrush bgBrush(Gdiplus::Color(255, GetRValue(offc), GetGValue(offc), GetBValue(offc)));
 		graphics.FillPath(&bgBrush, &switchPath);
 	}
 
 	// θ
 	Gdiplus::Color borderColor;
-	if (m_bHover)
+	if (disabled)
+		borderColor = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
+	else if (m_bHover)
 		borderColor = m_bToggled ? Gdiplus::Color(255, 0, 163, 224) : Gdiplus::Color(255, 160, 160, 160);
 	else
 		borderColor = m_bToggled ? Gdiplus::Color(255, 0, 118, 190) : Gdiplus::Color(100, 0, 0, 0);
@@ -1048,7 +1151,8 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	graphics.FillEllipse(&shadowBrush, shadowRect);
 
 	// 
-	Gdiplus::SolidBrush knobBrush(Gdiplus::Color(255, 255, 255, 255));
+	COLORREF kclr = disabled ? GRAY_100 : RGB(255,255,255);
+	Gdiplus::SolidBrush knobBrush(Gdiplus::Color(255, GetRValue(kclr), GetGValue(kclr), GetBValue(kclr)));
 	graphics.FillEllipse(&knobBrush, knobRect);
 
 	// 
@@ -1057,7 +1161,8 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	if (!strText.IsEmpty())
 	{
-		Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 6, 52, 109));
+		COLORREF tclr = disabled ? KFTC_DISABLED_TEXT : RGB(6,52,109);
+		Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, GetRValue(tclr), GetGValue(tclr), GetBValue(tclr)));
 		Gdiplus::FontFamily fontFamily(L"Malgun Gothic");
 		Gdiplus::Font font(&fontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
@@ -1181,6 +1286,7 @@ void CSkinnedComboBox::PreSubclassWindow()
 	// item height: MoveWindow   border (2px)  
 	CRect rc;
 	GetClientRect(&rc);
+	const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
 	int selH = max(16, rc.Height() - 2);   //     (border 1px )
 	int listH = max(selH, m_nTextPx + 10);
 
@@ -1206,6 +1312,7 @@ void CSkinnedComboBox::TrackMouseLeave()
 
 void CSkinnedComboBox::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CComboBox::OnMouseMove(nFlags, point); return; }
 	if (!m_bHover)
 	{
 		m_bHover = TRUE;
@@ -1288,6 +1395,7 @@ void CSkinnedComboBox::OnKillFocus(CWnd* pNewWnd)
 
 void CSkinnedComboBox::OnLButtonDown(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CComboBox::OnLButtonDown(nFlags, point); return; }
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
 	CComboBox::OnLButtonDown(nFlags, point);
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
@@ -1337,6 +1445,7 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 {
 	CRect rc;
 	GetClientRect(&rc);
+	const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
 
 	CDC memDC;
 	memDC.CreateCompatibleDC(&dc);
@@ -1359,7 +1468,7 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 // -  
 // - UnderlayColor  (/  ð  )
 //      UnderlayColor  " "   .
-	Gdiplus::Color bg(255, 255, 255, 255);
+	Gdiplus::Color bg(255, GetRValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetGValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetBValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG));
 	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
 	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
 	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
@@ -1393,7 +1502,7 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	const int dropW = kftc_min_i(m_nDropW, rc.Width());
 	CRect rcDrop(rc.right - dropW, rc.top, rc.right, rc.bottom);
 
-	const int thickI = (m_bFocus || m_bDropped) ? (int)th.thickF : (int)th.thickN;
+	const int thickI = (enabled && (m_bFocus || m_bDropped)) ? (int)th.thickF : (int)th.thickN;
 	const Gdiplus::REAL thick = (Gdiplus::REAL)thickI;
 
 	int radI = m_nRadius;
@@ -1410,7 +1519,9 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	if (rfInner.Height < 2.0f) rfInner.Height = 2.0f;
 
 	Gdiplus::Color bc = borderN;
-	if (m_bFocus || m_bDropped) bc = borderF;
+	if (!enabled)
+		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
+	else if (m_bFocus || m_bDropped) bc = borderF;
 	else if (m_bHover) bc = borderH;
 
 	Gdiplus::GraphicsPath pathOuter;
@@ -1472,8 +1583,10 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 			pts[2] = Gdiplus::PointF(cx + sz, cy + sz * 0.6f);
 		}
 
-		Gdiplus::Color arrColor = m_bHover ? Gdiplus::Color(255, 100, 100, 100) : Gdiplus::Color(255, 160, 160, 160);
-		if (m_bDropped || m_bFocus) arrColor = Gdiplus::Color(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
+		Gdiplus::Color arrColor = (!enabled)
+			? Gdiplus::Color(255, GetRValue(GRAY_300), GetGValue(GRAY_300), GetBValue(GRAY_300))
+			: (m_bHover ? Gdiplus::Color(255, 100, 100, 100) : Gdiplus::Color(255, 160, 160, 160));
+		if (enabled && (m_bDropped || m_bFocus)) arrColor = Gdiplus::Color(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
 
 		Gdiplus::Pen arrPen(arrColor, 2.0f); //  β 2.0
 		arrPen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
@@ -1527,7 +1640,7 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 
 		if (!text.IsEmpty())
 		{
-			const COLORREF crTxt = RGB(30, 45, 70);
+			const COLORREF crTxt = enabled ? RGB(30, 45, 70) : KFTC_DISABLED_TEXT;
 			Gdiplus::SolidBrush brText(Gdiplus::Color(255, GetRValue(crTxt), GetGValue(crTxt), GetBValue(crTxt)));
 
 			Gdiplus::StringFormat fmt;
@@ -2056,13 +2169,14 @@ HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
 	// Make the native text/background paint match our underlay so that
 	// WM_PRINTCLIENT (used to render text/caret/selection) does not repaint
 	// the client area with plain white.
-	const COLORREF bg = RGB(255, 255, 255);
+	const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
+	const COLORREF bg = enabled ? RGB(255, 255, 255) : KFTC_DISABLED_BG;
 
 	if (pDC)
 	{
 		pDC->SetBkColor(bg);
 		// text color is managed by Windows theme; keep default window text
-		pDC->SetTextColor(::GetSysColor(COLOR_WINDOWTEXT));
+		pDC->SetTextColor(enabled ? ::GetSysColor(COLOR_WINDOWTEXT) : ::GetSysColor(COLOR_GRAYTEXT));
 		pDC->SetBkMode(OPAQUE);
 
 		// Clip to the inner (non-border) area so that selection-drag direct-painting
@@ -2071,7 +2185,7 @@ HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
 		CRect rcCtl;
 		GetClientRect(&rcCtl);
 		const KFTCInputTheme& th = GetActiveInputTheme();
-		const int thickI = m_bFocus ? (int)th.thickF : (int)th.thickN;
+		const int thickI = (enabled && m_bFocus) ? (int)th.thickF : (int)th.thickN;
 		const int inset  = thickI + 1;
 		int rr = m_nRadius - thickI;
 		if (rr < 1) rr = 1;
@@ -2148,22 +2262,26 @@ void CSkinnedEdit::OnPaint()
 	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);
 	g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
+		const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
+
 	const KFTCInputTheme& th = GetActiveInputTheme();
 	const COLORREF crBorderN = th.borderN;
 	const COLORREF crBorderH = th.borderH;
 	const COLORREF crBorderF = th.borderF;
 
 	//    :   ( rect )
-	Gdiplus::Color bg(255, 255, 255, 255);
+	Gdiplus::Color bg(255, GetRValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetGValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetBValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG));
 	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
 	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
 	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
 
 	Gdiplus::Color bc = borderN;
-	if (m_bFocus)      bc = borderF;
+	if (!enabled)
+		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
+	else if (m_bFocus)      bc = borderF;
 	else if (m_bHover) bc = borderH;
 
-	const int thickI = m_bFocus ? (int)th.thickF : (int)th.thickN;
+	const int thickI = (enabled && m_bFocus) ? (int)th.thickF : (int)th.thickN;
 	const Gdiplus::REAL thick = (Gdiplus::REAL)thickI;
 
 	int radI = m_nRadius;
@@ -2252,6 +2370,7 @@ void CSkinnedEdit::OnSize(UINT nType, int cx, int cy)
 
 void CSkinnedEdit::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CEdit::OnMouseMove(nFlags, point); return; }
 	if (!m_bHover)
 	{
 		m_bHover = TRUE;
@@ -2750,6 +2869,7 @@ CInfoIconButton::CInfoIconButton()
 
 void CInfoIconButton::OnMouseMove(UINT nFlags, CPoint point)
 {
+	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
 	if (!m_bTracking)
 	{
 		TRACKMOUSEEVENT tme = { sizeof(TRACKMOUSEEVENT) };
@@ -2783,6 +2903,9 @@ void CInfoIconButton::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 
 	CRect rect(lpDIS->rcItem);
 
+	const BOOL disabled = ((lpDIS->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
+	if (disabled) { m_bHover = FALSE; }
+
 	// Double-buffered drawing to prevent hover/click flicker.
 	CDC dcMem;
 	dcMem.CreateCompatibleDC(CDC::FromHandle(lpDIS->hDC));
@@ -2807,10 +2930,14 @@ void CInfoIconButton::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 
 	// Keep hover/pressed visuals very close to avoid "blink" on click.
 	const BOOL bPressed = (lpDIS->itemState & ODS_SELECTED) ? TRUE : FALSE;
-	const BOOL bHot = (m_bHover || bPressed);
+	const BOOL bHot = (!disabled) && (m_bHover || bPressed);
 
 	
 	// Press feedback without color \"blink\": nudge the icon by 1px when pressed.
+	// Reserve 1px on right/bottom to avoid clipping (AA/ellipse edge), then apply the nudge.
+	rf.Width  -= 1.0f;
+	rf.Height -= 1.0f;
+
 	const int nPressOffset = bPressed ? 1 : 0;
 	if (nPressOffset)
 	{
@@ -2819,8 +2946,8 @@ void CInfoIconButton::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 		rf.X += (float)nPressOffset;
 		rf.Y += (float)nPressOffset;
 	}
-COLORREF fill = bHot ? KFTC_PRIMARY : RGB(232, 240, 254); // #E8F0FE
-	COLORREF txt  = bHot ? RGB(255, 255, 255) : KFTC_PRIMARY;
+COLORREF fill = disabled ? KFTC_DISABLED_BG : (bHot ? KFTC_PRIMARY : RGB(232, 240, 254)); // #E8F0FE
+	COLORREF txt  = disabled ? KFTC_DISABLED_TEXT : (bHot ? RGB(255, 255, 255) : KFTC_PRIMARY);
 
 	Gdiplus::SolidBrush brFill(Gdiplus::Color(255,
 		GetRValue(fill), GetGValue(fill), GetBValue(fill)));
@@ -2863,7 +2990,7 @@ HHOOK           CModernPopover::s_hMouseHook = NULL;
 CModernPopover* CModernPopover::s_pPopoverInst = NULL;
 
 CModernPopover::CModernPopover()
-	: m_nArrowX(0), m_nCardW(0), m_nCardH(0), m_bVisible(FALSE)
+	: m_nArrowX(0), m_nCardW(0), m_nCardH(0), m_bVisible(FALSE), m_nBlurPad(0)
 {
 }
 
@@ -3022,14 +3149,16 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 		CreateEx(WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_LAYERED,
 			_T("KFTCModernPopover"), _T(""),
 			WS_POPUP,
-			0, 0, kPopW + 2 * kShadowPad, kPopMinH + kArrowH + kShadowPad,
+			0, 0, kPopW + 2 * (kShadowPad + kShadowBlurPad), kPopMinH + kArrowH + (kShadowPad + kShadowBlurPad),
 			pParent ? pParent->GetSafeHwnd() : NULL, NULL);
 	}
 
 	HWND hRef = pParent ? pParent->GetSafeHwnd() : m_hWnd;
 
 	int shadowPad = ModernUIDpi::Scale(hRef, kShadowPad);
-	
+	int blurPad   = ModernUIDpi::Scale(hRef, kShadowBlurPad);
+	m_nBlurPad = blurPad;
+	int totalPad  = shadowPad + blurPad;
 	// ---- Auto size width (Toss-like) ----
 	// Base padding inside the white card (must match drawing paddings)
 	const int padL = ModernUIDpi::Scale(hRef, 16);
@@ -3073,7 +3202,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	int cardW = idealTextW > 0 ? (idealTextW + padL + padR) : ModernUIDpi::Scale(hRef, kPopW);
 	cardW = max(minCardW, min(cardW, maxCardW));
 	
-	int popW = cardW + 2 * shadowPad;
+	int popW = cardW + 2 * totalPad;
 	
 	// ---- Auto size height (Toss-like) ----
 	// Layout paddings (inside the white card)
@@ -3092,20 +3221,20 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	m_nCardH = max(ModernUIDpi::Scale(hRef, kPopMinH), padT + textH + padB);
 
 	// Total window height must include shadow padding, arrow, and a bit of bottom room for shadow offset.
-	int popH = shadowPad + ModernUIDpi::Scale(hRef, kArrowH) + m_nCardH + shadowPad + ModernUIDpi::Scale(hRef, kShadowOffY);
+	int popH = totalPad + ModernUIDpi::Scale(hRef, kArrowH) + m_nCardH + totalPad + ModernUIDpi::Scale(hRef, kShadowOffY);
 
 	// Center the visible card (not the full window) on the anchor icon
-	int px = anchorScrRc.CenterPoint().x - shadowPad - cardW / 2;
+	int px = anchorScrRc.CenterPoint().x - totalPad - cardW / 2;
 	const int gapToAnchor = ModernUIDpi::Scale(hRef, 4); //   (佺 )
-	int py = anchorScrRc.bottom - shadowPad + gapToAnchor;
+	int py = anchorScrRc.bottom - totalPad + gapToAnchor;
 
 	int screenH = ::GetSystemMetrics(SM_CYSCREEN);
 	if (py + popH > screenH - 10)
-		py = anchorScrRc.top - popH + shadowPad - gapToAnchor;
+		py = anchorScrRc.top - popH + totalPad - gapToAnchor;
 
 	m_nArrowX = (anchorScrRc.left + (anchorScrRc.Width() / 2)) - px - ModernUIDpi::Scale(hRef, 1);
-	if (m_nArrowX < shadowPad + 14) m_nArrowX = shadowPad + 14;
-	if (m_nArrowX > shadowPad + cardW - 14) m_nArrowX = shadowPad + cardW - 14;
+	if (m_nArrowX < totalPad + 14) m_nArrowX = totalPad + 14;
+	if (m_nArrowX > totalPad + cardW - 14) m_nArrowX = totalPad + cardW - 14;
 
 	SetWindowPos(&wndTopMost, px, py, popW, popH,
 		SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -3197,7 +3326,7 @@ void CModernPopover::RefreshLayered()
 
 		const int   arrowH = ModernUIDpi::Scale(m_hWnd, kArrowH);
 		const int   arrowHW = ModernUIDpi::Scale(m_hWnd, 9);
-		const int   shadowPad = ModernUIDpi::Scale(m_hWnd, kShadowPad);
+		const int   shadowPad = ModernUIDpi::Scale(m_hWnd, kShadowPad) + m_nBlurPad;
 		const int   shadowOffY = ModernUIDpi::Scale(m_hWnd, kShadowOffY);
 		const float radius = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
 

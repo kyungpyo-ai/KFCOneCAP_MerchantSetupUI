@@ -13,6 +13,7 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_MOUSEWHEEL()
     ON_WM_TIMER()
     ON_WM_DESTROY()
+    ON_WM_NCACTIVATE()    // [FIX] xxxSaveDlgFocus O(N^2) 차단
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -1002,6 +1003,16 @@ void CShopDownDlg::ApplyAllRowUnderlays()
 {
     for (int i = 0; i < kRowCount; ++i)
         ApplyRowUnderlay(i, TRUE);
+}
+
+BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
+{
+    // CShopDownDlg 는 버튼이 50개(다운로드 25 + 삭제 25) 있다.
+    // DefDlgProcA(WM_NCACTIVATE) -> xxxSaveDlgFocus -> 버튼 50개에
+    // BM_SETSTYLE SendMessage -> O(N^2) 동기 연쇄 -> "응답없음".
+    // DefWindowProc / DefDlgProc 를 일절 호출하지 않고 TRUE 만 반환해 차단.
+    UNREFERENCED_PARAMETER(bActive);
+    return TRUE;
 }
 
 

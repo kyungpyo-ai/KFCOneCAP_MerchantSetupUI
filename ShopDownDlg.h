@@ -23,6 +23,7 @@ protected:
     afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnDestroy();    virtual BOOL PreTranslateMessage(MSG* pMsg);  // 자식 컨트롤 위 휠 캡처
+    afx_msg BOOL OnNcActivate(BOOL bActive);  // [FIX] xxxSaveDlgFocus O(N^2) 차단
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()
