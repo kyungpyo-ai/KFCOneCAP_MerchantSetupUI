@@ -3247,8 +3247,8 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			py + totalPad + arrowHScaled + m_nCardH);
 	}
 
-	SetWindowPos(&wndTopMost, px, py, popW, popH,
-		SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	BOOL bPos = SetWindowPos(&wndTopMost, px, py, popW, popH, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	ASSERT(bPos);
 
 	RefreshLayered();
 	m_bVisible = TRUE;

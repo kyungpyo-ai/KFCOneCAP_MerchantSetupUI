@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "MerchantSetupApp.h"
 #include "ShopSetupDlg.h"
+#include "ModernUI.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -25,4 +26,10 @@ BOOL CMerchantSetupApp::InitInstance()
     ::InitCommonControlsEx(&icc);
     CShopSetupDlg dlg; m_pMainWnd = &dlg; dlg.DoModal();
     return FALSE;
+}
+
+int CMerchantSetupApp::ExitInstance()
+{
+    ModernUIGfx::ShutdownGdiplus();
+    return CWinApp::ExitInstance();
 }

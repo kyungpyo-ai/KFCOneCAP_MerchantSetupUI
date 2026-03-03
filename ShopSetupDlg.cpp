@@ -1375,7 +1375,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     // - 자동 재실행(AUTO_RESTART): ON(0)
     // - 자동 리부팅(AUTO_REBOOT): ON(0)
 
-    m_chkCardDetect.SetToggled(ReadToggle_DefaultOnWhenMissing(CARD_DETECT_FIELD, FALSE, _T("1"), _T("0")));
+    m_chkCardDetect.SetToggled(ReadToggle_DefaultOnWhenMissing(CARD_DETECT_FIELD, FALSE, _T("0"), _T("1")));
     m_chkMultiVoice.SetToggled(ReadToggle_DefaultOnWhenMissing(MULTIPAD_SOUND_FIELD, FALSE, _T("1"), _T("0")));
     // BARCODE_USE: OFF=0 / ON=1
     m_chkScannerUse.SetToggled(ReadToggle_DefaultOnWhenMissing(BARCODE_USE_FIELD, FALSE, _T("1"), _T("0")));
@@ -1462,7 +1462,7 @@ void CShopSetupDlg::SaveOptionsToRegistry()
     }
 
     // SERIALPORT - Toggle
-    WriteToggleValue(CARD_DETECT_FIELD, m_chkCardDetect.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
+    WriteToggleValue(CARD_DETECT_FIELD, m_chkCardDetect.IsToggled(), _T("0"), _T("1")); // ON=0, OFF=1
     WriteToggleValue(MULTIPAD_SOUND_FIELD, m_chkMultiVoice.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
     WriteToggleValue(BARCODE_USE_FIELD, m_chkScannerUse.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
     WriteToggleValue(NOTIFY_DUAL_FIELD, m_chkAlarmDual.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
@@ -2007,6 +2007,7 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 // ============================================================================
 void CShopSetupDlg::OnDestroy()
 {
+    if (m_popover.IsVisible()) m_popover.Hide();
     CDialog::OnDestroy();
 }
 

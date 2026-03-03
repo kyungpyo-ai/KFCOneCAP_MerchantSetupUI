@@ -587,7 +587,7 @@ class CModernPopover : public CWnd
 {
 public:
     CModernPopover();
-    virtual ~CModernPopover() {}
+    virtual ~CModernPopover() { if (s_hMouseHook && s_pPopoverInst == this) { ::UnhookWindowsHookEx(s_hMouseHook); s_hMouseHook = NULL; s_pPopoverInst = NULL; } }
 
     void ShowAt(const CRect& anchorScreenRect, LPCTSTR title, LPCTSTR body, CWnd* pParent);
     void Hide();

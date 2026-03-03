@@ -91,10 +91,7 @@ CShopDownDlg::~CShopDownDlg()
         KillTimer(kScrollTimerId);
         m_bScrollTimerActive = FALSE;
     }
-    delete m_pFontLbl;     m_pFontLbl     = nullptr;
-    delete m_pFontVal;     m_pFontVal     = nullptr;
-    delete m_pFontValBold; m_pFontValBold = nullptr;
-    delete m_pFontFamily;  m_pFontFamily  = nullptr;
+    // Font cleanup is handled in OnDestroy; pointers are null by the time the destructor runs.
     if (m_brushBg.GetSafeHandle())   m_brushBg.DeleteObject();
     if (m_brushCard.GetSafeHandle()) m_brushCard.DeleteObject();
 }
@@ -209,11 +206,9 @@ m_btnDelete[i].Create(_T("ªË¡¶"),
         m_btnDelete[i].SetColors(RGB(235,236,240), RGB(225,226,230), RGB(40,40,40));
 m_editMerchantName[i].CreateEx(0, _T("EDIT"), _T(""),
             roStyle, CRect(0,0,10,10), this, 62000+(i*10)+4);
-       // m_editMerchantName[i].SetUnderlayColor(crRowBg);
 
         m_editEtc[i].CreateEx(0, _T("EDIT"), _T(""),
             roStyle, CRect(0,0,10,10), this, 62000+(i*10)+5);
-       // m_editEtc[i].SetUnderlayColor(crRowBg);
 
         m_editMerchantName[i].ShowWindow(SW_HIDE);
         m_editEtc[i].ShowWindow(SW_HIDE);
@@ -457,6 +452,7 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
     UpdateScrollBar();
+    ApplyAllRowUnderlays();
     ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
     m_bInLayout = FALSE;
 }
