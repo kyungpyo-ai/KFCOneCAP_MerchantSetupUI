@@ -21,7 +21,8 @@ protected:
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
     afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-    afx_msg void OnTimer(UINT_PTR nIDEvent);    virtual BOOL PreTranslateMessage(MSG* pMsg);  // 자식 컨트롤 위 휠 캡처
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg void OnDestroy();    virtual BOOL PreTranslateMessage(MSG* pMsg);  // 자식 컨트롤 위 휠 캡처
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()

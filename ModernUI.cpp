@@ -173,6 +173,59 @@ CModernButton::~CModernButton()
 {
 }
 
+LRESULT CModernButton::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
+{
+    // Prevent re-entrancy during dialog default-button / focus save/restore path.
+    // When a dialog is re-activated, USER32 may send BM_SETSTYLE / focus messages
+    // while DefDlgProc is saving focus. Heavy work or synchronous redraw here can
+    // lead to "Not Responding" (SendMessage recursion).
+    static thread_local BOOL s_inBmSetStyle = FALSE;
+    static thread_local BOOL s_inFocusChange = FALSE;
+
+    if (GetSafeHwnd() == NULL)
+        return CButton::WindowProc(message, wParam, lParam);
+
+    if (message == BM_SETSTYLE)
+    {
+        if (s_inBmSetStyle)
+            return 0;
+
+        s_inBmSetStyle = TRUE;
+
+        // [FIX v2.1] CButton::WindowProc(BM_SETSTYLE) -> DefWindowProc -> DM_SETDEFID
+        // -> 부모 DefDlgProc -> xxxSaveDlgFocus -> 자식 버튼 N개 순회 -> O(N^2)
+        // 동기 SendMessage 연쇄 -> 창 전환 시 "응답없음" 발생.
+        // CButton::WindowProc 경로를 우회하고 스타일 비트만 직접 교체해 연쇄를 끊는다.
+        LONG_PTR curStyle = ::GetWindowLongPtr(m_hWnd, GWL_STYLE);
+        DWORD    btnBits  = (DWORD)(wParam) & 0x0F;
+        curStyle = (curStyle & ~(LONG_PTR)0x0F) | (LONG_PTR)btnBits;
+        ::SetWindowLongPtr(m_hWnd, GWL_STYLE, curStyle);
+
+        s_inBmSetStyle = FALSE;
+
+        if (LOWORD(lParam))
+            Invalidate(FALSE);
+        return 0;
+    }
+
+    if (message == WM_SETFOCUS || message == WM_KILLFOCUS)
+    {
+        if (s_inFocusChange)
+            return CButton::WindowProc(message, wParam, lParam);
+
+        s_inFocusChange = TRUE;
+        LRESULT r = CButton::WindowProc(message, wParam, lParam);
+        s_inFocusChange = FALSE;
+
+        Invalidate(FALSE);
+        return r;
+    }
+
+    return CButton::WindowProc(message, wParam, lParam);
+}
+
+
+
 void CModernButton::SetColors(COLORREF normalBg, COLORREF hoverBg, COLORREF textColor)
 {
 	m_clrNormalBg = normalBg;
@@ -3016,7 +3069,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	
 	// Clamp width to a nice range so it doesn't get too narrow/wide.
 	const int minCardW = ModernUIDpi::Scale(hRef, 210);
-	const int maxCardW = ModernUIDpi::Scale(hRef, 340);
+	const int maxCardW = ModernUIDpi::Scale(hRef, 440);
 	int cardW = idealTextW > 0 ? (idealTextW + padL + padR) : ModernUIDpi::Scale(hRef, kPopW);
 	cardW = max(minCardW, min(cardW, maxCardW));
 	
@@ -3063,8 +3116,8 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	// Low-level mouse hook: close popup on any click outside
 	if (!s_hMouseHook)
 	{
-		s_pPopoverInst = this;
 		s_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, NULL, 0);
+		if (s_hMouseHook) s_pPopoverInst = this;
 	}
 }
 

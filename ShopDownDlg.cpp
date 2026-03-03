@@ -12,6 +12,7 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_VSCROLL()
     ON_WM_MOUSEWHEEL()
     ON_WM_TIMER()
+    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -95,6 +96,20 @@ CShopDownDlg::~CShopDownDlg()
     delete m_pFontFamily;  m_pFontFamily  = nullptr;
     if (m_brushBg.GetSafeHandle())   m_brushBg.DeleteObject();
     if (m_brushCard.GetSafeHandle()) m_brushCard.DeleteObject();
+}
+
+void CShopDownDlg::OnDestroy()
+{
+    if (m_bScrollTimerActive)
+    {
+        KillTimer(kScrollTimerId);
+        m_bScrollTimerActive = FALSE;
+    }
+    delete m_pFontLbl;     m_pFontLbl     = nullptr;
+    delete m_pFontVal;     m_pFontVal     = nullptr;
+    delete m_pFontValBold; m_pFontValBold = nullptr;
+    delete m_pFontFamily;  m_pFontFamily  = nullptr;
+    CDialog::OnDestroy();
 }
 
 void CShopDownDlg::InitPointerArrays()
@@ -441,7 +456,7 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
     UpdateScrollBar();
-    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
     m_bInLayout = FALSE;
 }
 
@@ -690,7 +705,7 @@ void CShopDownDlg::OnDownloadClick(int index)
     ApplyRowUnderlay(index, FALSE);
 
     RedrawWindow(&m_rcRow[index], nullptr,
-        RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+        RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
 void CShopDownDlg::OnDeleteClick(int index)
@@ -715,7 +730,7 @@ void CShopDownDlg::OnDeleteClick(int index)
     ApplyRowUnderlay(index, FALSE);
 
     RedrawWindow(&m_rcRow[index], nullptr,
-        RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+        RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
 

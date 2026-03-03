@@ -59,6 +59,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_CTLCOLOR()
     ON_WM_LBUTTONDOWN()
     ON_WM_TIMER()
+    ON_WM_NCACTIVATE()          // [FIX v2.1] xxxSaveDlgFocus O(N^2) 차단
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
     ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO,     OnBnClickedVanServerInfo)
     ON_BN_CLICKED(IDC_BTN_PORT_INFO,           OnBnClickedPortInfo)
@@ -79,6 +80,21 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_BN_CLICKED(IDC_BTN_SIGN_PAD_SPEED_INFO, OnBnClickedSignPadSpeedInfo)
     ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO,     OnBnClickedAlarmSizeInfo)
 END_MESSAGE_MAP()
+
+// ============================================================================
+// OnNcActivate  [FIX v2.1] - DefDlgProc xxxSaveDlgFocus O(N^2) SendMessage 차단
+// ============================================================================
+// [문제] DefDlgProc(WM_NCACTIVATE) 내부의 xxxSaveDlgFocus 가 모든 자식/손자
+//        버튼에 BM_SETSTYLE 을 SendMessage 한다.
+//        CShopDownDlg 에 CModernButton 이 50개(다운로드 25 + 삭제 25) 있으므로
+//        각 BM_SETSTYLE -> DefWindowProc -> DM_SETDEFID -> DefDlgProc 재진입으로
+//        O(N^2) 동기 연쇄가 발생 -> 창 전환 시 "응답없음".
+// [해결] DefWindowProc(일반 윈도우 프록)만 직접 호출한다.
+//        타이틀바 활성/비활성 렌더링은 유지되고 버튼 순회는 생략된다.
+BOOL CShopSetupDlg::OnNcActivate(BOOL bActive)
+{
+    return (BOOL)::DefWindowProc(m_hWnd, WM_NCACTIVATE, (WPARAM)(BOOL)bActive, 0L);
+}
 
 // ============================================================================
 // 생성자 / 소멸자

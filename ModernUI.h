@@ -121,6 +121,8 @@ public:
 protected:
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct);
 
+    virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
+
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
 
