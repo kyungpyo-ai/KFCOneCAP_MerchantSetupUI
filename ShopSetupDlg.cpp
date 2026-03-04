@@ -11,6 +11,26 @@
 #include <gdiplus.h>
 #pragma comment(lib, "gdiplus.lib")
 
+// ==============================================================
+// [ShopSetupDlg.cpp]
+//  - 메인 설정 다이얼로그 구현부
+//
+// 화면 동작 개요
+//  1) OnInitDialog()
+//     - 폰트/브러시/ModernUI 컨트롤 초기화
+//     - 탭/그룹/인풋/토글/버튼 생성
+//     - ApplyLayout()으로 DPI 반영 배치
+//     - LoadOptionsFromRegistry()로 저장값을 UI에 반영
+//  2) 사용자 입력(콤보/에딧/토글) → 멤버변수/컨트롤 상태 갱신
+//  3) OnOK() 또는 적용 버튼에서 SaveOptionsToRegistry() 호출
+//     - 현재 UI 값을 레지스트리(HKCU\Software\KFTC_VAN\KFTCOneCAP\...)에 저장
+//
+// 유지보수 팁
+//  - 옵션 추가 시: (1) 컨트롤 생성 (2) Load/Save 매핑 (3) 레이아웃 반영 순서로 작업
+//  - 인풋 보더/포커스 스타일은 ModernUITheme::GetInputTheme() 기준
+// ==============================================================
+
+
 // ============================================================================
 // Registry spec (Word 기준)
 // - 저장: AfxGetApp()->WriteProfileString(section, field, value) 그대로 사용
@@ -400,8 +420,25 @@ static void NormalizeInputHeightsToCombo(CWnd* pDlg, int comboId,
 // ============================================================================
 // OnInitDialog
 // ============================================================================
+// --------------------------------------------------------------
+// 다이얼로그 초기화
+//  - 컨트롤 생성/스타일 적용/기본값 세팅/레지스트리 로드까지 한 번에 수행
+// --------------------------------------------------------------
 BOOL CShopSetupDlg::OnInitDialog()
 {
+    /* [UI-STEP] 초기 UI 구성(컨트롤 생성/폰트/레이아웃/값 로드) 흐름
+     * 1) 다이얼로그 기본 초기화(베이스 클래스 처리) 후, 커스텀 컨트롤/리소스를 준비한다.
+     * 2) InitializeFonts()로 라벨/본문/캡션 폰트를 생성하고 컨트롤에 적용한다.
+     * 3) InitializeControls()에서 탭/입력/토글/버튼/정보아이콘(i) 등 실제 컨트롤을 생성/연결한다.
+     * 4) ApplyLayout()로 현재 DPI와 창 크기에 맞춰 좌표를 계산하고 컨트롤을 재배치한다.
+     * 5) LoadOptionsFromRegistry()로 레지스트리 값을 읽어 UI(콤보 선택/에딧 텍스트/토글 상태)에 반영한다.
+     * 6) 첫 화면 그리기 품질을 위해 Invalidate()/UpdateWindow() 호출 여부를 정리한다.
+     *
+     * [참고]
+     * - 초기화 순서가 바뀌면(예: 레지스트리 로드가 레이아웃보다 먼저) 컨트롤 크기/상태가 어긋날 수 있다.
+     * - 컨트롤 생성은 1회, 배치는 여러 번(리사이즈/탭 전환) 호출되도록 분리해두는 것이 유지보수에 유리하다.
+     */
+
     CDialog::OnInitDialog();
 
     auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
@@ -509,6 +546,12 @@ CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
 // ============================================================================
 int CShopSetupDlg::CalculateRequiredHeight()
 {
+    /* [UI-STEP] 현재 탭에서 필요한 전체 높이 계산(스크롤/자동 리사이즈 기준)
+     * 1) 탭별로 배치되는 마지막 컨트롤의 하단 Y를 추적한다.
+     * 2) 하단 마진을 더해 '필요 전체 높이'를 반환한다.
+     * 3) 현재 클라이언트 높이보다 크면 스크롤/클리핑 처리 기준으로 사용한다.
+     */
+
     auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
 
     // ── 카드 공통 파라미터 (ApplyLayout과 동일 값) ─────────────────
@@ -574,6 +617,16 @@ int CShopSetupDlg::CalculateRequiredHeight()
 // ============================================================================
 void CShopSetupDlg::InitializeFonts()
 {
+    /* [UI-STEP] UI 폰트 초기화(가독성/위계 유지)
+     * 1) DPI 스케일을 반영해 제목/본문/설명 텍스트용 폰트 크기를 산출한다.
+     * 2) CreateFontIndirect 또는 CreatePointFont 계열로 폰트를 생성한다(실패 시 기본 폰트로 폴백).
+     * 3) 생성한 폰트를 컨트롤들(라벨/버튼/에딧/콤보)에 SetFont로 적용한다.
+     * 4) OnDestroy()에서 DeleteObject로 폰트 리소스를 반드시 해제한다.
+     *
+     * [참고]
+     * - 폰트 객체는 GDI 리소스라서 누수되면 장시간 사용 시 그리기 이상/크래시 원인이 된다.
+     */
+
     LOGFONT lf = { 0 };
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     lstrcpy(lf.lfFaceName, _T("Malgun Gothic"));
@@ -610,6 +663,18 @@ void CShopSetupDlg::InitializeFonts()
 // ============================================================================
 void CShopSetupDlg::InitializeControls()
 {
+    /* [UI-STEP] 컨트롤 생성/연결(탭/입력/토글/팝오버 아이콘)
+     * 1) 탭 컨트롤 생성 및 탭 아이템(결제 설정/장치 정보/시스템 설정 등)을 등록한다.
+     * 2) 각 섹션별 라벨, Edit/Combo/Toggle 컨트롤을 생성하고 ID/멤버 변수와 연결한다.
+     * 3) 정보 아이콘(i) 버튼을 생성하고, 클릭 핸들러(OnBnClickedXXXInfo)와 연결해 팝오버를 띄울 준비를 한다.
+     * 4) 커스텀 컨트롤(스킨 에딧/콤보)의 테마(배경/보더/포커스 색)를 적용한다.
+     * 5) 초기 상태(기본 선택/비활성화/툴팁 텍스트 등)를 세팅한다.
+     *
+     * [참고]
+     * - 컨트롤 생성은 OnInitDialog에서 1회만 수행(반복 생성 금지).
+     * - 동적 생성 컨트롤은 자식 윈도우 핸들이 유효한지(IsWindow) 체크 후 접근.
+     */
+
     auto RemoveEdges = [&](int id)
     {
         CWnd* w = GetDlgItem(id);
@@ -733,6 +798,15 @@ int CShopSetupDlg::ScalePx(int px) const
 // --- MoveCtrl: move a dialog control; ComboBox gets standard drop height ---
 void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
 {
+    /* [UI-STEP] 컨트롤 이동 공용 헬퍼(좌표/크기 적용)
+     * 1) 대상 컨트롤 HWND가 유효한지 확인한다.
+     * 2) SetWindowPos/MoveWindow로 좌표/크기를 적용한다.
+     * 3) 필요 시 SWP_NOZORDER/SWP_NOACTIVATE 등 플래그로 포커스/순서를 보호한다.
+     *
+     * [참고]
+     * - MoveWindow는 내부적으로 WM_SIZE/WM_WINDOWPOSCHANGED를 유발할 수 있어, 레이아웃 중 재진입을 조심.
+     */
+
     CWnd* p = GetDlgItem(nID);
     if (!p || !p->GetSafeHwnd()) return;
     TCHAR cls[64] = { 0 };
@@ -750,8 +824,20 @@ void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
     p->ShowWindow(bShow ? SW_SHOW : SW_HIDE);
 }
 // --- Tab 0: card reader settings ---
+// --------------------------------------------------------------
+// 레이아웃 배치
+//  - 96dpi 기준 상수를 ModernUIDpi::Scale()로 변환하여 배치
+//  - 리사이즈/탭 전환 시에도 호출 가능하도록, '배치만' 담당하는 것이 이상적
+// --------------------------------------------------------------
 void CShopSetupDlg::ApplyLayoutTab0()
 {
+    /* [UI-STEP] 탭0(결제 설정) 영역 배치
+     * 1) 탭0에서 표시할 그룹(예: 금융결제원 서버/포트/통신방식/현금영수증 등)의 시작 Y 좌표를 결정한다.
+     * 2) 각 행(라벨 + 입력 컨트롤 + 정보아이콘)을 동일한 기준선/높이로 배치한다.
+     * 3) 콤보/에딧의 폭은 '라벨 폭 + 입력 폭' 규칙에 따라 정렬되도록 맞춘다.
+     * 4) 그룹 간 간격을 적용하고 다음 그룹으로 y를 진행한다.
+     */
+
     auto S    = [&](int v)                              { return ScalePx(v); };
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
     const int CTRL_H       = S(40);
@@ -924,6 +1010,12 @@ void CShopSetupDlg::ApplyLayoutTab0()
 // --- Tab 1+2: devices and system settings ---
 void CShopSetupDlg::ApplyLayoutTab1()
 {
+    /* [UI-STEP] 탭1(장치 정보) 영역 배치
+     * 1) 탭1에서 표시할 그룹(카드입력 Timeout, 장치 연동 방식, 서명패드 설정 등)을 순서대로 배치한다.
+     * 2) 토글이 있는 행은 '라벨 + 토글 + 정보아이콘' 정렬 규칙을 적용한다.
+     * 3) 서명패드 관련 입력은 종속 관계(사용 ON일 때만 활성화 등)가 있으면 EnableWindow로 제어한다.
+     */
+
     auto S    = [&](int v)                              { return ScalePx(v); };
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
     const int CTRL_H       = S(40);
@@ -1182,6 +1274,11 @@ void CShopSetupDlg::ApplyLayoutTab1()
 // --- Tab 3: merchant download ---
 void CShopSetupDlg::ApplyLayoutTab3()
 {
+    /* [UI-STEP] 탭3(시스템 설정) 영역 배치
+     * 1) 알림창 크기 등 시스템 관련 옵션 UI를 배치한다.
+     * 2) 콤보/에딧 폭을 전체 레이아웃 폭에 맞추고, 우측 여백을 통일한다.
+     */
+
     auto S = [&](int v) { return ScalePx(v); };
     CRect rc;
     GetClientRect(&rc);
@@ -1232,6 +1329,18 @@ void CShopSetupDlg::ApplyLayoutTab3()
 // ============================================================================
 void CShopSetupDlg::ApplyLayout()
 {
+    /* [UI-STEP] 전체 레이아웃 엔트리(탭별 레이아웃 분기 + 스크롤/높이 계산)
+     * 1) 현재 클라이언트 영역 크기 및 DPI 스케일(96dpi 기준)을 계산한다.
+     * 2) 상단/좌측/우측/하단 마진과 그룹 간 간격 같은 레이아웃 상수를 스케일 적용한다.
+     * 3) 현재 선택된 탭 인덱스를 확인하고, 탭별 배치 함수(ApplyLayoutTab0/1/3 등)로 분기한다.
+     * 4) 필요 높이(CalculateRequiredHeight)와 현재 높이를 비교해 스크롤/클리핑 정책을 정한다(필요 시).
+     * 5) MoveCtrl() 헬퍼로 각 컨트롤 위치/크기를 설정하고, 마지막에 Invalidate()로 재그림한다.
+     *
+     * [참고]
+     * - 레이아웃 함수는 '값 계산'과 'MoveWindow/SetWindowPos'를 한 눈에 구분되게 두는 편이 유지보수에 좋다.
+     * - 컨트롤이 많으니 배치 중 불필요한 Invalidate 반복을 피하고, 마지막에 1회 갱신하는 방식이 성능에 유리하다.
+     */
+
     CRect rc;
     GetClientRect(&rc);
 
@@ -1361,8 +1470,23 @@ void CShopSetupDlg::ApplyLayout()
     }
 }
 
+// --------------------------------------------------------------
+// 레지스트리 → UI
+//  - 저장된 값이 없으면 기본값을 사용
+//  - 콤보박스는 '표시 문자열'과 '실제 저장 값'을 구분해서 매핑
+// --------------------------------------------------------------
 void CShopSetupDlg::LoadOptionsFromRegistry()
 {
+    /* [UI-STEP] 레지스트리 → UI 로드(기본값/변환 포함)
+     * 1) 각 옵션 키(섹션/이름)로 레지스트리 값을 읽는다(없으면 기본값 적용).
+     * 2) 문자열 → int/bool/enum 변환을 수행하고 범위를 체크한다.
+     * 3) 변환된 값을 콤보 선택/에딧 텍스트/토글 상태로 UI에 반영한다.
+     * 4) 토글 상태에 따라 종속 옵션(서명패드 속도 등)의 EnableWindow를 조정한다.
+     *
+     * [참고]
+     * - 변환 실패 시(빈 문자열/비정상 값) 크래시 없이 기본값으로 폴백하는 것이 안정적이다.
+     */
+
     CString s;
 
     // -------------------------
@@ -1493,6 +1617,11 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
 // ============================================================================
 // SaveOptionsToRegistry - OK 버튼에서 일괄 저장
 // ============================================================================
+// --------------------------------------------------------------
+// UI → 레지스트리
+//  - 현재 컨트롤 상태(콤보 선택/에딧 텍스트/토글 ON-OFF)를 읽어서 저장
+//  - 값 검증(숫자 범위, 빈 값 처리 등)이 필요하면 여기에서 일괄 적용 권장
+// --------------------------------------------------------------
 void CShopSetupDlg::SaveOptionsToRegistry()
 {
     UpdateData(TRUE);
@@ -1707,6 +1836,12 @@ void CShopSetupDlg::ShowTab(int nTab)
 // ============================================================================
 void CShopSetupDlg::OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult)
 {
+    /* [UI-STEP] 탭 변경 처리(레이아웃 재배치 + 화면 갱신)
+     * 1) 현재 탭 인덱스를 갱신한다.
+     * 2) ApplyLayout()를 호출해 탭별 컨트롤 배치를 다시 수행한다.
+     * 3) 필요한 경우 탭별로 보이기/숨기기(ShowWindow) 처리 후 Invalidate()한다.
+     */
+
     int nSel = m_tabCtrl.GetCurSel();
     if (nSel >= 0)
         ShowTab(nSel);
@@ -1718,6 +1853,12 @@ void CShopSetupDlg::OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult)
 // ============================================================================
 BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
+    /* [UI-STEP] 컨트롤 이벤트 라우팅(콤보 선택/에딧 변경 등)
+     * 1) HIWORD(wParam)로 통지 코드(CBN_SELCHANGE, EN_CHANGE 등)를 판별한다.
+     * 2) 해당 컨트롤의 변경을 내부 변수/상태에 반영한다.
+     * 3) 변경에 따라 종속 컨트롤 Enable/Disable 또는 재그림이 필요하면 Invalidate()한다.
+     */
+
     const UINT code = HIWORD(wParam);
     switch (code)
     {
@@ -1743,6 +1884,11 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 // ============================================================================
 BOOL CShopSetupDlg::OnEraseBkgnd(CDC* pDC)
 {
+    /* [UI-STEP] 배경 지우기(깜빡임 감소)
+     * 1) 배경을 OnPaint에서 전부 그리는 구조면 여기서는 TRUE를 리턴해 기본 지우기를 막는다.
+     * 2) 기본 지우기를 막을 때는 반드시 OnPaint에서 전체 배경을 빠짐없이 칠해야 잔상이 남지 않는다.
+     */
+
     return TRUE;
 }
 
@@ -1766,8 +1912,25 @@ void CShopSetupDlg::OnLButtonDown(UINT nFlags, CPoint point)
 // ============================================================================
 // OnPaint - 더블버퍼링, 타이틀 + 그룹 소제목 그리기
 // ============================================================================
+// --------------------------------------------------------------
+// 커스텀 페인팅
+//  - 배경/섹션 카드/라벨 등 정적 UI를 GDI+/GDI로 직접 그림
+//  - 인풋 보더는 별도 함수(DrawInputBorders 등)에서 공통 처리
+// --------------------------------------------------------------
 void CShopSetupDlg::OnPaint()
 {
+    /* [UI-STEP] 커스텀 페인팅(배경/라벨/입력 보더) 렌더링
+     * 1) CPaintDC로 paint DC를 얻고(필요 시 메모리 DC로 더블버퍼) 깜빡임을 줄인다.
+     * 2) DrawBackground()로 전체 배경(카드/섹션 배경 포함)을 그린다.
+     * 3) DrawGroupLabels()로 그룹 타이틀/라벨 텍스트를 그린다(폰트/색 위계 적용).
+     * 4) DrawInputBorders()로 Edit/Combo 주변 보더를 일괄로 그린다(포커스/hover 상태 반영).
+     * 5) 필요하면 DrawSectionIcon() 등 아이콘/장식 요소를 마지막에 그려 z-order 느낌을 맞춘다.
+     *
+     * [참고]
+     * - 배경을 직접 그리는 경우 OnEraseBkgnd에서 TRUE 리턴으로 깜빡임을 줄이는 패턴을 함께 쓴다.
+     * - 컨트롤 자체가 그리는 영역과 겹치면(클리핑) 테두리 잔상 문제가 생길 수 있어 그리기 순서가 중요하다.
+     */
+
     CPaintDC dc(this);
     CRect rc;
     GetClientRect(&rc);
@@ -1871,6 +2034,12 @@ void CShopSetupDlg::OnPaint()
 // ============================================================================
 void CShopSetupDlg::DrawGroupLabels(CDC* pDC)
 {
+    /* [UI-STEP] 그룹/라벨 텍스트 그리기(가독성/정렬 규칙)
+     * 1) 각 그룹의 타이틀 위치를 계산하고 제목 폰트로 출력한다.
+     * 2) 각 행 라벨은 동일한 X 기준으로 정렬해 UI 리듬을 만든다.
+     * 3) 비활성 상태 컨트롤은 라벨 색을 약하게 처리할 수 있다.
+     */
+
     CFont* pOld = m_fontGroupTitle.GetSafeHandle()
         ? pDC->SelectObject(&m_fontGroupTitle) : nullptr;
     pDC->SetBkMode(TRANSPARENT);
@@ -1911,6 +2080,12 @@ void CShopSetupDlg::DrawGroupLabels(CDC* pDC)
 // ============================================================================
 void CShopSetupDlg::DrawBackground(CDC* pDC)
 {
+    /* [UI-STEP] 배경 그리기(앱 배경 + 카드형 영역)
+     * 1) 클라이언트 전체를 기본 배경색으로 채운다.
+     * 2) 섹션/그룹 영역을 카드 형태(라운드, 그림자/보더)로 분리해 그린다.
+     * 3) 선택 탭에 따라 표시할 영역만 강조/그리도록 분기할 수 있다.
+     */
+
     CRect rc;
     GetClientRect(&rc);
     pDC->FillSolidRect(rc, RGB(249, 250, 252));  // 밝은 회색 배경
@@ -2079,6 +2254,12 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
 // ============================================================================
 HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
+    /* [UI-STEP] 컨트롤 배경/텍스트 색 커스터마이징(윈도우 기본 칠하기 억제)
+     * 1) 에딧/스태틱/버튼 등 컨트롤 종류별로 배경색/텍스트색을 지정한다.
+     * 2) 배경을 직접 그리는 경우 투명 배경(SetBkMode TRANSPARENT) 처리한다.
+     * 3) 반환하는 브러시는 수명 관리(멤버 브러시 재사용)로 깜빡임과 누수를 방지한다.
+     */
+
     HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 
     if (nCtlColor == CTLCOLOR_STATIC && pWnd)
@@ -2112,8 +2293,19 @@ void CShopSetupDlg::OnDestroy()
 // ============================================================================
 // OnOK / OnCancel
 // ============================================================================
+// --------------------------------------------------------------
+// 확인(OK)
+//  - SaveOptionsToRegistry() 호출 후 다이얼로그 종료
+// --------------------------------------------------------------
 void CShopSetupDlg::OnOK()
 {
+    /* [UI-STEP] 확인 버튼(저장) 동작( UI → 레지스트리 → 종료 )
+     * 1) 현재 UI 컨트롤 값(콤보 선택/에딧 내용/토글 상태)을 읽어온다.
+     * 2) 필요한 변환/검증(숫자 범위, 빈 값 처리)을 수행한다.
+     * 3) SaveOptionsToRegistry()로 레지스트리에 기록한다.
+     * 4) Dialog를 종료한다(베이스 클래스 OnOK 호출).
+     */
+
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
 
     // OK 버튼에서 일괄 저장 (Word 스펙)
@@ -2131,7 +2323,13 @@ void CShopSetupDlg::OnCancel()
 // ============================================================================
 // DrawInputBorders (하위 호환 stub)
 // ============================================================================
-void CShopSetupDlg::DrawInputBorders() {}
+void CShopSetupDlg::DrawInputBorders() {
+    /* [UI-STEP] 입력 컨트롤 보더 일괄 그리기(에딧/콤보 통일감)
+     * 1) 현재 탭에서 관리하는 입력 컨트롤 목록을 순회한다.
+     * 2) 각 컨트롤의 화면 좌표(GetWindowRect → ScreenToClient)를 구한다.
+     * 3) DrawOneInputBorder()로 라운드 보더/포커스 링/hover 컬러를 적용한다.
+     */
+}
 
 // ============================================================================
 // OnBnClickedVanServerInfo - toggle popover
@@ -2317,7 +2515,14 @@ void CShopSetupDlg::OnBnClickedAlarmSizeInfo()
         this);
 }
 void CShopSetupDlg::DrawInputBorders(CDC* /*pDC*/) {}
-void CShopSetupDlg::DrawOneInputBorder(int /*ctrlId*/) {}
+void CShopSetupDlg::DrawOneInputBorder(int /*ctrlId*/) {
+    /* [UI-STEP] 단일 입력 보더 렌더링(포커스/hover/disabled 상태 반영)
+     * 1) 컨트롤 Enabled 여부에 따라 보더/배경/텍스트 톤을 선택한다.
+     * 2) 포커스가 있으면 포커스 링(강조 보더)을 그린다.
+     * 3) hover 상태면 hover 보더 색을 적용한다.
+     * 4) 라운드 사각형 Path로 외곽선을 그려 모서리 일관성을 유지한다.
+     */
+}
 void CShopSetupDlg::DrawOneInputBorder(CDC* /*pDC*/, int /*ctrlId*/) {}
 
 // ============================================================================
@@ -2327,6 +2532,12 @@ void CShopSetupDlg::DrawOneInputBorder(CDC* /*pDC*/, int /*ctrlId*/) {}
 // ============================================================================
 void CShopSetupDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS)
 {
+    /* [UI-STEP] Owner-draw 컨트롤 그리기(버튼/콤보/리스트 등 커스텀 렌더)
+     * 1) lpDIS로 넘어오는 controlID를 확인해 어떤 컨트롤을 그릴지 분기한다.
+     * 2) 상태(선택/포커스/비활성/pressed/hover)를 읽어 색/보더/텍스트를 결정한다.
+     * 3) 커스텀 그리기 후 기본 그리기가 덮지 않도록 필요한 경우 기본 처리 호출을 막는다.
+     */
+
     // owner-draw 컨트롤이 반사된 WM_DRAWITEM을 직접 처리하므로
     // 기본 구현(CDialog::OnDrawItem)을 호출합니다.
     CDialog::OnDrawItem(nIDCtl, lpDIS);
@@ -2334,6 +2545,11 @@ void CShopSetupDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS)
 
 void CShopSetupDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMIS)
 {
+    /* [UI-STEP] Owner-draw 아이템 높이 계산(콤보 드랍리스트 등)
+     * 1) 드랍리스트 항목 높이를 DPI/폰트에 맞게 산출한다.
+     * 2) 너무 작으면 텍스트가 잘리므로 최소 높이를 보장한다.
+     */
+
     CDialog::OnMeasureItem(nIDCtl, lpMIS);
 }
 

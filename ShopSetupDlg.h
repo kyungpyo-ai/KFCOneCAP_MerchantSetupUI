@@ -68,6 +68,18 @@
 #define IDC_TAB_MAIN    60002
 #endif
 
+// ==============================================================
+// [ShopSetupDlg.h]
+//  - 메인 설정 화면(결제 설정/장치 정보/시스템 설정 등)을 담당
+//  - ModernUI 컨트롤을 생성/배치하고, 레지스트리(프로파일)와 값을 동기화
+//
+// 구현 포인트
+//  - OnInitDialog()에서 컨트롤 생성 → 레이아웃 적용 → 레지스트리 로드
+//  - OK/적용 시 SaveOptionsToRegistry()로 현재 UI 값을 저장
+//  - 라벨 옆 'i' 아이콘은 CInfoIconButton + CModernPopover로 구현
+// ==============================================================
+
+
 class CShopSetupDlg : public CDialog
 {
     DECLARE_DYNAMIC(CShopSetupDlg)

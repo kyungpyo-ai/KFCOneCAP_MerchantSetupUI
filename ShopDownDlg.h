@@ -2,6 +2,13 @@
 #include "resource.h"
 #include "ModernUI.h"
 
+// ==============================================================
+// [ShopDownDlg.h]
+//  - 가맹점 다운로드(조회/다운로드/삭제) 화면을 담당
+//  - 리스트/카드 UI를 ModernUI 스타일로 그리며, 스크롤/선택/버튼 이벤트 처리
+// ==============================================================
+
+
 class CShopDownDlg : public CDialog
 {
     DECLARE_DYNAMIC(CShopDownDlg)

@@ -50,12 +50,36 @@ static std::wstring kftc_to_wide(const CString& s)
 	if (!ws.empty() && ws.back() == L'\0') ws.pop_back();
 	return ws;
 #endif
+
+// ==============================================================
+// [ModernUI.cpp]
+//  - ModernUI.h ¿¡ ¼±¾ğµÈ Ä¿½ºÅÒ ÄÁÆ®·Ñ/À¯Æ¿ÀÇ ±¸ÇöºÎ
+//
+// Å« Èå¸§
+//  1) ModernUIGfx  : GDI+ ÃÊ±âÈ­/Á¾·á + °ø¿ë ¶ó¿îµå»ç°¢Çü Path »ı¼º
+//  2) ModernUIDpi  : HWND ±âÁØ DPI ½ºÄÉÀÏ ÇÔ¼ö
+//  3) ModernUITheme: ÀÎÇ²(¿¡µ÷/ÄŞº¸) Å×¸¶ ÅäÅ«À» ·±Å¸ÀÓ¿¡ ±³Ã¼ °¡´É
+//  4) °¢ ÄÁÆ®·Ñ Å¬·¡½º:
+//     - WM_PAINT/WM_MOUSEMOVE/WM_LBUTTONDOWN/WM_LBUTTONUP/WM_KILLFOCUS µî¿¡¼­
+//       »óÅÂ(hover/focus/pressed)¸¦ °»½ÅÇÏ°í Invalidate()·Î Àç±×¸²
+//
+// ÁÖÀÇ»çÇ×
+//  - GDI Object ¼±ÅÃ/ÇØÁ¦, GDI+ Graphics »ç¿ë ¹üÀ§¸¦ ¹ş¾î³ªÁö ¾Êµµ·Ï À¯Áö
+//  - µå·ÎÀ×Àº ´õºí¹öÆÛ(CMemDC µî) »ç¿ë ÀüÁ¦¸¦ À¯Áö(±ôºıÀÓ/ÀÜ»ó ¹æÁö)
+// ==============================================================
+
 }
 
 
 //////////////////////////////////////////////////////////////////////////
 // Global theme storage (optional)
 //////////////////////////////////////////////////////////////////////////
+// --------------------------------------------------------------
+// [Theme]
+//  - ¿¡µ÷/ÄŞº¸ °øÅë º¸´õ(ÀÏ¹İ/È£¹ö/Æ÷Ä¿½º)¿Í ¶ó¿îµå/µÎ²² µîÀ» ÇÑ°÷¿¡¼­ °ü¸®
+//  - ´ÙÀÌ¾ó·Î±×º°/½ºÅ²º°·Î SetInputTheme()·Î ±³Ã¼ÇÒ ¼ö ÀÖ°Ô ¼³°è
+// --------------------------------------------------------------
+
 namespace ModernUITheme
 {
 	static KFTCInputTheme g_inputTheme; // default ctor -> macros
@@ -66,6 +90,13 @@ namespace ModernUITheme
 //////////////////////////////////////////////////////////////////////////
 // GDI+ lifetime helper (single point)
 //////////////////////////////////////////////////////////////////////////
+// --------------------------------------------------------------
+// [GDI+ / °ø¿ë ±×·¡ÇÈ À¯Æ¿]
+//  - EnsureGdiplusStartup(): ÃÖÃÊ 1È¸ GDI+ Startup
+//  - ShutdownGdiplus(): ¾Û Á¾·á ½Ã Á¤¸® (App::ExitInstance¿¡¼­ È£Ãâ)
+//  - AddRoundRect(): ¶ó¿îµå »ç°¢Çü Path¸¦ »ı¼ºÇÏ´Â °ø¿ë ÇÔ¼ö
+// --------------------------------------------------------------
+
 namespace ModernUIGfx
 {
 	static ULONG_PTR s_gdiplusToken = 0;
@@ -102,6 +133,12 @@ namespace ModernUIGfx
 //////////////////////////////////////////////////////////////////////////
 // DPI scaling helpers (per-monitor aware)
 //////////////////////////////////////////////////////////////////////////
+// --------------------------------------------------------------
+// [DPI À¯Æ¿]
+//  - GetDpiForHwnd(): Per-monitor DPI È¯°æ¿¡¼­ HWND ±âÁØ DPI È¹µæ
+//  - Scale()/ScaleF(): 96dpi ±âÁØ px °ªÀ» ÇöÀç DPI·Î º¯È¯
+// --------------------------------------------------------------
+
 namespace ModernUIDpi
 {
 	typedef UINT(WINAPI* PFN_GetDpiForWindow)(HWND);
@@ -280,6 +317,11 @@ void CModernButton::ClearUnderlayColor()
 }
 
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CModernButton::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
@@ -314,6 +356,11 @@ LRESULT CModernButton::OnMouseHover(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+/*
+[Å¬¸¯ ½ÃÀÛ]
+- Å¬¸¯ÇÑ À§Ä¡ÀÇ UI ¿ä¼Ò(¹öÆ°/Ä«µå/¾ÆÀÌÄÜ)¸¦ ÆÇº°ÇÏ°í pressed »óÅÂ¸¦ ¼³Á¤ÇÕ´Ï´Ù.
+- Ä¸Ã³(SetCapture) »ç¿ë ½Ã OnLButtonUp¿¡¼­ ¹İµå½Ã ReleaseCapture Ã³¸®ÇÏ¼¼¿ä.
+*/
 void CModernButton::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonDown(nFlags, point); return; }
@@ -322,6 +369,10 @@ void CModernButton::OnLButtonDown(UINT nFlags, CPoint point)
 	CButton::OnLButtonDown(nFlags, point);
 }
 
+/*
+[Å¬¸¯ ¿Ï·á]
+- pressed »óÅÂ ÇØÁ¦ ÈÄ, Å¬¸¯ È®Á¤ µ¿ÀÛ(¼±ÅÃ/Åä±Û/ÆË¿À¹ö ¿ÀÇÂ)À» ¼öÇàÇÕ´Ï´Ù.
+*/
 void CModernButton::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonUp(nFlags, point); return; }
@@ -331,6 +382,11 @@ void CModernButton::OnLButtonUp(UINT nFlags, CPoint point)
 }
 
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CModernButton::OnEraseBkgnd(CDC* pDC)
 {
 	// OwnerDraw         
@@ -339,21 +395,23 @@ BOOL CModernButton::OnEraseBkgnd(CDC* pDC)
 
 void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
+    /* [UI-STEP] ¸ğ´ø ¹öÆ° Owner-draw ·»´õ¸µ(»óÅÂº° »ö/º¸´õ/ÅØ½ºÆ®)
+     * 1) lpDIS·Î Àü´ŞµÈ »óÅÂ(pressed/disabled/focused)¸¦ ÀĞ¾î ·»´õ¸µ ÅæÀ» °áÁ¤ÇÑ´Ù.
+     * 2) hover »óÅÂ´Â OnMouseMove/OnMouseLeave¿¡¼­ °»½ÅµÈ ÇÃ·¡±×¸¦ »ç¿ëÇÑ´Ù.
+     * 3) ¹è°æ(¶ó¿îµå) ¡æ º¸´õ ¡æ ÅØ½ºÆ® ¼ø¼­·Î ±×·Á °ãÄ§/Å¬¸®ÇÎ ¹®Á¦¸¦ ÁÙÀÎ´Ù.
+     * 4) ÅØ½ºÆ®´Â Áß¾Ó Á¤·Ä + ÆùÆ® Àû¿ë(ÇÊ¿ä ½Ã ellipsis)·Î ¹öÆ° ÆøÀÌ ¹Ù²î¾îµµ ¾ÈÁ¤ÀûÀ¸·Î Ç¥½ÃÇÑ´Ù.
+     *
+     * [Âü°í]
+     * - Owner-draw´Â WM_DRAWITEM ±â¹İÀÌ¶ó, ÄÁÆ®·Ñ ½ºÅ¸ÀÏ(BS_OWNERDRAW)ÀÌ ¼¼ÆÃµÇ¾î¾ß ÇÑ´Ù.
+     * - ±×¸®±â Áß GDI ¿ÀºêÁ§Æ®(ºê·¯½Ã/Ææ/ÆùÆ®) Select/Restore ´©¼ö¿¡ ÁÖÀÇ.
+     */
+
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rect = lpDrawItemStruct->rcItem;
 
 
-	// ----- DrawItem() ???ë§??¨ê? -----
-	// 1. ??? ???ê·?ê²°ì? (disabled / hover / pressed)
-	// 2. ë²?? ?¤í???ê°?? (enum ì§€???°ì?, ???ë©????????? ê°??)
-	// 3. ?¤í??¤í?ë¦?ë©?ª¨ë¦?C ???
-	// 4. ë°°ê²½ ì±??ê¸?(ë¶€ëª?ë°°ê²½ ??? underlay ??
-	// 5. ê·¸ë¦¼???????ê·¸ë¦¬ê¸?r
-	// 6. ë²?? ë°°ê²½/???ë¦?ê·¸ë¦¬ê¸?(?¤í??¼ë? ë¶?¸°)
-	// 7. ?????ê·¸ë¦¬ê¸?r
-	// 8. BitBltë¡???©´??ë³µì?
 
-	// 
+	
 	const bool disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
 	const bool enabled = !disabled;
 	const bool pressed = (!disabled) && ((m_bPressed != FALSE) || ((lpDrawItemStruct->itemState & ODS_SELECTED) != 0));
@@ -586,6 +644,11 @@ void CModernCheckBox::SetChecked(BOOL bChecked)
 	Invalidate();
 }
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CModernCheckBox::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
@@ -620,6 +683,11 @@ LRESULT CModernCheckBox::OnMouseHover(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+/*
+[Å¬¸¯ ½ÃÀÛ]
+- Å¬¸¯ÇÑ À§Ä¡ÀÇ UI ¿ä¼Ò(¹öÆ°/Ä«µå/¾ÆÀÌÄÜ)¸¦ ÆÇº°ÇÏ°í pressed »óÅÂ¸¦ ¼³Á¤ÇÕ´Ï´Ù.
+- Ä¸Ã³(SetCapture) »ç¿ë ½Ã OnLButtonUp¿¡¼­ ¹İµå½Ã ReleaseCapture Ã³¸®ÇÏ¼¼¿ä.
+*/
 void CModernCheckBox::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	m_bPressed = TRUE;
@@ -627,6 +695,10 @@ void CModernCheckBox::OnLButtonDown(UINT nFlags, CPoint point)
 	CButton::OnLButtonDown(nFlags, point);
 }
 
+/*
+[Å¬¸¯ ¿Ï·á]
+- pressed »óÅÂ ÇØÁ¦ ÈÄ, Å¬¸¯ È®Á¤ µ¿ÀÛ(¼±ÅÃ/Åä±Û/ÆË¿À¹ö ¿ÀÇÂ)À» ¼öÇàÇÕ´Ï´Ù.
+*/
 void CModernCheckBox::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	m_bPressed = FALSE;
@@ -914,6 +986,13 @@ void CModernToggleSwitch::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplu
 
 void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
+    /* [UI-STEP] Åä±Û ½ºÀ§Ä¡ Owner-draw ·»´õ¸µ(ON/OFF + hover + disabled)
+     * 1) ÇöÀç Ã¼Å© »óÅÂ(GetCheck ¶Ç´Â ³»ºÎ »óÅÂ)¸¦ ÀĞ¾î ON/OFF »öÀ» ¼±ÅÃÇÑ´Ù.
+     * 2) Æ®·¢(¹Ù) ¶ó¿îµå ¹è°æÀ» ±×¸®°í, ½æ(µ¿±×¶ó¹Ì)À» ON/OFF À§Ä¡·Î ¹èÄ¡ÇØ ±×¸°´Ù.
+     * 3) hover ½Ã º¸´õ/Æ®·¢ ÅæÀ» »ìÂ¦ °­Á¶ÇÏ°í, disabled ½Ã ÀüÃ¼ ÅæÀ» ³·Ãá´Ù.
+     * 4) Á¤º¸ ¾ÆÀÌÄÜÀÌ È°¼ºÈ­µÈ °æ¿ì ¾ÆÀÌÄÜ ¿µ¿ªÀ» ÇÔ²² ±×·Á Å¬¸¯ È÷Æ®Å×½ºÆ®¿Í ÀÏÄ¡½ÃÅ²´Ù.
+     */
+
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rcItem = lpDrawItemStruct->rcItem;
 
@@ -1054,6 +1133,11 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	memDC.SelectObject(pOldBmp);
 }
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CModernToggleSwitch::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
@@ -1291,6 +1375,11 @@ CSkinnedComboBox::~CSkinnedComboBox()
 	m_bHasTextFontCache = FALSE;
 }
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CSkinnedComboBox::OnEraseBkgnd(CDC* /*pDC*/)
 {
 	return TRUE; // everything is owner-drawn
@@ -1343,6 +1432,11 @@ void CSkinnedComboBox::TrackMouseLeave()
 		m_bTracking = FALSE;
 }
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CSkinnedComboBox::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CComboBox::OnMouseMove(nFlags, point); return; }
@@ -1426,6 +1520,11 @@ void CSkinnedComboBox::OnKillFocus(CWnd* pNewWnd)
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
 }
 
+/*
+[Å¬¸¯ ½ÃÀÛ]
+- Å¬¸¯ÇÑ À§Ä¡ÀÇ UI ¿ä¼Ò(¹öÆ°/Ä«µå/¾ÆÀÌÄÜ)¸¦ ÆÇº°ÇÏ°í pressed »óÅÂ¸¦ ¼³Á¤ÇÕ´Ï´Ù.
+- Ä¸Ã³(SetCapture) »ç¿ë ½Ã OnLButtonUp¿¡¼­ ¹İµå½Ã ReleaseCapture Ã³¸®ÇÏ¼¼¿ä.
+*/
 void CSkinnedComboBox::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CComboBox::OnLButtonDown(nFlags, point); return; }
@@ -1704,8 +1803,19 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	memDC.SelectObject(pOldBmp);
 }
 
+/*
+[Ä¿½ºÅÒ ÆäÀÎÆÃ]
+- ¹è°æ/Ä«µå/±¸ºĞ¼±/ÀÔ·Â º¸´õ µî Modern UI ½ºÅ¸ÀÏÀ» Á÷Á¢ ±×¸³´Ï´Ù.
+- ±ôºıÀÓ ¹æÁö¸¦ À§ÇØ ¸Ş¸ğ¸® DC(´õºí ¹öÆÛ) »ç¿ë ¿©ºÎ¸¦ È®ÀÎÇÏ¼¼¿ä.
+*/
 void CSkinnedComboBox::OnPaint()
 {
+    /* [UI-STEP] ½ºÅ² ÄŞº¸ Ä¿½ºÅÒ ÆäÀÎÆÃ(º¸´õ/µå·Ó È­»ìÇ¥)
+     * 1) ¹è°æ/º¸´õ¸¦ Å×¸¶ ±âÁØÀ¸·Î ±×¸®°í, µå·Ó ¹öÆ° ¿µ¿ª(È­»ìÇ¥)À» º°µµ ½ºÅ¸ÀÏ·Î Ã³¸®ÇÑ´Ù.
+     * 2) Æ÷Ä¿½º/hover »óÅÂ¿¡ µû¶ó º¸´õ »öÀ» º¯°æÇÑ´Ù.
+     * 3) ±âº» ÄŞº¸°¡ ±×¸®´Â ÀÜ»ó°ú Ãæµ¹ÇÏÁö ¾Ê°Ô Å¬¸®ÇÎ/´õºí¹öÆÛ¸¦ °í·ÁÇÑ´Ù.
+     */
+
 	CPaintDC dc(this);
 	if (m_bInPaint)
 		return;
@@ -1905,6 +2015,12 @@ void CSkinnedComboBox::OnCbnSelendok()
 
 void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 {
+    /* [UI-STEP] ½ºÅ² ÄŞº¸ Owner-draw ¾ÆÀÌÅÛ ·»´õ¸µ(µå¶ø¸®½ºÆ® Æ÷ÇÔ)
+     * 1) lpDIS->itemID·Î µå¶ø¸®½ºÆ® Ç×¸ñ/¿¡µ÷ ¿µ¿ªÀ» ±¸ºĞÇÑ´Ù.
+     * 2) ¼±ÅÃ/hover/disabled »óÅÂ¿¡ µû¶ó ¹è°æ»ö°ú ÅØ½ºÆ®»öÀ» ¼±ÅÃÇÑ´Ù.
+     * 3) Ç×¸ñ ÅØ½ºÆ®¸¦ ÆĞµùÀ» µÎ°í ÁÂÃø Á¤·Ä·Î Ãâ·ÂÇÑ´Ù(±ä ÅØ½ºÆ®´Â ellipsis).
+     */
+
 	if (!lpDIS) return;
 
 	CDC dc;
@@ -2040,6 +2156,12 @@ const KFTCInputTheme& CSkinnedEdit::GetActiveInputTheme() const
 
 void CSkinnedEdit::PreSubclassWindow()
 {
+    /* [UI-STEP] ½ºÅ² ¿¡µ÷ ¼­ºêÅ¬·¡½Ì ÃÊ±âÈ­(±âº» ½ºÅ¸ÀÏ º¸Á¤)
+     * 1) ±âº» CEdit ½ºÅ¸ÀÏ/¿©¹éÀÌ Çö´ë UI¿Í ´Ù¸£¸é ¿©±â¼­ º¸Á¤ÇÑ´Ù.
+     * 2) ¸ÖÆ¼¶óÀÎ/¼¾ÅÍ Á¤·Ä µî ÇÊ¿äÇÑ ½ºÅ¸ÀÏÀ» EnsureMultilineForVCenter()·Î ¸ÂÃá´Ù.
+     * 3) Å×¸¶ Àû¿ë(ApplyThemeAndMargins)À¸·Î ³»ºÎ ÆĞµù/º¸´õ ±ÔÄ¢À» ÀÏ°üÈ­ÇÑ´Ù.
+     */
+
 	CEdit::PreSubclassWindow();
 	EnsureMultilineForVCenter();
 	ApplyThemeAndMargins();
@@ -2099,6 +2221,16 @@ void CSkinnedEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 void CSkinnedEdit::ApplyThemeAndMargins()
 {
+    /* [UI-STEP] ½ºÅ² ¿¡µ÷ Å×¸¶/¸¶Áø Àû¿ë(ÀÔ·Â ¹Ú½º ÅëÀÏ°¨ ÇÙ½É)
+     * 1) ÇöÀç È°¼º Å×¸¶(ModernUITheme::GetInputTheme µî)¸¦ °¡Á®¿Â´Ù.
+     * 2) ³»ºÎ ÅØ½ºÆ® ¿©¹é(ÁÂ/¿ì/»ó/ÇÏ)À» DPI¿¡ ¸Â°Ô »êÃâÇÑ´Ù.
+     * 3) EM_SETMARGINS µî ¸Ş½ÃÁö·Î ¿¡µ÷ ³»ºÎ ÆĞµùÀ» Àû¿ëÇÑ´Ù.
+     * 4) Æ÷Ä¿½º/hover ½Ã º¸´õ¸¦ ±×¸®±â À§ÇÑ »óÅÂ º¯¼ö¸¦ ÃÊ±âÈ­ÇÑ´Ù.
+     *
+     * [Âü°í]
+     * - ¿©¹éÀ» Àß¸ø ÁÖ¸é ÅØ½ºÆ®°¡ À§¾Æ·¡·Î Ä¡¿ìÄ¡°Å³ª Àß¸®¹Ç·Î DPI/ÆùÆ®¿Í ÇÔ²² Æ©´×ÇÑ´Ù.
+     */
+
 	if (!::IsWindow(m_hWnd)) return;
 
 	SetWindowTheme(m_hWnd, L"", L"");
@@ -2170,8 +2302,18 @@ void CSkinnedEdit::TrackMouseLeave()
 		m_bTracking = TRUE;
 }
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CSkinnedEdit::OnEraseBkgnd(CDC* /*pDC*/)
 {
+    /* [UI-STEP] ½ºÅ² ¿¡µ÷ ¹è°æ Áö¿ì±â(±ôºıÀÓ ¹æÁö)
+     * 1) ¹è°æÀ» OnPaint¿¡¼­ ¿ÏÀüÈ÷ ±×¸°´Ù¸é TRUE¸¦ ¸®ÅÏÇØ ±âº» Áö¿ì±â¸¦ ¸·´Â´Ù.
+     * 2) ÀÌ °æ¿ì OnPaint¿¡¼­ ¹è°æÀ» Ç×»ó µ¤¾î½á¾ß ÀÜ»óÀÌ ³²Áö ¾Ê´Â´Ù.
+     */
+
 	return TRUE;
 }
 
@@ -2260,8 +2402,23 @@ void CSkinnedEdit::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::Rect
 	path.CloseFigure();
 }
 
+/*
+[Ä¿½ºÅÒ ÆäÀÎÆÃ]
+- ¹è°æ/Ä«µå/±¸ºĞ¼±/ÀÔ·Â º¸´õ µî Modern UI ½ºÅ¸ÀÏÀ» Á÷Á¢ ±×¸³´Ï´Ù.
+- ±ôºıÀÓ ¹æÁö¸¦ À§ÇØ ¸Ş¸ğ¸® DC(´õºí ¹öÆÛ) »ç¿ë ¿©ºÎ¸¦ È®ÀÎÇÏ¼¼¿ä.
+*/
 void CSkinnedEdit::OnPaint()
 {
+    /* [UI-STEP] ½ºÅ² ¿¡µ÷ Ä¿½ºÅÒ ÆäÀÎÆÃ(¹è°æ/º¸´õ/Æ÷Ä¿½º ¸µ)
+     * 1) ±âº» WM_PAINT Ã³¸® ´ë½Å, ¹è°æ/º¸´õ¸¦ Á÷Á¢ ±×·Á Çö´ë UI ½ºÅ¸ÀÏÀ» À¯ÁöÇÑ´Ù.
+     * 2) ¹è°æ»öÀº Ä«µå/´ÙÀÌ¾ó·Î±× ¹è°æ°ú ´ëºñµÇµµ·Ï Å×¸¶¿¡¼­ °áÁ¤ÇÑ´Ù.
+     * 3) Æ÷Ä¿½º°¡ ÀÖÀ¸¸é Æ÷Ä¿½º ¸µ(°­Á¶ º¸´õ)À» ÇÑ ´Ü°è ´õ ±×¸°´Ù.
+     * 4) ÅØ½ºÆ® ±×¸®±â´Â ±âº» ¿¡µ÷ÀÇ Å¬¶óÀÌ¾ğÆ® ±×¸®±â¿Í Ãæµ¹ÇÏÁö ¾Êµµ·Ï PrintClient/WM_PRINTCLIENT µîÀ» È°¿ëÇÑ´Ù.
+     *
+     * [Âü°í]
+     * - ¿¡µ÷Àº ³»ºÎÀûÀ¸·Î ±×¸®´Â ¿µ¿ªÀÌ ÀÖ¾î¼­, º¸´õ¸¦ 'ºÎ¸ğ°¡' ±×¸±Áö 'ÄÁÆ®·ÑÀÌ' ±×¸±Áö Á¤Ã¥À» ÅëÀÏÇØ¾ß ÀÜ»óÀÌ ÁÙ¾îµç´Ù.
+     */
+
 	if (m_bInPaint)
 	{
 		CPaintDC dc(this);
@@ -2395,14 +2552,30 @@ void CSkinnedEdit::OnKillFocus(CWnd* pNewWnd)
 	Invalidate(FALSE);
 }
 
+/*
+[¸®»çÀÌÁî Ã³¸®]
+- Ã¢ Å©±â º¯°æ ½Ã È£ÃâµË´Ï´Ù.
+- ¿©±â¼­´Â ApplyLayout()·Î Àç¹èÄ¡ÇÏ°í, ÇÊ¿ä ½Ã Invalidate()·Î Àç±×¸²À» Æ®¸®°ÅÇÕ´Ï´Ù.
+*/
 void CSkinnedEdit::OnSize(UINT nType, int cx, int cy)
 {
 	CEdit::OnSize(nType, cx, cy);
 	ApplyThemeAndMargins();
 }
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CSkinnedEdit::OnMouseMove(UINT nFlags, CPoint point)
 {
+    /* [UI-STEP] hover »óÅÂ ÃßÀû(¸¶¿ì½º ÁøÀÔ/ÀÌÅ» °¨Áö)
+     * 1) ¸¶¿ì½º°¡ ¿¡µ÷ À§·Î µé¾î¿À¸é hover ÇÃ·¡±×¸¦ ¼¼ÆÃÇÑ´Ù.
+     * 2) TrackMouseEvent·Î WM_MOUSELEAVE¸¦ ¿äÃ»ÇØ ÀÌÅ» ½ÃÁ¡À» ¹Ş´Â´Ù.
+     * 3) hover »óÅÂ º¯È­ ½Ã Invalidate()·Î º¸´õ ÅæÀ» Áï½Ã °»½ÅÇÑ´Ù.
+     */
+
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CEdit::OnMouseMove(nFlags, point); return; }
 	if (!m_bHover)
 	{
@@ -2416,6 +2589,10 @@ void CSkinnedEdit::OnMouseMove(UINT nFlags, CPoint point)
 
 void CSkinnedEdit::OnMouseLeave()
 {
+    /* [UI-STEP] hover ÇØÁ¦ Ã³¸®
+     * 1) hover ÇÃ·¡±×¸¦ ÇØÁ¦ÇÏ°í Invalidate()·Î º¸´õ¸¦ ¿ø·¡ ÅæÀ¸·Î º¹±¸ÇÑ´Ù.
+     */
+
 	m_bHover = FALSE;
 	m_bTracking = FALSE;
 	Invalidate(FALSE);
@@ -2555,8 +2732,20 @@ RectF CModernTabCtrl::GetTabRect(int idx) const
 	return Gdiplus::RectF(x, y, eachW, h);
 }
 
+/*
+[Ä¿½ºÅÒ ÆäÀÎÆÃ]
+- ¹è°æ/Ä«µå/±¸ºĞ¼±/ÀÔ·Â º¸´õ µî Modern UI ½ºÅ¸ÀÏÀ» Á÷Á¢ ±×¸³´Ï´Ù.
+- ±ôºıÀÓ ¹æÁö¸¦ À§ÇØ ¸Ş¸ğ¸® DC(´õºí ¹öÆÛ) »ç¿ë ¿©ºÎ¸¦ È®ÀÎÇÏ¼¼¿ä.
+*/
 void CModernTabCtrl::OnPaint()
 {
+    /* [UI-STEP] ÅÇ ÄÁÆ®·Ñ Ä¿½ºÅÒ ÆäÀÎÆÃ(ÅÇ ¹è°æ/¼±ÅÃ Ç¥½Ã/¾ÆÀÌÄÜ)
+     * 1) ÀüÃ¼ ¹è°æÀ» ¸ÕÀú Ã¤¿ö ÅÇ ¿µ¿ª ÀÜ»óÀ» ¹æÁöÇÑ´Ù.
+     * 2) °¢ ÅÇÀ» ¼øÈ¸ÇÏ¸ç DrawTab()À¸·Î ÅÇ ¹öÆ°À» ±×¸°´Ù(¼±ÅÃ ÅÇ °­Á¶).
+     * 3) ÇÊ¿ä ½Ã DrawIcon()À¸·Î ÅÇ ¾ÆÀÌÄÜÀ» ÇÔ²² ·»´õ¸µÇÑ´Ù.
+     * 4) ¸¶Áö¸·¿¡ ¼±ÅÃ ÅÇ ¾ğ´õ¶óÀÎ/º¸´õ µî °­Á¶ ¿ä¼Ò¸¦ ±×·Á z-order¸¦ ¸ÂÃá´Ù.
+     */
+
 	CPaintDC dc(this);
 	CRect wndRc;
 	GetClientRect(&wndRc);
@@ -2592,6 +2781,11 @@ void CModernTabCtrl::OnPaint()
 	memDC.SelectObject(pOld);
 }
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CModernTabCtrl::OnEraseBkgnd(CDC* /*pDC*/) { return TRUE; }
 
 void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
@@ -2770,6 +2964,11 @@ void CModernTabCtrl::DrawIcon(Graphics& g, int iconType,
 	}
 }
 
+/*
+[Å¬¸¯ ½ÃÀÛ]
+- Å¬¸¯ÇÑ À§Ä¡ÀÇ UI ¿ä¼Ò(¹öÆ°/Ä«µå/¾ÆÀÌÄÜ)¸¦ ÆÇº°ÇÏ°í pressed »óÅÂ¸¦ ¼³Á¤ÇÕ´Ï´Ù.
+- Ä¸Ã³(SetCapture) »ç¿ë ½Ã OnLButtonUp¿¡¼­ ¹İµå½Ã ReleaseCapture Ã³¸®ÇÏ¼¼¿ä.
+*/
 void CModernTabCtrl::OnLButtonDown(UINT nFlags, CPoint pt)
 {
 	for (int i = 0; i < (int)m_items.size(); i++)
@@ -2799,6 +2998,11 @@ void CModernTabCtrl::EnsureTrack()
 	m_bTrack = true;
 }
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CModernTabCtrl::OnMouseMove(UINT nFlags, CPoint pt)
 {
 	EnsureTrack();
@@ -2838,6 +3042,11 @@ BEGIN_MESSAGE_MAP(CInfoText, CStatic)
 	ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CInfoText::OnEraseBkgnd(CDC* /*pDC*/)
 {
 	//  : OnPaint   
@@ -2900,6 +3109,11 @@ CInfoIconButton::CInfoIconButton()
 {
 }
 
+/*
+[È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®]
+- ¸¶¿ì½º ÀÌµ¿ ½Ã È£¹ö ´ë»ó(¹öÆ°/¾ÆÀÌÄÜ/Ä«µå)À» ÆÇº°ÇØ »óÅÂ¸¦ °»½ÅÇÕ´Ï´Ù.
+- »óÅÂ°¡ ¹Ù²î¸é InvalidateRect()·Î ÃÖ¼Ò ¿µ¿ª¸¸ ´Ù½Ã ±×¸®µµ·Ï ÃÖÀûÈ­ÇÏ¼¼¿ä.
+*/
 void CInfoIconButton::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
@@ -2923,6 +3137,11 @@ void CInfoIconButton::OnMouseLeave()
 }
 
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CInfoIconButton::OnEraseBkgnd(CDC* pDC)
 {
 	// Prevent background erase to reduce flicker (we fully paint in DrawItem)
@@ -2932,6 +3151,12 @@ BOOL CInfoIconButton::OnEraseBkgnd(CDC* pDC)
 
 void CInfoIconButton::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 {
+    /* [UI-STEP] ¶óº§ ¿· Á¤º¸ ¾ÆÀÌÄÜ(i) ·»´õ¸µ(hover/pressed °­Á¶)
+     * 1) ¾ÆÀÌÄÜ ¹öÆ°Àº ¸Å¿ì ÀÛ±â ¶§¹®¿¡ È÷Æ® ¿µ¿ª°ú ½ÇÁ¦ ±×¸®±â ¿µ¿ªÀ» µ¿ÀÏÇÏ°Ô À¯ÁöÇÑ´Ù.
+     * 2) hover/pressed »óÅÂ¿¡ µû¶ó ¹è°æ ¿ø/Å×µÎ¸® ÅæÀ» ¹Ù²Ù°í, i ±ÛÀÚ¸¦ Áß¾Ó¿¡ ·»´õ¸µÇÑ´Ù.
+     * 3) ÆË¿À¹ö¸¦ ¶ç¿ì´Â Æ®¸®°ÅÀÌ¹Ç·Î, Å¬¸¯ ½Ã ½Ã°¢Àû ÇÇµå¹é(pressed)À» ¸íÈ®È÷ ÁØ´Ù.
+     */
+
 	ModernUIGfx::EnsureGdiplusStartup();
 
 	CRect rect(lpDIS->rcItem);
@@ -3302,18 +3527,39 @@ void CModernPopover::Hide()
 	}
 }
 
+/*
+[¹è°æ Áö¿ì±â]
+- ±ôºıÀÓÀ» ÁÙÀÌ±â À§ÇØ º¸Åë TRUE¸¦ ¹İÈ¯ÇÏ°Å³ª, ÀÚÃ¼ ´õºí¹öÆÛ¿Í ÇÔ²² »ç¿ëÇÕ´Ï´Ù.
+- ¹è°æÀ» Á÷Á¢ ±×¸®´Â ±¸Á¶¶ó¸é ±âº» Ã³¸®(DefWindowProc)¸¦ ÇÇÇÏ´Â ÆíÀÌ ÁÁ½À´Ï´Ù.
+*/
 BOOL CModernPopover::OnEraseBkgnd(CDC* pDC)
 {
 	return TRUE;
 }
 
+/*
+[Å¬¸¯ ½ÃÀÛ]
+- Å¬¸¯ÇÑ À§Ä¡ÀÇ UI ¿ä¼Ò(¹öÆ°/Ä«µå/¾ÆÀÌÄÜ)¸¦ ÆÇº°ÇÏ°í pressed »óÅÂ¸¦ ¼³Á¤ÇÕ´Ï´Ù.
+- Ä¸Ã³(SetCapture) »ç¿ë ½Ã OnLButtonUp¿¡¼­ ¹İµå½Ã ReleaseCapture Ã³¸®ÇÏ¼¼¿ä.
+*/
 void CModernPopover::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	Hide();
 }
 
+/*
+[Ä¿½ºÅÒ ÆäÀÎÆÃ]
+- ¹è°æ/Ä«µå/±¸ºĞ¼±/ÀÔ·Â º¸´õ µî Modern UI ½ºÅ¸ÀÏÀ» Á÷Á¢ ±×¸³´Ï´Ù.
+- ±ôºıÀÓ ¹æÁö¸¦ À§ÇØ ¸Ş¸ğ¸® DC(´õºí ¹öÆÛ) »ç¿ë ¿©ºÎ¸¦ È®ÀÎÇÏ¼¼¿ä.
+*/
 void CModernPopover::OnPaint()
 {
+    /* [UI-STEP] ÆË¿À¹ö(µµ¿ò¸» ¹Ú½º) ·»´õ¸µ(¶ó¿îµå ¹Ú½º + ÅØ½ºÆ®)
+     * 1) ÆË¿À¹ö ¹è°æÀ» ¶ó¿îµå »ç°¢ÇüÀ¸·Î ±×¸®°í, ±×¸²ÀÚ/º¸´õ°¡ ÀÖÀ¸¸é Àû¿ëÇÑ´Ù.
+     * 2) ÅØ½ºÆ® ¿µ¿ª ÆĞµùÀ» Àû¿ëÇØ ÁÙ¹Ù²ŞÀÌ ÀÚ¿¬½º·´°Ô º¸ÀÌµµ·Ï DrawText ÇÃ·¡±×¸¦ »ç¿ëÇÑ´Ù.
+     * 3) ºÎ¸ğ ÁÂÇ¥ ±âÁØÀ¸·Î Ç¥½Ã À§Ä¡°¡ ¹Ù²î¾îµµ Å¬¸®ÇÎµÇÁö ¾Ê°Ô Ã¢ Å©±â¸¦ º¸Á¤ÇÒ ¼ö ÀÖ´Ù.
+     */
+
 	CPaintDC dc(this); // validate paint region
 	UNREFERENCED_PARAMETER(dc);
 	// Content rendered via UpdateLayeredWindow in RefreshLayered()

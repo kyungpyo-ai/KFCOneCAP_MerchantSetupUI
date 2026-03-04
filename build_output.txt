@@ -102,6 +102,8 @@ C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(1664,9
       C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\um\winuser.h(2569,9):
       'HTTRANSPARENT'???댁쟾 ?뺤쓽瑜?李몄“?섏떗?쒖삤.
   
+  RegistryUtil.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
   ShopDownDlg.cpp
   _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
 C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\resource.h(40,9): warning C4005: 'CREATEPROCESS_MANIFEST_RESOURCE_ID': 留ㅽ겕濡??ъ젙??[C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\MerchantSetup.vcxproj]

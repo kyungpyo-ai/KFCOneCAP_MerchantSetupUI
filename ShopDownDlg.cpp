@@ -2,6 +2,21 @@
 #include "ShopDownDlg.h"
 #include <string>
 
+// ==============================================================
+// [ShopDownDlg.cpp]
+//  - 가맹점 다운로드 다이얼로그 구현부
+//
+// 화면 동작 개요
+//  1) OnInitDialog()에서 컨트롤/버튼/리스트(또는 카드 영역) 초기화
+//  2) 스크롤/마우스 입력에 따라 선택/호버 상태를 갱신하고 Invalidate()로 재그림
+//  3) 다운로드/삭제 버튼 클릭 시 대상 단말/가맹점 정보를 기준으로 동작
+//
+// 유지보수 포인트
+//  - 스크롤 영역 높이/행 높이/패딩 등은 한 곳(상수/헬퍼)에서 관리 권장
+//  - WM_VSCROLL/마우스휠 처리 시 범위(clamp) 누락이 크래시/깜빡임 원인이 되기 쉬움
+// ==============================================================
+
+
 IMPLEMENT_DYNAMIC(CShopDownDlg, CDialog)
 
 BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
@@ -146,8 +161,23 @@ void CShopDownDlg::InitPointerArrays()
 // ============================================================================
 // OnInitDialog
 // ============================================================================
+// --------------------------------------------------------------
+// 다이얼로그 초기화
+//  - 리스트 데이터/버튼/스킨 적용
+// --------------------------------------------------------------
 BOOL CShopDownDlg::OnInitDialog()
 {
+    /* [UI-STEP] 초기 UI 구성(다운로드 화면 컨트롤/레이아웃/스크롤 초기화)
+     * 1) 베이스 다이얼로그 초기화 후, CreateControlsOnce()로 자식 컨트롤을 1회 생성한다.
+     * 2) ApplyFonts()로 리스트/카드 텍스트 폰트를 적용한다.
+     * 3) LayoutControls()로 카드/리스트 영역, 버튼 영역, 스크롤바 위치를 계산/배치한다.
+     * 4) UpdateScrollBar()로 데이터 길이에 맞게 스크롤 범위/페이지 크기를 설정한다.
+     * 5) 초기 표시 상태를 위해 Invalidate()로 첫 렌더링을 트리거한다.
+     *
+     * [참고]
+     * - 컨트롤 생성(Create)과 배치(SetWindowPos)는 반드시 분리(리사이즈 시 재생성 금지).
+     */
+
     CDialog::OnInitDialog();
     ModernUIGfx::EnsureGdiplusStartup();
 
@@ -168,6 +198,13 @@ BOOL CShopDownDlg::OnInitDialog()
 // ============================================================================
 void CShopDownDlg::CreateControlsOnce()
 {
+    /* [UI-STEP] 자식 컨트롤 1회 생성(버튼/리스트/커스텀 영역)
+     * 1) 이미 생성되어 있으면(IsWindow) 즉시 리턴한다.
+     * 2) 다운로드/삭제 등 버튼을 생성하고 핸들러(OnDownloadClick/OnDeleteClick)와 연결한다.
+     * 3) 표시 영역(카드/리스트)을 위한 컨트롤 또는 내부 데이터 구조를 초기화한다.
+     * 4) 타이머/호버 효과가 있다면 OnTimer를 위한 초기 값을 세팅한다.
+     */
+
     if (m_editProd[0].GetSafeHwnd()) return;
 
     const DWORD edtBase  = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPSIBLINGS
@@ -232,6 +269,11 @@ m_editMerchantName[i].CreateEx(0, _T("EDIT"), _T(""),
 // ============================================================================
 void CShopDownDlg::ApplyFonts()
 {
+    /* [UI-STEP] 텍스트 폰트 적용(가독성/행 높이 결정)
+     * 1) DPI를 반영해 본문/캡션 폰트를 생성한다.
+     * 2) 행/카드 높이 계산에 폰트 메트릭이 영향을 주므로, 폰트 적용 후 레이아웃을 다시 잡는다.
+     */
+
     LOGFONT lf = {};
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     lstrcpy(lf.lfFaceName, _T("Malgun Gothic"));
@@ -270,6 +312,15 @@ void CShopDownDlg::ApplyFonts()
 // ============================================================================
 void CShopDownDlg::LayoutControls()
 {
+    /* [UI-STEP] 레이아웃 계산(카드/버튼/스크롤 배치)
+     * 1) 클라이언트 영역을 기준으로 상단/하단 버튼 영역과 본문(카드 목록) 영역을 분리한다.
+     * 2) 카드 영역의 좌표/폭을 정하고, 행/카드 한 개의 높이와 간격을 적용한다.
+     * 3) 스크롤바는 카드 영역 높이와 연동되므로 함께 위치/크기를 계산한다.
+     *
+     * [참고]
+     * - 레이아웃 변경 후에는 UpdateScrollBar()로 스크롤 범위 재계산이 필요하다.
+     */
+
     if (m_bInLayout) return;
     m_bInLayout = TRUE;
 
@@ -463,6 +514,12 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
 // ============================================================================
 void CShopDownDlg::UpdateScrollBar()
 {
+    /* [UI-STEP] 스크롤바 범위/페이지 크기 계산
+     * 1) 전체 콘텐츠 높이(행 개수 * 행 높이 + 간격)를 계산한다.
+     * 2) 클라이언트 표시 가능 높이를 page로 두고, maxScroll을 산출한다.
+     * 3) SetScrollInfo로 range/page/pos를 설정한다.
+     */
+
     if (m_nTotalContentH <= m_nViewH)
     {
         ShowScrollBar(SB_VERT, FALSE);
@@ -485,6 +542,11 @@ void CShopDownDlg::UpdateScrollBar()
 // ============================================================================
 void CShopDownDlg::ApplyScroll(int newPos)
 {
+    /* [UI-STEP] 스크롤 적용 공용 루틴(상태 동기화)
+     * 1) 내부 스크롤 상태(scrollY 등)를 갱신한다.
+     * 2) 행의 hover/선택 언더레이가 스크롤에 따라 어긋나지 않도록 ApplyAllRowUnderlays()를 호출한다(필요 시).
+     */
+
     SCROLLINFO si;
     si.cbSize = sizeof(SCROLLINFO);
     si.fMask  = SIF_ALL;
@@ -541,8 +603,19 @@ void CShopDownDlg::QueueScroll(int newPos)
     }
 }
 
+// --------------------------------------------------------------
+// 스크롤 처리
+//  - 스크롤 위치를 데이터 범위에 맞게 보정(clamp)하고 재그림
+// --------------------------------------------------------------
 void CShopDownDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
+    /* [UI-STEP] 스크롤바 입력 처리(행/카드 목록 이동)
+     * 1) SB_LINEUP/LINEDOWN, SB_PAGEUP/PAGEDOWN, SB_THUMBTRACK 등 스크롤 코드를 해석한다.
+     * 2) ScrollByDelta() 또는 ApplyScroll()로 스크롤 위치를 갱신한다.
+     * 3) UpdateScrollBar()로 스크롤 핸들 위치/범위를 동기화한다.
+     * 4) Invalidate()로 다시 그려 화면을 갱신한다.
+     */
+
     SCROLLINFO si;
     si.cbSize = sizeof(SCROLLINFO);
     si.fMask  = SIF_ALL;
@@ -623,6 +696,11 @@ void CShopDownDlg::OnTimer(UINT_PTR nIDEvent)
 // ============================================================================
 BOOL CShopDownDlg::PreTranslateMessage(MSG* pMsg)
 {
+    /* [UI-STEP] 키 입력 선처리(단축키/엔터/ESC 등)
+     * 1) 엔터/ESC 기본 닫힘 동작을 커스텀해야 하면 여기에서 필터링한다.
+     * 2) 키보드로 스크롤/선택 이동이 있다면 메시지를 해석해 ScrollByDelta() 등을 호출한다.
+     */
+
     if (pMsg->message == WM_MOUSEWHEEL)
     {
         // 메시지 수신 윈도우가 자신이거나 자식 컨트롤인 경우 모두 처리
@@ -638,6 +716,12 @@ BOOL CShopDownDlg::PreTranslateMessage(MSG* pMsg)
 // ============================================================================
 BOOL CShopDownDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
+    /* [UI-STEP] 마우스 휠 스크롤 처리
+     * 1) 휠 델타(WHEEL_DELTA)를 라인/픽셀 단위 스크롤로 변환한다.
+     * 2) ScrollByDelta()로 스크롤을 적용한다.
+     * 3) UpdateScrollBar() + Invalidate()로 화면을 갱신한다.
+     */
+
     ScrollByDelta(zDelta);
     return TRUE;
 }
@@ -645,6 +729,12 @@ BOOL CShopDownDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 // ============================================================================
 void CShopDownDlg::ScrollByDelta(short zDelta)
 {
+    /* [UI-STEP] 스크롤 델타 적용(범위 보정 포함)
+     * 1) 현재 scrollY에 delta를 더해 새로운 위치를 만든다.
+     * 2) 0 ~ maxScroll 범위로 clamp하여 음수/초과 스크롤을 방지한다.
+     * 3) 변경이 있을 때만 Invalidate(또는 부분 Invalidate)하여 불필요한 페인팅을 줄인다.
+     */
+
     const int step  = ModernUIDpi::Scale(m_hWnd, kRowH + kRowGap);
     const int lines = zDelta / WHEEL_DELTA;
     SCROLLINFO si;
@@ -664,6 +754,11 @@ void CShopDownDlg::ScrollByDelta(short zDelta)
 // ============================================================================
 BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
+    /* [UI-STEP] 컨트롤 이벤트 라우팅(버튼 클릭 등)
+     * 1) 버튼 ID를 확인해 다운로드/삭제 등 클릭 이벤트를 분기한다.
+     * 2) 필요한 경우 UI 상태를 갱신하고 Invalidate()로 재그림한다.
+     */
+
     UINT nID   = LOWORD(wParam);
     UINT nCode = HIWORD(wParam);
     if (nCode == BN_CLICKED)
@@ -684,6 +779,12 @@ BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 
 void CShopDownDlg::OnDownloadClick(int index)
 {
+    /* [UI-STEP] 다운로드 버튼 처리(UI 연동)
+     * 1) 선택된 단말/가맹점 정보를 확인한다.
+     * 2) 다운로드 요청을 수행한 뒤 결과를 리스트/카드에 반영한다.
+     * 3) 반영 후 Invalidate()로 화면 갱신한다.
+     */
+
     if (index < 0 || index >= kRowCount) return;
 
     // 테스트용: 다운로드 시 대표가맹점명(RetailName)에 "TEST"를 채워 카드 상태(배경)를 즉시 전환
@@ -706,6 +807,12 @@ void CShopDownDlg::OnDownloadClick(int index)
 
 void CShopDownDlg::OnDeleteClick(int index)
 {
+    /* [UI-STEP] 삭제 버튼 처리(UI 연동)
+     * 1) 선택 항목을 확인하고 삭제 동작을 수행한다.
+     * 2) 삭제 후 스크롤 범위가 바뀌면 UpdateScrollBar()를 호출한다.
+     * 3) Invalidate()로 화면 갱신한다.
+     */
+
     if (index < 0 || index >= kRowCount) return;
 
     // 해당 카드(행)의 모든 데이터 초기화
@@ -730,7 +837,17 @@ void CShopDownDlg::OnDeleteClick(int index)
 }
 
 
-BOOL CShopDownDlg::OnEraseBkgnd(CDC*) { return TRUE; }
+/*
+[배경 지우기]
+- 깜빡임을 줄이기 위해 보통 TRUE를 반환하거나, 자체 더블버퍼와 함께 사용합니다.
+- 배경을 직접 그리는 구조라면 기본 처리(DefWindowProc)를 피하는 편이 좋습니다.
+*/
+BOOL CShopDownDlg::OnEraseBkgnd(CDC*) {
+    /* [UI-STEP] 배경 지우기(깜빡임 감소)
+     * 1) OnPaint에서 배경을 전부 그리는 구조면 TRUE를 리턴하여 기본 지우기를 막는다.
+     * 2) 기본 지우기를 막을 때는 항상 전체 영역을 OnPaint에서 칠해야 잔상이 남지 않는다.
+     */
+ return TRUE; }
 
 HBRUSH CShopDownDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
@@ -750,8 +867,20 @@ HBRUSH CShopDownDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 }
 
 
+/*
+[리사이즈 처리]
+- 창 크기 변경 시 호출됩니다.
+- 여기서는 ApplyLayout()로 재배치하고, 필요 시 Invalidate()로 재그림을 트리거합니다.
+*/
 void CShopDownDlg::OnSize(UINT nType, int cx, int cy)
 {
+    /* [UI-STEP] 창 크기 변경 처리(레이아웃 재배치 + 스크롤 갱신)
+     * 1) 최소 크기보다 작아지면 컨트롤이 겹치지 않게 마진/폭을 보정한다.
+     * 2) LayoutControls() 호출로 전체 재배치한다.
+     * 3) UpdateScrollBar()로 페이지 크기/범위를 다시 계산한다.
+     * 4) Invalidate()로 화면 갱신한다.
+     */
+
     CDialog::OnSize(nType, cx, cy);
     if (cx <= 0 || cy <= 0) return;
     if (m_editProd[0].GetSafeHwnd()) LayoutControls();
@@ -760,8 +889,22 @@ void CShopDownDlg::OnSize(UINT nType, int cx, int cy)
 // ============================================================================
 // OnPaint  - full double-buffered render
 // ============================================================================
+// --------------------------------------------------------------
+// 커스텀 페인팅
+//  - 배경/카드/행(단말기/가맹점) 렌더링
+// --------------------------------------------------------------
 void CShopDownDlg::OnPaint()
 {
+    /* [UI-STEP] 커스텀 렌더링(카드/행/호버/선택/언더레이)
+     * 1) CPaintDC로 DC를 얻고 필요 시 메모리 DC를 사용해 깜빡임을 줄인다.
+     * 2) 배경을 먼저 칠하고(전체 배경), 카드 영역을 순회하며 각 행/카드를 그린다.
+     * 3) 선택/호버 상태에 따라 카드 배경(GetRowCardBg)과 보더를 바꿔 그린다.
+     * 4) 텍스트/아이콘(있다면)을 마지막에 그려 시각적 우선순위를 맞춘다.
+     *
+     * [참고]
+     * - 스크롤 오프셋이 적용되는 화면이므로, '그릴 때 y - scrollY' 형태로 좌표를 변환한다.
+     */
+
     CPaintDC dc(this);
     ModernUIGfx::EnsureGdiplusStartup();
 
@@ -999,5 +1142,4 @@ BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
     UNREFERENCED_PARAMETER(bActive);
     return TRUE;
 }
-
 

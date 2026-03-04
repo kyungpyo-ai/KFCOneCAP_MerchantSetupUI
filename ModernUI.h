@@ -63,6 +63,26 @@ typedef float REAL;
 #define KFTC_INPUT_THICK_N       1.0f                //  β(px)
 #define KFTC_INPUT_THICK_F       2.0f
 
+// ==============================================================
+// [ModernUI.h]
+//  - 현대화 UI(네이버/토스/카카오 스타일) 구현을 위한 공용 헤더
+//
+// 포함 내용
+//  1) 팔레트/상수(색상, 라운드, 두께)
+//  2) Theme/스킨 인터페이스(ModernUITheme)
+//  3) GDI+ / DPI 유틸(ModernUIGfx, ModernUIDpi)
+//  4) 커스텀 컨트롤들
+//     - CModernButton / CModernCheckBox / CModernToggleSwitch
+//     - CSkinnedComboBox / CSkinnedEdit (인풋 보더/포커스 강조)
+//     - CModernTabCtrl (탭 버튼 스타일)
+//     - CInfoIconButton / CModernPopover (라벨 옆 도움말 팝오버)
+//
+// 유지보수 팁
+//  - 색/두께/라운드가 바뀌면 우선 KFTC_* / ModernUITheme 설정부터 점검
+//  - 컨트롤 개별 동작(hover/focus/pressed)은 각 클래스의 메시지 처리에서 관리
+// ==============================================================
+
+
 
 // ========================================
 // Reusable input theme (Edit/Combo )
