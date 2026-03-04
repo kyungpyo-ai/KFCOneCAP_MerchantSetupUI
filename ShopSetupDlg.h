@@ -249,6 +249,13 @@ private:
     void InitializeFonts();
     void InitializeControls();
     void ApplyLayout();
+
+    // --- Layout helpers (called from ApplyLayout) ---
+    int  ScalePx(int px) const;
+    void MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow = FALSE);
+    void ApplyLayoutTab0();  // Tab 0: card reader settings
+    void ApplyLayoutTab1();  // Tab 1+2: devices and system settings
+    void ApplyLayoutTab3();  // Tab 3: merchant download
     int  CalculateRequiredHeight();
     void ShowTab(int nTab);
 

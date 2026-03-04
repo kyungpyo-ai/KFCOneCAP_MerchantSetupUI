@@ -158,6 +158,16 @@ namespace ModernUIDpi
 // CModernButton 
 // ========================================
 
+// ============================================================
+// CModernButton drawing constants (96-DPI base; scaled at runtime)
+// ============================================================
+static const float kBtnCornerRadius   = 8.0f;  // corner rounding radius
+static const float kBtnDrawInset      = 1.5f;  // drawing rect inset (left/top)
+static const float kBtnDrawShrink     = 3.0f;  // drawing rect shrink (right/bottom)
+static const int   kBtnShadowAlphaNrm = 12;    // shadow alpha: normal state
+static const int   kBtnShadowAlphaPrs = 6;     // shadow alpha: pressed state
+static const float kBtnBorderWidth    = 1.2f;  // border pen width (most styles)
+static const float kBtnFontSize       = 12.5f; // button text font size (pt)
 BEGIN_MESSAGE_MAP(CModernButton, CButton)
 	ON_WM_MOUSEMOVE()
 	ON_WM_MOUSELEAVE()
@@ -178,10 +188,19 @@ CModernButton::CModernButton()
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
 	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
+	m_style = ButtonStyle::Auto; // default: detect style from button text
 }
 
 CModernButton::~CModernButton()
 {
+}
+
+void CModernButton::SetButtonStyle(ButtonStyle style)
+{
+    // ¹öÆ° ½ºÅ¸ÀÏÀ» ¸í½ÃÀûÀ¸·Î ¼³Á¤ÇÑ´Ù. ´ÙÀ½ ·»´õ¸µ »çÀÌÅ¬ºÎÅÍ Àû¿ëµÈ´Ù.
+    m_style = style;
+    if (GetSafeHwnd())
+        Invalidate();
 }
 
 LRESULT CModernButton::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
@@ -323,6 +342,17 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rect = lpDrawItemStruct->rcItem;
 
+
+	// ----- DrawItem() ???ë§??¨ê? -----
+	// 1. ??? ???ê·?ê²°ì? (disabled / hover / pressed)
+	// 2. ë²?? ?¤í???ê°?? (enum ì§€???°ì?, ???ë©????????? ê°??)
+	// 3. ?¤í??¤í?ë¦?ë©?ª¨ë¦?C ???
+	// 4. ë°°ê²½ ì±??ê¸?(ë¶€ëª?ë°°ê²½ ??? underlay ??
+	// 5. ê·¸ë¦¼???????ê·¸ë¦¬ê¸?r
+	// 6. ë²?? ë°°ê²½/???ë¦?ê·¸ë¦¬ê¸?(?¤í??¼ë? ë¶?¸°)
+	// 7. ?????ê·¸ë¦¬ê¸?r
+	// 8. BitBltë¡???©´??ë³µì?
+
 	// 
 	const bool disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
 	const bool enabled = !disabled;
@@ -368,22 +398,30 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 //   (//¥å)
 
 	//  :    1px  
+	// If style enum is explicitly set, override text-based detection.
+	if (m_style != ButtonStyle::Auto) {
+		isPrimary  = (m_style == ButtonStyle::Primary)  ? TRUE : FALSE;
+		isExit     = (m_style == ButtonStyle::Exit)     ? TRUE : FALSE;
+		isDanger   = (m_style == ButtonStyle::Danger)   ? TRUE : FALSE;
+		isDownload = (m_style == ButtonStyle::Download) ? TRUE : FALSE;
+		isMini     = FALSE;
+	}
 	const int pressOffset = pressed ? 1 : 0;
 
 	// Safe padding to avoid right/bottom clipping even with AA + shadow.
 	CRect rcSafe = rc;
 	rcSafe.DeflateRect(0, 0, 1, 1);
 
-	const float rad = 8.0f;
+	const float rad = kBtnCornerRadius; // corner rounding radius
 	Gdiplus::RectF rf(
-		(float)rcSafe.left + 1.5f,
-		(float)rcSafe.top  + 1.5f + (float)pressOffset,
-		(float)rcSafe.Width()  - 3.0f,
-		(float)rcSafe.Height() - 3.0f);
+		(float)rcSafe.left + kBtnDrawInset,
+		(float)rcSafe.top  + kBtnDrawInset + (float)pressOffset,
+		(float)rcSafe.Width()  - kBtnDrawShrink,
+		(float)rcSafe.Height() - kBtnDrawShrink);
 
 	//  (Pressed    "" )
 	{
-		const int shadowA = pressed ? 6 : 12;
+		const int shadowA = pressed ? kBtnShadowAlphaPrs : kBtnShadowAlphaNrm;
 		const float shDy = 1.0f;
 		Gdiplus::RectF sh(rf.X, rf.Y + shDy, rf.Width, rf.Height - shDy);
 		Gdiplus::GraphicsPath sp; AddRoundRect(sp, sh, rad);
@@ -475,7 +513,7 @@ Gdiplus::Color txtColor;
 
 	Gdiplus::SolidBrush tb(txtColor);
 	Gdiplus::FontFamily ff(L"Malgun Gothic");
-	Gdiplus::Font font(&ff, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, 12.5f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	Gdiplus::Font font(&ff, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	Gdiplus::StringFormat sf;
 	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
 	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
@@ -491,13 +529,9 @@ Gdiplus::Color txtColor;
 
 void CModernButton::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
 {
-	path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 0, 90);
-	path.AddArc(rect.X, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 90, 90);
-	path.CloseFigure();
+	// Delegates to the shared ModernUIGfx implementation.
+	ModernUIGfx::AddRoundRect(path, rect, radius);
 }
-
 // ========================================
 // CModernCheckBox 
 // ========================================
@@ -764,13 +798,9 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CModernCheckBox::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
 {
-	path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 0, 90);
-	path.AddArc(rect.X, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 90, 90);
-	path.CloseFigure();
+	// Delegates to the shared ModernUIGfx implementation.
+	ModernUIGfx::AddRoundRect(path, rect, radius);
 }
-
 // ========================================
 // CPortToggleButton 
 // ========================================
@@ -878,12 +908,8 @@ void CModernToggleSwitch::SetToggled(BOOL bToggled)
 
 void CModernToggleSwitch::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
 {
-	const REAL d = radius * 2.0f;
-	path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-	path.AddArc(rect.X + rect.Width - d, rect.Y, d, d, 270, 90);
-	path.AddArc(rect.X + rect.Width - d, rect.Y + rect.Height - d, d, d, 0, 90);
-	path.AddArc(rect.X, rect.Y + rect.Height - d, d, d, 90, 90);
-	path.CloseFigure();
+	// Delegates to the shared ModernUIGfx implementation.
+	ModernUIGfx::AddRoundRect(path, rect, (float)radius);
 }
 
 void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
@@ -1196,13 +1222,9 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 void CPortToggleButton::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
 {
-	path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 0, 90);
-	path.AddArc(rect.X, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 90, 90);
-	path.CloseFigure();
+	// Delegates to the shared ModernUIGfx implementation.
+	ModernUIGfx::AddRoundRect(path, rect, radius);
 }
-
 
 // ========================================
 // CSkinnedComboBox implementation
@@ -3023,12 +3045,8 @@ CModernPopover::CModernPopover()
 void CModernPopover::AddRoundRect(Gdiplus::GraphicsPath& path,
 	const Gdiplus::RectF& r, REAL radius)
 {
-	const float d = radius * 2.0f;
-	Gdiplus::RectF a(r.X, r.Y, d, d);
-	path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
-	path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
-	path.AddArc(a, 0, 90); a.X = r.X;
-	path.AddArc(a, 90, 90); path.CloseFigure();
+	// Delegates to the shared ModernUIGfx implementation.
+	ModernUIGfx::AddRoundRect(path, r, (float)radius);
 }
 
 

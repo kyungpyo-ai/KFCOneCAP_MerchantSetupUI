@@ -119,6 +119,19 @@ namespace ModernUIDpi
 // ========================================
 // CModernButton -   
 // ========================================
+// ============================================================
+// ButtonStyle: CModernButton 시각 스타일 열거형.
+// SetButtonStyle()을 OnInitDialog에서 호출하면 텍스트 기반 자동 감지보다 우선 적용된다.
+// 기본값(Auto)은 기존 텍스트 감지 동작을 그대로 유지한다.
+// ============================================================
+enum class ButtonStyle {
+    Auto,       // 기본값: 버튼 텍스트로 스타일 자동 감지 (하위 호환)
+    Default,    // 흰 배경 + 테두리
+    Primary,    // 파랑 채움 (확인/제출)
+    Danger,     // 빨강 (삭제/위험 동작)
+    Download,   // 연파랑 (다운로드)
+    Exit        // 회색 테두리 (취소/닫기)
+};
 class CModernButton : public CButton
 {
 public:
@@ -130,6 +143,7 @@ public:
     // Underlay (background behind control) to avoid rounded-corner halo
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
+    void SetButtonStyle(ButtonStyle style); // 버튼 스타일 명시 설정
 
 protected:
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct);
@@ -149,6 +163,7 @@ protected:
 
 private:
     const KFTCInputTheme& GetActiveInputTheme() const;
+    ButtonStyle m_style; // 버튼 시각 스타일 (Auto이면 텍스트로 자동 감지)
     void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius);
 
     COLORREF m_clrNormalBg;
@@ -422,6 +437,7 @@ public:
     // Underlay (background behind control) to avoid rounded-corner halo
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
+    void SetButtonStyle(ButtonStyle style); // 버튼 스타일 명시 설정
 
 protected:
     virtual void PreSubclassWindow();

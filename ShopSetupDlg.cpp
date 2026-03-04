@@ -724,17 +724,39 @@ void CShopSetupDlg::InitializeControls()
     }
 }
 
-// ============================================================================
-// ApplyLayout - 탭 컨트롤 배치 + 각 탭 컨텐츠 배치
-// ============================================================================
-void CShopSetupDlg::ApplyLayout()
+// --- ScalePx: DPI-aware scaling shorthand ---
+int CShopSetupDlg::ScalePx(int px) const
 {
-    CRect rc;
-    GetClientRect(&rc);
+    return ModernUIDpi::Scale(m_hWnd, px);
+}
 
-    auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
-
-    // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
+// --- MoveCtrl: move a dialog control; ComboBox gets standard drop height ---
+void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
+{
+    CWnd* p = GetDlgItem(nID);
+    if (!p || !p->GetSafeHwnd()) return;
+    TCHAR cls[64] = { 0 };
+    ::GetClassName(p->GetSafeHwnd(), cls, 63);
+    if (_tcsicmp(cls, _T("ComboBox")) == 0)
+    {
+        p->MoveWindow(x, y, w, ScalePx(220));
+        ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(h - 2));
+        ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(h - 2));
+    }
+    else
+    {
+        p->MoveWindow(x, y, w, h);
+    }
+    p->ShowWindow(bShow ? SW_SHOW : SW_HIDE);
+}
+// --- Tab 0: card reader settings ---
+void CShopSetupDlg::ApplyLayoutTab0()
+{
+    auto S    = [&](int v)                              { return ScalePx(v); };
+    auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
+    const int CTRL_H       = S(40);
+    const int COMBO_DROP_H = S(220);
+    const int FIELD_H      = CTRL_H;
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
      
 
@@ -756,79 +778,8 @@ void CShopSetupDlg::ApplyLayout()
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
     };
-
-    const int MARGIN   = S(kTabPadLeft);
-    const int LABEL_W  = S(92);
-    const int FIELD_W  = S(120);
-    const int LF_GAP   = S(8);
-    const int FIELD_W_IN = FIELD_W - LF_GAP;
-    const int CTRL_H   = S(40);   // [TUNE] 컨트롤 시각적 높이 (Edit/Combo 동일)
-    const int FIELD_H  = CTRL_H;  // 하위 호환용 alias
-    const int COMBO_DROP_H = S(220); // [TUNE] combo drop list height
-    const int ROW_GAP  = S(16);
-    const int COL_GAP  = S(16);
-    const int GROUP_H  = S(kGroupTitleH);
-    const int GROUP_GAP = S(kGroupGapBelowTitle);
-    const int NEXT_GRP = S(kGapToNextGroup);
-
-    const int labelOffset = (FIELD_H - S(20)) / 2; // label vertical align
-
-    // ---- 탭 컨트롤 위치 ----
-    // 탭 바를 타이틀/서브타이틀 구분선 바로 아래 배치
-    const int TAB_INSET = S(2); // keep tab visuals from touching outer card border
-    int tabLeft   = S(20) + TAB_INSET;
-    int tabRight  = rc.Width() - S(20) - TAB_INSET;
-    int tabTop    = S(kTabBarTop);
-    int tabBottom = tabTop + S(kTabBarH) + S(200); // 탭 컨트롤 전체 높이(내부 클라이언트 포함)
-    int tabH = S(CModernTabCtrl::kBarH) + S(8); // 탭 바 높이 + 여백
-    m_tabCtrl.MoveWindow(tabLeft, tabTop, tabRight - tabLeft, tabH);
-
-    // 탭 컨텐츠 영역: 탭 바 바로 아래부터
-    m_rcTabContent = CRect(tabLeft, tabTop + tabH, tabRight, rc.bottom - S(90));
-
-    // ---- 컨텐츠 영역 기준 좌표 ----
-    int contentLeft = m_rcTabContent.left + (MARGIN - tabLeft);
-    int x  = max(contentLeft, MARGIN);
-    int x1 = x;
-    int x2 = x1 + LABEL_W + FIELD_W + COL_GAP;
-    int x3 = x2 + LABEL_W + FIELD_W + COL_GAP;
-
-    // 모든 탭의 컨텐츠는 동일한 Y 기준에서 배치 (ShowTab이 show/hide)
     int y = m_rcTabContent.top + S(kTabPadTop);
 
-    auto Move = [&](int id, int mx, int my, int mw, int mh)
-    {
-        CWnd* p = GetDlgItem(id);
-        if (!p || !p->GetSafeHwnd()) return;
-
-        // ComboBox: the height parameter also affects the drop-list height.
-        // Keep selection-field height via CB_SETITEMHEIGHT, but preserve a usable drop height.
-        TCHAR cls[64] = { 0 };
-        ::GetClassName(p->GetSafeHwnd(), cls, 63);
-
-        if (_tcsicmp(cls, _T("ComboBox")) == 0)
-        {
-            p->MoveWindow(mx, my, mw, COMBO_DROP_H);
-
-            // -1: selection field, 0: list items → CTRL_H로 Edit와 동일하게 맞춤
-            ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(CTRL_H - 2));
-            ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(CTRL_H - 2));
-        }
-        else
-        {
-            p->MoveWindow(mx, my, mw, CTRL_H);
-        }
-
-        // ShowTab will show/hide per active tab
-        p->ShowWindow(SW_HIDE);
-    };
-
-    // =================================================================
-    // Tab 0: 결제 설정 (카드형 레이아웃)
-    //   - [서버 설정] : 금융결제원 서버 / 포트번호
-    //   - [결제 방식] : 통신방식 / 우선 거래 설정 / 무서명 기준금액 / 세금 자동 역산 / 현금영수증
-    // =================================================================
-    {
         const int cardOuterPadX = 16;
         const int cardOuterPadY = 12;
         const int cardGapY      = 16;
@@ -968,12 +919,39 @@ void CShopSetupDlg::ApplyLayout()
 
         int payCardH = (y2 + cardPadY) - curY;
         m_rcCardPayMethod = CRect(cardLeft, curY, cardRight, curY + payCardH);
-    }
+}
 
-    // =================================================================
-    // Tab 1/2 공통 카드 레이아웃 파라미터 [TUNE]
-    // =================================================================
-    {
+// --- Tab 1+2: devices and system settings ---
+void CShopSetupDlg::ApplyLayoutTab1()
+{
+    auto S    = [&](int v)                              { return ScalePx(v); };
+    auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
+    const int CTRL_H       = S(40);
+    const int COMBO_DROP_H = S(220);
+    const int FIELD_H      = CTRL_H;
+    auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
+     
+
+   if (!btn.GetSafeHwnd()) return;
+        const int BtnSz  = S(18);
+        const int BtnGap = S(4);
+        int bx = lx + BtnGap;
+        int by = ly + (lcapH - BtnSz) / 2;
+        CWnd* pLbl = GetDlgItem(labelId);
+        if (pLbl && pLbl->GetSafeHwnd()) {
+            CClientDC cdc(pLbl);
+            CFont* pFont = pLbl->GetFont();
+            CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+            CString strLbl;
+            pLbl->GetWindowText(strLbl);
+            CSize sz = cdc.GetTextExtent(strLbl);
+            if (pOld) cdc.SelectObject(pOld);
+            bx = lx + sz.cx + BtnGap;
+        }
+        btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+    };
+    int y = m_rcTabContent.top + S(kTabPadTop);
+
         const int cOutX  = 16;   // [TUNE] 카드 외부 좌우 여백
         const int cOutY  = 12;   // [TUNE] 카드 외부 상단 여백
         const int cGapY  = 12;   // [TUNE] 카드 간 세로 간격
@@ -1199,12 +1177,16 @@ void CShopSetupDlg::ApplyLayout()
             m_rcGrpHotkey = CRect(cLeft, curY, cRight, curY + cardH);
             // curY = m_rcGrpHotkey.bottom + cGapY;  // Tab2 끝
         }
-    } // Tab1/2 카드 블록 끝
+}
 
-    // =================================================================
-    // Tab 3: 가맹점 다운로드  (카드 헤더/세로선/배경은 ShopSetupDlg::OnPaint에서 DrawMinCard로 그림)
-    // =================================================================
-    {
+// --- Tab 3: merchant download ---
+void CShopSetupDlg::ApplyLayoutTab3()
+{
+    auto S = [&](int v) { return ScalePx(v); };
+    CRect rc;
+    GetClientRect(&rc);
+    int y = m_rcTabContent.top + S(kTabPadTop);
+
         // Tab1/2와 동일한 카드 외부/내부 파라미터를 사용해 정렬을 맞춘다.
         const int cOutX  = 16;   // 카드 외부 좌우 여백
         const int cOutY  = 12;   // 카드 외부 상단 여백
@@ -1243,7 +1225,123 @@ void CShopSetupDlg::ApplyLayout()
             m_staticShopContainer.MoveWindow(rcHost);
             m_staticShopContainer.ShowWindow(SW_HIDE); // ShowTab에서 처리
         }
-    }
+}
+
+// ============================================================================
+// ApplyLayout - 탭 컨트롤 배치 + 각 탭 컨텐츠 배치
+// ============================================================================
+void CShopSetupDlg::ApplyLayout()
+{
+    CRect rc;
+    GetClientRect(&rc);
+
+    auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
+
+    // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
+    auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
+     
+
+   if (!btn.GetSafeHwnd()) return;
+        const int BtnSz  = S(18);
+        const int BtnGap = S(4);
+        int bx = lx + BtnGap;
+        int by = ly + (lcapH - BtnSz) / 2;
+        CWnd* pLbl = GetDlgItem(labelId);
+        if (pLbl && pLbl->GetSafeHwnd()) {
+            CClientDC cdc(pLbl);
+            CFont* pFont = pLbl->GetFont();
+            CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+            CString strLbl;
+            pLbl->GetWindowText(strLbl);
+            CSize sz = cdc.GetTextExtent(strLbl);
+            if (pOld) cdc.SelectObject(pOld);
+            bx = lx + sz.cx + BtnGap;
+        }
+        btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+    };
+
+    const int MARGIN   = S(kTabPadLeft);
+    const int LABEL_W  = S(92);
+    const int FIELD_W  = S(120);
+    const int LF_GAP   = S(8);
+    const int FIELD_W_IN = FIELD_W - LF_GAP;
+    const int CTRL_H   = S(40);   // [TUNE] 컨트롤 시각적 높이 (Edit/Combo 동일)
+    const int FIELD_H  = CTRL_H;  // 하위 호환용 alias
+    const int COMBO_DROP_H = S(220); // [TUNE] combo drop list height
+    const int ROW_GAP  = S(16);
+    const int COL_GAP  = S(16);
+    const int GROUP_H  = S(kGroupTitleH);
+    const int GROUP_GAP = S(kGroupGapBelowTitle);
+    const int NEXT_GRP = S(kGapToNextGroup);
+
+    const int labelOffset = (FIELD_H - S(20)) / 2; // label vertical align
+
+    // ---- 탭 컨트롤 위치 ----
+    // 탭 바를 타이틀/서브타이틀 구분선 바로 아래 배치
+    const int TAB_INSET = S(2); // keep tab visuals from touching outer card border
+    int tabLeft   = S(20) + TAB_INSET;
+    int tabRight  = rc.Width() - S(20) - TAB_INSET;
+    int tabTop    = S(kTabBarTop);
+    int tabBottom = tabTop + S(kTabBarH) + S(200); // 탭 컨트롤 전체 높이(내부 클라이언트 포함)
+    int tabH = S(CModernTabCtrl::kBarH) + S(8); // 탭 바 높이 + 여백
+    m_tabCtrl.MoveWindow(tabLeft, tabTop, tabRight - tabLeft, tabH);
+
+    // 탭 컨텐츠 영역: 탭 바 바로 아래부터
+    m_rcTabContent = CRect(tabLeft, tabTop + tabH, tabRight, rc.bottom - S(90));
+
+    // ---- 컨텐츠 영역 기준 좌표 ----
+    int contentLeft = m_rcTabContent.left + (MARGIN - tabLeft);
+    int x  = max(contentLeft, MARGIN);
+    int x1 = x;
+    int x2 = x1 + LABEL_W + FIELD_W + COL_GAP;
+    int x3 = x2 + LABEL_W + FIELD_W + COL_GAP;
+
+    // 모든 탭의 컨텐츠는 동일한 Y 기준에서 배치 (ShowTab이 show/hide)
+    int y = m_rcTabContent.top + S(kTabPadTop);
+
+    auto Move = [&](int id, int mx, int my, int mw, int mh)
+    {
+        CWnd* p = GetDlgItem(id);
+        if (!p || !p->GetSafeHwnd()) return;
+
+        // ComboBox: the height parameter also affects the drop-list height.
+        // Keep selection-field height via CB_SETITEMHEIGHT, but preserve a usable drop height.
+        TCHAR cls[64] = { 0 };
+        ::GetClassName(p->GetSafeHwnd(), cls, 63);
+
+        if (_tcsicmp(cls, _T("ComboBox")) == 0)
+        {
+            p->MoveWindow(mx, my, mw, COMBO_DROP_H);
+
+            // -1: selection field, 0: list items → CTRL_H로 Edit와 동일하게 맞춤
+            ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(CTRL_H - 2));
+            ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(CTRL_H - 2));
+        }
+        else
+        {
+            p->MoveWindow(mx, my, mw, CTRL_H);
+        }
+
+        // ShowTab will show/hide per active tab
+        p->ShowWindow(SW_HIDE);
+    };
+
+    // =================================================================
+    // Tab 0: 결제 설정 (카드형 레이아웃)
+    //   - [서버 설정] : 금융결제원 서버 / 포트번호
+    //   - [결제 방식] : 통신방식 / 우선 거래 설정 / 무서명 기준금액 / 세금 자동 역산 / 현금영수증
+    // =================================================================
+    ApplyLayoutTab0();
+
+    // =================================================================
+    // Tab 1/2 공통 카드 레이아웃 파라미터 [TUNE]
+    // =================================================================
+    ApplyLayoutTab1();
+
+    // =================================================================
+    // Tab 3: 가맹점 다운로드  (카드 헤더/세로선/배경은 ShopSetupDlg::OnPaint에서 DrawMinCard로 그림)
+    // =================================================================
+    ApplyLayoutTab3();
 
     // =================================================================
     // 하단 버튼 (탭과 무관하게 항상 표시)
