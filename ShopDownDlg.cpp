@@ -96,6 +96,7 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_pFontValBold(nullptr)
     , m_pFontFamily(nullptr)
 {
+    memset(m_bRowCreated, 0, sizeof(m_bRowCreated));
     InitPointerArrays();
 }
 
@@ -198,70 +199,65 @@ BOOL CShopDownDlg::OnInitDialog()
 // ============================================================================
 void CShopDownDlg::CreateControlsOnce()
 {
-    /* [UI-STEP] 자식 컨트롤 1회 생성(버튼/리스트/커스텀 영역)
-     * 1) 이미 생성되어 있으면(IsWindow) 즉시 리턴한다.
-     * 2) 다운로드/삭제 등 버튼을 생성하고 핸들러(OnDownloadClick/OnDeleteClick)와 연결한다.
-     * 3) 표시 영역(카드/리스트)을 위한 컨트롤 또는 내부 데이터 구조를 초기화한다.
-     * 4) 타이머/호버 효과가 있다면 OnTimer를 위한 초기 값을 세팅한다.
-     */
-
-    if (m_editProd[0].GetSafeHwnd()) return;
-
-    const DWORD edtBase  = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPSIBLINGS
-                         | ES_AUTOHSCROLL | ES_CENTER;
-    const DWORD edtStyle = edtBase;                    // 입력 가능 (prod, biz)
-    const DWORD pwdStyle = edtBase | ES_PASSWORD;      // 입력 가능 (pwd)
-    const DWORD roStyle  = edtBase | ES_READONLY;      // 읽기전용 (name, etc)
-
+    // Data-only init. Win32 controls created lazily via CreateRow(i) in LayoutControls.
     struct { LPCTSTR prod; LPCTSTR biz; LPCTSTR name; } data[25] = {
         {_T("K074404214"), _T("1050844729"), _T("금융결제원 테스트")},
 
     };
 
-    // ShopDownDlg는 행(row) 배경을 OnPaint()에서 직접 그리므로
-    // WM_CTLCOLOR로 "진짜 배경"을 자동 추출할 수 없습니다.
-    // 따라서 행 parity(짝/홀)에 맞춰 UnderlayColor를 강제 지정합니다.
-    // 초기 underlay는 현재 카드 상태에 따라 row별로 지정한다.
-    // (카드 배경은 OnPaint()에서 상태에 따라 바뀔 수 있음)
-    // NOTE: 실제 반영은 ApplyRowUnderlay()에서 일괄 처리된다.
-
     for (int i = 0; i < kRowCount; ++i)
     {
-m_editProd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-            edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+1);
-m_editBiz[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-            edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+2);
-m_editPwd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-            pwdStyle, CRect(0,0,10,10), this, 62000+(i*10)+3);
-m_btnDownload[i].Create(_T("다운로드"),
-            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-            CRect(0,0,10,10), this, kBtnBase+i);
-        m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
-m_btnDelete[i].Create(_T("삭제"),
-            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-            CRect(0,0,10,10), this, kDelBase+i);
-        m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
-m_editMerchantName[i].CreateEx(0, _T("EDIT"), _T(""),
-            roStyle, CRect(0,0,10,10), this, 62000+(i*10)+4);
-
-        m_editEtc[i].CreateEx(0, _T("EDIT"), _T(""),
-            roStyle, CRect(0,0,10,10), this, 62000+(i*10)+5);
-
-        m_editMerchantName[i].ShowWindow(SW_HIDE);
-        m_editEtc[i].ShowWindow(SW_HIDE);
-
-        *m_pPrdid[i]      = data[i].prod;
-        *m_pRegno[i]      = data[i].biz;
-        *m_pRetailName[i] = data[i].name;
+        *m_pPrdid[i]      = (data[i].prod ? data[i].prod : _T(""));
+        *m_pRegno[i]      = (data[i].biz  ? data[i].biz  : _T(""));
+        *m_pRetailName[i] = (data[i].name ? data[i].name : _T(""));
         *m_pSecondName[i] = _T("");
-
-        m_editProd[i].SetWindowText(*m_pPrdid[i]);
-        m_editBiz[i].SetWindowText(*m_pRegno[i]);
-
-        // 대표가맹점명이 있으면 삭제 활성화, 없으면 비활성화
-        const bool hasRep = (m_pRetailName[i] && !m_pRetailName[i]->IsEmpty());
-        m_btnDelete[i].EnableWindow(hasRep ? TRUE : FALSE);
     }
+}
+
+// ============================================================================
+// CreateRow  -- lazily create Win32 controls for a single row
+// Called from LayoutControls() the first time a row scrolls into view.
+// ============================================================================
+void CShopDownDlg::CreateRow(int i)
+{
+    if (i < 0 || i >= kRowCount || m_bRowCreated[i]) return;
+
+    const DWORD edtBase  = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPSIBLINGS
+                         | ES_AUTOHSCROLL | ES_CENTER;
+    const DWORD edtStyle = edtBase;
+    const DWORD pwdStyle = edtBase | ES_PASSWORD;
+    const DWORD roStyle  = edtBase | ES_READONLY;
+
+    m_editProd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+        edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+1);
+    m_editBiz[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+        edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+2);
+    m_editPwd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+        pwdStyle, CRect(0,0,10,10), this, 62000+(i*10)+3);
+    m_btnDownload[i].Create(_T("다운로드"),
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+        CRect(0,0,10,10), this, kBtnBase+i);
+    m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
+    m_btnDelete[i].Create(_T("삭제"),
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+        CRect(0,0,10,10), this, kDelBase+i);
+    m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
+
+    m_editProd[i].SetWindowText(*m_pPrdid[i]);
+    m_editBiz[i].SetWindowText(*m_pRegno[i]);
+
+    const bool hasRep = (m_pRetailName[i] && !m_pRetailName[i]->IsEmpty());
+    m_btnDelete[i].EnableWindow(hasRep ? TRUE : FALSE);
+
+    if (m_fontCell.GetSafeHandle())
+    {
+        m_editProd[i].SetFont(&m_fontCell);
+        m_editBiz[i].SetFont(&m_fontCell);
+        m_editPwd[i].SetFont(&m_fontCell);
+        m_btnDownload[i].SetFont(&m_fontCell);
+    }
+
+    m_bRowCreated[i] = true;
 }
 
 // ============================================================================
@@ -298,6 +294,7 @@ void CShopDownDlg::ApplyFonts()
 
     for (int i = 0; i < kRowCount; ++i)
     {
+        if (!m_bRowCreated[i]) continue;
         m_editProd[i].SetFont(&m_fontCell);
         m_editBiz[i].SetFont(&m_fontCell);
         m_editPwd[i].SetFont(&m_fontCell);
@@ -378,8 +375,8 @@ void CShopDownDlg::LayoutControls()
 
     int y = contentStartY - m_nScrollPos;
 
-    // prod/biz/pwd/button + (merchant/term edits are kept but always hidden)
-    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 8);
+    // prod/biz/pwd/download/delete (5 controls per row)
+    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 5);
 
     for (int i = 0; i < kRowCount; ++i)
     {
@@ -468,6 +465,10 @@ void CShopDownDlg::LayoutControls()
         const int yTermVal = yTermLabel + m_card.labelH + labelGap;
         m_rcInfoTermVal[i].SetRect(xR, yTermVal, termRight, yTermVal + m_card.infoLineH);
 
+        // Lazy creation: instantiate Win32 controls on first scroll-into-view
+        if (bInView && !m_bRowCreated[i])
+            CreateRow(i);
+
 // Enabled/disabled visual states (match other tabs)
         {
             // 카드 배경과 컨트롤 Underlay를 항상 일치시킨다.
@@ -489,13 +490,14 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
         const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
         const UINT showHide  = bInView ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
 
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[i].m_hWnd,    NULL, m_rcProd[i].left, m_rcProd[i].top, m_rcProd[i].Width(), m_rcProd[i].Height(), baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[i].m_hWnd,     NULL, m_rcBiz[i].left,  m_rcBiz[i].top,  m_rcBiz[i].Width(),  m_rcBiz[i].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[i].m_hWnd,     NULL, m_rcPwd[i].left,  m_rcPwd[i].top,  m_rcPwd[i].Width(),  m_rcPwd[i].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd,   NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editMerchantName[i].m_hWnd, NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editEtc[i].m_hWnd,          NULL, 0,0,0,0, baseFlags | SWP_HIDEWINDOW);
+        if (m_bRowCreated[i])
+        {
+            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[i].m_hWnd,    NULL, m_rcProd[i].left, m_rcProd[i].top, m_rcProd[i].Width(), m_rcProd[i].Height(), baseFlags | showHide);
+            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[i].m_hWnd,     NULL, m_rcBiz[i].left,  m_rcBiz[i].top,  m_rcBiz[i].Width(),  m_rcBiz[i].Height(),  baseFlags | showHide);
+            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[i].m_hWnd,     NULL, m_rcPwd[i].left,  m_rcPwd[i].top,  m_rcPwd[i].Width(),  m_rcPwd[i].Height(),  baseFlags | showHide);
+            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
+            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd,   NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
+        }
 
         y += rowH + rowGap;
     }
@@ -987,7 +989,6 @@ void CShopDownDlg::OnPaint()
         // - 대표 가맹점(다운로드 결과)이 있으면 정상 카드(white)
         // - 없으면(미다운로드/조회 실패/미존재 등) 살짝 톤을 주어 구분
         CString rep  = *m_pRetailName[i];
-        CString term = *m_pSecondName[i];
         const bool hasRep = !rep.IsEmpty();
 
         // item card

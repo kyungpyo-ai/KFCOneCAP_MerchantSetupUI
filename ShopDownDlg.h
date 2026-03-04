@@ -83,14 +83,11 @@ private:
     static const int kHdrAreaH = 44;   // 타이틀 헤더 영역 높이
     static const int kSecGapT  = 6;    // 헤더~섹션카드 상단 간격
     static const int kSecM     = 18;   // 섹션카드 좌우하단 마진 (다른 탭과 동일)
-    static const int kColHdrH  = 0;   // 컬럼 헤더 행 높이
     
     static const int kRowH     = 190;  // data row height (approx) - show 2 cards in view
     static const int kRowGap   = 12;   // gap between cards
     static const int kCtrlH    = 42;   // control height inside row (match other tabs, taller)   // control height inside row (match other tabs, slightly taller)   // control height inside row (match other tabs)
 
-    // contentStartY = kHdrAreaH + kSecGapT + Scale(kColHdrH)
- // kHdrAreaH/kSecGapT는 fixed px, kColHdrH만 DPI 스케일
     static const int kRowCount = 25;
     static const int kBtnBase  = 61001;
     static const int kDelBase  = 61101;
@@ -150,8 +147,6 @@ private:
     CSkinnedEdit  m_editPwd[kRowCount];
     CModernButton m_btnDownload[kRowCount];
     CModernButton m_btnDelete[kRowCount];
-    CSkinnedEdit  m_editMerchantName[kRowCount];
-    CSkinnedEdit  m_editEtc[kRowCount];
 
     // ---------- Pointer arrays for loop access --------------------------------
     CString* m_pPrdid[kRowCount];
@@ -160,6 +155,10 @@ private:
     CString* m_pRetailName[kRowCount];
     CString* m_pSecondName[kRowCount];
     void InitPointerArrays();
+    void CreateRow(int i);      // lazy-create Win32 controls for one row
+
+    // ---------- Lazy row creation ------------------------------------------
+    bool m_bRowCreated[kRowCount]; // true once CreateRow(i) has been called
 
     // ---------- Layout cache --------------------------------------------------
     CRect m_rcRow[kRowCount];   // row card rects (window coords, updated by Layout)
