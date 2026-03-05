@@ -1685,13 +1685,18 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	{
 		g.SetClip(Gdiplus::Rect(rcDrop.left, rcDrop.top, rcDrop.Width(), rcDrop.Height()));
 		Gdiplus::Color dropColor = dropN;
-		if (m_bFocus || m_bDropped) dropColor = dropF;
+		if (!enabled)
+			dropColor = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BG), GetGValue(KFTC_DISABLED_BG), GetBValue(KFTC_DISABLED_BG));
+		else if (m_bFocus || m_bDropped) dropColor = dropF;
 		else if (m_bHover) dropColor = dropH;
 
 		Gdiplus::SolidBrush dropBrush(dropColor);
 		g.FillPath(&dropBrush, &pathInner);
 
-		Gdiplus::Pen divPen(dividerC, 1.0f);
+		Gdiplus::Color divColor = (!enabled)
+			? Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER))
+			: dividerC;
+		Gdiplus::Pen divPen(divColor, 1.0f);
 		const Gdiplus::REAL x = (Gdiplus::REAL)rcDrop.left + 0.5f;
 		g.DrawLine(&divPen, Gdiplus::PointF(x, 2.0f), Gdiplus::PointF(x, (Gdiplus::REAL)rc.Height() - 3.0f));
 
