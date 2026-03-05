@@ -289,6 +289,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_BN_CLICKED(IDC_BTN_SIGN_PAD_PORT_INFO,  OnBnClickedSignPadPortInfo)
     ON_BN_CLICKED(IDC_BTN_SIGN_PAD_SPEED_INFO, OnBnClickedSignPadSpeedInfo)
     ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO,     OnBnClickedAlarmSizeInfo)
+    ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE,    OnCbnSelchangeSignPadUse)
     ON_BN_CLICKED(IDC_CHECK_CARD_DETECT,        OnBnClickedCardDetectToggle)
     ON_BN_CLICKED(IDC_CHECK_SCANNER_USE,        OnBnClickedScannerUseToggle)
 END_MESSAGE_MAP()
@@ -368,18 +369,18 @@ void CShopSetupDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_EDIT_CARD_DETECT_PARAM, m_editCardDetectParam);
     DDX_Control(pDX, IDC_EDIT_SIGN_PAD_PORT,  m_editSignPadPort);
     DDX_Control(pDX, IDC_EDIT_SCANNER_PORT,   m_editScannerPort);
-    DDX_Text(pDX, IDC_EDIT_PORT,           m_intPort);
-    DDX_Text(pDX, IDC_EDIT_CARD_TIMEOUT,   m_intCardTimeout);
-    DDX_Text(pDX, IDC_EDIT_NO_SIGN_AMOUNT, m_intNoSignAmount);
-    DDX_Text(pDX, IDC_EDIT_TAX_PERCENT,    m_intTaxPercent);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intPort);        DDX_Text(pDX, IDC_EDIT_PORT,           _s); if (pDX->m_bSaveAndValidate) m_intPort        = _ttoi(_s); }
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intCardTimeout);  DDX_Text(pDX, IDC_EDIT_CARD_TIMEOUT,   _s); if (pDX->m_bSaveAndValidate) m_intCardTimeout  = _ttoi(_s); }
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intNoSignAmount); DDX_Text(pDX, IDC_EDIT_NO_SIGN_AMOUNT, _s); if (pDX->m_bSaveAndValidate) m_intNoSignAmount = _ttoi(_s); }
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intTaxPercent);   DDX_Text(pDX, IDC_EDIT_TAX_PERCENT,    _s); if (pDX->m_bSaveAndValidate) m_intTaxPercent   = _ttoi(_s); }
     DDX_Control(pDX, IDC_COMBO_CASH_RECEIPT,  m_comboCashReceipt);
     DDX_Control(pDX, IDC_COMBO_INTERLOCK,     m_comboInterlock);
     DDX_Control(pDX, IDC_COMBO_COMM_TYPE,     m_comboCommType);
     DDX_Text(pDX, IDC_EDIT_CARD_DETECT_PARAM, m_strCardDetectParam);
     DDX_Control(pDX, IDC_COMBO_SIGN_PAD_USE,  m_comboSignPadUse);
-    DDX_Text(pDX, IDC_EDIT_SIGN_PAD_PORT,     m_intSignPadPort);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intSignPadPort);  DDX_Text(pDX, IDC_EDIT_SIGN_PAD_PORT,  _s); if (pDX->m_bSaveAndValidate) m_intSignPadPort  = _ttoi(_s); }
     DDX_Control(pDX, IDC_COMBO_SIGN_PAD_SPEED, m_comboSignPadSpeed);
-    DDX_Text(pDX, IDC_EDIT_SCANNER_PORT,      m_intScannerPort);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intScannerPort);  DDX_Text(pDX, IDC_EDIT_SCANNER_PORT,   _s); if (pDX->m_bSaveAndValidate) m_intScannerPort  = _ttoi(_s); }
     DDX_Control(pDX, IDC_COMBO_ALARM_POS,     m_comboAlarmPos);
     DDX_Control(pDX, IDC_COMBO_ALARM_SIZE,    m_comboAlarmSize);
     DDX_Control(pDX, IDC_COMBO_CANCEL_KEY,    m_comboCancelKey);
@@ -1612,6 +1613,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     // UI에 반영
     UpdateData(FALSE);
     UpdateToggleDependentEdits(FALSE);
+    TakeSnapshot();
 }
 
 // ============================================================================
@@ -1864,7 +1866,7 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
     {
     case EN_SETFOCUS: case EN_KILLFOCUS:
     case CBN_SETFOCUS: case CBN_KILLFOCUS:
-    case CBN_DROPDOWN: case CBN_CLOSEUP: case CBN_SELCHANGE:
+    case CBN_DROPDOWN: case CBN_CLOSEUP: case CBN_SELCHANGE: case EN_CHANGE:
         if (lParam)
         {
             CRect rcCtl;
@@ -1872,7 +1874,11 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
             ScreenToClient(&rcCtl);
             rcCtl.InflateRect(4, 4);
             RedrawWindow(&rcCtl, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_UPDATENOW);
+            if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_SIGN_PAD_USE)
+                UpdateToggleDependentEdits(TRUE);
         }
+        break;
+    case BN_CLICKED:
         break;
     default: break;
     }
@@ -2291,6 +2297,69 @@ void CShopSetupDlg::OnDestroy()
 }
 
 // ============================================================================
+// ============================================================================
+// Snapshot helpers
+// ============================================================================
+void CShopSetupDlg::TakeSnapshot()
+{
+    UpdateData(TRUE);
+    m_snap.intPort          = m_intPort;
+    m_snap.intCardTimeout   = m_intCardTimeout;
+    m_snap.intNoSignAmount  = m_intNoSignAmount;
+    m_snap.intTaxPercent    = m_intTaxPercent;
+    m_snap.intSignPadPort   = m_intSignPadPort;
+    m_snap.intScannerPort   = m_intScannerPort;
+    m_snap.strCardDetectParam = m_strCardDetectParam;
+    m_snap.cmbVanServer     = m_comboVanServer.GetCurSel();
+    m_snap.cmbCashReceipt   = m_comboCashReceipt.GetCurSel();
+    m_snap.cmbInterlock     = m_comboInterlock.GetCurSel();
+    m_snap.cmbCommType      = m_comboCommType.GetCurSel();
+    m_snap.cmbSignPadUse    = m_comboSignPadUse.GetCurSel();
+    m_snap.cmbSignPadSpeed  = m_comboSignPadSpeed.GetCurSel();
+    m_snap.cmbAlarmPos      = m_comboAlarmPos.GetCurSel();
+    m_snap.cmbAlarmSize     = m_comboAlarmSize.GetCurSel();
+    m_snap.cmbCancelKey     = m_comboCancelKey.GetCurSel();
+    m_snap.cmbMSRKey        = m_comboMSRKey.GetCurSel();
+    m_snap.tglCardDetect    = m_chkCardDetect.IsToggled();
+    m_snap.tglMultiVoice    = m_chkMultiVoice.IsToggled();
+    m_snap.tglScannerUse    = m_chkScannerUse.IsToggled();
+    m_snap.tglAlarmGraph    = m_chkAlarmGraph.IsToggled();
+    m_snap.tglAlarmDual     = m_chkAlarmDual.IsToggled();
+    m_snap.tglAutoReset     = m_chkAutoReset.IsToggled();
+    m_snap.tglAutoReboot    = m_chkAutoReboot.IsToggled();
+}
+
+BOOL CShopSetupDlg::HasChanges() const
+{
+    // Read current edit values
+    CString s;
+    m_editPort.GetWindowText(s);           if (_ttoi(s) != m_snap.intPort)          return TRUE;
+    m_editCardTimeout.GetWindowText(s);    if (_ttoi(s) != m_snap.intCardTimeout)   return TRUE;
+    m_editNoSignAmount.GetWindowText(s);   if (_ttoi(s) != m_snap.intNoSignAmount)  return TRUE;
+    m_editTaxPercent.GetWindowText(s);     if (_ttoi(s) != m_snap.intTaxPercent)    return TRUE;
+    m_editSignPadPort.GetWindowText(s);    if (_ttoi(s) != m_snap.intSignPadPort)   return TRUE;
+    m_editScannerPort.GetWindowText(s);    if (_ttoi(s) != m_snap.intScannerPort)   return TRUE;
+    m_editCardDetectParam.GetWindowText(s);if (s != m_snap.strCardDetectParam)      return TRUE;
+    if (m_comboVanServer.GetCurSel()    != m_snap.cmbVanServer)    return TRUE;
+    if (m_comboCashReceipt.GetCurSel()  != m_snap.cmbCashReceipt)  return TRUE;
+    if (m_comboInterlock.GetCurSel()    != m_snap.cmbInterlock)    return TRUE;
+    if (m_comboCommType.GetCurSel()     != m_snap.cmbCommType)     return TRUE;
+    if (m_comboSignPadUse.GetCurSel()   != m_snap.cmbSignPadUse)   return TRUE;
+    if (m_comboSignPadSpeed.GetCurSel() != m_snap.cmbSignPadSpeed) return TRUE;
+    if (m_comboAlarmPos.GetCurSel()     != m_snap.cmbAlarmPos)     return TRUE;
+    if (m_comboAlarmSize.GetCurSel()    != m_snap.cmbAlarmSize)    return TRUE;
+    if (m_comboCancelKey.GetCurSel()    != m_snap.cmbCancelKey)    return TRUE;
+    if (m_comboMSRKey.GetCurSel()       != m_snap.cmbMSRKey)       return TRUE;
+    if (m_chkCardDetect.IsToggled()  != m_snap.tglCardDetect)  return TRUE;
+    if (m_chkMultiVoice.IsToggled()  != m_snap.tglMultiVoice)  return TRUE;
+    if (m_chkScannerUse.IsToggled()  != m_snap.tglScannerUse)  return TRUE;
+    if (m_chkAlarmGraph.IsToggled()  != m_snap.tglAlarmGraph)  return TRUE;
+    if (m_chkAlarmDual.IsToggled()   != m_snap.tglAlarmDual)   return TRUE;
+    if (m_chkAutoReset.IsToggled()   != m_snap.tglAutoReset)   return TRUE;
+    if (m_chkAutoReboot.IsToggled()  != m_snap.tglAutoReboot)  return TRUE;
+    return FALSE;
+}
+
 // OnOK / OnCancel
 // ============================================================================
 // --------------------------------------------------------------
@@ -2317,6 +2386,11 @@ void CShopSetupDlg::OnOK()
 void CShopSetupDlg::OnCancel()
 {
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
+    if (HasChanges())
+    {
+        if (MessageBox(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), _T("확인"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+            return;
+    }
     CDialog::OnCancel();
 }
 
@@ -2597,6 +2671,28 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
         if (bForceRedraw)
             m_editScannerPort.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
     }
+
+    // Sign pad port + speed (YES=index 0 only)
+    if (m_comboSignPadUse.GetSafeHwnd() && m_editSignPadPort.GetSafeHwnd() && m_comboSignPadSpeed.GetSafeHwnd())
+    {
+        const BOOL bEnable = (m_comboSignPadUse.GetCurSel() == 0);
+        m_editSignPadPort.EnableWindow(bEnable);
+        m_comboSignPadSpeed.EnableWindow(bEnable);
+
+        if (!bEnable && ::GetFocus() == m_editSignPadPort.GetSafeHwnd())
+            m_tabCtrl.SetFocus();
+
+        if (bForceRedraw)
+        {
+            m_editSignPadPort.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+            m_comboSignPadSpeed.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+        }
+    }
+}
+
+void CShopSetupDlg::OnCbnSelchangeSignPadUse()
+{
+    UpdateToggleDependentEdits(TRUE);
 }
 
 void CShopSetupDlg::OnBnClickedCardDetectToggle()

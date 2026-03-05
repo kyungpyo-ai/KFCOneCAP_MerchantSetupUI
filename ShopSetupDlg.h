@@ -196,6 +196,7 @@ protected:
     afx_msg void OnBnClickedAlarmSizeInfo();
 
     // v10.1: toggle-dependent edits
+    afx_msg void OnCbnSelchangeSignPadUse();
     afx_msg void OnBnClickedCardDetectToggle();
     afx_msg void OnBnClickedScannerUseToggle();
 
@@ -204,6 +205,20 @@ protected:
 private:
     // v10.1
     void UpdateToggleDependentEdits(BOOL bForceRedraw = TRUE);
+
+    struct SettingsSnapshot {
+        int    intPort, intCardTimeout, intNoSignAmount, intTaxPercent;
+        int    intSignPadPort, intScannerPort;
+        CString strCardDetectParam;
+        int    cmbVanServer, cmbCashReceipt, cmbInterlock, cmbCommType;
+        int    cmbSignPadUse, cmbSignPadSpeed;
+        int    cmbAlarmPos, cmbAlarmSize, cmbCancelKey, cmbMSRKey;
+        BOOL   tglCardDetect, tglMultiVoice, tglScannerUse;
+        BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReset, tglAutoReboot;
+    };
+    SettingsSnapshot m_snap;
+    void TakeSnapshot();
+    BOOL HasChanges() const;
 
     void LoadOptionsFromRegistry();
     void SaveOptionsToRegistry();

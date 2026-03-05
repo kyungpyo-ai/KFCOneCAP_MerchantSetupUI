@@ -149,6 +149,9 @@ BOOL CShopDownDlg::OnInitDialog()
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
         CRect(0,0,10,10), this, kBtnNext);
     m_btnNextPage.SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
+    m_btnPrevPage.SetUnderlayColor(KFTC_DLG_CONTENT_BG);
+    m_btnNextPage.SetUnderlayColor(KFTC_DLG_CONTENT_BG);
+    //m_btnNextPage.SetButtonStyle(ButtonStyle::Primary);
 
     ApplyFonts();
     LayoutControls();
@@ -493,7 +496,7 @@ void CShopDownDlg::OnDownloadClick(int slot, int rowIdx)
     ApplyRowUnderlay(slot, FALSE);
 
     RedrawWindow(&m_rcRow[slot], nullptr,
-        RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+        RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
 
 void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
@@ -524,7 +527,7 @@ void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
     ApplyRowUnderlay(slot, FALSE);
 
     RedrawWindow(&m_rcRow[slot], nullptr,
-        RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+        RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
 
 
@@ -871,7 +874,7 @@ void CShopDownDlg::ApplyRowUnderlay(int slot, BOOL bRedraw /*= TRUE*/)
 void CShopDownDlg::ApplyAllRowUnderlays()
 {
     for (int slot = 0; slot < kRowsPerPage; ++slot)
-        ApplyRowUnderlay(slot, TRUE);
+        ApplyRowUnderlay(slot, FALSE);
 }
 
 BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
@@ -892,7 +895,7 @@ void CShopDownDlg::RefreshPage()
     RebindSlots();
     UpdatePageButtons();
     ApplyAllRowUnderlays();
-    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
 
 void CShopDownDlg::OnPrevPageClick()
