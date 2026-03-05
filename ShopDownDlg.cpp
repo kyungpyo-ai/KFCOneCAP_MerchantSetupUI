@@ -450,8 +450,8 @@ void CShopDownDlg::LayoutControls()
         }
     }
 
-    // Navigation bar (below the 2 visible cards)
-    const int navY = padY + kRowsPerPage * (rowH + rowGap) - rowGap;
+    // Navigation bar: always pinned to dialog bottom so buttons remain visible
+    const int navY = rc.Height() - padY - navH;
     m_rcNavBar.SetRect(padX, navY, rc.right - padX, navY + navH);
 
     const int navBtnW = ModernUIDpi::Scale(m_hWnd, 88);
