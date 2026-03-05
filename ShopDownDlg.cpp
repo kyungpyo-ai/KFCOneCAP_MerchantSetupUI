@@ -24,9 +24,6 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_CTLCOLOR()
     ON_WM_PAINT()
     ON_WM_SIZE()
-    ON_WM_VSCROLL()
-    ON_WM_MOUSEWHEEL()
-    ON_WM_TIMER()
     ON_WM_DESTROY()
     ON_WM_NCACTIVATE()    // [FIX] xxxSaveDlgFocus O(N^2) 차단
 END_MESSAGE_MAP()
@@ -83,13 +80,8 @@ int idealLeft = (int)(innerW * 0.48);
 // ============================================================================
 CShopDownDlg::CShopDownDlg(CWnd* pParent)
     : CDialog(CShopDownDlg::IDD, pParent)
-    , m_nScrollPos(0)
-    , m_nTotalContentH(0)
-    , m_nViewH(0)
-    
+    , m_nCurrentPage(0)
     , m_bInLayout(FALSE)
-    , m_bScrollTimerActive(FALSE)
-    , m_nPendingScrollPos(-1)
     , m_nCachedPaintDpi(0)
     , m_pFontLbl(nullptr)
     , m_pFontVal(nullptr)
@@ -102,11 +94,6 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
 
 CShopDownDlg::~CShopDownDlg()
 {
-    if (m_bScrollTimerActive)
-    {
-        KillTimer(kScrollTimerId);
-        m_bScrollTimerActive = FALSE;
-    }
     // Font cleanup is handled in OnDestroy; pointers are null by the time the destructor runs.
     if (m_brushBg.GetSafeHandle())   m_brushBg.DeleteObject();
     if (m_brushCard.GetSafeHandle()) m_brushCard.DeleteObject();
@@ -114,11 +101,6 @@ CShopDownDlg::~CShopDownDlg()
 
 void CShopDownDlg::OnDestroy()
 {
-    if (m_bScrollTimerActive)
-    {
-        KillTimer(kScrollTimerId);
-        m_bScrollTimerActive = FALSE;
-    }
     delete m_pFontLbl;     m_pFontLbl     = nullptr;
     delete m_pFontVal;     m_pFontVal     = nullptr;
     delete m_pFontValBold; m_pFontValBold = nullptr;
@@ -132,31 +114,26 @@ void CShopDownDlg::InitPointerArrays()
     m_pPrdid[5]=&m_prdid6;  m_pPrdid[6]=&m_prdid7;  m_pPrdid[7]=&m_prdid8;  m_pPrdid[8]=&m_prdid9;  m_pPrdid[9]=&m_prdid10;
     m_pPrdid[10]=&m_prdid11; m_pPrdid[11]=&m_prdid12; m_pPrdid[12]=&m_prdid13; m_pPrdid[13]=&m_prdid14; m_pPrdid[14]=&m_prdid15;
     m_pPrdid[15]=&m_prdid16; m_pPrdid[16]=&m_prdid17; m_pPrdid[17]=&m_prdid18; m_pPrdid[18]=&m_prdid19; m_pPrdid[19]=&m_prdid20;
-    m_pPrdid[20]=&m_prdid21; m_pPrdid[21]=&m_prdid22; m_pPrdid[22]=&m_prdid23; m_pPrdid[23]=&m_prdid24; m_pPrdid[24]=&m_prdid25;
 
     m_pRegno[0]=&m_regno1;  m_pRegno[1]=&m_regno2;  m_pRegno[2]=&m_regno3;  m_pRegno[3]=&m_regno4;  m_pRegno[4]=&m_regno5;
     m_pRegno[5]=&m_regno6;  m_pRegno[6]=&m_regno7;  m_pRegno[7]=&m_regno8;  m_pRegno[8]=&m_regno9;  m_pRegno[9]=&m_regno10;
     m_pRegno[10]=&m_regno11; m_pRegno[11]=&m_regno12; m_pRegno[12]=&m_regno13; m_pRegno[13]=&m_regno14; m_pRegno[14]=&m_regno15;
     m_pRegno[15]=&m_regno16; m_pRegno[16]=&m_regno17; m_pRegno[17]=&m_regno18; m_pRegno[18]=&m_regno19; m_pRegno[19]=&m_regno20;
-    m_pRegno[20]=&m_regno21; m_pRegno[21]=&m_regno22; m_pRegno[22]=&m_regno23; m_pRegno[23]=&m_regno24; m_pRegno[24]=&m_regno25;
 
     m_pPasswd[0]=&m_passwd1;  m_pPasswd[1]=&m_passwd2;  m_pPasswd[2]=&m_passwd3;  m_pPasswd[3]=&m_passwd4;  m_pPasswd[4]=&m_passwd5;
     m_pPasswd[5]=&m_passwd6;  m_pPasswd[6]=&m_passwd7;  m_pPasswd[7]=&m_passwd8;  m_pPasswd[8]=&m_passwd9;  m_pPasswd[9]=&m_passwd10;
     m_pPasswd[10]=&m_passwd11; m_pPasswd[11]=&m_passwd12; m_pPasswd[12]=&m_passwd13; m_pPasswd[13]=&m_passwd14; m_pPasswd[14]=&m_passwd15;
     m_pPasswd[15]=&m_passwd16; m_pPasswd[16]=&m_passwd17; m_pPasswd[17]=&m_passwd18; m_pPasswd[18]=&m_passwd19; m_pPasswd[19]=&m_passwd20;
-    m_pPasswd[20]=&m_passwd21; m_pPasswd[21]=&m_passwd22; m_pPasswd[22]=&m_passwd23; m_pPasswd[23]=&m_passwd24; m_pPasswd[24]=&m_passwd25;
 
     m_pRetailName[0]=&m_retail_name1;  m_pRetailName[1]=&m_retail_name2;  m_pRetailName[2]=&m_retail_name3;  m_pRetailName[3]=&m_retail_name4;  m_pRetailName[4]=&m_retail_name5;
     m_pRetailName[5]=&m_retail_name6;  m_pRetailName[6]=&m_retail_name7;  m_pRetailName[7]=&m_retail_name8;  m_pRetailName[8]=&m_retail_name9;  m_pRetailName[9]=&m_retail_name10;
     m_pRetailName[10]=&m_retail_name11; m_pRetailName[11]=&m_retail_name12; m_pRetailName[12]=&m_retail_name13; m_pRetailName[13]=&m_retail_name14; m_pRetailName[14]=&m_retail_name15;
     m_pRetailName[15]=&m_retail_name16; m_pRetailName[16]=&m_retail_name17; m_pRetailName[17]=&m_retail_name18; m_pRetailName[18]=&m_retail_name19; m_pRetailName[19]=&m_retail_name20;
-    m_pRetailName[20]=&m_retail_name21; m_pRetailName[21]=&m_retail_name22; m_pRetailName[22]=&m_retail_name23; m_pRetailName[23]=&m_retail_name24; m_pRetailName[24]=&m_retail_name25;
 
     m_pSecondName[0]=&m_second_name1;  m_pSecondName[1]=&m_second_name2;  m_pSecondName[2]=&m_second_name3;  m_pSecondName[3]=&m_second_name4;  m_pSecondName[4]=&m_second_name5;
     m_pSecondName[5]=&m_second_name6;  m_pSecondName[6]=&m_second_name7;  m_pSecondName[7]=&m_second_name8;  m_pSecondName[8]=&m_second_name9;  m_pSecondName[9]=&m_second_name10;
     m_pSecondName[10]=&m_second_name11; m_pSecondName[11]=&m_second_name12; m_pSecondName[12]=&m_second_name13; m_pSecondName[13]=&m_second_name14; m_pSecondName[14]=&m_second_name15;
     m_pSecondName[15]=&m_second_name16; m_pSecondName[16]=&m_second_name17; m_pSecondName[17]=&m_second_name18; m_pSecondName[18]=&m_second_name19; m_pSecondName[19]=&m_second_name20;
-    m_pSecondName[20]=&m_second_name21; m_pSecondName[21]=&m_second_name22; m_pSecondName[22]=&m_second_name23; m_pSecondName[23]=&m_second_name24; m_pSecondName[24]=&m_second_name25;
 }
 
 // ============================================================================
@@ -189,6 +166,18 @@ BOOL CShopDownDlg::OnInitDialog()
     m_brushCardDisabled.CreateSolidBrush(KFTC_CARD_DISABLED_BG);
 
     CreateControlsOnce();
+
+    // Create Prev/Next navigation buttons (always visible)
+    m_btnPrevPage.Create(_T("<"),
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+        CRect(0,0,10,10), this, kBtnPrev);
+    m_btnPrevPage.SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
+
+    m_btnNextPage.Create(_T(">"),
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+        CRect(0,0,10,10), this, kBtnNext);
+    m_btnNextPage.SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
+
     ApplyFonts();
     LayoutControls();
     return TRUE;
@@ -307,88 +296,61 @@ void CShopDownDlg::ApplyFonts()
 // Moves all controls via DeferWindowPos with SWP_NOREDRAW, then
 // redraws everything at once with RedrawWindow(RDW_ALLCHILDREN).
 // ============================================================================
+// ============================================================================
+// LayoutControls
+// Positions 2 cards for the current page, hides all others.
+// Navigation bar (Prev/Next) is placed below the cards.
+// ============================================================================
 void CShopDownDlg::LayoutControls()
 {
-    /* [UI-STEP] 레이아웃 계산(카드/버튼/스크롤 배치)
-     * 1) 클라이언트 영역을 기준으로 상단/하단 버튼 영역과 본문(카드 목록) 영역을 분리한다.
-     * 2) 카드 영역의 좌표/폭을 정하고, 행/카드 한 개의 높이와 간격을 적용한다.
-     * 3) 스크롤바는 카드 영역 높이와 연동되므로 함께 위치/크기를 계산한다.
-     *
-     * [참고]
-     * - 레이아웃 변경 후에는 UpdateScrollBar()로 스크롤 범위 재계산이 필요하다.
-     */
-
     if (m_bInLayout) return;
     m_bInLayout = TRUE;
 
     CRect rc;
     GetClientRect(&rc);
 
-    // NOTE:
-    // Layout width must match the actual card viewport width.
-    // If we compute column widths from the full client width while the row rect
-    // is reduced by scrollbars/gutters, right-side content (buttons) can spill
-    // outside the card.
-
     const int rowGap = ModernUIDpi::Scale(m_hWnd, kRowGap);
     const int ctrlH  = ModernUIDpi::Scale(m_hWnd, kCtrlH);
-
-    // Make ~2 cards fit in the visible area (larger typography to match other tabs).
     const int padY   = ModernUIDpi::Scale(m_hWnd, 8);
-    const int availH = max(0, rc.Height() - padY * 2);
-    int rowH         = (availH - rowGap) / 2; // 2 rows, 1 gap
+    const int padX   = ModernUIDpi::Scale(m_hWnd, 8);
+    const int navH   = ModernUIDpi::Scale(m_hWnd, 56);
 
-    // Clamp to keep controls readable and consistent across DPI.
-    // Right column layout requires:
-    //   대표 가맹점 (라벨+값) 2줄 + 단말기별 (라벨+값) 2줄 + 버튼 1줄
+    const int availH = max(0, rc.Height() - padY * 2 - navH);
+    int rowH = (availH - rowGap) / kRowsPerPage;
+
+    // Compute layout width and card column widths
+    int layoutW = rc.Width() - padX * 2;
+    if (layoutW < ModernUIDpi::Scale(m_hWnd, 320)) layoutW = ModernUIDpi::Scale(m_hWnd, 320);
+    m_card.Compute(layoutW, m_hWnd);
+
+    // Clamp row height to keep controls readable across DPI
     const int baseRowMin = ModernUIDpi::Scale(m_hWnd, 192);
-
     const int yInfo1Off        = m_card.labelH + m_card.labelGap;
     const int repValBottomOff  = yInfo1Off + m_card.infoLineH;
     const int yTermLabelOff    = repValBottomOff + m_card.editGap;
     const int yTermValOff      = yTermLabelOff + m_card.labelH + m_card.labelGap;
     const int termValBottomOff = yTermValOff + m_card.infoLineH;
     const int btnBottomOff     = termValBottomOff + m_card.editGap + ctrlH;
-
     const int rowMinNeeded = btnBottomOff + m_card.cardPad * 2;
     const int rowMin = max(baseRowMin, rowMinNeeded);
-
-    // Allow a bit more headroom than earlier versions (font/DPI differences)
     const int rowMax = ModernUIDpi::Scale(m_hWnd, 320);
-
     if (rowH < rowMin) rowH = rowMin;
     if (rowH > rowMax) rowH = rowMax;
 
-    const int contentStartY = padY; // header is drawn by parent (ShopSetupDlg)
+    const int pageStart = m_nCurrentPage * kRowsPerPage;
 
-    m_nTotalContentH = padY * 2 + kRowCount * (rowH + rowGap) - rowGap;
-    m_nViewH         = rc.Height();
-
-    const bool hasVScroll = (m_nTotalContentH > m_nViewH);
-    const int  sbW        = hasVScroll ? ::GetSystemMetrics(SM_CXVSCROLL) : 0;
-
-    // Reduce outer margins so cards get a bit wider, and keep left/right padding symmetric.
-    const int padX = ModernUIDpi::Scale(m_hWnd, 8);
-    int layoutW = rc.Width() - (hasVScroll ? sbW : 0) - padX * 2;
-    if (layoutW < ModernUIDpi::Scale(m_hWnd, 320)) layoutW = ModernUIDpi::Scale(m_hWnd, 320);
-    m_card.Compute(layoutW, m_hWnd);
-
-    int y = contentStartY - m_nScrollPos;
-
-    // prod/biz/pwd/download/delete (5 controls per row)
-    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 5);
+    // prod/biz/pwd/download/delete (5 per row) + 2 nav buttons
+    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 5 + 2);
 
     for (int i = 0; i < kRowCount; ++i)
     {
-        // Keep left/right padding symmetric; only reserve the native scrollbar width on the right.
-        m_rcRow[i].SetRect(padX, y,
-                          rc.right - padX - (hasVScroll ? sbW : 0), y + rowH);
+        const bool bOnPage = (i >= pageStart && i < pageStart + kRowsPerPage);
+        const int slot = i - pageStart;  // 0 or 1 for on-page rows
 
-        // viewport clip: section card body
-        const int viewTop    = contentStartY;
-        const int viewBottom = rc.Height();
+        // On-page rows get real coords; off-page rows go off-screen
+        const int y = bOnPage ? (padY + slot * (rowH + rowGap)) : -(rowH * 2);
 
-        const bool bInView = (m_rcRow[i].bottom > viewTop) && (m_rcRow[i].top < viewBottom);
+        m_rcRow[i].SetRect(padX, y, rc.right - padX, y + rowH);
 
         const int cardPad = m_card.cardPad;
         CRect inner = m_rcRow[i];
@@ -416,26 +378,19 @@ void CShopDownDlg::LayoutControls()
 
         int termRight = xR + m_card.rightW;
 
-        // buttons row: Download/Delete on its own line (below terminal merchant value)
+        // buttons row: Download/Delete
         {
             const int btnPadR = ModernUIDpi::Scale(m_hWnd, 16);
             const int btnGap  = ModernUIDpi::Scale(m_hWnd, 8);
             const int btnH    = ctrlH;
 
-            // Fit 2 buttons into the right column without overlap
             int btnW = m_card.btnW;
             const int maxFit = (m_card.rightW - btnPadR - btnGap) / 2;
             if (maxFit > 0)
-            {
-                // Prefer the desired width; only shrink if the window is extremely narrow.
                 btnW = min(btnW, maxFit);
-            }
             else
-            {
                 btnW = ModernUIDpi::Scale(m_hWnd, 40);
-            }
 
-            // Buttons are placed below: 대표(라벨+값) 2줄 + 단말기별(라벨+값) 2줄
             const int yInfo1        = inner.top + labelH + labelGap;
             const int repValBottom  = yInfo1 + m_card.infoLineH;
             const int yTermLabel    = repValBottom + editGap;
@@ -445,50 +400,45 @@ void CShopDownDlg::LayoutControls()
             const int btnY  = termValBottom + editGap;
             const int right = xR + m_card.rightW - btnPadR;
 
-            // Download on the left, Delete on the right (same size)
             m_rcDel[i].SetRect(right - btnW, btnY, right, btnY + btnH);
             m_rcBtn[i].SetRect(m_rcDel[i].left - btnGap - btnW, btnY, m_rcDel[i].left - btnGap, btnY + btnH);
 
-            // Term text uses full right column width (buttons are on their own row)
             termRight = xR + m_card.rightW;
         }
 
-        // info text rectangles (value line area)
+        // info text rectangles
         const int yInfo1 = inner.top + labelH + labelGap;
         m_rcInfoRep[i].SetRect(xR, yInfo1, xR + m_card.rightW, yInfo1 + m_card.infoLineH);
 
-        // 2nd block (right): terminal merchant (label + value) 2 lines
         const int repValBottom = yInfo1 + m_card.infoLineH;
-        const int yTermLabel   = repValBottom + editGap; // 대표 가맹점 값 바로 아래
+        const int yTermLabel   = repValBottom + editGap;
         m_rcInfoTerm[i].SetRect(xR, yTermLabel, termRight, yTermLabel + m_card.labelH);
 
         const int yTermVal = yTermLabel + m_card.labelH + labelGap;
         m_rcInfoTermVal[i].SetRect(xR, yTermVal, termRight, yTermVal + m_card.infoLineH);
 
-        // Lazy creation: instantiate Win32 controls on first scroll-into-view
-        if (bInView && !m_bRowCreated[i])
+        // Lazy creation: only create controls for on-page rows
+        if (bOnPage && !m_bRowCreated[i])
             CreateRow(i);
 
-// Enabled/disabled visual states (match other tabs)
+        // Enabled/disabled visual states
         {
-            // 카드 배경과 컨트롤 Underlay를 항상 일치시킨다.
-            // (Edit 내부 채움도 UnderlayColor를 사용하도록 ModernUI.cpp에서 처리)
             ApplyRowUnderlay(i, FALSE);
-const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
+            const BOOL enBtn = m_bRowCreated[i] ? ::IsWindowEnabled(m_btnDownload[i].m_hWnd) : FALSE;
             if (enBtn)
                 m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
             else
                 m_btnDownload[i].SetColors(KFTC_BTN_DISABLED_BG, KFTC_BTN_DISABLED_BG, RGB(160,165,175));
-        
-            const BOOL enDel = ::IsWindowEnabled(m_btnDelete[i].m_hWnd);
+
+            const BOOL enDel = m_bRowCreated[i] ? ::IsWindowEnabled(m_btnDelete[i].m_hWnd) : FALSE;
             if (enDel)
                 m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
             else
                 m_btnDelete[i].SetColors(KFTC_CARD_DISABLED_BG, KFTC_CARD_DISABLED_BG, RGB(160,160,160));
-}
+        }
 
         const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
-        const UINT showHide  = bInView ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
+        const UINT showHide  = bOnPage ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
 
         if (m_bRowCreated[i])
         {
@@ -498,253 +448,39 @@ const BOOL enBtn = ::IsWindowEnabled(m_btnDownload[i].m_hWnd);
             if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
             if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd,   NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
         }
+    }
 
-        y += rowH + rowGap;
+    // Navigation bar (below the 2 visible cards)
+    const int navY = padY + kRowsPerPage * (rowH + rowGap) - rowGap;
+    m_rcNavBar.SetRect(padX, navY, rc.right - padX, navY + navH);
+
+    const int navBtnW = ModernUIDpi::Scale(m_hWnd, 88);
+    const int navBtnH = ModernUIDpi::Scale(m_hWnd, 36);
+    const int navBtnY = navY + (navH - navBtnH) / 2;
+    const int midX    = rc.Width() / 2;
+    const int half    = ModernUIDpi::Scale(m_hWnd, 56);
+
+    if (m_btnPrevPage.GetSafeHwnd())
+    {
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnPrevPage.m_hWnd, NULL,
+            midX - half - navBtnW, navBtnY, navBtnW, navBtnH,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    }
+    if (m_btnNextPage.GetSafeHwnd())
+    {
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnNextPage.m_hWnd, NULL,
+            midX + half, navBtnY, navBtnW, navBtnH,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
-    UpdateScrollBar();
+    UpdatePageButtons();
     ApplyAllRowUnderlays();
     ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
     m_bInLayout = FALSE;
 }
 
-
-// ============================================================================
-// UpdateScrollBar
-// ============================================================================
-void CShopDownDlg::UpdateScrollBar()
-{
-    /* [UI-STEP] 스크롤바 범위/페이지 크기 계산
-     * 1) 전체 콘텐츠 높이(행 개수 * 행 높이 + 간격)를 계산한다.
-     * 2) 클라이언트 표시 가능 높이를 page로 두고, maxScroll을 산출한다.
-     * 3) SetScrollInfo로 range/page/pos를 설정한다.
-     */
-
-    if (m_nTotalContentH <= m_nViewH)
-    {
-        ShowScrollBar(SB_VERT, FALSE);
-        return;
-    }
-    ShowScrollBar(SB_VERT, TRUE);
-
-    SCROLLINFO si;
-    si.cbSize = sizeof(SCROLLINFO);
-    si.fMask  = SIF_ALL;
-    si.nMin   = 0;
-    si.nMax   = m_nTotalContentH - 1;
-    si.nPage  = m_nViewH;
-    si.nPos   = m_nScrollPos;
-    SetScrollInfo(SB_VERT, &si, TRUE);
-}
-
-// ============================================================================
-// ApplyScroll  - single entry point for all scroll position changes
-// ============================================================================
-void CShopDownDlg::ApplyScroll(int newPos)
-{
-    /* [UI-STEP] 스크롤 적용 공용 루틴(상태 동기화)
-     * 1) 내부 스크롤 상태(scrollY 등)를 갱신한다.
-     * 2) 행의 hover/선택 언더레이가 스크롤에 따라 어긋나지 않도록 ApplyAllRowUnderlays()를 호출한다(필요 시).
-     */
-
-    SCROLLINFO si;
-    si.cbSize = sizeof(SCROLLINFO);
-    si.fMask  = SIF_ALL;
-    GetScrollInfo(SB_VERT, &si);
-
-    const int maxPos = max(0, (int)(si.nMax - (int)si.nPage + 1));
-    newPos = max(0, min(newPos, maxPos));
-    if (newPos == m_nScrollPos) return;
-
-    m_nScrollPos = newPos;
-    si.fMask = SIF_POS;
-    si.nPos  = m_nScrollPos;
-    SetScrollInfo(SB_VERT, &si, TRUE);
-
-    LayoutControls();
-    // LayoutControls()가 RedrawWindow로 무효화/자식까지 갱신합니다.
-    // 여기서 UpdateWindow()를 강제 호출하면 스크롤/타이머 중첩으로
-    // 재진입(Paint) 가능성이 있어 호출하지 않습니다.
-}
-
-// ============================================================================
-// OnVScroll
-// ============================================================================
-// ============================================================================
-// QueueScroll - throttle scroll updates via timer (shared by wheel & thumbtrack)
-// ============================================================================
-void CShopDownDlg::QueueScroll(int newPos)
-{
-    SCROLLINFO si;
-    si.cbSize = sizeof(SCROLLINFO);
-    si.fMask  = SIF_ALL;
-    GetScrollInfo(SB_VERT, &si);
-
-    int maxPos = 0;
-    if (si.nPage > 0)
-        maxPos = max(0, (int)si.nMax - (int)si.nPage + 1);
-    else
-        maxPos = max(0, (int)si.nMax);
-
-    if (newPos < 0) newPos = 0;
-    if (newPos > maxPos) newPos = maxPos;
-
-    m_nPendingScrollPos = newPos;
-
-    // keep scrollbar thumb responsive immediately
-    si.fMask = SIF_POS;
-    si.nPos  = newPos;
-    SetScrollInfo(SB_VERT, &si, TRUE);
-
-    if (!m_bScrollTimerActive)
-    {
-        SetTimer(kScrollTimerId, kScrollTimerMs, NULL);
-        m_bScrollTimerActive = TRUE;
-    }
-}
-
-// --------------------------------------------------------------
-// 스크롤 처리
-//  - 스크롤 위치를 데이터 범위에 맞게 보정(clamp)하고 재그림
-// --------------------------------------------------------------
-void CShopDownDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
-{
-    /* [UI-STEP] 스크롤바 입력 처리(행/카드 목록 이동)
-     * 1) SB_LINEUP/LINEDOWN, SB_PAGEUP/PAGEDOWN, SB_THUMBTRACK 등 스크롤 코드를 해석한다.
-     * 2) ScrollByDelta() 또는 ApplyScroll()로 스크롤 위치를 갱신한다.
-     * 3) UpdateScrollBar()로 스크롤 핸들 위치/범위를 동기화한다.
-     * 4) Invalidate()로 다시 그려 화면을 갱신한다.
-     */
-
-    SCROLLINFO si;
-    si.cbSize = sizeof(SCROLLINFO);
-    si.fMask  = SIF_ALL;
-    GetScrollInfo(SB_VERT, &si);
-
-    const int lineStep = ModernUIDpi::Scale(m_hWnd, kRowH + kRowGap);
-    int newPos = si.nPos;
-
-    switch (nSBCode)
-    {
-    case SB_LINEUP:        newPos -= lineStep;      break;
-    case SB_LINEDOWN:      newPos += lineStep;      break;
-    case SB_PAGEUP:        newPos -= (int)si.nPage; break;
-    case SB_PAGEDOWN:      newPos += (int)si.nPage; break;
-
-    case SB_THUMBTRACK:
-        m_nPendingScrollPos = (int)nPos;
-        if (!m_bScrollTimerActive)
-        {
-            SetTimer(kScrollTimerId, kScrollTimerMs, NULL);
-            m_bScrollTimerActive = TRUE;
-        }
-        si.fMask = SIF_POS; si.nPos = (int)nPos;
-        SetScrollInfo(SB_VERT, &si, TRUE);
-        CDialog::OnVScroll(nSBCode, nPos, pScrollBar);
-        return;
-
-    case SB_THUMBPOSITION:
-        if (m_bScrollTimerActive) { KillTimer(kScrollTimerId); m_bScrollTimerActive = FALSE; }
-        newPos = (int)nPos;
-        break;
-
-    case SB_ENDSCROLL:
-        if (m_bScrollTimerActive)
-        {
-            KillTimer(kScrollTimerId);
-            m_bScrollTimerActive = FALSE;
-            if (m_nPendingScrollPos >= 0) { ApplyScroll(m_nPendingScrollPos); m_nPendingScrollPos = -1; }
-        }
-        CDialog::OnVScroll(nSBCode, nPos, pScrollBar);
-        return;
-
-    default:
-        CDialog::OnVScroll(nSBCode, nPos, pScrollBar);
-        return;
-    }
-
-    ApplyScroll(newPos);
-    CDialog::OnVScroll(nSBCode, nPos, pScrollBar);
-}
-
-void CShopDownDlg::OnTimer(UINT_PTR nIDEvent)
-{
-    if (nIDEvent == kScrollTimerId)
-    {
-        // THUMBTRACK 동안만 타이머를 잠깐 돌려 과도한 Layout/Paint를 막는다.
-        // 적용할 값이 없으면 즉시 타이머를 정지한다(유휴 상태에서 WM_TIMER 폭주 방지).
-        if (m_nPendingScrollPos >= 0)
-        {
-            ApplyScroll(m_nPendingScrollPos);
-            m_nPendingScrollPos = -1;
-        }
-        if (m_bScrollTimerActive)
-        {
-            KillTimer(kScrollTimerId);
-            m_bScrollTimerActive = FALSE;
-        }
-        return; // base class로 넘길 필요 없음
-    }
-    CDialog::OnTimer(nIDEvent);
-}
-
-// ============================================================================
-// PreTranslateMessage
-// WM_MOUSEWHEEL은 커서 아래 윈도우(자식 컨트롤)로 직접 전달되어
-// 부모 OnMouseWheel에 도달하지 않는다.
-// PreTranslateMessage에서 가로채 부모(this)가 직접 처리한다.
-// ============================================================================
-BOOL CShopDownDlg::PreTranslateMessage(MSG* pMsg)
-{
-    /* [UI-STEP] 키 입력 선처리(단축키/엔터/ESC 등)
-     * 1) 엔터/ESC 기본 닫힘 동작을 커스텀해야 하면 여기에서 필터링한다.
-     * 2) 키보드로 스크롤/선택 이동이 있다면 메시지를 해석해 ScrollByDelta() 등을 호출한다.
-     */
-
-    if (pMsg->message == WM_MOUSEWHEEL)
-    {
-        // 메시지 수신 윈도우가 자신이거나 자식 컨트롤인 경우 모두 처리
-        if (pMsg->hwnd == m_hWnd || ::IsChild(m_hWnd, pMsg->hwnd))
-        {
-            ScrollByDelta((short)HIWORD(pMsg->wParam));
-            return TRUE;  // 자식 컨트롤에 전달하지 않음
-        }
-    }
-    return CDialog::PreTranslateMessage(pMsg);
-}
-
-// ============================================================================
-BOOL CShopDownDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
-{
-    /* [UI-STEP] 마우스 휠 스크롤 처리
-     * 1) 휠 델타(WHEEL_DELTA)를 라인/픽셀 단위 스크롤로 변환한다.
-     * 2) ScrollByDelta()로 스크롤을 적용한다.
-     * 3) UpdateScrollBar() + Invalidate()로 화면을 갱신한다.
-     */
-
-    ScrollByDelta(zDelta);
-    return TRUE;
-}
-
-// ============================================================================
-void CShopDownDlg::ScrollByDelta(short zDelta)
-{
-    /* [UI-STEP] 스크롤 델타 적용(범위 보정 포함)
-     * 1) 현재 scrollY에 delta를 더해 새로운 위치를 만든다.
-     * 2) 0 ~ maxScroll 범위로 clamp하여 음수/초과 스크롤을 방지한다.
-     * 3) 변경이 있을 때만 Invalidate(또는 부분 Invalidate)하여 불필요한 페인팅을 줄인다.
-     */
-
-    const int step  = ModernUIDpi::Scale(m_hWnd, kRowH + kRowGap);
-    const int lines = zDelta / WHEEL_DELTA;
-    SCROLLINFO si;
-    si.cbSize = sizeof(SCROLLINFO);
-    si.fMask  = SIF_ALL;
-    GetScrollInfo(SB_VERT, &si);
-    QueueScroll(si.nPos - lines * step);
-}
 
 // ============================================================================
 // OnMouseMove / OnMouseLeave  (hover row highlight)
@@ -765,6 +501,8 @@ BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
     UINT nCode = HIWORD(wParam);
     if (nCode == BN_CLICKED)
     {
+        if (nID == kBtnPrev) { OnPrevPageClick(); return TRUE; }
+        if (nID == kBtnNext) { OnNextPageClick(); return TRUE; }
         if (nID >= kBtnBase && nID < kBtnBase + kRowCount)
         {
             OnDownloadClick((int)(nID - kBtnBase));
@@ -980,10 +718,11 @@ void CShopDownDlg::OnPaint()
     // ----------------------------------------------------------------
     // 3) Item cards + labels + right-side info (drawn)
     // ----------------------------------------------------------------
+    const int pageStart = m_nCurrentPage * kRowsPerPage;
     for (int i = 0; i < kRowCount; ++i)
     {
         const CRect& r = m_rcRow[i];
-        if (r.bottom <= clipTop || r.top >= clipBottom) continue;
+        if (i < pageStart || i >= pageStart + kRowsPerPage) continue;
 
         // Data-driven card tone:
         // - 대표 가맹점(다운로드 결과)이 있으면 정상 카드(white)
@@ -1085,6 +824,28 @@ void CShopDownDlg::OnPaint()
         }
     }
 
+    // Draw page indicator in navigation bar
+    if (!m_rcNavBar.IsRectEmpty())
+    {
+        CString pageStr;
+        pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
+        const float navCX = (float)(m_rcNavBar.left + m_rcNavBar.right) / 2.f;
+        const float navCY = (float)(m_rcNavBar.top + m_rcNavBar.bottom) / 2.f;
+        const float pw = (float)ModernUIDpi::Scale(m_hWnd, 80);
+        const float ph = (float)ModernUIDpi::Scale(m_hWnd, 28);
+        Gdiplus::RectF navRF(navCX - pw/2.f, navCY - ph/2.f, pw, ph);
+        Gdiplus::StringFormat sfNav;
+        sfNav.SetAlignment(Gdiplus::StringAlignmentCenter);
+        sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+        Gdiplus::SolidBrush brNav(Gdiplus::Color(255, 60, 70, 90));
+#ifdef UNICODE
+        g.DrawString(pageStr, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+#else
+        CStringW wPage(pageStr);
+        g.DrawString(wPage, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+#endif
+    }
+
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
     memDC.SelectObject(pOldBmp);
 }
@@ -1144,3 +905,23 @@ BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
     return TRUE;
 }
 
+// ============================================================================
+// Pagination
+// ============================================================================
+void CShopDownDlg::OnPrevPageClick()
+{
+    if (m_nCurrentPage > 0) { m_nCurrentPage--; LayoutControls(); }
+}
+
+void CShopDownDlg::OnNextPageClick()
+{
+    if (m_nCurrentPage < kTotalPages - 1) { m_nCurrentPage++; LayoutControls(); }
+}
+
+void CShopDownDlg::UpdatePageButtons()
+{
+    if (m_btnPrevPage.GetSafeHwnd())
+        m_btnPrevPage.EnableWindow(m_nCurrentPage > 0);
+    if (m_btnNextPage.GetSafeHwnd())
+        m_btnNextPage.EnableWindow(m_nCurrentPage < kTotalPages - 1);
+}
