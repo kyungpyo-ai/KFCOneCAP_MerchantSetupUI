@@ -88,8 +88,7 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_pFontValBold(nullptr)
     , m_pFontFamily(nullptr)
 {
-    memset(m_bRowCreated, 0, sizeof(m_bRowCreated));
-    InitPointerArrays();
+
 }
 
 CShopDownDlg::~CShopDownDlg()
@@ -108,33 +107,6 @@ void CShopDownDlg::OnDestroy()
     CDialog::OnDestroy();
 }
 
-void CShopDownDlg::InitPointerArrays()
-{
-    m_pPrdid[0]=&m_prdid1;  m_pPrdid[1]=&m_prdid2;  m_pPrdid[2]=&m_prdid3;  m_pPrdid[3]=&m_prdid4;  m_pPrdid[4]=&m_prdid5;
-    m_pPrdid[5]=&m_prdid6;  m_pPrdid[6]=&m_prdid7;  m_pPrdid[7]=&m_prdid8;  m_pPrdid[8]=&m_prdid9;  m_pPrdid[9]=&m_prdid10;
-    m_pPrdid[10]=&m_prdid11; m_pPrdid[11]=&m_prdid12; m_pPrdid[12]=&m_prdid13; m_pPrdid[13]=&m_prdid14; m_pPrdid[14]=&m_prdid15;
-    m_pPrdid[15]=&m_prdid16; m_pPrdid[16]=&m_prdid17; m_pPrdid[17]=&m_prdid18; m_pPrdid[18]=&m_prdid19; m_pPrdid[19]=&m_prdid20;
-
-    m_pRegno[0]=&m_regno1;  m_pRegno[1]=&m_regno2;  m_pRegno[2]=&m_regno3;  m_pRegno[3]=&m_regno4;  m_pRegno[4]=&m_regno5;
-    m_pRegno[5]=&m_regno6;  m_pRegno[6]=&m_regno7;  m_pRegno[7]=&m_regno8;  m_pRegno[8]=&m_regno9;  m_pRegno[9]=&m_regno10;
-    m_pRegno[10]=&m_regno11; m_pRegno[11]=&m_regno12; m_pRegno[12]=&m_regno13; m_pRegno[13]=&m_regno14; m_pRegno[14]=&m_regno15;
-    m_pRegno[15]=&m_regno16; m_pRegno[16]=&m_regno17; m_pRegno[17]=&m_regno18; m_pRegno[18]=&m_regno19; m_pRegno[19]=&m_regno20;
-
-    m_pPasswd[0]=&m_passwd1;  m_pPasswd[1]=&m_passwd2;  m_pPasswd[2]=&m_passwd3;  m_pPasswd[3]=&m_passwd4;  m_pPasswd[4]=&m_passwd5;
-    m_pPasswd[5]=&m_passwd6;  m_pPasswd[6]=&m_passwd7;  m_pPasswd[7]=&m_passwd8;  m_pPasswd[8]=&m_passwd9;  m_pPasswd[9]=&m_passwd10;
-    m_pPasswd[10]=&m_passwd11; m_pPasswd[11]=&m_passwd12; m_pPasswd[12]=&m_passwd13; m_pPasswd[13]=&m_passwd14; m_pPasswd[14]=&m_passwd15;
-    m_pPasswd[15]=&m_passwd16; m_pPasswd[16]=&m_passwd17; m_pPasswd[17]=&m_passwd18; m_pPasswd[18]=&m_passwd19; m_pPasswd[19]=&m_passwd20;
-
-    m_pRetailName[0]=&m_retail_name1;  m_pRetailName[1]=&m_retail_name2;  m_pRetailName[2]=&m_retail_name3;  m_pRetailName[3]=&m_retail_name4;  m_pRetailName[4]=&m_retail_name5;
-    m_pRetailName[5]=&m_retail_name6;  m_pRetailName[6]=&m_retail_name7;  m_pRetailName[7]=&m_retail_name8;  m_pRetailName[8]=&m_retail_name9;  m_pRetailName[9]=&m_retail_name10;
-    m_pRetailName[10]=&m_retail_name11; m_pRetailName[11]=&m_retail_name12; m_pRetailName[12]=&m_retail_name13; m_pRetailName[13]=&m_retail_name14; m_pRetailName[14]=&m_retail_name15;
-    m_pRetailName[15]=&m_retail_name16; m_pRetailName[16]=&m_retail_name17; m_pRetailName[17]=&m_retail_name18; m_pRetailName[18]=&m_retail_name19; m_pRetailName[19]=&m_retail_name20;
-
-    m_pSecondName[0]=&m_second_name1;  m_pSecondName[1]=&m_second_name2;  m_pSecondName[2]=&m_second_name3;  m_pSecondName[3]=&m_second_name4;  m_pSecondName[4]=&m_second_name5;
-    m_pSecondName[5]=&m_second_name6;  m_pSecondName[6]=&m_second_name7;  m_pSecondName[7]=&m_second_name8;  m_pSecondName[8]=&m_second_name9;  m_pSecondName[9]=&m_second_name10;
-    m_pSecondName[10]=&m_second_name11; m_pSecondName[11]=&m_second_name12; m_pSecondName[12]=&m_second_name13; m_pSecondName[13]=&m_second_name14; m_pSecondName[14]=&m_second_name15;
-    m_pSecondName[15]=&m_second_name16; m_pSecondName[16]=&m_second_name17; m_pSecondName[17]=&m_second_name18; m_pSecondName[18]=&m_second_name19; m_pSecondName[19]=&m_second_name20;
-}
 
 // ============================================================================
 // OnInitDialog
@@ -196,58 +168,36 @@ void CShopDownDlg::CreateControlsOnce()
 
     for (int i = 0; i < kRowCount; ++i)
     {
-        *m_pPrdid[i]      = (data[i].prod ? data[i].prod : _T(""));
-        *m_pRegno[i]      = (data[i].biz  ? data[i].biz  : _T(""));
-        *m_pRetailName[i] = (data[i].name ? data[i].name : _T(""));
-        *m_pSecondName[i] = _T("");
+        m_rowData[i].prdid       = (data[i].prod ? data[i].prod : _T(""));
+        m_rowData[i].regno       = (data[i].biz  ? data[i].biz  : _T(""));
+        m_rowData[i].retail_name = (data[i].name ? data[i].name : _T(""));
+        m_rowData[i].second_name = _T("");
     }
-}
 
-// ============================================================================
-// CreateRow  -- lazily create Win32 controls for a single row
-// Called from LayoutControls() the first time a row scrolls into view.
-// ============================================================================
-void CShopDownDlg::CreateRow(int i)
-{
-    if (i < 0 || i >= kRowCount || m_bRowCreated[i]) return;
-
+    // Create kRowsPerPage slot controls (reused across page navigation)
     const DWORD edtBase  = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPSIBLINGS
                          | ES_AUTOHSCROLL | ES_CENTER;
-    const DWORD edtStyle = edtBase;
     const DWORD pwdStyle = edtBase | ES_PASSWORD;
-    const DWORD roStyle  = edtBase | ES_READONLY;
-
-    m_editProd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-        edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+1);
-    m_editBiz[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-        edtStyle, CRect(0,0,10,10), this, 62000+(i*10)+2);
-    m_editPwd[i].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-        pwdStyle, CRect(0,0,10,10), this, 62000+(i*10)+3);
-    m_btnDownload[i].Create(_T("다운로드"),
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-        CRect(0,0,10,10), this, kBtnBase+i);
-    m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
-    m_btnDelete[i].Create(_T("삭제"),
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-        CRect(0,0,10,10), this, kDelBase+i);
-    m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
-
-    m_editProd[i].SetWindowText(*m_pPrdid[i]);
-    m_editBiz[i].SetWindowText(*m_pRegno[i]);
-
-    const bool hasRep = (m_pRetailName[i] && !m_pRetailName[i]->IsEmpty());
-    m_btnDelete[i].EnableWindow(hasRep ? TRUE : FALSE);
-
-    if (m_fontCell.GetSafeHandle())
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        m_editProd[i].SetFont(&m_fontCell);
-        m_editBiz[i].SetFont(&m_fontCell);
-        m_editPwd[i].SetFont(&m_fontCell);
-        m_btnDownload[i].SetFont(&m_fontCell);
+        m_editProd[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+            edtBase,  CRect(0,0,10,10), this, 62000+(slot*10)+1);
+        m_editBiz[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+            edtBase,  CRect(0,0,10,10), this, 62000+(slot*10)+2);
+        m_editPwd[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
+            pwdStyle, CRect(0,0,10,10), this, 62000+(slot*10)+3);
+        m_btnDownload[slot].Create(_T("다운로드"),
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+            CRect(0,0,10,10), this, kBtnBase+slot);
+        m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
+        m_btnDelete[slot].Create(_T("삭제"),
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+            CRect(0,0,10,10), this, kDelBase+slot);
+        m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
     }
-
-    m_bRowCreated[i] = true;
 }
+
+
 
 // ============================================================================
 // ApplyFonts
@@ -281,13 +231,12 @@ void CShopDownDlg::ApplyFonts()
     m_fontBadge.DeleteObject();
     m_fontBadge.CreateFontIndirect(&lf);
 
-    for (int i = 0; i < kRowCount; ++i)
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        if (!m_bRowCreated[i]) continue;
-        m_editProd[i].SetFont(&m_fontCell);
-        m_editBiz[i].SetFont(&m_fontCell);
-        m_editPwd[i].SetFont(&m_fontCell);
-        m_btnDownload[i].SetFont(&m_fontCell);
+        m_editProd[slot].SetFont(&m_fontCell);
+        m_editBiz[slot].SetFont(&m_fontCell);
+        m_editPwd[slot].SetFont(&m_fontCell);
+        m_btnDownload[slot].SetFont(&m_fontCell);
     }
 }
 
@@ -313,10 +262,12 @@ void CShopDownDlg::LayoutControls()
     const int ctrlH  = ModernUIDpi::Scale(m_hWnd, kCtrlH);
     const int padY   = ModernUIDpi::Scale(m_hWnd, 8);
     const int padX   = ModernUIDpi::Scale(m_hWnd, 8);
-    const int navH   = ModernUIDpi::Scale(m_hWnd, 56);
+    const int navH   = ModernUIDpi::Scale(m_hWnd, 44);
 
-    const int availH = max(0, rc.Height() - padY * 2 - navH);
-    int rowH = (availH - rowGap) / kRowsPerPage;
+    const int navGap = ModernUIDpi::Scale(m_hWnd, 6);
+    const int navY_bot = rc.Height() - padY - navH;  // nav bar pinned to bottom
+    const int availH = max(0, navY_bot - padY - navGap);  // usable space above nav bar
+    int rowH = (availH - (kRowsPerPage - 1) * rowGap) / kRowsPerPage;
 
     // Compute layout width and card column widths
     int layoutW = rc.Width() - padX * 2;
@@ -336,24 +287,26 @@ void CShopDownDlg::LayoutControls()
     const int rowMax = ModernUIDpi::Scale(m_hWnd, 320);
     if (rowH < rowMin) rowH = rowMin;
     if (rowH > rowMax) rowH = rowMax;
+    // Hard cap: never let cards overflow into the nav bar area
+    { const int rowFit = (availH - (kRowsPerPage - 1) * rowGap) / kRowsPerPage; if (rowFit > 0 && rowH > rowFit) rowH = rowFit; }
 
     const int pageStart = m_nCurrentPage * kRowsPerPage;
 
     // prod/biz/pwd/download/delete (5 per row) + 2 nav buttons
-    HDWP hdwp = ::BeginDeferWindowPos(kRowCount * 5 + 2);
+    HDWP hdwp = ::BeginDeferWindowPos(kRowsPerPage * 5 + 2);
 
-    for (int i = 0; i < kRowCount; ++i)
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        const bool bOnPage = (i >= pageStart && i < pageStart + kRowsPerPage);
-        const int slot = i - pageStart;  // 0 or 1 for on-page rows
 
         // On-page rows get real coords; off-page rows go off-screen
-        const int y = bOnPage ? (padY + slot * (rowH + rowGap)) : -(rowH * 2);
+        const int rowIdx = pageStart + slot;
+        const bool bValid = (rowIdx < kRowCount);
+        const int y = padY + slot * (rowH + rowGap);
 
-        m_rcRow[i].SetRect(padX, y, rc.right - padX, y + rowH);
+        m_rcRow[slot].SetRect(padX, y, rc.right - padX, y + rowH);
 
         const int cardPad = m_card.cardPad;
-        CRect inner = m_rcRow[i];
+        CRect inner = m_rcRow[slot];
         inner.DeflateRect(cardPad, cardPad);
 
         // 2-column split
@@ -368,13 +321,13 @@ void CShopDownDlg::LayoutControls()
         const int y1Edit = inner.top + labelH + labelGap;
         const int halfW  = (m_card.leftW - editGap) / 2;
 
-        m_rcProd[i].SetRect(xL,                 y1Edit, xL + halfW,         y1Edit + ctrlH);
-        m_rcBiz[i].SetRect (xL + halfW+editGap, y1Edit, xL + m_card.leftW,  y1Edit + ctrlH);
+        m_rcProd[slot].SetRect(xL,                 y1Edit, xL + halfW,         y1Edit + ctrlH);
+        m_rcBiz[slot].SetRect (xL + halfW+editGap, y1Edit, xL + m_card.leftW,  y1Edit + ctrlH);
 
         // row2 (pwd)
         const int y2Label = y1Edit + ctrlH + editGap;
         const int y2Edit  = y2Label + labelH + labelGap;
-        m_rcPwd[i].SetRect(xL, y2Edit, xL + m_card.leftW, y2Edit + ctrlH);
+        m_rcPwd[slot].SetRect(xL, y2Edit, xL + m_card.leftW, y2Edit + ctrlH);
 
         int termRight = xR + m_card.rightW;
 
@@ -400,62 +353,56 @@ void CShopDownDlg::LayoutControls()
             const int btnY  = termValBottom + editGap;
             const int right = xR + m_card.rightW - btnPadR;
 
-            m_rcDel[i].SetRect(right - btnW, btnY, right, btnY + btnH);
-            m_rcBtn[i].SetRect(m_rcDel[i].left - btnGap - btnW, btnY, m_rcDel[i].left - btnGap, btnY + btnH);
+            m_rcDel[slot].SetRect(right - btnW, btnY, right, btnY + btnH);
+            m_rcBtn[slot].SetRect(m_rcDel[slot].left - btnGap - btnW, btnY, m_rcDel[slot].left - btnGap, btnY + btnH);
 
             termRight = xR + m_card.rightW;
         }
 
         // info text rectangles
         const int yInfo1 = inner.top + labelH + labelGap;
-        m_rcInfoRep[i].SetRect(xR, yInfo1, xR + m_card.rightW, yInfo1 + m_card.infoLineH);
+        m_rcInfoRep[slot].SetRect(xR, yInfo1, xR + m_card.rightW, yInfo1 + m_card.infoLineH);
 
         const int repValBottom = yInfo1 + m_card.infoLineH;
         const int yTermLabel   = repValBottom + editGap;
-        m_rcInfoTerm[i].SetRect(xR, yTermLabel, termRight, yTermLabel + m_card.labelH);
+        m_rcInfoTerm[slot].SetRect(xR, yTermLabel, termRight, yTermLabel + m_card.labelH);
 
         const int yTermVal = yTermLabel + m_card.labelH + labelGap;
-        m_rcInfoTermVal[i].SetRect(xR, yTermVal, termRight, yTermVal + m_card.infoLineH);
+        m_rcInfoTermVal[slot].SetRect(xR, yTermVal, termRight, yTermVal + m_card.infoLineH);
 
-        // Lazy creation: only create controls for on-page rows
-        if (bOnPage && !m_bRowCreated[i])
-            CreateRow(i);
 
         // Enabled/disabled visual states
         {
-            ApplyRowUnderlay(i, FALSE);
-            const BOOL enBtn = m_bRowCreated[i] ? ::IsWindowEnabled(m_btnDownload[i].m_hWnd) : FALSE;
+            ApplyRowUnderlay(slot, FALSE);
+            const BOOL enBtn = bValid && ::IsWindowEnabled(m_btnDownload[slot].m_hWnd);
             if (enBtn)
-                m_btnDownload[i].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
+                m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
             else
-                m_btnDownload[i].SetColors(KFTC_BTN_DISABLED_BG, KFTC_BTN_DISABLED_BG, RGB(160,165,175));
+                m_btnDownload[slot].SetColors(KFTC_BTN_DISABLED_BG, KFTC_BTN_DISABLED_BG, RGB(160,165,175));
 
-            const BOOL enDel = m_bRowCreated[i] ? ::IsWindowEnabled(m_btnDelete[i].m_hWnd) : FALSE;
+            const BOOL enDel = bValid && ::IsWindowEnabled(m_btnDelete[slot].m_hWnd);
             if (enDel)
-                m_btnDelete[i].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
+                m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
             else
-                m_btnDelete[i].SetColors(KFTC_CARD_DISABLED_BG, KFTC_CARD_DISABLED_BG, RGB(160,160,160));
+                m_btnDelete[slot].SetColors(KFTC_CARD_DISABLED_BG, KFTC_CARD_DISABLED_BG, RGB(160,160,160));
         }
 
         const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
-        const UINT showHide  = bOnPage ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
+        const UINT showHide  = bValid ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
 
-        if (m_bRowCreated[i])
-        {
-            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[i].m_hWnd,    NULL, m_rcProd[i].left, m_rcProd[i].top, m_rcProd[i].Width(), m_rcProd[i].Height(), baseFlags | showHide);
-            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[i].m_hWnd,     NULL, m_rcBiz[i].left,  m_rcBiz[i].top,  m_rcBiz[i].Width(),  m_rcBiz[i].Height(),  baseFlags | showHide);
-            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[i].m_hWnd,     NULL, m_rcPwd[i].left,  m_rcPwd[i].top,  m_rcPwd[i].Width(),  m_rcPwd[i].Height(),  baseFlags | showHide);
-            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[i].m_hWnd, NULL, m_rcBtn[i].left,  m_rcBtn[i].top,  m_rcBtn[i].Width(),  m_rcBtn[i].Height(),  baseFlags | showHide);
-            if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[i].m_hWnd,   NULL, m_rcDel[i].left,  m_rcDel[i].top,  m_rcDel[i].Width(),  m_rcDel[i].Height(),  baseFlags | showHide);
-        }
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[slot].m_hWnd,    NULL, m_rcProd[slot].left, m_rcProd[slot].top, m_rcProd[slot].Width(), m_rcProd[slot].Height(), baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[slot].m_hWnd,     NULL, m_rcBiz[slot].left,  m_rcBiz[slot].top,  m_rcBiz[slot].Width(),  m_rcBiz[slot].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[slot].m_hWnd,     NULL, m_rcPwd[slot].left,  m_rcPwd[slot].top,  m_rcPwd[slot].Width(),  m_rcPwd[slot].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[slot].m_hWnd, NULL, m_rcBtn[slot].left,  m_rcBtn[slot].top,  m_rcBtn[slot].Width(),  m_rcBtn[slot].Height(),  baseFlags | showHide);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[slot].m_hWnd,   NULL, m_rcDel[slot].left,  m_rcDel[slot].top,  m_rcDel[slot].Width(),  m_rcDel[slot].Height(),  baseFlags | showHide);
     }
 
-    // Navigation bar: always pinned to dialog bottom so buttons remain visible
-    const int navY = rc.Height() - padY - navH;
+    // Navigation bar: pinned to dialog bottom (rowFit hard cap above prevents card overlap)
+    const int navY = navY_bot;
     m_rcNavBar.SetRect(padX, navY, rc.right - padX, navY + navH);
 
-    const int navBtnW = ModernUIDpi::Scale(m_hWnd, 88);
-    const int navBtnH = ModernUIDpi::Scale(m_hWnd, 36);
+    const int navBtnW = ModernUIDpi::Scale(m_hWnd, 72);
+    const int navBtnH = ModernUIDpi::Scale(m_hWnd, 28);
     const int navBtnY = navY + (navH - navBtnH) / 2;
     const int midX    = rc.Width() / 2;
     const int half    = ModernUIDpi::Scale(m_hWnd, 56);
@@ -475,6 +422,7 @@ void CShopDownDlg::LayoutControls()
 
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
+    RebindSlots();
     UpdatePageButtons();
     ApplyAllRowUnderlays();
     ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
@@ -503,21 +451,25 @@ BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
     {
         if (nID == kBtnPrev) { OnPrevPageClick(); return TRUE; }
         if (nID == kBtnNext) { OnNextPageClick(); return TRUE; }
-        if (nID >= kBtnBase && nID < kBtnBase + kRowCount)
+        if (nID >= kBtnBase && nID < kBtnBase + kRowsPerPage)
         {
-            OnDownloadClick((int)(nID - kBtnBase));
+            int slot   = (int)(nID - kBtnBase);
+            int rowIdx = m_nCurrentPage * kRowsPerPage + slot;
+            OnDownloadClick(slot, rowIdx);
             return TRUE;
         }
-        if (nID >= kDelBase && nID < kDelBase + kRowCount)
+        if (nID >= kDelBase && nID < kDelBase + kRowsPerPage)
         {
-            OnDeleteClick((int)(nID - kDelBase));
+            int slot   = (int)(nID - kDelBase);
+            int rowIdx = m_nCurrentPage * kRowsPerPage + slot;
+            OnDeleteClick(slot, rowIdx);
             return TRUE;
         }
     }
     return CDialog::OnCommand(wParam, lParam);
 }
 
-void CShopDownDlg::OnDownloadClick(int index)
+void CShopDownDlg::OnDownloadClick(int slot, int rowIdx)
 {
     /* [UI-STEP] 다운로드 버튼 처리(UI 연동)
      * 1) 선택된 단말/가맹점 정보를 확인한다.
@@ -525,27 +477,26 @@ void CShopDownDlg::OnDownloadClick(int index)
      * 3) 반영 후 Invalidate()로 화면 갱신한다.
      */
 
-    if (index < 0 || index >= kRowCount) return;
+    if (slot < 0 || slot >= kRowsPerPage) return;
 
     // 테스트용: 다운로드 시 대표가맹점명(RetailName)에 "TEST"를 채워 카드 상태(배경)를 즉시 전환
-    if (m_pRetailName[index])
-        *m_pRetailName[index] = _T("TEST");
+    m_rowData[rowIdx].retail_name = _T("TEST");
 
     // 필요 시 단말기별 가맹점도 동일하게 표시(빈칸이면 보기 어색해서 같이 채움)
-    if (m_pSecondName[index] && m_pSecondName[index]->IsEmpty())
-        *m_pSecondName[index] = _T("TEST");
+    if (m_rowData[rowIdx].second_name.IsEmpty())
+        m_rowData[rowIdx].second_name = _T("TEST");
 
     // 화면/컨트롤 underlay 즉시 동기화
     // 다운로드되면 삭제 버튼 활성화
-    if (m_btnDelete[index].GetSafeHwnd()) m_btnDelete[index].EnableWindow(TRUE);
+    if (m_btnDelete[slot].GetSafeHwnd()) m_btnDelete[slot].EnableWindow(TRUE);
 
-    ApplyRowUnderlay(index, FALSE);
+    ApplyRowUnderlay(slot, FALSE);
 
-    RedrawWindow(&m_rcRow[index], nullptr,
+    RedrawWindow(&m_rcRow[slot], nullptr,
         RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
-void CShopDownDlg::OnDeleteClick(int index)
+void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
 {
     /* [UI-STEP] 삭제 버튼 처리(UI 연동)
      * 1) 선택 항목을 확인하고 삭제 동작을 수행한다.
@@ -553,26 +504,26 @@ void CShopDownDlg::OnDeleteClick(int index)
      * 3) Invalidate()로 화면 갱신한다.
      */
 
-    if (index < 0 || index >= kRowCount) return;
+    if (slot < 0 || slot >= kRowsPerPage) return;
 
     // 해당 카드(행)의 모든 데이터 초기화
-    if (m_pRetailName[index])  *m_pRetailName[index]  = _T("");
-    if (m_pSecondName[index])  *m_pSecondName[index]  = _T("");
-    if (m_pPrdid[index])       *m_pPrdid[index]       = _T("");
-    if (m_pRegno[index])       *m_pRegno[index]       = _T("");
-    if (m_pPasswd[index])      *m_pPasswd[index]      = _T("");
+    m_rowData[rowIdx].retail_name = _T("");
+    m_rowData[rowIdx].second_name = _T("");
+    m_rowData[rowIdx].prdid       = _T("");
+    m_rowData[rowIdx].regno       = _T("");
+    m_rowData[rowIdx].passwd      = _T("");
 
-    if (m_editProd[index].GetSafeHwnd()) m_editProd[index].SetWindowText(_T(""));
-    if (m_editBiz[index].GetSafeHwnd())  m_editBiz[index].SetWindowText(_T(""));
-    if (m_editPwd[index].GetSafeHwnd())  m_editPwd[index].SetWindowText(_T(""));
+    if (m_editProd[slot].GetSafeHwnd()) m_editProd[slot].SetWindowText(_T(""));
+    if (m_editBiz[slot].GetSafeHwnd())  m_editBiz[slot].SetWindowText(_T(""));
+    if (m_editPwd[slot].GetSafeHwnd())  m_editPwd[slot].SetWindowText(_T(""));
 
     // 삭제되면 삭제 버튼 비활성화
-    if (m_btnDelete[index].GetSafeHwnd()) m_btnDelete[index].EnableWindow(FALSE);
+    if (m_btnDelete[slot].GetSafeHwnd()) m_btnDelete[slot].EnableWindow(FALSE);
 
     // 화면/컨트롤 underlay 즉시 동기화 (빈 상태 → 연한 톤)
-    ApplyRowUnderlay(index, FALSE);
+    ApplyRowUnderlay(slot, FALSE);
 
-    RedrawWindow(&m_rcRow[index], nullptr,
+    RedrawWindow(&m_rcRow[slot], nullptr,
         RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
@@ -646,7 +597,6 @@ void CShopDownDlg::OnPaint()
      */
 
     CPaintDC dc(this);
-    ModernUIGfx::EnsureGdiplusStartup();
 
     CRect rc;
     GetClientRect(&rc);
@@ -719,15 +669,15 @@ void CShopDownDlg::OnPaint()
     // 3) Item cards + labels + right-side info (drawn)
     // ----------------------------------------------------------------
     const int pageStart = m_nCurrentPage * kRowsPerPage;
-    for (int i = 0; i < kRowCount; ++i)
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        const CRect& r = m_rcRow[i];
-        if (i < pageStart || i >= pageStart + kRowsPerPage) continue;
+        const int rowIdx = pageStart + slot;
+        const CRect& r = m_rcRow[slot];
 
         // Data-driven card tone:
         // - 대표 가맹점(다운로드 결과)이 있으면 정상 카드(white)
         // - 없으면(미다운로드/조회 실패/미존재 등) 살짝 톤을 주어 구분
-        CString rep  = *m_pRetailName[i];
+        CString rep  = m_rowData[rowIdx].retail_name;
         const bool hasRep = !rep.IsEmpty();
 
         // item card
@@ -748,14 +698,14 @@ void CShopDownDlg::OnPaint()
             const float yLbl = (float)r.top + (float)m_card.cardPad;
             const float hLbl = (float)m_card.labelH;
 
-            Gdiplus::RectF lp((float)m_rcProd[i].left, yLbl, (float)m_rcProd[i].Width(), hLbl);
-            Gdiplus::RectF lb((float)m_rcBiz[i].left,  yLbl, (float)m_rcBiz[i].Width(),  hLbl);
+            Gdiplus::RectF lp((float)m_rcProd[slot].left, yLbl, (float)m_rcProd[slot].Width(), hLbl);
+            Gdiplus::RectF lb((float)m_rcBiz[slot].left,  yLbl, (float)m_rcBiz[slot].Width(),  hLbl);
             DrawEllips(_T("단말기 제품번호"), lp, m_pFontLbl, cLbl);
             DrawEllips(_T("사업자번호"),     lb, m_pFontLbl, cLbl);
 
             // pwd label
-            const float yPwdLbl = (float)m_rcPwd[i].top - (float)m_card.labelGap - (float)m_card.labelH;
-            Gdiplus::RectF lpwd((float)m_rcPwd[i].left, yPwdLbl, (float)m_rcPwd[i].Width(), hLbl);
+            const float yPwdLbl = (float)m_rcPwd[slot].top - (float)m_card.labelGap - (float)m_card.labelH;
+            Gdiplus::RectF lpwd((float)m_rcPwd[slot].left, yPwdLbl, (float)m_rcPwd[slot].Width(), hLbl);
             DrawEllips(_T("비밀번호"), lpwd, m_pFontLbl, cLbl);
         }
 
@@ -765,21 +715,21 @@ void CShopDownDlg::OnPaint()
             const float hLbl = (float)m_card.labelH;
 
             // label rects align with value rects
-            Gdiplus::RectF l1((float)m_rcInfoRep[i].left,  yLbl, (float)m_rcInfoRep[i].Width(), hLbl);
+            Gdiplus::RectF l1((float)m_rcInfoRep[slot].left,  yLbl, (float)m_rcInfoRep[slot].Width(), hLbl);
             DrawEllips(_T("대표 가맹점"), l1, m_pFontLbl, cLbl);
 
             // '단말기별 가맹점'은 2줄(라벨/값) 유지:
             //  - 라벨: 비밀번호 라벨 줄(y2Label)
             //  - 값  : 비밀번호 Edit 줄(y2Edit), 버튼과 동일한 Y (좌측 공간에 표시)
-            Gdiplus::RectF l2((float)m_rcInfoTerm[i].left,    (float)m_rcInfoTerm[i].top,    (float)m_rcInfoTerm[i].Width(),    (float)m_rcInfoTerm[i].Height());
+            Gdiplus::RectF l2((float)m_rcInfoTerm[slot].left,    (float)m_rcInfoTerm[slot].top,    (float)m_rcInfoTerm[slot].Width(),    (float)m_rcInfoTerm[slot].Height());
             DrawEllips(_T("단말기별 가맹점"), l2, m_pFontLbl, cLbl);
 
-            CString rep  = *m_pRetailName[i];
-            CString term = *m_pSecondName[i];
+            CString rep  = m_rowData[rowIdx].retail_name;
+            CString term = m_rowData[rowIdx].second_name;
 
             // value rects
-            Gdiplus::RectF v1((float)m_rcInfoRep[i].left,      (float)m_rcInfoRep[i].top,      (float)m_rcInfoRep[i].Width(),      (float)m_rcInfoRep[i].Height());
-            Gdiplus::RectF v2((float)m_rcInfoTermVal[i].left,  (float)m_rcInfoTermVal[i].top,  (float)m_rcInfoTermVal[i].Width(),  (float)m_rcInfoTermVal[i].Height());
+            Gdiplus::RectF v1((float)m_rcInfoRep[slot].left,      (float)m_rcInfoRep[slot].top,      (float)m_rcInfoRep[slot].Width(),      (float)m_rcInfoRep[slot].Height());
+            Gdiplus::RectF v2((float)m_rcInfoTermVal[slot].left,  (float)m_rcInfoTermVal[slot].top,  (float)m_rcInfoTermVal[slot].Width(),  (float)m_rcInfoTermVal[slot].Height());
 
             // Values: make it obvious these are filled by '다운로드'
             if (rep.IsEmpty())
@@ -804,7 +754,7 @@ void CShopDownDlg::OnPaint()
 
         // row number (fixed gutter, more legible, no overlap)
         {
-            CString n; n.Format(_T("%d"), i + 1);
+            CString n; n.Format(_T("%d"), rowIdx + 1);
             const float x = (float)r.left + 8.f;
             const float y = (float)r.top + (float)m_card.cardPad - 1.f;
             const float w = (float)m_card.idxW - 12.f;
@@ -851,48 +801,77 @@ void CShopDownDlg::OnPaint()
 }
 
 // ============================================================================
+// RebindSlots - load current page's data into the 2 slot controls
+// ============================================================================
+void CShopDownDlg::RebindSlots()
+{
+    const int pageStart = m_nCurrentPage * kRowsPerPage;
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
+    {
+        const int rowIdx = pageStart + slot;
+        const bool bValid = (rowIdx < kRowCount);
+
+        if (!bValid)
+        {
+            if (m_editProd[slot].GetSafeHwnd()) m_editProd[slot].SetWindowText(_T(""));
+            if (m_editBiz[slot].GetSafeHwnd())  m_editBiz[slot].SetWindowText(_T(""));
+            if (m_editPwd[slot].GetSafeHwnd())  m_editPwd[slot].SetWindowText(_T(""));
+            if (m_btnDownload[slot].GetSafeHwnd()) m_btnDownload[slot].EnableWindow(FALSE);
+            if (m_btnDelete[slot].GetSafeHwnd())   m_btnDelete[slot].EnableWindow(FALSE);
+            continue;
+        }
+
+        if (m_editProd[slot].GetSafeHwnd()) m_editProd[slot].SetWindowText(m_rowData[rowIdx].prdid);
+        if (m_editBiz[slot].GetSafeHwnd())  m_editBiz[slot].SetWindowText(m_rowData[rowIdx].regno);
+        if (m_editPwd[slot].GetSafeHwnd())  m_editPwd[slot].SetWindowText(m_rowData[rowIdx].passwd);
+
+        const bool hasRep = !m_rowData[rowIdx].retail_name.IsEmpty();
+        if (m_btnDownload[slot].GetSafeHwnd()) m_btnDownload[slot].EnableWindow(TRUE);
+        if (m_btnDelete[slot].GetSafeHwnd())   m_btnDelete[slot].EnableWindow(hasRep ? TRUE : FALSE);
+    }
+}
+// ============================================================================
 // Card/Control background sync (UnderlayColor)
 // ============================================================================
-COLORREF CShopDownDlg::GetRowCardBg(int index) const
+COLORREF CShopDownDlg::GetRowCardBg(int slot) const
 {
     // OnPaint()와 동일한 규칙을 사용해야 화면과 컨트롤 underlay가 일치한다.
     // Normal: white, Pending/Empty: very light blue tint (quiet)
-    if (index < 0 || index >= kRowCount) return RGB(255, 255, 255);
+    const int rowIdx = m_nCurrentPage * kRowsPerPage + slot;
+    if (slot < 0 || slot >= kRowsPerPage || rowIdx >= kRowCount) return RGB(255, 255, 255);
 
-    CString rep;
-    if (m_pRetailName[index]) rep = *m_pRetailName[index];
-    const bool hasRep = !rep.IsEmpty();
+    const bool hasRep = !m_rowData[rowIdx].retail_name.IsEmpty();
     return hasRep ? RGB(255, 255, 255) : RGB(246, 248, 251);
 }
 
-void CShopDownDlg::ApplyRowUnderlay(int index, BOOL bRedraw /*= TRUE*/)
+void CShopDownDlg::ApplyRowUnderlay(int slot, BOOL bRedraw /*= TRUE*/)
 {
-    if (index < 0 || index >= kRowCount) return;
+    if (slot < 0 || slot >= kRowsPerPage) return;
 
-    const COLORREF cr = GetRowCardBg(index);
+    const COLORREF cr = GetRowCardBg(slot);
 
-    if (m_editProd[index].GetSafeHwnd()) m_editProd[index].SetUnderlayColor(cr);
-    if (m_editBiz[index].GetSafeHwnd())  m_editBiz[index].SetUnderlayColor(cr);
-    if (m_editPwd[index].GetSafeHwnd())  m_editPwd[index].SetUnderlayColor(cr);
+    if (m_editProd[slot].GetSafeHwnd()) m_editProd[slot].SetUnderlayColor(cr);
+    if (m_editBiz[slot].GetSafeHwnd())  m_editBiz[slot].SetUnderlayColor(cr);
+    if (m_editPwd[slot].GetSafeHwnd())  m_editPwd[slot].SetUnderlayColor(cr);
 
-    if (m_btnDownload[index].GetSafeHwnd()) m_btnDownload[index].SetUnderlayColor(cr);
+    if (m_btnDownload[slot].GetSafeHwnd()) m_btnDownload[slot].SetUnderlayColor(cr);
 
     
-    if (m_btnDelete[index].GetSafeHwnd())  m_btnDelete[index].SetUnderlayColor(cr);
+    if (m_btnDelete[slot].GetSafeHwnd())  m_btnDelete[slot].SetUnderlayColor(cr);
     if (bRedraw)
     {
-        if (m_editProd[index].GetSafeHwnd())    m_editProd[index].Invalidate(FALSE);
-        if (m_editBiz[index].GetSafeHwnd())     m_editBiz[index].Invalidate(FALSE);
-        if (m_editPwd[index].GetSafeHwnd())     m_editPwd[index].Invalidate(FALSE);
-        if (m_btnDownload[index].GetSafeHwnd()) m_btnDownload[index].Invalidate(FALSE);
-        if (m_btnDelete[index].GetSafeHwnd())   m_btnDelete[index].Invalidate(FALSE);
+        if (m_editProd[slot].GetSafeHwnd())    m_editProd[slot].Invalidate(FALSE);
+        if (m_editBiz[slot].GetSafeHwnd())     m_editBiz[slot].Invalidate(FALSE);
+        if (m_editPwd[slot].GetSafeHwnd())     m_editPwd[slot].Invalidate(FALSE);
+        if (m_btnDownload[slot].GetSafeHwnd()) m_btnDownload[slot].Invalidate(FALSE);
+        if (m_btnDelete[slot].GetSafeHwnd())   m_btnDelete[slot].Invalidate(FALSE);
     }
 }
 
 void CShopDownDlg::ApplyAllRowUnderlays()
 {
-    for (int i = 0; i < kRowCount; ++i)
-        ApplyRowUnderlay(i, TRUE);
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
+        ApplyRowUnderlay(slot, TRUE);
 }
 
 BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
@@ -908,14 +887,22 @@ BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
 // ============================================================================
 // Pagination
 // ============================================================================
+void CShopDownDlg::RefreshPage()
+{
+    RebindSlots();
+    UpdatePageButtons();
+    ApplyAllRowUnderlays();
+    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+}
+
 void CShopDownDlg::OnPrevPageClick()
 {
-    if (m_nCurrentPage > 0) { m_nCurrentPage--; LayoutControls(); }
+    if (m_nCurrentPage > 0) { m_nCurrentPage--; RefreshPage(); }
 }
 
 void CShopDownDlg::OnNextPageClick()
 {
-    if (m_nCurrentPage < kTotalPages - 1) { m_nCurrentPage++; LayoutControls(); }
+    if (m_nCurrentPage < kTotalPages - 1) { m_nCurrentPage++; RefreshPage(); }
 }
 
 void CShopDownDlg::UpdatePageButtons()

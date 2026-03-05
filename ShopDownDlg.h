@@ -36,14 +36,15 @@ private:
     void CreateControlsOnce();
     void LayoutControls();
     void ApplyFonts();
-    void OnDownloadClick(int index);
-    void OnDeleteClick(int index);
+    void OnDownloadClick(int slot, int rowIdx);
+    void OnDeleteClick(int slot, int rowIdx);
+    void RebindSlots();
 
     // ---------- Card/Control background sync ---------------------------------
      // 카드(행) 배경색이 상태에 따라 바뀌는 경우, 각 컨트롤의 UnderlayColor도
     // 즉시 동일한 색으로 맞춰 라운드 모서리 halo(흰색 테두리) / 배경 불일치를 제거한다.
-    COLORREF GetRowCardBg(int index) const;
-    void ApplyRowUnderlay(int index, BOOL bRedraw = TRUE);
+    COLORREF GetRowCardBg(int slot) const;
+    void ApplyRowUnderlay(int slot, BOOL bRedraw = TRUE);
     void ApplyAllRowUnderlays();
 
 
@@ -81,7 +82,9 @@ private:
     static const int kRowGap   = 12;   // gap between cards
     static const int kCtrlH    = 42;   // control height inside row (match other tabs, taller)   // control height inside row (match other tabs, slightly taller)   // control height inside row (match other tabs)
 
-    static const int kRowCount = 20;
+    static const int kRowCount    = 20;
+    static const int kRowsPerPage = 2;
+    static const int kTotalPages  = kRowCount / kRowsPerPage;  // 10
     static const int kBtnBase  = 61001;
     static const int kDelBase  = 61101;
 
@@ -104,68 +107,38 @@ private:
     Gdiplus::FontFamily* m_pFontFamily;
 
     // ---------- Data strings --------------------------------------------------
-    CString m_prdid1,  m_prdid2,  m_prdid3,  m_prdid4,  m_prdid5;
-    CString m_prdid6,  m_prdid7,  m_prdid8,  m_prdid9,  m_prdid10;
-    CString m_prdid11, m_prdid12, m_prdid13, m_prdid14, m_prdid15;
-    CString m_prdid16, m_prdid17, m_prdid18, m_prdid19, m_prdid20;
-
-    CString m_regno1,  m_regno2,  m_regno3,  m_regno4,  m_regno5;
-    CString m_regno6,  m_regno7,  m_regno8,  m_regno9,  m_regno10;
-    CString m_regno11, m_regno12, m_regno13, m_regno14, m_regno15;
-    CString m_regno16, m_regno17, m_regno18, m_regno19, m_regno20;
-
-    CString m_passwd1,  m_passwd2,  m_passwd3,  m_passwd4,  m_passwd5;
-    CString m_passwd6,  m_passwd7,  m_passwd8,  m_passwd9,  m_passwd10;
-    CString m_passwd11, m_passwd12, m_passwd13, m_passwd14, m_passwd15;
-    CString m_passwd16, m_passwd17, m_passwd18, m_passwd19, m_passwd20;
-
-    CString m_retail_name1,  m_retail_name2,  m_retail_name3,  m_retail_name4,  m_retail_name5;
-    CString m_retail_name6,  m_retail_name7,  m_retail_name8,  m_retail_name9,  m_retail_name10;
-    CString m_retail_name11, m_retail_name12, m_retail_name13, m_retail_name14, m_retail_name15;
-    CString m_retail_name16, m_retail_name17, m_retail_name18, m_retail_name19, m_retail_name20;
-
-    CString m_second_name1,  m_second_name2,  m_second_name3,  m_second_name4,  m_second_name5;
-    CString m_second_name6,  m_second_name7,  m_second_name8,  m_second_name9,  m_second_name10;
-    CString m_second_name11, m_second_name12, m_second_name13, m_second_name14, m_second_name15;
-    CString m_second_name16, m_second_name17, m_second_name18, m_second_name19, m_second_name20;
+    // ---------- Per-row data (all 20 rows) ------------------------------------
+    // 2-row slot reuse: only kRowsPerPage rows visible at a time.
+    // Data for all pages lives here; UI controls (edit/buttons) are reused
+    // per slot when the user navigates pages.
+    struct RowData {
+        CString prdid, regno, passwd, retail_name, second_name;
+    };
+    RowData m_rowData[kRowCount];
 
     // ---------- Controls ------------------------------------------------------
-    CSkinnedEdit  m_editProd[kRowCount];
-    CSkinnedEdit  m_editBiz[kRowCount];
-    CSkinnedEdit  m_editPwd[kRowCount];
-    CModernButton m_btnDownload[kRowCount];
-    CModernButton m_btnDelete[kRowCount];
+    CSkinnedEdit  m_editProd[kRowsPerPage];
+    CSkinnedEdit  m_editBiz[kRowsPerPage];
+    CSkinnedEdit  m_editPwd[kRowsPerPage];
+    CModernButton m_btnDownload[kRowsPerPage];
+    CModernButton m_btnDelete[kRowsPerPage];
 
-    // ---------- Pointer arrays for loop access --------------------------------
-    CString* m_pPrdid[kRowCount];
-    CString* m_pRegno[kRowCount];
-    CString* m_pPasswd[kRowCount];
-    CString* m_pRetailName[kRowCount];
-    CString* m_pSecondName[kRowCount];
-    void InitPointerArrays();
-    void CreateRow(int i);      // lazy-create Win32 controls for one row
-
-    // ---------- Lazy row creation ------------------------------------------
-    bool m_bRowCreated[kRowCount]; // true once CreateRow(i) has been called
 
     // ---------- Layout cache --------------------------------------------------
-    CRect m_rcRow[kRowCount];   // row card rects (window coords, updated by Layout)
-    CRect m_rcProd[kRowCount];
-    CRect m_rcBiz[kRowCount];
-    CRect m_rcPwd[kRowCount];
-    CRect m_rcBtn[kRowCount];
-    CRect m_rcDel[kRowCount];
-    CRect m_rcInfoRep[kRowCount];
-    CRect m_rcInfoTerm[kRowCount];
-    CRect m_rcInfoTermVal[kRowCount];
+    CRect m_rcRow[kRowsPerPage];   // row card rects (window coords, updated by Layout)
+    CRect m_rcProd[kRowsPerPage];
+    CRect m_rcBiz[kRowsPerPage];
+    CRect m_rcPwd[kRowsPerPage];
+    CRect m_rcBtn[kRowsPerPage];
+    CRect m_rcDel[kRowsPerPage];
+    CRect m_rcInfoRep[kRowsPerPage];
+    CRect m_rcInfoTerm[kRowsPerPage];
+    CRect m_rcInfoTermVal[kRowsPerPage];
 
     BOOL m_bInLayout;
 
     // ---------- Pagination ----------------------------------------------------
     int  m_nCurrentPage;                    // 0-based current page index
-    static const int kRowsPerPage = 2;
-    static const int kTotalPages  = kRowCount / kRowsPerPage;  // 10
-
     static const int kBtnPrev = 61201;
     static const int kBtnNext = 61202;
 
@@ -175,6 +148,7 @@ private:
     CRect m_rcNavBar;   // nav bar rect for OnPaint page indicator
 
     void UpdatePageButtons();
+    void RefreshPage();  // lightweight page switch (no control reposition)
     void OnPrevPageClick();
     void OnNextPageClick();
 };
