@@ -68,6 +68,32 @@
 #define IDC_TAB_MAIN    60002
 #endif
 
+#ifndef IDC_STATIC_SCANNER_PORT_LABEL
+#define IDC_STATIC_SCANNER_PORT_LABEL 60003
+#endif
+
+#ifndef IDC_STATIC_ERR_PORT
+#define IDC_STATIC_ERR_PORT 60020
+#endif
+#ifndef IDC_STATIC_ERR_NO_SIGN
+#define IDC_STATIC_ERR_NO_SIGN 60021
+#endif
+#ifndef IDC_STATIC_ERR_TAX
+#define IDC_STATIC_ERR_TAX 60022
+#endif
+#ifndef IDC_STATIC_ERR_CARD_DETECT_PROGRAM
+#define IDC_STATIC_ERR_CARD_DETECT_PROGRAM 60023
+#endif
+#ifndef IDC_STATIC_ERR_TIMEOUT
+#define IDC_STATIC_ERR_TIMEOUT 60024
+#endif
+#ifndef IDC_STATIC_ERR_SIGNPAD_PORT
+#define IDC_STATIC_ERR_SIGNPAD_PORT 60025
+#endif
+#ifndef IDC_STATIC_ERR_SCANNER_PORT
+#define IDC_STATIC_ERR_SCANNER_PORT 60026
+#endif
+
 // ==============================================================
 // [ShopSetupDlg.h]
 //  - 메인 설정 화면(결제 설정/장치 정보/시스템 설정 등)을 담당
@@ -199,8 +225,46 @@ protected:
     afx_msg void OnCbnSelchangeSignPadUse();
     afx_msg void OnBnClickedCardDetectToggle();
     afx_msg void OnBnClickedScannerUseToggle();
+    afx_msg void OnEnChangeValidateInput();
 
     DECLARE_MESSAGE_MAP()
+
+private:
+    enum ValidationField
+    {
+        VF_NONE = 0,
+        VF_PORT,
+        VF_NO_SIGN_AMOUNT,
+        VF_TAX_PERCENT,
+        VF_CARD_DETECT_PROGRAM,
+        VF_CARD_TIMEOUT,
+        VF_SIGNPAD_PORT,
+        VF_SCANNER_PORT
+    };
+
+    struct ValidationBinding
+    {
+        int ctrlId;
+        int errId;
+        ValidationField field;
+        int tabIndex;
+    };
+
+    void EnsureValidationStatics();
+    void SetValidationText(int nStaticId, const CString& text);
+    void SetEditValidationErrorState(int nCtrlId, BOOL bHasError);
+    CSkinnedEdit* GetSkinnedEditByCtrlId(int nCtrlId);
+    void PositionValidationText(int nStaticId, int x, int y, int w, int h, BOOL bShow = TRUE);
+    BOOL ValidateSingleField(ValidationField field, CString& outMessage) const;
+    BOOL ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId = NULL);
+    void ValidateControlAndUpdateUI(int nCtrlId);
+    const ValidationBinding* FindValidationBinding(int nCtrlId) const;
+    const ValidationBinding* FindValidationBindingByErrId(int nStaticId) const;
+    int GetTabIndexForControl(int nCtrlId) const;
+    void RefreshValidationVisibilityByTab();
+    static const ValidationBinding* GetValidationBindings(int& outCount);
+    static BOOL IsDigitsOnly(const CString& text);
+    static BOOL IsPositiveNumberText(const CString& text);
 
 private:
     // v10.1
@@ -244,6 +308,7 @@ private:
     CFont m_fontLabel;
     CFont m_fontGroupTitle;
     CFont m_fontGroupBracket;
+    CFont m_fontValidation;
 
     CModernButton m_btnOk;
     CModernButton m_btnCancel;

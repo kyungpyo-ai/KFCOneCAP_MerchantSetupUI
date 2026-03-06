@@ -294,6 +294,13 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE,    OnCbnSelchangeSignPadUse)
     ON_BN_CLICKED(IDC_CHECK_CARD_DETECT,        OnBnClickedCardDetectToggle)
     ON_BN_CLICKED(IDC_CHECK_SCANNER_USE,        OnBnClickedScannerUseToggle)
+    ON_EN_CHANGE(IDC_EDIT_PORT,                 OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_NO_SIGN_AMOUNT,       OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_TAX_PERCENT,          OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_CARD_TIMEOUT,         OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_CARD_DETECT_PARAM,    OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_SIGN_PAD_PORT,        OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_SCANNER_PORT,         OnEnChangeValidateInput)
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -351,6 +358,7 @@ CShopSetupDlg::~CShopSetupDlg()
     if (m_fontSection.GetSafeHandle())    m_fontSection.DeleteObject();
     if (m_fontLabel.GetSafeHandle())      m_fontLabel.DeleteObject();
     if (m_fontGroupTitle.GetSafeHandle()) m_fontGroupTitle.DeleteObject();
+    if (m_fontValidation.GetSafeHandle()) m_fontValidation.DeleteObject();
     if (m_brushBg.GetSafeHandle())        m_brushBg.DeleteObject();
     if (m_brushWhite.GetSafeHandle())     m_brushWhite.DeleteObject();
     if (m_brushTabContent.GetSafeHandle()) m_brushTabContent.DeleteObject();
@@ -515,6 +523,7 @@ CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
     m_tabCtrl.AddTab(_T("가맹점 다운로드"), 3);
 
     InitializeControls();
+    EnsureValidationStatics();
     LoadOptionsFromRegistry();
 
     // 다이얼로그 크기
@@ -686,6 +695,11 @@ void CShopSetupDlg::InitializeFonts()
     lf.lfWeight = FW_BOLD;
     m_fontGroupTitle.DeleteObject();
     m_fontGroupTitle.CreateFontIndirect(&lf);
+
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+    lf.lfWeight = FW_BOLD;
+    m_fontValidation.DeleteObject();
+    m_fontValidation.CreateFontIndirect(&lf);
 
 }
 
@@ -994,6 +1008,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
         Move(IDC_STATIC_PORT,       innerX + colW + colGap, y1, colW, capH);
         PlaceInfoBtn(m_btnPortInfo, IDC_STATIC_PORT, innerX + colW + colGap, y1, capH);
         Move(IDC_EDIT_PORT,         innerX + colW + colGap, y1 + capH + capGap, colW, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_PORT, innerX + colW + colGap + colW - S(88), y1, S(88), capH);
 
         y1 += capH + capGap + FIELD_H;
 
@@ -1026,6 +1041,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
         // 무서명 / 카드 감지 우선 거래 사용 (2열)
         Move(IDC_STATIC_NO_SIGN_AMOUNT, innerX, y2, colW, capH);
         Move(IDC_EDIT_NO_SIGN_AMOUNT,   innerX, y2 + capH + capGap, colW, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_NO_SIGN, innerX + colW - S(88), y2, S(88), capH);
 
         {
             const int BtnSz   = S(18);
@@ -1054,9 +1070,11 @@ void CShopSetupDlg::ApplyLayoutTab0()
         Move(IDC_STATIC_TAX_PERCENT, innerX, y2, colW, capH);
         PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX, y2, capH);
         Move(IDC_EDIT_TAX_PERCENT,   innerX, y2 + capH + capGap, colW, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_TAX, innerX + colW - S(88), y2, S(88), capH);
 
         Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX + colW + colGap, y2, colW, capH);
         Move(IDC_EDIT_CARD_DETECT_PARAM,     innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW + colGap + colW - S(88), y2, S(88), capH);
 
         y2 += capH + capGap + FIELD_H;
 
@@ -1132,6 +1150,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
             Move(IDC_STATIC_CARD_TIMEOUT, inX,          fy, col2W, capH);
             PlaceInfoBtn(m_btnCardTimeoutInfo, IDC_STATIC_CARD_TIMEOUT, inX, fy, capH);
             Move(IDC_EDIT_CARD_TIMEOUT,   inX,          fy+capH+capG, col2W, FIELD_H);
+            PositionValidationText(IDC_STATIC_ERR_TIMEOUT, inX + col2W - S(88), fy, S(88), capH);
             Move(IDC_STATIC_INTERLOCK,    inX+col2W+cG, fy, col2W, capH);
             PlaceInfoBtn(m_btnInterlockInfo, IDC_STATIC_INTERLOCK, inX+col2W+cG, fy, capH);
             Move(IDC_COMBO_INTERLOCK,     inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
@@ -1152,6 +1171,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
             Move(IDC_STATIC_SIGN_PAD_PORT, inX+col2W+cG, fy, col2W, capH);
             PlaceInfoBtn(m_btnSignPadPortInfo, IDC_STATIC_SIGN_PAD_PORT, inX+col2W+cG, fy, capH);
             Move(IDC_EDIT_SIGN_PAD_PORT,   inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
+            PositionValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, inX + col2W + cG + col2W - S(88), fy, S(88), capH);
             fy += capH + capG + FIELD_H + rG;
             // 행2: 통신속도 (1열, 반폭)
             Move(IDC_STATIC_SIGN_PAD_SPEED, inX, fy, col2W, capH);
@@ -1211,6 +1231,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
             // 행2 좌측: 스캐너 포트번호 + EditText
             Move(IDC_STATIC_SCANNER_PORT_LABEL, leftX, fy, col2W, capH);
             Move(IDC_EDIT_SCANNER_PORT,         leftX, fy+capH+capG, col2W, FIELD_H);
+            PositionValidationText(IDC_STATIC_ERR_SCANNER_PORT, leftX + col2W - S(88), fy, S(88), capH);
 
             int cardH = (fy + capH + capG + FIELD_H + etcBottomPad) - curY;
             m_rcGrpEtc = CRect(cLeft, curY, cRight, curY + cardH);
@@ -1772,24 +1793,24 @@ void CShopSetupDlg::ShowTab(int nTab)
     static const int s_tab0[] = {
         // 서버 설정
         IDC_STATIC_VAN_SERVER, IDC_COMBO_VAN_SERVER,
-        IDC_STATIC_PORT,       IDC_EDIT_PORT,
+        IDC_STATIC_PORT,       IDC_EDIT_PORT, IDC_STATIC_ERR_PORT,
         // 결제 방식
         IDC_STATIC_COMM_TYPE,  IDC_COMBO_COMM_TYPE,
         IDC_STATIC_CASH_RECEIPT,   IDC_COMBO_CASH_RECEIPT,
-        IDC_CHECK_CARD_DETECT, IDC_STATIC_CARD_DETECT_POSINFO, IDC_EDIT_CARD_DETECT_PARAM,
-        IDC_STATIC_NO_SIGN_AMOUNT, IDC_EDIT_NO_SIGN_AMOUNT,
-        IDC_STATIC_TAX_PERCENT,    IDC_EDIT_TAX_PERCENT,
+        IDC_CHECK_CARD_DETECT, IDC_STATIC_CARD_DETECT_POSINFO, IDC_EDIT_CARD_DETECT_PARAM, IDC_STATIC_ERR_CARD_DETECT_PROGRAM,
+        IDC_STATIC_NO_SIGN_AMOUNT, IDC_EDIT_NO_SIGN_AMOUNT, IDC_STATIC_ERR_NO_SIGN,
+        IDC_STATIC_TAX_PERCENT,    IDC_EDIT_TAX_PERCENT, IDC_STATIC_ERR_TAX,
         0
     };
 
     // Tab 1: 장치 정보 (결제 방식 제외)
     static const int s_tab1[] = {
-        IDC_STATIC_CARD_TIMEOUT,   IDC_EDIT_CARD_TIMEOUT,
+        IDC_STATIC_CARD_TIMEOUT,   IDC_EDIT_CARD_TIMEOUT, IDC_STATIC_ERR_TIMEOUT,
         IDC_STATIC_INTERLOCK,      IDC_COMBO_INTERLOCK,
         IDC_STATIC_SIGN_PAD_USE,   IDC_COMBO_SIGN_PAD_USE,
-        IDC_STATIC_SIGN_PAD_PORT,  IDC_EDIT_SIGN_PAD_PORT,
+        IDC_STATIC_SIGN_PAD_PORT,  IDC_EDIT_SIGN_PAD_PORT, IDC_STATIC_ERR_SIGNPAD_PORT,
         IDC_STATIC_SIGN_PAD_SPEED, IDC_COMBO_SIGN_PAD_SPEED,
-        IDC_CHECK_SCANNER_USE,     IDC_STATIC_SCANNER_PORT_LABEL, IDC_EDIT_SCANNER_PORT,
+        IDC_CHECK_SCANNER_USE,     IDC_STATIC_SCANNER_PORT_LABEL, IDC_EDIT_SCANNER_PORT, IDC_STATIC_ERR_SCANNER_PORT,
         IDC_CHECK_MULTI_VOICE,
         0
     };
@@ -1875,6 +1896,7 @@ void CShopSetupDlg::ShowTab(int nTab)
     // [1.7] redraw 재개 후, 탭 영역(탭바+컨텐츠)만 갱신
     if (m_tabCtrl.GetSafeHwnd()) m_tabCtrl.SetRedraw(TRUE);
     SetRedraw(TRUE);
+    RefreshValidationVisibilityByTab();
 
     CRect rcRedraw;
     GetClientRect(&rcRedraw);
@@ -1915,7 +1937,7 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
     {
     case EN_SETFOCUS: case EN_KILLFOCUS:
     case CBN_SETFOCUS: case CBN_KILLFOCUS:
-    case CBN_DROPDOWN: case CBN_CLOSEUP: case CBN_SELCHANGE: case EN_CHANGE:
+    case CBN_DROPDOWN: case CBN_CLOSEUP: case CBN_SELCHANGE:
         if (lParam)
         {
             CRect rcCtl;
@@ -1926,6 +1948,8 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
             if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_SIGN_PAD_USE)
                 UpdateToggleDependentEdits(TRUE);
         }
+        break;
+    case EN_CHANGE:
         break;
     case BN_CLICKED:
         break;
@@ -2317,6 +2341,21 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 
     HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 
+    const int errIds[] = {
+        IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
+        IDC_STATIC_ERR_CARD_DETECT_PROGRAM, IDC_STATIC_ERR_TIMEOUT,
+        IDC_STATIC_ERR_SIGNPAD_PORT, IDC_STATIC_ERR_SCANNER_PORT
+    };
+    for (int i = 0; i < (int)(sizeof(errIds) / sizeof(errIds[0])); ++i)
+    {
+        if (pWnd && pWnd->GetDlgCtrlID() == errIds[i])
+        {
+            pDC->SetTextColor(RGB(220, 53, 69));
+            pDC->SetBkMode(TRANSPARENT);
+            return m_brushBg;
+        }
+    }
+
     if (nCtlColor == CTLCOLOR_STATIC && pWnd)
     {
         // SetBkMode(TRANSPARENT): \xc5\xd8\xbd\xba\xc6\xae \xbb\xe7\xc0\xcc \xb9\xe8\xb0\xe6 \xc5\xa9\xb8\xae\xbe\xee
@@ -2346,6 +2385,19 @@ void CShopSetupDlg::OnDestroy()
     CWnd* pPosInfo = GetDlgItem(IDC_STATIC_CARD_DETECT_POSINFO);
     if (pPosInfo && pPosInfo->GetSafeHwnd())
         pPosInfo->DestroyWindow();
+
+    const int destroyIds[] = {
+        IDC_STATIC_SCANNER_PORT_LABEL,
+        IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
+        IDC_STATIC_ERR_CARD_DETECT_PROGRAM, IDC_STATIC_ERR_TIMEOUT,
+        IDC_STATIC_ERR_SIGNPAD_PORT, IDC_STATIC_ERR_SCANNER_PORT
+    };
+    for (int i = 0; i < (int)(sizeof(destroyIds) / sizeof(destroyIds[0])); ++i)
+    {
+        CWnd* p = GetDlgItem(destroyIds[i]);
+        if (p && p->GetSafeHwnd())
+            p->DestroyWindow();
+    }
 
     CDialog::OnDestroy();
 }
@@ -2422,18 +2474,42 @@ BOOL CShopSetupDlg::HasChanges() const
 // --------------------------------------------------------------
 void CShopSetupDlg::OnOK()
 {
-    /* [UI-STEP] 확인 버튼(저장) 동작( UI → 레지스트리 → 종료 )
-     * 1) 현재 UI 컨트롤 값(콤보 선택/에딧 내용/토글 상태)을 읽어온다.
-     * 2) 필요한 변환/검증(숫자 범위, 빈 값 처리)을 수행한다.
-     * 3) SaveOptionsToRegistry()로 레지스트리에 기록한다.
-     * 4) Dialog를 종료한다(베이스 클래스 OnOK 호출).
-     */
-
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
 
-    // OK 버튼에서 일괄 저장 (Word 스펙)
-    SaveOptionsToRegistry();
+    int nFirstInvalidCtrlId = 0;
+    if (!ValidateAllInputs(FALSE, &nFirstInvalidCtrlId))
+    {
+        MessageBox(_T("입력값을 확인해주세요."), _T("확인"), MB_OK | MB_ICONWARNING);
 
+        const int nErrorTab = GetTabIndexForControl(nFirstInvalidCtrlId);
+        if (nErrorTab >= 0 && nErrorTab <= 2 && nErrorTab != m_nActiveTab)
+        {
+            m_tabCtrl.SetCurSel(nErrorTab);
+            ShowTab(nErrorTab);
+        }
+
+        ValidateAllInputs(TRUE, &nFirstInvalidCtrlId);
+        RefreshValidationVisibilityByTab();
+
+        CWnd* pFirst = GetDlgItem(nFirstInvalidCtrlId);
+        if (pFirst && pFirst->GetSafeHwnd())
+        {
+            pFirst->SetFocus();
+            if (nFirstInvalidCtrlId == IDC_EDIT_PORT ||
+                nFirstInvalidCtrlId == IDC_EDIT_NO_SIGN_AMOUNT ||
+                nFirstInvalidCtrlId == IDC_EDIT_TAX_PERCENT ||
+                nFirstInvalidCtrlId == IDC_EDIT_CARD_TIMEOUT ||
+                nFirstInvalidCtrlId == IDC_EDIT_SIGN_PAD_PORT ||
+                nFirstInvalidCtrlId == IDC_EDIT_SCANNER_PORT ||
+                nFirstInvalidCtrlId == IDC_EDIT_CARD_DETECT_PARAM)
+            {
+                ((CEdit*)pFirst)->SetSel(0, -1);
+            }
+        }
+        return;
+    }
+
+    SaveOptionsToRegistry();
     CDialog::OnOK();
 }
 
@@ -2642,6 +2718,314 @@ void CShopSetupDlg::OnBnClickedAlarmSizeInfo()
         _T("알림창의 표시 크기를 설정합니다.\n매우 작게로 설정하면 화면 공간을 최소화합니다."),
         this);
 }
+const CShopSetupDlg::ValidationBinding* CShopSetupDlg::GetValidationBindings(int& outCount)
+{
+    static const ValidationBinding kBindings[] = {
+        { IDC_EDIT_PORT,              IDC_STATIC_ERR_PORT,                VF_PORT,                 0 },
+        { IDC_EDIT_NO_SIGN_AMOUNT,    IDC_STATIC_ERR_NO_SIGN,             VF_NO_SIGN_AMOUNT,       0 },
+        { IDC_EDIT_TAX_PERCENT,       IDC_STATIC_ERR_TAX,                 VF_TAX_PERCENT,          0 },
+        { IDC_EDIT_CARD_DETECT_PARAM, IDC_STATIC_ERR_CARD_DETECT_PROGRAM, VF_CARD_DETECT_PROGRAM,  0 },
+        { IDC_EDIT_CARD_TIMEOUT,      IDC_STATIC_ERR_TIMEOUT,             VF_CARD_TIMEOUT,         1 },
+        { IDC_EDIT_SIGN_PAD_PORT,     IDC_STATIC_ERR_SIGNPAD_PORT,        VF_SIGNPAD_PORT,         1 },
+        { IDC_EDIT_SCANNER_PORT,      IDC_STATIC_ERR_SCANNER_PORT,        VF_SCANNER_PORT,         1 }
+    };
+
+    outCount = (int)(sizeof(kBindings) / sizeof(kBindings[0]));
+    return kBindings;
+}
+
+const CShopSetupDlg::ValidationBinding* CShopSetupDlg::FindValidationBinding(int nCtrlId) const
+{
+    int count = 0;
+    const ValidationBinding* bindings = GetValidationBindings(count);
+    for (int i = 0; i < count; ++i)
+    {
+        if (bindings[i].ctrlId == nCtrlId)
+            return &bindings[i];
+    }
+    return NULL;
+}
+
+const CShopSetupDlg::ValidationBinding* CShopSetupDlg::FindValidationBindingByErrId(int nStaticId) const
+{
+    int count = 0;
+    const ValidationBinding* bindings = GetValidationBindings(count);
+    for (int i = 0; i < count; ++i)
+    {
+        if (bindings[i].errId == nStaticId)
+            return &bindings[i];
+    }
+    return NULL;
+}
+
+BOOL CShopSetupDlg::IsDigitsOnly(const CString& text)
+{
+    if (text.IsEmpty())
+        return FALSE;
+
+    for (int i = 0; i < text.GetLength(); ++i)
+    {
+        if (_istspace(text[i]))
+            continue;
+        if (!_istdigit(text[i]))
+            return FALSE;
+    }
+    return TRUE;
+}
+
+BOOL CShopSetupDlg::IsPositiveNumberText(const CString& text)
+{
+    if (!IsDigitsOnly(text))
+        return FALSE;
+
+    return (_ttoi(text) > 0);
+}
+
+void CShopSetupDlg::SetValidationText(int nStaticId, const CString& text)
+{
+    CWnd* p = GetDlgItem(nStaticId);
+    if (!p || !p->GetSafeHwnd())
+        return;
+
+    const ValidationBinding* binding = FindValidationBindingByErrId(nStaticId);
+    const BOOL bShouldShow = (!text.IsEmpty() && binding && binding->tabIndex == m_nActiveTab);
+    const BOOL bVisibleNow = (p->IsWindowVisible() != FALSE);
+
+    CString oldText;
+    p->GetWindowText(oldText);
+
+    if (oldText == text && bVisibleNow == bShouldShow)
+        return;
+
+    p->SetRedraw(FALSE);
+
+    if (oldText != text)
+        p->SetWindowText(text);
+
+    if (bVisibleNow != bShouldShow)
+        p->ShowWindow(bShouldShow ? SW_SHOW : SW_HIDE);
+
+    p->SetRedraw(TRUE);
+    p->Invalidate(FALSE);
+}
+
+void CShopSetupDlg::RefreshValidationVisibilityByTab()
+{
+    int count = 0;
+    const ValidationBinding* bindings = GetValidationBindings(count);
+
+    for (int i = 0; i < count; ++i)
+    {
+        CWnd* pErr = GetDlgItem(bindings[i].errId);
+        if (!pErr || !pErr->GetSafeHwnd())
+            continue;
+
+        CString text;
+        pErr->GetWindowText(text);
+        text.Trim();
+
+        const BOOL bShouldShow = (!text.IsEmpty() && bindings[i].tabIndex == m_nActiveTab);
+        const BOOL bVisibleNow = (pErr->IsWindowVisible() != FALSE);
+        if (bVisibleNow != bShouldShow)
+            pErr->ShowWindow(bShouldShow ? SW_SHOW : SW_HIDE);
+    }
+}
+
+CSkinnedEdit* CShopSetupDlg::GetSkinnedEditByCtrlId(int nCtrlId)
+{
+    switch (nCtrlId)
+    {
+    case IDC_EDIT_PORT:              return &m_editPort;
+    case IDC_EDIT_NO_SIGN_AMOUNT:    return &m_editNoSignAmount;
+    case IDC_EDIT_TAX_PERCENT:       return &m_editTaxPercent;
+    case IDC_EDIT_CARD_TIMEOUT:      return &m_editCardTimeout;
+    case IDC_EDIT_CARD_DETECT_PARAM: return &m_editCardDetectParam;
+    case IDC_EDIT_SIGN_PAD_PORT:     return &m_editSignPadPort;
+    case IDC_EDIT_SCANNER_PORT:      return &m_editScannerPort;
+    default:                         return NULL;
+    }
+}
+
+void CShopSetupDlg::SetEditValidationErrorState(int nCtrlId, BOOL bHasError)
+{
+    CSkinnedEdit* pEdit = GetSkinnedEditByCtrlId(nCtrlId);
+    if (!pEdit || !pEdit->GetSafeHwnd())
+        return;
+
+    pEdit->SetValidationError(bHasError);
+}
+
+void CShopSetupDlg::PositionValidationText(int nStaticId, int x, int y, int w, int h, BOOL bShow)
+{
+    CWnd* p = GetDlgItem(nStaticId);
+    if (!p || !p->GetSafeHwnd())
+        return;
+
+    CRect rcNow;
+    p->GetWindowRect(&rcNow);
+    ScreenToClient(&rcNow);
+
+    if (rcNow.left != x || rcNow.top != y || rcNow.Width() != w || rcNow.Height() != h)
+        p->SetWindowPos(NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+
+    const BOOL bVisibleNow = (p->IsWindowVisible() != FALSE);
+    if (bVisibleNow != bShow)
+        p->ShowWindow(bShow ? SW_SHOW : SW_HIDE);
+}
+
+void CShopSetupDlg::EnsureValidationStatics()
+{
+    const int ids[] = {
+        IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
+        IDC_STATIC_ERR_CARD_DETECT_PROGRAM, IDC_STATIC_ERR_TIMEOUT,
+        IDC_STATIC_ERR_SIGNPAD_PORT, IDC_STATIC_ERR_SCANNER_PORT
+    };
+
+    for (int i = 0; i < (int)(sizeof(ids) / sizeof(ids[0])); ++i)
+    {
+        if (::IsWindow(::GetDlgItem(m_hWnd, ids[i])))
+            continue;
+
+        HWND hStatic = ::CreateWindowEx(0, _T("STATIC"), _T(""), WS_CHILD | SS_RIGHT,
+            0, 0, 0, 0, m_hWnd, (HMENU)ids[i], AfxGetInstanceHandle(), NULL);
+        if (hStatic)
+        {
+            ::SendMessage(hStatic, WM_SETFONT, (WPARAM)(HFONT)m_fontValidation.GetSafeHandle(), TRUE);
+            ::ShowWindow(hStatic, SW_HIDE);
+        }
+    }
+}
+
+BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessage) const
+{
+    outMessage.Empty();
+
+    auto GetTrimmed = [&](int nCtrlId, CString& out) -> BOOL
+    {
+        CWnd* p = GetDlgItem(nCtrlId);
+        if (!p || !p->GetSafeHwnd())
+            return FALSE;
+        p->GetWindowText(out);
+        out.Trim();
+        return TRUE;
+    };
+
+    CString s;
+    switch (field)
+    {
+    case VF_PORT:
+        if (!GetTrimmed(IDC_EDIT_PORT, s) || !IsDigitsOnly(s))
+            outMessage = _T("포트번호 입력");
+        break;
+
+    case VF_NO_SIGN_AMOUNT:
+        if (!GetTrimmed(IDC_EDIT_NO_SIGN_AMOUNT, s) || !IsDigitsOnly(s))
+            outMessage = _T("금액 입력");
+        break;
+
+    case VF_TAX_PERCENT:
+        if (!GetTrimmed(IDC_EDIT_TAX_PERCENT, s) || !IsDigitsOnly(s) || _ttoi(s) < 0 || _ttoi(s) > 100)
+            outMessage = _T("0~100 입력");
+        break;
+
+    case VF_CARD_DETECT_PROGRAM:
+        if (m_chkCardDetect.IsToggled())
+        {
+            if (!GetTrimmed(IDC_EDIT_CARD_DETECT_PARAM, s) || s.IsEmpty())
+                outMessage = _T("필수 입력");
+        }
+        break;
+
+    case VF_CARD_TIMEOUT:
+        if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || _ttoi(s) < 30)
+            outMessage = _T("30 이상 입력");
+        break;
+
+    case VF_SIGNPAD_PORT:
+        if (m_comboSignPadUse.GetCurSel() == 0)
+        {
+            if (!GetTrimmed(IDC_EDIT_SIGN_PAD_PORT, s) || !IsPositiveNumberText(s))
+                outMessage = _T("포트번호 입력");
+        }
+        break;
+
+    case VF_SCANNER_PORT:
+        if (m_chkScannerUse.IsToggled())
+        {
+            if (!GetTrimmed(IDC_EDIT_SCANNER_PORT, s) || !IsPositiveNumberText(s))
+                outMessage = _T("포트번호 입력");
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    return outMessage.IsEmpty();
+}
+
+int CShopSetupDlg::GetTabIndexForControl(int nCtrlId) const
+{
+    const ValidationBinding* binding = FindValidationBinding(nCtrlId);
+    return binding ? binding->tabIndex : -1;
+}
+
+void CShopSetupDlg::ValidateControlAndUpdateUI(int nCtrlId)
+{
+    const ValidationBinding* binding = FindValidationBinding(nCtrlId);
+    if (!binding)
+        return;
+
+    CString err;
+    ValidateSingleField(binding->field, err);
+    SetValidationText(binding->errId, err);
+    SetEditValidationErrorState(binding->ctrlId, !err.IsEmpty());
+}
+
+BOOL CShopSetupDlg::ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId)
+{
+    if (pFirstInvalidCtrlId)
+        *pFirstInvalidCtrlId = 0;
+
+    BOOL bAllValid = TRUE;
+    int count = 0;
+    const ValidationBinding* bindings = GetValidationBindings(count);
+
+    for (int i = 0; i < count; ++i)
+    {
+        CString err;
+        ValidateSingleField(bindings[i].field, err);
+
+        if (bUpdateUI)
+        {
+            SetValidationText(bindings[i].errId, err);
+            SetEditValidationErrorState(bindings[i].ctrlId, !err.IsEmpty());
+        }
+
+        if (!err.IsEmpty())
+        {
+            bAllValid = FALSE;
+            if (pFirstInvalidCtrlId && *pFirstInvalidCtrlId == 0)
+                *pFirstInvalidCtrlId = bindings[i].ctrlId;
+        }
+    }
+
+    return bAllValid;
+}
+
+void CShopSetupDlg::OnEnChangeValidateInput()
+{
+    CWnd* pFocus = GetFocus();
+    if (!pFocus || !pFocus->GetSafeHwnd())
+        return;
+
+    const int nCtrlId = pFocus->GetDlgCtrlID();
+    if (!FindValidationBinding(nCtrlId))
+        return;
+
+    ValidateControlAndUpdateUI(nCtrlId);
+}
+
 void CShopSetupDlg::DrawInputBorders(CDC* /*pDC*/) {}
 void CShopSetupDlg::DrawOneInputBorder(int /*ctrlId*/) {
     /* [UI-STEP] 단일 입력 보더 렌더링(포커스/hover/disabled 상태 반영)
@@ -2704,42 +3088,55 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
     if (m_editCardDetectParam.GetSafeHwnd() && m_chkCardDetect.GetSafeHwnd())
     {
         const BOOL bEnable = m_chkCardDetect.IsToggled();
-        m_editCardDetectParam.EnableWindow(bEnable);
+        const BOOL bPrevEnable = m_editCardDetectParam.IsWindowEnabled();
+
+        if (bPrevEnable != bEnable)
+            m_editCardDetectParam.EnableWindow(bEnable);
 
         if (!bEnable && ::GetFocus() == m_editCardDetectParam.GetSafeHwnd())
             m_tabCtrl.SetFocus();
 
-        if (bForceRedraw)
-            m_editCardDetectParam.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+        if (bForceRedraw && bPrevEnable != bEnable)
+            m_editCardDetectParam.Invalidate(FALSE);
     }
 
     // Scanner use
     if (m_editScannerPort.GetSafeHwnd() && m_chkScannerUse.GetSafeHwnd())
     {
         const BOOL bEnable = m_chkScannerUse.IsToggled();
-        m_editScannerPort.EnableWindow(bEnable);
+        const BOOL bPrevEnable = m_editScannerPort.IsWindowEnabled();
+
+        if (bPrevEnable != bEnable)
+            m_editScannerPort.EnableWindow(bEnable);
 
         if (!bEnable && ::GetFocus() == m_editScannerPort.GetSafeHwnd())
             m_tabCtrl.SetFocus();
 
-        if (bForceRedraw)
-            m_editScannerPort.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+        if (bForceRedraw && bPrevEnable != bEnable)
+            m_editScannerPort.Invalidate(FALSE);
     }
 
     // Sign pad port + speed (YES=index 0 only)
     if (m_comboSignPadUse.GetSafeHwnd() && m_editSignPadPort.GetSafeHwnd() && m_comboSignPadSpeed.GetSafeHwnd())
     {
         const BOOL bEnable = (m_comboSignPadUse.GetCurSel() == 0);
-        m_editSignPadPort.EnableWindow(bEnable);
-        m_comboSignPadSpeed.EnableWindow(bEnable);
+        const BOOL bPrevEditEnable = m_editSignPadPort.IsWindowEnabled();
+        const BOOL bPrevComboEnable = m_comboSignPadSpeed.IsWindowEnabled();
+
+        if (bPrevEditEnable != bEnable)
+            m_editSignPadPort.EnableWindow(bEnable);
+        if (bPrevComboEnable != bEnable)
+            m_comboSignPadSpeed.EnableWindow(bEnable);
 
         if (!bEnable && ::GetFocus() == m_editSignPadPort.GetSafeHwnd())
             m_tabCtrl.SetFocus();
 
         if (bForceRedraw)
         {
-            m_editSignPadPort.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
-            m_comboSignPadSpeed.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_ERASE);
+            if (bPrevEditEnable != bEnable)
+                m_editSignPadPort.Invalidate(FALSE);
+            if (bPrevComboEnable != bEnable)
+                m_comboSignPadSpeed.Invalidate(FALSE);
         }
     }
 }
@@ -2747,14 +3144,17 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
 void CShopSetupDlg::OnCbnSelchangeSignPadUse()
 {
     UpdateToggleDependentEdits(TRUE);
+    ValidateControlAndUpdateUI(IDC_EDIT_SIGN_PAD_PORT);
 }
 
 void CShopSetupDlg::OnBnClickedCardDetectToggle()
 {
     UpdateToggleDependentEdits(TRUE);
+    ValidateControlAndUpdateUI(IDC_EDIT_CARD_DETECT_PARAM);
 }
 
 void CShopSetupDlg::OnBnClickedScannerUseToggle()
 {
     UpdateToggleDependentEdits(TRUE);
+    ValidateControlAndUpdateUI(IDC_EDIT_SCANNER_PORT);
 }

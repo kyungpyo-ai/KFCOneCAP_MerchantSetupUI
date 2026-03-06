@@ -130,7 +130,7 @@ void CReaderSetupDlg::CalcLayoutRects(
 	y += sectionTitleH + SX(10);
 
 	// 카드(리더기1/2)
-	const int cardH = SX(88);
+	const int cardH = SX(118);	// 2행 레이아웃(라벨+콤보행, 버튼행)
 	const int cardGap = SX(14);
 
 	card1 = CRect(inner.left, y, inner.right, y + cardH);
@@ -178,6 +178,9 @@ void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 		m_status_check1.EnableWindow(bEnable);
 		m_keydown1.EnableWindow(bEnable);
 		m_integrity_check1.EnableWindow(bEnable);
+		m_update1.EnableWindow(bEnable);
+		m_togglePortOpen1.EnableWindow(bEnable);
+		m_toggleMultipad1.EnableWindow(bEnable);
 		m_bReader1Enabled = bEnable;
 	}
 	else
@@ -186,6 +189,9 @@ void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 		m_status_check2.EnableWindow(bEnable);
 		m_keydown2.EnableWindow(bEnable);
 		m_integrity_check2.EnableWindow(bEnable);
+		m_update2.EnableWindow(bEnable);
+		m_togglePortOpen2.EnableWindow(bEnable);
+		m_toggleMultipad2.EnableWindow(bEnable);
 		m_bReader2Enabled = bEnable;
 	}
 }
@@ -224,66 +230,80 @@ void CReaderSetupDlg::LayoutControls()
 	CPoint sec1Pt, sec2Pt;
 	CalcLayoutRects(inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc, sec1Pt, sec2Pt);
 
-	const int padX = SX(24);
-	const int badge = SX(54);
-	const int gap = SX(10);
-	const int rowH = SX(34);
+	const int padL   = SX(74);   // 배지(54) + 좌우패딩
+	const int padR   = SX(16);
+	const int gap    = SX(8);
+	const int comboW = SX(200);
+	const int btnW   = SX(84);
+	const int btnH   = SX(32);
+	const int toggleW = SX(50);
+	const int toggleH = SX(28);
+	const int labelH  = SX(18);
+	const int rowComboY = SX(28);  // 카드 상단 라벨 아래 콤보행 오프셋
+	const int rowBtnY  = SX(64);   // 버튼행 오프셋
 
-	int comboW = SX(250);
-	int btnW = SX(84);
-	int btnH = SX(32);
-
-	// 카드 내부 기준 좌측 시작점
-	auto placeReaderRow = [&](const CRect & card, CComboBox & cb,
-		CButton & b1, CButton & b2, CButton & b3, CButton & b4)
+	// 카드 내부 컨트롤 배치 람다
+	auto placeReaderCard = [&](
+		const CRect& card,
+		CSkinnedComboBox& cb,
+		CModernButton& bInit,  CModernButton& bStatus,
+		CModernButton& bKey,   CModernButton& bInteg,
+		CModernButton& bUpdate,
+		CModernToggleSwitch& tgOpen, CModernToggleSwitch& tgPad)
 	{
-		int x = card.left + padX;
-		int y = card.top + (card.Height() - rowH) / 2;
+		// --- 콤보 행 ---
+		int x0 = card.left + padL;
+		int yCombo = card.top + rowComboY;
+		cb.SetWindowPos(NULL, x0, yCombo, comboW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		// 카드 폭이 좁으면 콤보 폭 자동 축소(밀림 방지)
-		int availW = card.Width() - padX * 2 - badge - gap;
-		int needW = comboW + gap + (btnW * 4) + (gap * 3);
-		int comboW2 = comboW;
-		if (needW > availW)
-		{
-			// 버튼 4개 영역을 먼저 확보하고 남는 폭을 콤보로
-			int btnArea = (btnW * 4) + (gap * 3);
-			comboW2 = max(SX(170), availW - gap - btnArea);
-		}
+		// 포트 열기 토글
+		int xToggleOpen = x0 + comboW + SX(40);
+		tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo + (btnH - toggleH) / 2,
+			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		cb.SetWindowPos(NULL, x + badge + gap, y, comboW2, rowH, SWP_NOZORDER | SWP_NOACTIVATE);
+		// 멀티패드 여부 토글
+		int xTogglePad = xToggleOpen + toggleW + SX(80);
+		tgPad.SetWindowPos(NULL, xTogglePad, yCombo + (btnH - toggleH) / 2,
+			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		int bx = x + badge + gap + comboW2 + gap;
-		b1.SetWindowPos(NULL, bx + (btnW + gap) * 0, y, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		b2.SetWindowPos(NULL, bx + (btnW + gap) * 1, y, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		b3.SetWindowPos(NULL, bx + (btnW + gap) * 2, y, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		b4.SetWindowPos(NULL, bx + (btnW + gap) * 3, y, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		// --- 버튼 행 ---
+		int yBtn = card.top + rowBtnY;
+		int bx = x0;
+		bInit.SetWindowPos(NULL,   bx,                     yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bStatus.SetWindowPos(NULL, bx + (btnW + gap),      yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bKey.SetWindowPos(NULL,    bx + (btnW + gap) * 2,  yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bInteg.SetWindowPos(NULL,  bx + (btnW + gap) * 3,  yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4,  yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 	};
 
-	placeReaderRow(card1, m_comport1, m_reader_init1, m_status_check1, m_keydown1, m_integrity_check1);
-	placeReaderRow(card2, m_comport2, m_reader_init2, m_status_check2, m_keydown2, m_integrity_check2);
+	placeReaderCard(card1, m_comport1,
+		m_reader_init1, m_status_check1, m_keydown1, m_integrity_check1, m_update1,
+		m_togglePortOpen1, m_toggleMultipad1);
+
+	placeReaderCard(card2, m_comport2,
+		m_reader_init2, m_status_check2, m_keydown2, m_integrity_check2, m_update2,
+		m_togglePortOpen2, m_toggleMultipad2);
 
 	// 조회 영역
 	int qx = queryBox.left + SX(24);
-	int qy = queryBox.top + (queryBox.Height() - rowH) / 2;
-	int labelW = SX(88);
-	int qComboW = SX(190);
+	int qy = queryBox.top + (queryBox.Height() - SX(32)) / 2;
+	int qComboW = SX(140);
 
-	m_search_date.SetWindowPos(NULL, qx + labelW, qy, qComboW, rowH, SWP_NOZORDER | SWP_NOACTIVATE);
+	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(32), SWP_NOZORDER | SWP_NOACTIVATE);
 
-	if (CWnd * pSearch = GetDlgItem(IDC_SEARCH))
-		pSearch->SetWindowPos(NULL, qx + labelW + qComboW + SX(14), queryBox.top + (queryBox.Height() - SX(34)) / 2,
-			SX(84), SX(34), SWP_NOZORDER | SWP_NOACTIVATE);
+	if (CWnd* pSearch = GetDlgItem(IDC_SEARCH))
+		pSearch->SetWindowPos(NULL, qx + qComboW + SX(10), qy,
+			SX(74), SX(32), SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 리스트
 	m_integrity_list.SetWindowPos(NULL, listRc.left, listRc.top, listRc.Width(), listRc.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 하단 버튼
-	if (CWnd * pOK = GetDlgItem(IDOK))
+	if (CWnd* pOK = GetDlgItem(IDOK))
 		pOK->SetWindowPos(NULL, okRc.left, okRc.top, okRc.Width(), okRc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 
-	if (CWnd * pCancel = GetDlgItem(IDCANCEL))
+	if (CWnd* pCancel = GetDlgItem(IDCANCEL))
 		pCancel->SetWindowPos(NULL, cancelRc.left, cancelRc.top, cancelRc.Width(), cancelRc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
@@ -307,18 +327,24 @@ void CReaderSetupDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CReaderSetupDlg)
-	DDX_Control(pDX, IDC_INTEGRITY_LIST, m_integrity_list);
-	DDX_Control(pDX, IDC_SEARCH_DATE, m_search_date);
-	DDX_Control(pDX, IDC_READER_INIT2, m_reader_init2);
-	DDX_Control(pDX, IDC_READER_INIT1, m_reader_init1);
-	DDX_Control(pDX, IDC_STATUS_CHECK2, m_status_check2);
-	DDX_Control(pDX, IDC_STATUS_CHECK1, m_status_check1);
-	DDX_Control(pDX, IDC_KEYDOWN2, m_keydown2);
-	DDX_Control(pDX, IDC_KEYDOWN1, m_keydown1);
-	DDX_Control(pDX, IDC_INTEGRITY_CHECK2, m_integrity_check2);
-	DDX_Control(pDX, IDC_INTEGRITY_CHECK1, m_integrity_check1);
-	DDX_Control(pDX, IDC_COMPORT2, m_comport2);
-	DDX_Control(pDX, IDC_COMPORT1, m_comport1);
+	DDX_Control(pDX, IDC_INTEGRITY_LIST,    m_integrity_list);
+	DDX_Control(pDX, IDC_SEARCH_DATE,       m_search_date);
+	DDX_Control(pDX, IDC_READER_INIT2,      m_reader_init2);
+	DDX_Control(pDX, IDC_READER_INIT1,      m_reader_init1);
+	DDX_Control(pDX, IDC_STATUS_CHECK2,     m_status_check2);
+	DDX_Control(pDX, IDC_STATUS_CHECK1,     m_status_check1);
+	DDX_Control(pDX, IDC_KEYDOWN2,          m_keydown2);
+	DDX_Control(pDX, IDC_KEYDOWN1,          m_keydown1);
+	DDX_Control(pDX, IDC_INTEGRITY_CHECK2,  m_integrity_check2);
+	DDX_Control(pDX, IDC_INTEGRITY_CHECK1,  m_integrity_check1);
+	DDX_Control(pDX, IDC_COMPORT2,          m_comport2);
+	DDX_Control(pDX, IDC_COMPORT1,          m_comport1);
+	DDX_Control(pDX, IDC_UPDATE1,           m_update1);
+	DDX_Control(pDX, IDC_UPDATE2,           m_update2);
+	DDX_Control(pDX, IDC_PORT_OPEN1,        m_togglePortOpen1);
+	DDX_Control(pDX, IDC_PORT_OPEN2,        m_togglePortOpen2);
+	DDX_Control(pDX, IDC_MULTIPAD1,         m_toggleMultipad1);
+	DDX_Control(pDX, IDC_MULTIPAD2,         m_toggleMultipad2);
 	//}}AFX_DATA_MAP
 }
 
@@ -431,6 +457,8 @@ BOOL CReaderSetupDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
+	ModernUIGfx::EnsureGdiplusStartup();
+
 	ModifyStyle(0, WS_CLIPCHILDREN);
 	
 
@@ -523,6 +551,61 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 	EnsureFonts();
 	HideLegacyStatics();
+
+	// === ModernUI 스타일 적용 ===
+	// 콤보박스 스킨
+
+	// 액션 버튼 스타일 (Secondary: 회색 테두리)
+	m_reader_init1.SetButtonStyle(ButtonStyle::Default);
+	m_status_check1.SetButtonStyle(ButtonStyle::Default);
+	m_keydown1.SetButtonStyle(ButtonStyle::Default);
+	m_integrity_check1.SetButtonStyle(ButtonStyle::Default);
+	m_update1.SetButtonStyle(ButtonStyle::Default);
+
+	m_reader_init2.SetButtonStyle(ButtonStyle::Default);
+	m_status_check2.SetButtonStyle(ButtonStyle::Default);
+	m_keydown2.SetButtonStyle(ButtonStyle::Default);
+	m_integrity_check2.SetButtonStyle(ButtonStyle::Default);
+	m_update2.SetButtonStyle(ButtonStyle::Default);
+
+	// 하단 확인/취소 버튼 스타일
+	if (CWnd* pOK = GetDlgItem(IDOK))
+		m_btnOk.SubclassDlgItem(IDOK, this);
+	if (CWnd* pCancel = GetDlgItem(IDCANCEL))
+		m_btnCancel.SubclassDlgItem(IDCANCEL, this);
+	m_btnOk.SetButtonStyle(ButtonStyle::Primary);
+	m_btnCancel.SetButtonStyle(ButtonStyle::Default);
+
+	// 조회 버튼
+	m_btnSearch.SubclassDlgItem(IDC_SEARCH, this);
+	m_btnSearch.SetButtonStyle(ButtonStyle::Primary);
+
+	// 토글 초기 상태 (포트 열기: 미사용이면 OFF)
+	m_togglePortOpen1.SetCheck(BST_UNCHECKED);
+	m_togglePortOpen2.SetCheck(BST_UNCHECKED);
+	m_toggleMultipad1.SetCheck(BST_UNCHECKED);
+	m_toggleMultipad2.SetCheck(BST_UNCHECKED);
+
+	// Set underlay colors to match card backgrounds
+	COLORREF cardBgEnabled  = RGB(240, 248, 255);
+	COLORREF cardBgDisabled = RGB(245, 246, 248);
+	m_togglePortOpen1.SetUnderlayColor(cardBgEnabled);
+	m_togglePortOpen2.SetUnderlayColor(cardBgDisabled);
+	m_toggleMultipad1.SetUnderlayColor(cardBgEnabled);
+	m_toggleMultipad2.SetUnderlayColor(cardBgDisabled);
+	m_reader_init1.SetUnderlayColor(cardBgEnabled);
+	m_status_check1.SetUnderlayColor(cardBgEnabled);
+	m_keydown1.SetUnderlayColor(cardBgEnabled);
+	m_integrity_check1.SetUnderlayColor(cardBgEnabled);
+	m_update1.SetUnderlayColor(cardBgEnabled);
+	m_reader_init2.SetUnderlayColor(cardBgDisabled);
+	m_status_check2.SetUnderlayColor(cardBgDisabled);
+	m_keydown2.SetUnderlayColor(cardBgDisabled);
+	m_integrity_check2.SetUnderlayColor(cardBgDisabled);
+	m_update2.SetUnderlayColor(cardBgDisabled);
+	m_comport1.SetUnderlayColor(cardBgEnabled);
+	m_comport2.SetUnderlayColor(cardBgDisabled);
+
 	m_bUIReady = TRUE;
 	ModifyStyle(0, WS_CLIPCHILDREN);
 
@@ -533,9 +616,6 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	UpdateReaderEnableState(1);
 	UpdateReaderEnableState(2);
 
-	// 리스트: 기존 GRIDLINES는 좀 올드해 보이니 제거(원하면 유지 가능)
-	// ListView_SetExtendedListViewStyle(m_integrity_list.GetSafeHwnd(), LVS_EX_FULLROWSELECT);
-	
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -688,33 +768,59 @@ void CReaderSetupDlg::OnPaint()
 	memDC.TextOut(sec1Pt.x, sec1Pt.y, _T("리더기 설정"));
 	memDC.TextOut(sec2Pt.x, sec2Pt.y, _T("리더기 정보"));
 
-	// 카드 2개
-	auto drawCard = [&](const CRect & r, BOOL enabled, int num)
+	// 카드 2개 (2행 레이아웃: 라벨+콤보+토글 / 버튼5개)
+	auto drawCard = [&](const CRect& r, BOOL enabled, int num)
 	{
-		COLORREF bg = enabled ? RGB(240, 248, 255) : RGB(245, 246, 248);
-		COLORREF brd = enabled ? RGB(0, 118, 190) : RGB(220, 226, 232);
+		COLORREF bg  = enabled ? RGB(240, 248, 255) : RGB(245, 246, 248);
+		COLORREF brd = enabled ? RGB(0, 118, 190)   : RGB(220, 226, 232);
 		int bw = enabled ? 2 : 1;
 		FillRoundRect(&memDC, r, SX(14), bg, brd, bw);
 
-		// 배지(1/2)
-		CRect badge(r.left + SX(14), r.top + (r.Height() - SX(46)) / 2,
-			r.left + SX(14) + SX(46), r.top + (r.Height() - SX(46)) / 2 + SX(46));
-
-		FillRoundRect(&memDC, badge, SX(12),
+		// 배지 (번호)
+		const int badgeSize = SX(38);
+		CRect badge(
+			r.left + SX(16),
+			r.top  + (r.Height() - badgeSize) / 2,
+			r.left + SX(16) + badgeSize,
+			r.top  + (r.Height() - badgeSize) / 2 + badgeSize);
+		FillRoundRect(&memDC, badge, SX(10),
 			enabled ? RGB(0, 90, 156) : RGB(160, 168, 176),
 			enabled ? RGB(0, 90, 156) : RGB(160, 168, 176), 1);
-
 		memDC.SelectObject(&m_fontNormal);
 		memDC.SetTextColor(RGB(255, 255, 255));
 		CString s; s.Format(_T("%d"), num);
 		memDC.DrawText(s, badge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+		// 상단 라벨 "리더기N - COM 포트"
+		const int padL = SX(74);
+		memDC.SelectObject(&m_fontSmall);
+		memDC.SetTextColor(enabled ? RGB(60, 80, 100) : RGB(160, 168, 176));
+		CString label;
+		label.Format(_T("리더기%d - COM 포트"), num);
+		memDC.TextOut(r.left + padL, r.top + SX(10), label);
+
+		// "포트 열기" / "멀티패드 여부" 라벨 (토글 왼쪽)
+		const int comboW  = SX(200);
+		const int btnH    = SX(32);
+		const int toggleW = SX(50);
+		const int yComboRow = r.top + SX(28);
+
+		int xToggleOpenLabel = r.left + padL + comboW + SX(10);
+		memDC.SetTextColor(enabled ? RGB(60, 80, 100) : RGB(180, 185, 190));
+		memDC.TextOut(xToggleOpenLabel, yComboRow + (btnH - SX(14)) / 2, _T("포트 열기"));
+
+		int xTogglePadLabel = r.left + padL + comboW + SX(10) + toggleW + SX(50);
+		memDC.TextOut(xTogglePadLabel, yComboRow + (btnH - SX(14)) / 2, _T("멀티패드 여부"));
 	};
 
 	drawCard(card1, m_bReader1Enabled, 1);
 	drawCard(card2, m_bReader2Enabled, 2);
 
-	// 조회 박스(연한 카드)
+	// 조회 박스 - "조회 범위" 라벨 포함
 	FillRoundRect(&memDC, queryBox, SX(14), RGB(248, 249, 251), RGB(230, 235, 240), 1);
+	memDC.SelectObject(&m_fontSmall);
+	memDC.SetTextColor(RGB(60, 80, 100));
+	memDC.TextOut(queryBox.left + SX(24), queryBox.top + SX(8), _T("조회 범위"));
 
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(oldBmp);
@@ -723,40 +829,12 @@ void CReaderSetupDlg::OnPaint()
 
 void CReaderSetupDlg::OnSelchangeComport1() 
 {
-	// TODO: Add your control notification handler code here
-	CString com_port1;
-	m_comport1.GetWindowText(com_port1);
-
-	if (com_port1.Compare("미사용") == 0) {
-		m_reader_init1.EnableWindow(FALSE);
-		m_status_check1.EnableWindow(FALSE);
-		m_keydown1.EnableWindow(FALSE);
-		m_integrity_check1.EnableWindow(FALSE);
-	} else {
-		m_reader_init1.EnableWindow(TRUE);
-		m_status_check1.EnableWindow(TRUE);
-		m_keydown1.EnableWindow(TRUE);
-		m_integrity_check1.EnableWindow(TRUE);
-	}
+	UpdateReaderEnableState(1);
 }
 
 void CReaderSetupDlg::OnSelchangeComport2() 
 {
-	// TODO: Add your control notification handler code here
-	CString com_port2;
-	m_comport2.GetWindowText(com_port2);
-
-	if (com_port2.Compare("미사용") == 0) {
-		m_reader_init2.EnableWindow(FALSE);
-		m_status_check2.EnableWindow(FALSE);
-		m_keydown2.EnableWindow(FALSE);
-		m_integrity_check2.EnableWindow(FALSE);
-	} else {
-		m_reader_init2.EnableWindow(TRUE);
-		m_status_check2.EnableWindow(TRUE);
-		m_keydown2.EnableWindow(TRUE);
-		m_integrity_check2.EnableWindow(TRUE);
-	}
+	UpdateReaderEnableState(2);
 }
 
 

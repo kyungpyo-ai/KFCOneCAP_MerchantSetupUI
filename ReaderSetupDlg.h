@@ -76,18 +76,31 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CReaderSetupDlg)
 	enum { IDD = IDD_READER_SETUP_DIALOG };
-	CListCtrl	m_integrity_list;
-	CComboBox	m_search_date;
-	CButton	m_reader_init2;
-	CButton	m_reader_init1;
-	CButton	m_status_check2;
-	CButton	m_status_check1;
-	CButton	m_keydown2;
-	CButton	m_keydown1;
-	CButton	m_integrity_check2;
-	CButton	m_integrity_check1;
-	CComboBox	m_comport2;
-	CComboBox	m_comport1;
+	CListCtrl			m_integrity_list;
+	CSkinnedComboBox	m_search_date;
+	CModernButton		m_reader_init2;
+	CModernButton		m_reader_init1;
+	CModernButton		m_status_check2;
+	CModernButton		m_status_check1;
+	CModernButton		m_keydown2;
+	CModernButton		m_keydown1;
+	CModernButton		m_integrity_check2;
+	CModernButton		m_integrity_check1;
+	CSkinnedComboBox	m_comport2;
+	CSkinnedComboBox	m_comport1;
+	// 업데이트 버튼 (신규)
+	CModernButton		m_update1;
+	CModernButton		m_update2;
+	// 포트 열기 / 멀티패드 토글
+	CModernToggleSwitch	m_togglePortOpen1;
+	CModernToggleSwitch	m_togglePortOpen2;
+	CModernToggleSwitch	m_toggleMultipad1;
+	CModernToggleSwitch	m_toggleMultipad2;
+	// 하단 확인/취소 버튼
+	CModernButton		m_btnOk;
+	CModernButton		m_btnCancel;
+	// 조회 버튼
+	CModernButton		m_btnSearch;
 	//}}AFX_DATA
 
 

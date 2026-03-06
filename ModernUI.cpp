@@ -516,7 +516,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	else if (isDanger)
 	{
 		// Danger (Delete): destructive action
-		COLORREF bg = pressed ? RGB(252, 205, 205) : (hover ? RGB(254, 235, 235) : RGB(255, 245, 245));
+		COLORREF bg = pressed ? RGB(255, 245, 245) : (hover ? RGB(255, 250, 250) : RGB(255, 255, 255));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
 		COLORREF border = hover ? RGB(248, 113, 113) : RGB(252, 165, 165);
@@ -526,7 +526,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (isDownload)
 	{
-		COLORREF bg = pressed ? BLUE_200 : (hover ? BLUE_100 : BLUE_50);
+		COLORREF bg = pressed ? BLUE_50 : (hover ? RGB(245, 249, 255) : RGB(255, 255, 255));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
 		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(BLUE_200), GetGValue(BLUE_200), GetBValue(BLUE_200)), 1.0f);
@@ -2136,6 +2136,7 @@ CSkinnedEdit::CSkinnedEdit()
 	m_bTracking = FALSE;
 	m_bFocus = FALSE;
 	m_bInPaint = FALSE;
+	m_bValidationError = FALSE;
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
 	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
@@ -2473,8 +2474,12 @@ void CSkinnedEdit::OnPaint()
 	Gdiplus::Color bc = borderN;
 	if (!enabled)
 		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
-	else if (m_bFocus)      bc = borderF;
-	else if (m_bHover) bc = borderH;
+	else if (m_bFocus && m_bValidationError)
+		bc = Gdiplus::Color(255, 239, 68, 68);
+	else if (m_bFocus)
+		bc = borderF;
+	else if (m_bHover)
+		bc = borderH;
 
 	const int thickI = (enabled && m_bFocus) ? (int)th.thickF : (int)th.thickN;
 	const Gdiplus::REAL thick = (Gdiplus::REAL)thickI;
@@ -2626,6 +2631,15 @@ void CSkinnedEdit::SetUnderlayColor(COLORREF underlayBg)
 void CSkinnedEdit::ClearUnderlayColor()
 {
 	m_bUseUnderlayBg = FALSE;
+	Invalidate(FALSE);
+}
+
+void CSkinnedEdit::SetValidationError(BOOL bError)
+{
+	if (m_bValidationError == (bError ? TRUE : FALSE))
+		return;
+
+	m_bValidationError = (bError ? TRUE : FALSE);
 	Invalidate(FALSE);
 }
 

@@ -1857,6 +1857,13 @@
 #define IDC_SEARCH_DATE                 1016
 #define IDC_SEARCH                      1017
 
+#define IDC_UPDATE1                     1018
+#define IDC_UPDATE2                     1019
+#define IDC_PORT_OPEN1                  1020
+#define IDC_PORT_OPEN2                  1021
+#define IDC_MULTIPAD1                   1022
+#define IDC_MULTIPAD2                   1023
+
 #define IDC_STATIC_RECT 60001
 
 // Next default values for new objects

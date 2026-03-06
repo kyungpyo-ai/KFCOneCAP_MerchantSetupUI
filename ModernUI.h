@@ -364,6 +364,7 @@ public:
     void SetCornerRadius(int r) { m_nRadius = r; Invalidate(FALSE); }
 
 
+
 protected:
     virtual void PreSubclassWindow();
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDIS);
@@ -458,6 +459,8 @@ public:
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
     void SetButtonStyle(ButtonStyle style); // 버튼 스타일 명시 설정
+    void SetValidationError(BOOL bError);
+    BOOL HasValidationError() const { return m_bValidationError; }
 
 protected:
     virtual void PreSubclassWindow();
@@ -497,6 +500,7 @@ private:
     BOOL m_bTracking;
     BOOL m_bFocus;
     BOOL m_bInPaint;
+    BOOL m_bValidationError;
 
     int  m_nRadius;
     int  m_nTextPx;
