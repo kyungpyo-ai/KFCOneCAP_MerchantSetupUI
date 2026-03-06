@@ -64,6 +64,7 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
 
 	afx_msg void OnCbnSelchangeComport1();
 	afx_msg void OnCbnSelchangeComport2();

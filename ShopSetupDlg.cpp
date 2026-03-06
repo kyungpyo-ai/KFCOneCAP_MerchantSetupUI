@@ -39,6 +39,43 @@
 // - 불러오기: GetRegisterData(section, field, outValue) 로만 접근
 // ============================================================================
 
+// ============================================================================
+// [검증 프로세스 유지보수 안내]
+// ----------------------------------------------------------------------------
+// 1) 실시간 검증
+//    - 각 EditText의 EN_CHANGE가 발생하면 OnEnChangeValidateInput()이 호출된다.
+//    - 여기서 ValidateControlAndUpdateUI(ctrlId)를 통해 "현재 입력 중인 Edit 1개만" 검사한다.
+//    - 부모 다이얼로그 전체를 다시 그리지 않고 오류문구 Static / Edit 오류상태만 최소 범위로 갱신한다.
+//
+// 2) 확인 버튼 검증
+//    - OnOK()에서는 ValidateAllInputs(FALSE)로 먼저 조용히 전체 검사를 수행한다.
+//    - 오류가 있으면 알림창을 띄운 뒤, 해당 탭으로 이동하고 ValidateAllInputs(TRUE)로 오류문구를 표시한다.
+//    - 첫 번째 오류 EditText로 포커스를 이동시키고, 오류가 없을 때만 SaveOptionsToRegistry()를 호출한다.
+//
+// 3) 조건부 검증 / 비활성화 제외 규칙
+//    - 우선 거래 프로그램: 카드 감지 우선 거래 사용 ON일 때만 검증
+//    - 스캐너 포트번호 : 스캐너 사용 ON일 때만 검증
+//    - 서명패드 포트번호: 서명패드 사용여부가 예일 때만 검증
+//    - 즉, EnableWindow(FALSE) 상태가 된 Edit는 검증 대상에서 제외되어야 한다.
+//    - 이 규칙은 ValidateSingleField()와 UpdateToggleDependentEdits()에서 같이 보장한다.
+//
+// 4) 오류 표시 방식
+//    - 오류문구는 Edit 오른쪽 Static으로 표시하며 빨간색 + 굵은 글씨를 사용한다.
+//    - 오류 Edit는 포커스가 있을 때 빨간 테두리로 표시한다.
+//    - 다른 탭의 오류문구가 보이지 않도록 RefreshValidationVisibilityByTab()가 현재 탭 기준으로 정리한다.
+//
+// 5) 안정성 가드
+//    - m_bUiInitialized : UI 생성 완료 전 이벤트 진입 방지
+//    - m_bClosing       : 종료 중 / 파괴 후 컨트롤 접근 방지
+//    - 검증/오류표시/탭전환 관련 함수는 두 플래그를 먼저 확인하고 조기 리턴한다.
+//
+// [초기값(레지스트리 값이 없을 때)]
+//    - 실제 초기값 지정 위치는 LoadOptionsFromRegistry() 내부의 각 if (GetRegisterData(...)) else 블록이다.
+//    - 예) 포트번호 8002, 세금 자동 역산 0, 카드입력 Timeout 100, 무서명 기준 금액 50000
+//    - 예) 서명패드 포트번호 0, 스캐너 포트번호 0, 우선 거래 프로그램 공백 문자열
+//    - 토글/콤보 기본값은 ReadToggle_DefaultOnWhenMissing() 및 SelectComboByValue(..., defaultValue)에서 설정한다.
+// ============================================================================
+
 namespace
 {
     // Sections
@@ -341,6 +378,8 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     , m_nActiveTab(0)
     , m_uHoverTimer(0)
     , m_nHoverInputId(-1)
+    , m_bUiInitialized(FALSE)
+    , m_bClosing(FALSE)
 {
     m_intPort           = 8002;
     m_intCardTimeout    = 60;
@@ -577,6 +616,7 @@ CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
     m_tabCtrl.SetCurSel(0);
     ShowTab(0);
 
+    m_bUiInitialized = TRUE;
     Invalidate();
     return TRUE;
 }
@@ -1545,6 +1585,20 @@ void CShopSetupDlg::ApplyLayout()
 // 레지스트리 → UI
 //  - 저장된 값이 없으면 기본값을 사용
 //  - 콤보박스는 '표시 문자열'과 '실제 저장 값'을 구분해서 매핑
+//
+// [초기값 확인 방법]
+//  - 이 함수 안의 각 if (GetRegisterData(...)) else 블록을 보면 된다.
+//  - else 쪽에 대입되는 값이 "레지스트리에 값이 없을 때의 초기값"이다.
+//  - 예시
+//      m_intPort           = 8002
+//      m_intTaxPercent     = 0
+//      m_intCardTimeout    = 100
+//      m_intNoSignAmount   = 50000
+//      m_intSignPadPort    = 0
+//      m_intScannerPort    = 0
+//      m_strCardDetectParam= ""
+//  - 토글/콤보 기본값은 아래쪽 ReadToggle_DefaultOnWhenMissing(),
+//    SelectComboByValue(..., 기본값, defaultIndex) 호출부에서 확인 가능하다.
 // --------------------------------------------------------------
 void CShopSetupDlg::LoadOptionsFromRegistry()
 {
@@ -1576,7 +1630,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     if (GetRegisterData(SEC_TCP, TAX_SETTING_FIELD, s))
         m_intTaxPercent = _ttoi(s);
     else
-        m_intTaxPercent = 0; // 기본값
+        m_intTaxPercent = 10; // 기본값
 
     // -------------------------
     // SERIALPORT
@@ -1694,6 +1748,11 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
 //  - 현재 컨트롤 상태(콤보 선택/에딧 텍스트/토글 ON-OFF)를 읽어서 저장
 //  - 값 검증(숫자 범위, 빈 값 처리 등)이 필요하면 여기에서 일괄 적용 권장
 // --------------------------------------------------------------
+// --------------------------------------------------------------
+// UI → 레지스트리 저장
+//  - OnOK()에서 ValidateAllInputs() 통과 후에만 호출된다.
+//  - 따라서 이 함수는 "검증이 끝난 정상값"을 저장하는 단계라고 보면 된다.
+// --------------------------------------------------------------
 void CShopSetupDlg::SaveOptionsToRegistry()
 {
     UpdateData(TRUE);
@@ -1778,6 +1837,9 @@ void CShopSetupDlg::SaveOptionsToRegistry()
 // ============================================================================
 void CShopSetupDlg::ShowTab(int nTab)
 {
+    if (m_bClosing || !GetSafeHwnd())
+        return;
+
     m_nActiveTab = nTab;
 
     // Close popover on tab switch
@@ -2380,6 +2442,9 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 // ============================================================================
 void CShopSetupDlg::OnDestroy()
 {
+    m_bClosing = TRUE;
+    m_bUiInitialized = FALSE;
+
     if (m_popover.IsVisible()) m_popover.Hide();
 
     CWnd* pPosInfo = GetDlgItem(IDC_STATIC_CARD_DETECT_POSINFO);
@@ -2783,6 +2848,9 @@ BOOL CShopSetupDlg::IsPositiveNumberText(const CString& text)
 
 void CShopSetupDlg::SetValidationText(int nStaticId, const CString& text)
 {
+    if (m_bClosing || !GetSafeHwnd())
+        return;
+
     CWnd* p = GetDlgItem(nStaticId);
     if (!p || !p->GetSafeHwnd())
         return;
@@ -2809,8 +2877,16 @@ void CShopSetupDlg::SetValidationText(int nStaticId, const CString& text)
     p->Invalidate(FALSE);
 }
 
+// --------------------------------------------------------------
+// 현재 활성 탭의 오류문구만 보이도록 정리
+//  - 다른 탭에 속한 오류 Static은 숨긴다.
+//  - 확인 버튼 검증 후 탭 이동/탭 클릭 전환 직후에 호출된다.
+// --------------------------------------------------------------
 void CShopSetupDlg::RefreshValidationVisibilityByTab()
 {
+    if (m_bClosing || !GetSafeHwnd())
+        return;
+
     int count = 0;
     const ValidationBinding* bindings = GetValidationBindings(count);
 
@@ -2848,6 +2924,9 @@ CSkinnedEdit* CShopSetupDlg::GetSkinnedEditByCtrlId(int nCtrlId)
 
 void CShopSetupDlg::SetEditValidationErrorState(int nCtrlId, BOOL bHasError)
 {
+    if (m_bClosing || !GetSafeHwnd())
+        return;
+
     CSkinnedEdit* pEdit = GetSkinnedEditByCtrlId(nCtrlId);
     if (!pEdit || !pEdit->GetSafeHwnd())
         return;
@@ -2857,6 +2936,9 @@ void CShopSetupDlg::SetEditValidationErrorState(int nCtrlId, BOOL bHasError)
 
 void CShopSetupDlg::PositionValidationText(int nStaticId, int x, int y, int w, int h, BOOL bShow)
 {
+    if (m_bClosing || !GetSafeHwnd())
+        return;
+
     CWnd* p = GetDlgItem(nStaticId);
     if (!p || !p->GetSafeHwnd())
         return;
@@ -2875,6 +2957,9 @@ void CShopSetupDlg::PositionValidationText(int nStaticId, int x, int y, int w, i
 
 void CShopSetupDlg::EnsureValidationStatics()
 {
+    if (!GetSafeHwnd() || m_bClosing)
+        return;
+
     const int ids[] = {
         IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
         IDC_STATIC_ERR_CARD_DETECT_PROGRAM, IDC_STATIC_ERR_TIMEOUT,
@@ -2909,6 +2994,11 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
         out.Trim();
         return TRUE;
     };
+    auto IsCtrlEnabled = [&](int nCtrlId) -> BOOL
+    {
+        CWnd* p = GetDlgItem(nCtrlId);
+        return (p && p->GetSafeHwnd() && p->IsWindowEnabled());
+    };
 
     CString s;
     switch (field)
@@ -2931,6 +3021,9 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
     case VF_CARD_DETECT_PROGRAM:
         if (m_chkCardDetect.IsToggled())
         {
+            if (!IsCtrlEnabled(IDC_EDIT_CARD_DETECT_PARAM))
+                break;
+
             if (!GetTrimmed(IDC_EDIT_CARD_DETECT_PARAM, s) || s.IsEmpty())
                 outMessage = _T("필수 입력");
         }
@@ -2944,6 +3037,9 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
     case VF_SIGNPAD_PORT:
         if (m_comboSignPadUse.GetCurSel() == 0)
         {
+            if (!IsCtrlEnabled(IDC_EDIT_SIGN_PAD_PORT))
+                break;
+
             if (!GetTrimmed(IDC_EDIT_SIGN_PAD_PORT, s) || !IsPositiveNumberText(s))
                 outMessage = _T("포트번호 입력");
         }
@@ -2952,6 +3048,9 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
     case VF_SCANNER_PORT:
         if (m_chkScannerUse.IsToggled())
         {
+            if (!IsCtrlEnabled(IDC_EDIT_SCANNER_PORT))
+                break;
+
             if (!GetTrimmed(IDC_EDIT_SCANNER_PORT, s) || !IsPositiveNumberText(s))
                 outMessage = _T("포트번호 입력");
         }
@@ -2970,8 +3069,17 @@ int CShopSetupDlg::GetTabIndexForControl(int nCtrlId) const
     return binding ? binding->tabIndex : -1;
 }
 
+// --------------------------------------------------------------
+// Edit 1개 실시간 검증 + UI 갱신
+//  - EN_CHANGE에서 호출된다.
+//  - 현재 Edit 1개만 검사해서 깜빡임 없이 오류문구/빨간테두리만 갱신한다.
+//  - 비활성화 상태이거나 생성 전/종료 중이면 아무 것도 하지 않는다.
+// --------------------------------------------------------------
 void CShopSetupDlg::ValidateControlAndUpdateUI(int nCtrlId)
 {
+    if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
+        return;
+
     const ValidationBinding* binding = FindValidationBinding(nCtrlId);
     if (!binding)
         return;
@@ -2982,8 +3090,18 @@ void CShopSetupDlg::ValidateControlAndUpdateUI(int nCtrlId)
     SetEditValidationErrorState(binding->ctrlId, !err.IsEmpty());
 }
 
+// --------------------------------------------------------------
+// 전체 입력값 검증
+//  - 확인 버튼에서 사용한다.
+//  - bUpdateUI=FALSE : 알림창을 띄우기 전, 조용히 오류 여부만 판단
+//  - bUpdateUI=TRUE  : 오류문구/오류테두리까지 화면에 반영
+//  - 첫 번째 오류 Edit의 CtrlId를 pFirstInvalidCtrlId로 반환해 탭 이동/포커스에 사용한다.
+// --------------------------------------------------------------
 BOOL CShopSetupDlg::ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId)
 {
+    if (m_bClosing || !GetSafeHwnd())
+        return TRUE;
+
     if (pFirstInvalidCtrlId)
         *pFirstInvalidCtrlId = 0;
 
@@ -3015,6 +3133,9 @@ BOOL CShopSetupDlg::ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId)
 
 void CShopSetupDlg::OnEnChangeValidateInput()
 {
+    if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
+        return;
+
     CWnd* pFocus = GetFocus();
     if (!pFocus || !pFocus->GetSafeHwnd())
         return;
@@ -3082,8 +3203,17 @@ void CShopSetupDlg::UpdateInputHoverByCursor() {}
 // v10.1 - Toggle dependent edit enable/disable
 // ============================================================================
 
+// --------------------------------------------------------------
+// 토글/콤보 상태에 따른 종속 Edit Enable/Disable 처리
+//  - 우선 거래 프로그램 / 스캐너 포트번호 / 서명패드 포트번호가 대상
+//  - 비활성화되는 순간 오류문구와 오류테두리를 즉시 제거한다.
+//  - 활성화되는 순간에는 현재 값 기준으로 즉시 다시 검증한다.
+// --------------------------------------------------------------
 void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
 {
+    if (!GetSafeHwnd() || m_bClosing)
+        return;
+
     // Card detect (priority transaction)
     if (m_editCardDetectParam.GetSafeHwnd() && m_chkCardDetect.GetSafeHwnd())
     {
@@ -3095,6 +3225,16 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
 
         if (!bEnable && ::GetFocus() == m_editCardDetectParam.GetSafeHwnd())
             m_tabCtrl.SetFocus();
+
+        if (!bEnable)
+        {
+            SetValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, _T(""));
+            SetEditValidationErrorState(IDC_EDIT_CARD_DETECT_PARAM, FALSE);
+        }
+        else if (m_bUiInitialized)
+        {
+            ValidateControlAndUpdateUI(IDC_EDIT_CARD_DETECT_PARAM);
+        }
 
         if (bForceRedraw && bPrevEnable != bEnable)
             m_editCardDetectParam.Invalidate(FALSE);
@@ -3111,6 +3251,16 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
 
         if (!bEnable && ::GetFocus() == m_editScannerPort.GetSafeHwnd())
             m_tabCtrl.SetFocus();
+
+        if (!bEnable)
+        {
+            SetValidationText(IDC_STATIC_ERR_SCANNER_PORT, _T(""));
+            SetEditValidationErrorState(IDC_EDIT_SCANNER_PORT, FALSE);
+        }
+        else if (m_bUiInitialized)
+        {
+            ValidateControlAndUpdateUI(IDC_EDIT_SCANNER_PORT);
+        }
 
         if (bForceRedraw && bPrevEnable != bEnable)
             m_editScannerPort.Invalidate(FALSE);
@@ -3131,6 +3281,16 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
         if (!bEnable && ::GetFocus() == m_editSignPadPort.GetSafeHwnd())
             m_tabCtrl.SetFocus();
 
+        if (!bEnable)
+        {
+            SetValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, _T(""));
+            SetEditValidationErrorState(IDC_EDIT_SIGN_PAD_PORT, FALSE);
+        }
+        else if (m_bUiInitialized)
+        {
+            ValidateControlAndUpdateUI(IDC_EDIT_SIGN_PAD_PORT);
+        }
+
         if (bForceRedraw)
         {
             if (bPrevEditEnable != bEnable)
@@ -3143,18 +3303,26 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
 
 void CShopSetupDlg::OnCbnSelchangeSignPadUse()
 {
+    if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
+        return;
+
     UpdateToggleDependentEdits(TRUE);
-    ValidateControlAndUpdateUI(IDC_EDIT_SIGN_PAD_PORT);
 }
 
 void CShopSetupDlg::OnBnClickedCardDetectToggle()
 {
+    if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
+        return;
+
     UpdateToggleDependentEdits(TRUE);
     ValidateControlAndUpdateUI(IDC_EDIT_CARD_DETECT_PARAM);
 }
 
 void CShopSetupDlg::OnBnClickedScannerUseToggle()
 {
+    if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
+        return;
+
     UpdateToggleDependentEdits(TRUE);
     ValidateControlAndUpdateUI(IDC_EDIT_SCANNER_PORT);
 }

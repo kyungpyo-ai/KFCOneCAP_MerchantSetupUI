@@ -250,24 +250,40 @@ private:
         int tabIndex;
     };
 
+    // -----------------------------------------------------------------
+    // 검증 헬퍼 함수
+    // - ValidationBinding 테이블을 기준으로 "어떤 Edit / 어떤 오류문구 / 어느 탭"인지 연결한다.
+    // - 실시간 입력(EN_CHANGE)에서는 ValidateControlAndUpdateUI()로 현재 Edit 1개만 검사한다.
+    // - 확인 버튼에서는 ValidateAllInputs()로 전체 항목을 순회하고 첫 오류 Edit를 찾아낸다.
+    // - SetValidationText()/SetEditValidationErrorState()는 오류문구와 빨간 테두리 UI만 갱신한다.
+    // - RefreshValidationVisibilityByTab()는 현재 탭에 속한 오류문구만 보이게 정리한다.
+    // -----------------------------------------------------------------
     void EnsureValidationStatics();
     void SetValidationText(int nStaticId, const CString& text);
     void SetEditValidationErrorState(int nCtrlId, BOOL bHasError);
     CSkinnedEdit* GetSkinnedEditByCtrlId(int nCtrlId);
     void PositionValidationText(int nStaticId, int x, int y, int w, int h, BOOL bShow = TRUE);
+    // 항목 1개에 대한 실제 검증 규칙(숫자/범위/필수입력/조건부검증)을 수행한다.
     BOOL ValidateSingleField(ValidationField field, CString& outMessage) const;
+    // 전체 입력값을 검사한다. bUpdateUI=TRUE면 오류문구/테두리까지 같이 갱신한다.
     BOOL ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId = NULL);
+    // 특정 Edit 1개만 검사하고, 해당 오류문구/오류테두리 UI를 최소 범위로 반영한다.
     void ValidateControlAndUpdateUI(int nCtrlId);
     const ValidationBinding* FindValidationBinding(int nCtrlId) const;
     const ValidationBinding* FindValidationBindingByErrId(int nStaticId) const;
     int GetTabIndexForControl(int nCtrlId) const;
+    // 탭 전환 후 현재 활성 탭에 속한 오류문구만 보이도록 visibility를 재정리한다.
     void RefreshValidationVisibilityByTab();
     static const ValidationBinding* GetValidationBindings(int& outCount);
     static BOOL IsDigitsOnly(const CString& text);
     static BOOL IsPositiveNumberText(const CString& text);
 
 private:
-    // v10.1
+    // 토글/콤보 상태에 따라 종속 Edit의 Enable/Disable을 바꾸고,
+    // 비활성화되는 항목은 오류문구/오류테두리를 즉시 제거한다.
+    // 예) 카드 감지 우선 거래 OFF -> 우선 거래 프로그램 검증 제외
+    //     스캐너 사용 OFF           -> 스캐너 포트번호 검증 제외
+    //     서명패드 사용 아님        -> 서명패드 포트번호 검증 제외
     void UpdateToggleDependentEdits(BOOL bForceRedraw = TRUE);
 
     struct SettingsSnapshot {
@@ -284,7 +300,12 @@ private:
     void TakeSnapshot();
     BOOL HasChanges() const;
 
+    // 레지스트리 -> UI 로드.
+    // 값이 없으면 이 함수 내부의 else 블록에서 초기값을 지정한다.
+    // 예) m_intPort=8002, m_intTaxPercent=0, m_intCardTimeout=100,
+    //     m_intNoSignAmount=50000, m_intSignPadPort=0, m_intScannerPort=0
     void LoadOptionsFromRegistry();
+    // UI -> 레지스트리 저장. OnOK()에서 전체 검증 통과 후에만 호출된다.
     void SaveOptionsToRegistry();
 
     enum SECTION_ICON_TYPE
@@ -363,5 +384,7 @@ private:
     enum { TIMER_INPUT_HOVER_TRACK = 0x4A21 };
     UINT_PTR m_uHoverTimer;
     int      m_nHoverInputId;
+    BOOL     m_bUiInitialized;
+    BOOL     m_bClosing;
     void     UpdateInputHoverByCursor();
 };

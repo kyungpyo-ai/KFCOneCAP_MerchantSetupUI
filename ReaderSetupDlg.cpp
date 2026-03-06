@@ -257,12 +257,12 @@ void CReaderSetupDlg::LayoutControls()
 		cb.SetWindowPos(NULL, x0, yCombo, comboW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 		// Æ÷Æ® ¿­±â Åä±Û
-		int xToggleOpen = x0 + comboW + SX(40);
+		int xToggleOpen = x0 + comboW + SX(76); // offset includes room for label
 		tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo + (btnH - toggleH) / 2,
 			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 		// ¸ÖÆ¼ÆÐµå ¿©ºÎ Åä±Û
-		int xTogglePad = xToggleOpen + toggleW + SX(80);
+		int xTogglePad = xToggleOpen + toggleW + SX(94); // offset includes room for label
 		tgPad.SetWindowPos(NULL, xTogglePad, yCombo + (btnH - toggleH) / 2,
 			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -360,6 +360,7 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_WM_PAINT()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
+	ON_WM_DRAWITEM()
 
 	ON_CBN_SELCHANGE(IDC_COMPORT1, OnCbnSelchangeComport1)
 	ON_CBN_SELCHANGE(IDC_COMPORT2, OnCbnSelchangeComport2)
@@ -726,6 +727,11 @@ BOOL CReaderSetupDlg::OnEraseBkgnd(CDC* pDC)
 	return TRUE; // ÀüÃ¼¸¦ OnPaint¿¡¼­ Ä¥ÇÔ
 }
 
+void CReaderSetupDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS)
+{
+    CDialog::OnDrawItem(nIDCtl, lpDIS);
+}
+
 void CReaderSetupDlg::OnPaint()
 {
 	CPaintDC dc(this);
@@ -746,15 +752,31 @@ void CReaderSetupDlg::OnPaint()
 	FillRoundRect(&memDC, shadow, SX(18), RGB(230, 235, 240), RGB(230, 235, 240), 1);
 	FillRoundRect(&memDC, mainCard, SX(18), RGB(255, 255, 255), RGB(220, 226, 232), 1);
 
-	// »ó´Ü Å¸ÀÌÆ²
+	// Header icon: blue rounded square with card-reader symbol
 	memDC.SetBkMode(TRANSPARENT);
+	{
+		const int iconSize = SX(46);
+		const int iconX    = mainCard.left + SX(18);
+		const int iconY    = mainCard.top  + SX(16);
+		CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
+		FillRoundRect(&memDC, rcIcon, SX(10), RGB(0, 100, 221), RGB(0, 100, 221), 1);
+		// Card shape (white rectangle)
+		memDC.FillSolidRect(iconX + SX(9),  iconY + SX(12), SX(28), SX(18), RGB(255, 255, 255));
+		// Magnetic stripe (dark band)
+		memDC.FillSolidRect(iconX + SX(9),  iconY + SX(16), SX(28), SX(4),  RGB(0, 60, 140));
+		// Button dots
+		memDC.FillSolidRect(iconX + SX(11), iconY + SX(34), SX(5), SX(5), RGB(255, 255, 255));
+		memDC.FillSolidRect(iconX + SX(20), iconY + SX(34), SX(5), SX(5), RGB(255, 255, 255));
+		memDC.FillSolidRect(iconX + SX(29), iconY + SX(34), SX(5), SX(5), RGB(255, 255, 255));
+	}
+	const int titleTextX = mainCard.left + SX(74);
 	memDC.SelectObject(&m_fontTitle);
-	memDC.SetTextColor(RGB(0, 90, 156));
-	memDC.TextOut(mainCard.left + SX(24), mainCard.top + SX(18), _T("¸®´õ±â ¼³Á¤"));
+	memDC.SetTextColor(RGB(6, 52, 109));
+	memDC.TextOut(titleTextX, mainCard.top + SX(18), _T("¸®´õ±â ¼³Á¤"));
 
 	memDC.SelectObject(&m_fontSub);
-	memDC.SetTextColor(RGB(120, 130, 140));
-	memDC.TextOut(mainCard.left + SX(24), mainCard.top + SX(44), _T("¸®´õ±â ¿¬°á ¹× Á¦¾î¸¦ °ü¸®ÇÕ´Ï´Ù"));
+	memDC.SetTextColor(RGB(0, 100, 180));
+	memDC.TextOut(titleTextX, mainCard.top + SX(44), _T("¸®´õ±â ¿¬°á ¹× Á¦¾î¸¦ °ü¸®ÇÕ´Ï´Ù"));
 	memDC.FillSolidRect(mainCard.left + SX(24), mainCard.top + SX(72), mainCard.Width() - SX(48), 1, RGB(235, 240, 245));
 
 	// µ¿ÀÏ Rect ±â¹ÝÀ¸·Î ¼½¼Ç/Ä«µå ¿µ¿ª ¾ò±â
@@ -763,10 +785,13 @@ void CReaderSetupDlg::OnPaint()
 	CalcLayoutRects(inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc, sec1Pt, sec2Pt);
 
 	// ¼½¼Ç Á¦¸ñ 2°³(¿øÇÏ´Â´ë·Î º¸¿©ÁÖ±â)
+	// Section titles with left blue bar indicator
 	memDC.SelectObject(&m_fontNormal);
 	memDC.SetTextColor(RGB(45, 55, 72));
-	memDC.TextOut(sec1Pt.x, sec1Pt.y, _T("¸®´õ±â ¼³Á¤"));
-	memDC.TextOut(sec2Pt.x, sec2Pt.y, _T("¸®´õ±â Á¤º¸"));
+	memDC.FillSolidRect(sec1Pt.x - SX(10), sec1Pt.y + SX(2), SX(3), SX(18), RGB(0, 100, 221));
+	memDC.TextOut(sec1Pt.x, sec1Pt.y, _T("Æ÷Æ® ¼³Á¤"));
+	memDC.FillSolidRect(sec2Pt.x - SX(10), sec2Pt.y + SX(2), SX(3), SX(18), RGB(0, 100, 221));
+	memDC.TextOut(sec2Pt.x, sec2Pt.y, _T("¹«°á¼º Ã¼Å© Á¤º¸"));
 
 	// Ä«µå 2°³ (2Çà ·¹ÀÌ¾Æ¿ô: ¶óº§+ÄÞº¸+Åä±Û / ¹öÆ°5°³)
 	auto drawCard = [&](const CRect& r, BOOL enabled, int num)
@@ -805,11 +830,11 @@ void CReaderSetupDlg::OnPaint()
 		const int toggleW = SX(50);
 		const int yComboRow = r.top + SX(28);
 
-		int xToggleOpenLabel = r.left + padL + comboW + SX(10);
+		int xToggleOpenLabel = r.left + padL + comboW + SX(20);
 		memDC.SetTextColor(enabled ? RGB(60, 80, 100) : RGB(180, 185, 190));
 		memDC.TextOut(xToggleOpenLabel, yComboRow + (btnH - SX(14)) / 2, _T("Æ÷Æ® ¿­±â"));
 
-		int xTogglePadLabel = r.left + padL + comboW + SX(10) + toggleW + SX(50);
+		int xTogglePadLabel = r.left + padL + comboW + SX(76) + toggleW + SX(20);
 		memDC.TextOut(xTogglePadLabel, yComboRow + (btnH - SX(14)) / 2, _T("¸ÖÆ¼ÆÐµå ¿©ºÎ"));
 	};
 
@@ -822,6 +847,26 @@ void CReaderSetupDlg::OnPaint()
 	memDC.SetTextColor(RGB(60, 80, 100));
 	memDC.TextOut(queryBox.left + SX(24), queryBox.top + SX(8), _T("Á¶È¸ ¹üÀ§"));
 
+	// Draw empty-state text when list has no items
+	if (m_bUIReady && m_integrity_list.GetSafeHwnd() && m_integrity_list.GetItemCount() == 0) {
+		CWindowDC listDC(&m_integrity_list);
+		CRect listWinRc;
+		m_integrity_list.GetClientRect(&listWinRc);
+		CHeaderCtrl* pHdr = m_integrity_list.GetHeaderCtrl();
+		int hdrH = 0;
+		if (pHdr && pHdr->GetSafeHwnd()) {
+			RECT rcH; pHdr->GetWindowRect(&rcH);
+			hdrH = rcH.bottom - rcH.top;
+		}
+		CRect bodyRc(listWinRc.left, listWinRc.top + hdrH, listWinRc.right, listWinRc.bottom);
+		listDC.FillSolidRect(bodyRc, RGB(255, 255, 255));
+		CFont* pOld = listDC.SelectObject(&m_fontSmall);
+		listDC.SetBkMode(TRANSPARENT);
+		listDC.SetTextColor(RGB(160, 168, 180));
+		listDC.DrawText(_T("ì¡°í???ë¬´ê²°??ì²´í? ??³´ê°€ ??????."), bodyRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		listDC.SelectObject(pOld);
+	}
+	
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(oldBmp);
 }
