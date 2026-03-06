@@ -851,7 +851,7 @@ void CShopSetupDlg::InitializeControls()
         HWND hStatic = ::CreateWindowEx(
             0,
             _T("STATIC"),
-            _T("우선 거래 프로그램"),
+            _T("우선 거래 포스 프로그램"),
             WS_CHILD | WS_VISIBLE | SS_LEFT,
             0, 0, 0, 0,
             m_hWnd,
@@ -2653,8 +2653,8 @@ void CShopSetupDlg::OnBnClickedTaxPercentInfo()
     if (m_popover.IsVisible()) { m_popover.Hide(); return; }
     CRect rc; m_btnTaxPercentInfo.GetWindowRect(&rc);
     m_popover.ShowAt(rc,
-        _T("세금 자동역산 설정"),
-        _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"),
+        _T("세금 자동 역산"),
+        _T("세금 자동 계산 비율 설정 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"),
         this);
 }
 
@@ -2693,8 +2693,8 @@ void CShopSetupDlg::OnBnClickedCardDetectInfo()
     if (m_popover.IsVisible()) { m_popover.Hide(); return; }
     CRect rc; m_btnCardDetectInfo.GetWindowRect(&rc);
     m_popover.ShowAt(rc,
-        _T("우선 거래 설정"),
-        _T("카드 우선 거래 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"),
+        _T("카드 감지 우선 거래 사용"),
+        _T("카드 감지 우선 거래 설정\n· 기본값 : 미사용\n우선 거래 포스 프로그램 입력창에 POS 프로그램 정보 입력\n(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용 가능"),
         this);
 }
 void CShopSetupDlg::OnBnClickedScannerUseInfo()
@@ -2703,7 +2703,7 @@ void CShopSetupDlg::OnBnClickedScannerUseInfo()
     CRect rc; m_btnScannerUseInfo.GetWindowRect(&rc);
     m_popover.ShowAt(rc,
         _T("스캐너 사용"),
-        _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※ KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용"),
+        _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n스캐너 포트번호 입력창에는 연결된 COM 포트번호 입력\n※ KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용"),
         this);
 }
 void CShopSetupDlg::OnBnClickedAutoResetInfo()
@@ -2748,7 +2748,7 @@ void CShopSetupDlg::OnBnClickedSignPadUseInfo()
     CRect rc; m_btnSignPadUseInfo.GetWindowRect(&rc);
     m_popover.ShowAt(rc,
         _T("서명패드 사용"),
-        _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력"),
+        _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용\n· 아니오 : 서명패드 미사용\n· 자체서명 : POS 화면에서 서명 입력"),
         this);
 }
 
