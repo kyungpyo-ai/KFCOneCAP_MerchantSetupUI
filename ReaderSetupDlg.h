@@ -1,0 +1,124 @@
+#if !defined(AFX_READERSETUPDLG_H__183B0FB7_82FE_468C_855D_25D47BF512A5__INCLUDED_)
+#define AFX_READERSETUPDLG_H__183B0FB7_82FE_468C_855D_25D47BF512A5__INCLUDED_
+
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
+// ReaderSetupDlg.h : header file
+//
+
+#include <vector>
+#include "ModernUI.h"
+
+
+using namespace std;
+
+/////////////////////////////////////////////////////////////////////////////
+// CReaderSetupDlg dialog
+
+class CReaderSetupDlg : public CDialog
+{
+
+protected:
+	CSize CalcMinClientSize() const;
+	void  FitWindowToLayout();   // 계산값으로 창 크기 자동 조절
+	BOOL  m_bFitDone;            // 무한루프 방지(1회만)
+
+
+	void CalcLayoutRects(
+		CRect& inner,
+		CRect& card1, CRect& card2,
+		CRect& infoTitleArea,
+		CRect& queryBox,
+		CRect& listRc,
+		CRect& okRc, CRect& cancelRc,
+		CPoint& sec1TitlePt,
+		CPoint& sec2TitlePt
+	) const;
+
+	virtual void DoDataExchange(CDataExchange* pDX);
+	BOOL m_bUIReady;
+
+	// === 추가: UI 상태/폰트/레이아웃 ===
+	BOOL  m_bReader1Enabled;
+	BOOL  m_bReader2Enabled;
+
+	CFont m_fontTitle;
+	CFont m_fontSub;
+	CFont m_fontNormal;
+	CFont m_fontSmall;
+
+	int   m_dpi; // 96 기준 스케일
+
+	int   SX(int v) const; // scale x/y 공용
+	void  EnsureFonts();
+	void  LayoutControls();
+
+	void  UpdateReaderEnableState(int readerIndex); // 1 or 2
+	void  ApplyEnableStateToButtons(int readerIndex, BOOL bEnable);
+
+	void  HideLegacyStatics(); // "리더기1/2/조회 범위" 같은 기존 static 숨김
+
+	//{{AFX_MSG(CReaderSetupDlg)
+	//virtual BOOL OnInitDialog();
+	afx_msg void OnPaint();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+
+	afx_msg void OnCbnSelchangeComport1();
+	afx_msg void OnCbnSelchangeComport2();
+	//}}AFX_MSG
+	
+// Construction
+public:
+	CReaderSetupDlg(CWnd* pParent = NULL);   // standard constructor
+
+// Dialog Data
+	//{{AFX_DATA(CReaderSetupDlg)
+	enum { IDD = IDD_READER_SETUP_DIALOG };
+	CListCtrl	m_integrity_list;
+	CComboBox	m_search_date;
+	CButton	m_reader_init2;
+	CButton	m_reader_init1;
+	CButton	m_status_check2;
+	CButton	m_status_check1;
+	CButton	m_keydown2;
+	CButton	m_keydown1;
+	CButton	m_integrity_check2;
+	CButton	m_integrity_check1;
+	CComboBox	m_comport2;
+	CComboBox	m_comport1;
+	//}}AFX_DATA
+
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CReaderSetupDlg)
+	public:
+	virtual BOOL DestroyWindow();
+	protected:
+	//virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	//}}AFX_VIRTUAL
+
+// Implementation
+protected:
+	int GetWindowsVersion();
+	void GetNTComPort(vector<int>& ports);
+	void GetWidowsComPort(vector<int>& ports);
+
+	// Generated message map functions
+	//{{AFX_MSG(CReaderSetupDlg)
+	virtual BOOL OnInitDialog();
+	
+	afx_msg void OnSelchangeComport1();
+	afx_msg void OnSelchangeComport2();
+
+
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+};
+
+//{{AFX_INSERT_LOCATION}}
+// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
+
+#endif // !defined(AFX_READERSETUPDLG_H__183B0FB7_82FE_468C_855D_25D47BF512A5__INCLUDED_)

@@ -1,10 +1,12 @@
-// ShopSetupDlg.cpp - 탭 UI 버전 (v1.8)
+// ShopSetupDlg.cpp - 탭 UI 버전 (v2.0)
 // 4개 탭(서버 연결 / 장치 정보 / 시스템 코드 / 가맹점 다운로드)
 
 #include "stdafx.h"
 #include "Resource.h"
 #include "ShopSetupDlg.h"
 #include "ShopDownDlg.h"
+#include "StartupSelectDlg.h"
+#include "ReaderSetupDlg.h"
 #include "ModernUI.h"
 #include "RegistryUtil.h"
 
@@ -441,6 +443,34 @@ BOOL CShopSetupDlg::OnInitDialog()
      */
 
     CDialog::OnInitDialog();
+
+    // --------------------------------------------------------
+    // [v2.0] 시작 시 다이얼로그 선택(가맹점 설정 / 리더기 설정)
+    //  - 기존에는 프로그램 실행 시 바로 CShopSetupDlg가 열렸으나,
+    //    이제는 선택 창에서 어떤 설정 화면을 열지 결정한다.
+    //  - 선택 창은 모달로 띄워서, CShopSetupDlg가 화면에 표시되기 전에
+    //    사용자가 먼저 선택할 수 있도록 한다.
+    // --------------------------------------------------------
+    {
+        CStartupSelectDlg selDlg;
+        INT_PTR nSel = selDlg.DoModal();
+        if (nSel != IDOK) {
+            // 사용자가 창을 닫은 경우: 프로그램 종료
+            EndDialog(IDCANCEL);
+            return TRUE;
+        }
+
+        if (selDlg.GetChoice() == CStartupSelectDlg::CHOICE_READER_SETUP) {
+            // 리더기 설정 화면으로 진입
+            CReaderSetupDlg readerDlg;
+            readerDlg.DoModal();
+
+            // 리더기 설정 종료 후: 프로그램 종료(선택창으로 다시 돌아가지 않음)
+            EndDialog(IDOK);
+            return TRUE;
+        }
+        // CHOICE_SHOP_SETUP: 아래 기존 초기화 흐름 계속 진행
+    }
 
     auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
 

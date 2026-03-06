@@ -1459,6 +1459,11 @@
 #define IDC_MANAGE_LINK                 1592
 #define _WIN32_IE_IE70                  0x0700
 #define IDD_SHOP_SETUP_DLG              2000
+#define IDD_READER_SETUP_DIALOG         133
+#define IDD_STARTUP_SELECT_DLG			134
+#define IDC_STATIC						135
+#define IDC_BTN_START_SHOPSETUP			136
+#define IDC_BTN_START_READERSETUP		137
 #define IDC_STATIC_VAN_SERVER           2001
 #define IDC_COMBO_VAN_SERVER            2002
 #define IDC_STATIC_PORT                 2003
@@ -1835,6 +1840,20 @@
 #define IDC_BTN_CONFIRM                     5141
 #define IDC_BTN_CANCEL_SHOP                 5142
 
+
+#define IDC_STATUS_CHECK1               1000
+#define IDC_STATUS_CHECK2               1001
+#define IDC_INTEGRITY_CHECK1            1002
+#define IDC_INTEGRITY_CHECK2            1003
+#define IDC_KEYDOWN1                    1004
+#define IDC_KEYDOWN2                    1005
+#define IDC_READER_INIT1                1006
+#define IDC_INTEGRITY_LIST              1007
+#define IDC_COMPORT1                    1008
+#define IDC_COMPORT2                    1009
+#define IDC_READER_INIT2                1010
+#define IDC_SEARCH_DATE                 1016
+#define IDC_SEARCH                      1017
 
 #define IDC_STATIC_RECT 60001
 
