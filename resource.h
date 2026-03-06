@@ -1495,6 +1495,8 @@
 #define IDC_COMBO_SIGN_PAD_SPEED        2035
 #define IDC_CHECK_SCANNER_USE           2040
 #define IDC_EDIT_SCANNER_PORT           2042
+#define IDC_STATIC_CARD_DETECT_POSINFO	2043
+#define IDC_STATIC_SCANNER_PORT_LABEL	2044
 #define _WIN32_IE_IE80                  0x0800
 #define CS_SAVEBITS                     0x0800
 #define HDS_NOSIZING                    0x0800

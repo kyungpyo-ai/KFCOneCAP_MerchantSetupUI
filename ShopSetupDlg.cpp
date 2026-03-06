@@ -1,4 +1,4 @@
-// ShopSetupDlg.cpp - 탭 UI 버전 (v2.0)
+// ShopSetupDlg.cpp - 탭 UI 버전 (v2.1)
 // 4개 탭(서버 연결 / 장치 정보 / 시스템 코드 / 가맹점 다운로드)
 
 #include "stdafx.h"
@@ -613,8 +613,8 @@ int CShopSetupDlg::CalculateRequiredHeight()
         // 리더기: 1행, 서명패드: 2행, 기타: 헤더+체크1행
         int card1 = cPadY + cHdrH + oneRow()*1 + cPadY;
         int card2 = cPadY + cHdrH + oneRow()*2 + rG + cPadY;
-        int card3 = cPadY + cHdrH + FIELD_H + cPadY;
-        int h = cOutY + card1 + cGapY + card2 + cGapY + card3;
+        int card3 = cPadY + cHdrH + oneRow() + rG + FIELD_H + cPadY;
+        int h = cOutY + card1 + cGapY + card2 + cGapY + card3 + S(10);
         maxTabH = max(maxTabH, h);
     }
 
@@ -636,7 +636,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
     const int TITLE_AREA   = S(kTabBarTop);
     const int TAB_H        = S(kTabBarH);
     const int PAD_TOP      = S(kTabPadTop);
-    const int PAD_BOTTOM   = S(10);
+    const int PAD_BOTTOM   = S(18);
     const int BUTTON_AREA  = S(76);   // [TUNE] 하단 버튼 영역 높이 (버튼H 36 + 상하여백)
     const int CARD_PAD     = S(28);  // [NOTE] 실제로는 CARD_PAD/2만큼 활용
 
@@ -784,13 +784,50 @@ void CShopSetupDlg::InitializeControls()
         sw.SetNoWrapEllipsis(TRUE);
         sw.SetUnderlayColor(bgColor);
     };
-    SetupTgl(m_chkCardDetect,   IDC_CHECK_CARD_DETECT,   _T("우선 거래"),  FALSE);
+    SetupTgl(m_chkCardDetect,   IDC_CHECK_CARD_DETECT,   _T("카드 감지 우선 거래 사용"),  FALSE);
     SetupTgl(m_chkMultiVoice,   IDC_CHECK_MULTI_VOICE,   _T("멀티패드 음성 출력"), FALSE);
     SetupTgl(m_chkScannerUse,   IDC_CHECK_SCANNER_USE,   _T("스캐너 사용"),    FALSE);
     SetupTgl(m_chkAlarmGraph,   IDC_CHECK_ALARM_GRAPH,   _T("알림창 그림"),    TRUE);
     SetupTgl(m_chkAlarmDual,    IDC_CHECK_ALARM_DUAL,    _T("알림창 듀얼"),    FALSE);
     SetupTgl(m_chkAutoReset,    IDC_CHECK_AUTO_RESET,    _T("자동 재실행"),    TRUE);
     SetupTgl(m_chkAutoReboot,   IDC_CHECK_AUTO_REBOOT,   _T("자동 리부팅"),    TRUE);
+
+    if (!::IsWindow(::GetDlgItem(m_hWnd, IDC_STATIC_CARD_DETECT_POSINFO)))
+    {
+        HWND hStatic = ::CreateWindowEx(
+            0,
+            _T("STATIC"),
+            _T("우선 거래 프로그램"),
+            WS_CHILD | WS_VISIBLE | SS_LEFT,
+            0, 0, 0, 0,
+            m_hWnd,
+            (HMENU)IDC_STATIC_CARD_DETECT_POSINFO,
+            AfxGetInstanceHandle(),
+            NULL);
+
+        if (hStatic)
+        {
+            ::SendMessage(hStatic, WM_SETFONT, (WPARAM)(HFONT)m_fontLabel.GetSafeHandle(), TRUE);
+        }
+    }
+    if (!::IsWindow(::GetDlgItem(m_hWnd, IDC_STATIC_SCANNER_PORT_LABEL)))
+    {
+        HWND hStatic = ::CreateWindowEx(
+            0,
+            _T("STATIC"),
+            _T("스캐너 포트번호"),
+            WS_CHILD | WS_VISIBLE | SS_LEFT,
+            0, 0, 0, 0,
+            m_hWnd,
+            (HMENU)IDC_STATIC_SCANNER_PORT_LABEL,
+            AfxGetInstanceHandle(),
+            NULL);
+
+        if (hStatic)
+        {
+            ::SendMessage(hStatic, WM_SETFONT, (WPARAM)(HFONT)m_fontLabel.GetSafeHandle(), TRUE);
+        }
+    }
     // 콤보박스 초기화
     // 콤보박스 초기화 (Word 스펙 기준 목록)
     FillCombo(m_comboVanServer,   kVanServers,   (int)(sizeof(kVanServers) / sizeof(kVanServers[0])));
@@ -811,7 +848,7 @@ void CShopSetupDlg::InitializeControls()
         IDC_STATIC_CASH_RECEIPT, IDC_STATIC_INTERLOCK,
         IDC_STATIC_COMM_TYPE, IDC_STATIC_SIGN_PAD_USE, IDC_STATIC_SIGN_PAD_PORT,
         IDC_STATIC_SIGN_PAD_SPEED, IDC_STATIC_ALARM_POS, IDC_STATIC_ALARM_SIZE,
-        IDC_STATIC_CANCEL_KEY, IDC_STATIC_MSR_KEY
+        IDC_STATIC_CANCEL_KEY, IDC_STATIC_MSR_KEY, IDC_STATIC_CARD_DETECT_POSINFO, IDC_STATIC_SCANNER_PORT_LABEL
     };
     for (int id : lblIds)
     {
@@ -973,65 +1010,54 @@ void CShopSetupDlg::ApplyLayoutTab0()
 
         int y2 = curY + cardPadY + headerH;
 
-        // 통신방식 / 우선 거래 설정 (2열)
+        // 통신방식 / 현금영수증 거래 (2열)
         colW = (innerW - colGap) / 2;
         Move(IDC_STATIC_COMM_TYPE, innerX, y2, colW, capH);
         PlaceInfoBtn(m_btnCommTypeInfo, IDC_STATIC_COMM_TYPE, innerX, y2, capH);
         Move(IDC_COMBO_COMM_TYPE,  innerX, y2 + capH + capGap, colW, FIELD_H);
 
-        // 우선 거래: 토글(라벨+스위치) + 입력(같은 줄)
-        const int inGap = 10;
-        int editW = 160;
-        if (colW < 280) editW = 120;
-        else if (colW < 340) editW = 140;
-
-        int toggleMinW = 130;
-        int toggleW = colW - editW - inGap;
-        if (toggleW < toggleMinW)
-        {
-            int need = toggleMinW - toggleW;
-            editW -= need;
-            if (editW < 90) editW = 90;
-            toggleW = colW - editW - inGap;
-        }
-
         int rx = innerX + colW + colGap;
-                // 우선 거래: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
-        {
-            const int BtnSz  = S(18);
-            const int BtnGap = S(4);
-            int iconNeed = BtnSz + BtnGap;
-            int tW = toggleW;
-            int eW = editW;
-            // 아이콘 공간을 위해 편집폭에서 먼저 확보
-            if (eW > 90 + iconNeed) eW -= iconNeed;
-            else if (tW > 70 + iconNeed) tW -= iconNeed;
-            Move(IDC_CHECK_CARD_DETECT,      rx,                   y2 + capH + capGap, tW, FIELD_H);
-            if (m_btnCardDetectInfo.GetSafeHwnd())
-            {
-                int ibX = rx + tW + BtnGap;
-                int ibY = (y2 + capH + capGap) + (FIELD_H - BtnSz) / 2;
-                m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-            }
-            Move(IDC_EDIT_CARD_DETECT_PARAM, rx + tW + iconNeed + inGap, y2 + capH + capGap, eW, FIELD_H);
-        }
+        Move(IDC_STATIC_CASH_RECEIPT, rx, y2, colW, capH);
+        PlaceInfoBtn(m_btnCashReceiptInfo, IDC_STATIC_CASH_RECEIPT, rx, y2, capH);
+        Move(IDC_COMBO_CASH_RECEIPT,  rx, y2 + capH + capGap, colW, FIELD_H);
 
         y2 += capH + capGap + FIELD_H + rowGap;
 
-        // 무서명 / 세금 자동 역산 (2열)
+        // 무서명 / 카드 감지 우선 거래 사용 (2열)
         Move(IDC_STATIC_NO_SIGN_AMOUNT, innerX, y2, colW, capH);
         Move(IDC_EDIT_NO_SIGN_AMOUNT,   innerX, y2 + capH + capGap, colW, FIELD_H);
 
-        Move(IDC_STATIC_TAX_PERCENT,    innerX + colW + colGap, y2, colW, capH);
-        PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX + colW + colGap, y2, capH);
-        Move(IDC_EDIT_TAX_PERCENT,      innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
+        {
+            const int BtnSz   = S(18);
+            const int BtnGap  = S(6);
+            const int toggleY = y2 + capH + capGap;
+            const int rightX  = innerX + colW + colGap;
+
+            // 카드 감지 우선 거래 사용: 세금 자동 역산 자리(2행 오른쪽)로 이동
+            // 토글 오른쪽에 팝오버 아이콘 영역을 확보해서 겹치지 않게 배치
+            int toggleW = colW - (BtnSz + BtnGap);
+            if (toggleW < S(110))
+                toggleW = max(1, colW - (BtnSz + BtnGap));
+
+            Move(IDC_CHECK_CARD_DETECT, rightX, toggleY, toggleW, FIELD_H);
+            if (m_btnCardDetectInfo.GetSafeHwnd())
+            {
+                int ibX = rightX + toggleW + BtnGap;
+                int ibY = toggleY + (FIELD_H - BtnSz) / 2;
+                m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
 
         y2 += capH + capGap + FIELD_H + rowGap;
 
-        // 현금영수증 (1열, 반 폭)
-        Move(IDC_STATIC_CASH_RECEIPT, innerX, y2, colW, capH);
-        PlaceInfoBtn(m_btnCashReceiptInfo, IDC_STATIC_CASH_RECEIPT, innerX, y2, capH);
-        Move(IDC_COMBO_CASH_RECEIPT,  innerX, y2 + capH + capGap, colW, FIELD_H);
+        // 세금 자동 역산 / 우선 거래 프로그램 (2열)
+        Move(IDC_STATIC_TAX_PERCENT, innerX, y2, colW, capH);
+        PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX, y2, capH);
+        Move(IDC_EDIT_TAX_PERCENT,   innerX, y2 + capH + capGap, colW, FIELD_H);
+
+        Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX + colW + colGap, y2, colW, capH);
+        Move(IDC_EDIT_CARD_DETECT_PARAM,     innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
+
         y2 += capH + capGap + FIELD_H;
 
         int payCardH = (y2 + cardPadY) - curY;
@@ -1140,65 +1166,58 @@ void CShopSetupDlg::ApplyLayoutTab1()
 
         // ── 카드 3: 기타 ────────────────────────────────
         {
-            int fy = curY + cPadY + cHdrH;
-            // 스캐너 사용: 토글(라벨+스위치) + 포트 입력(같은 줄)
-            const int inGap2 = 10;
-            int editW2 = 110;
-            if (col2W < 260) editW2 = 90;
-            int toggleMinW2 = 130;
-            int toggleW2 = col2W - editW2 - inGap2;
-            if (toggleW2 < toggleMinW2)
-            {
-                int need = toggleMinW2 - toggleW2;
-                editW2 -= need;
-                if (editW2 < 70) editW2 = 70;
-                toggleW2 = col2W - editW2 - inGap2;
-            }
+            const int etcTopTight  = S(4);   // [TUNE] 기타 카드 첫 줄을 조금 위로 당긴다.
+            const int etcRowGap    = S(10);  // [TUNE] 토글 행과 포트번호 행 간격을 줄인다.
+            const int etcBottomPad = S(10);  // [TUNE] 카드 하단 여백을 줄여 버튼과 겹치지 않게 한다.
+            int fy = curY + cPadY + cHdrH - etcTopTight;
+            const int BtnSz  = S(18);
+            const int BtnGap = S(6);
+            const int leftX  = inX;
+            const int rightX = inX + col2W + cG;
+            const int toggleY = fy;
 
-                        // 스캐너 사용: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            // 행1 좌측: 스캐너 사용 토글 + 팝오버
             {
-                const int BtnSz  = S(18);
-                const int BtnGap = S(4);
-                int iconNeed = BtnSz + BtnGap;
-                int tW = toggleW2;
-                int eW = editW2;
-                if (eW > 70 + iconNeed) eW -= iconNeed;
-                else if (tW > 60 + iconNeed) tW -= iconNeed;
-                Move(IDC_CHECK_SCANNER_USE,   inX,                 fy, tW, FIELD_H);
+                int toggleW = col2W - (BtnSz + BtnGap);
+                if (toggleW < S(110))
+                    toggleW = max(1, col2W - (BtnSz + BtnGap));
+
+                Move(IDC_CHECK_SCANNER_USE, leftX, toggleY, toggleW, FIELD_H);
                 if (m_btnScannerUseInfo.GetSafeHwnd())
                 {
-                    int ibX = inX + tW + BtnGap;
-                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    int ibX = leftX + toggleW + BtnGap;
+                    int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                     m_btnScannerUseInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
                 }
-                Move(IDC_EDIT_SCANNER_PORT,   inX + tW + iconNeed + inGap2, fy, eW, FIELD_H);
             }
 
-            // 멀티보이스 토글(우측, 전체 폭)
-                        // 멀티패드 음성 출력: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            // 행1 우측: 멀티패드 음성 출력 토글 + 팝오버
             {
-                const int BtnSz  = S(18);
-                const int BtnGap = S(6);
-                int mvX = inX + col2W + cG;
                 int mvW = col2W - (BtnSz + BtnGap);
-                if (mvW < S(60)) mvW = max(1, col2W - (BtnSz + BtnGap));
-                Move(IDC_CHECK_MULTI_VOICE, mvX, fy, mvW, FIELD_H);
+                if (mvW < S(110))
+                    mvW = max(1, col2W - (BtnSz + BtnGap));
+
+                Move(IDC_CHECK_MULTI_VOICE, rightX, toggleY, mvW, FIELD_H);
                 if (m_btnMultiVoiceInfo.GetSafeHwnd())
                 {
-                    int ibX = mvX + mvW + BtnGap;
-                    int ibY = fy + (FIELD_H - BtnSz) / 2;
+                    int ibX = rightX + mvW + BtnGap;
+                    int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                     m_btnMultiVoiceInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
                 }
             }
 
-            fy += FIELD_H;
+            fy = toggleY + FIELD_H + etcRowGap;
 
-            int cardH = (fy + cPadY) - curY;
+            // 행2 좌측: 스캐너 포트번호 + EditText
+            Move(IDC_STATIC_SCANNER_PORT_LABEL, leftX, fy, col2W, capH);
+            Move(IDC_EDIT_SCANNER_PORT,         leftX, fy+capH+capG, col2W, FIELD_H);
+
+            int cardH = (fy + capH + capG + FIELD_H + etcBottomPad) - curY;
             m_rcGrpEtc = CRect(cLeft, curY, cRight, curY + cardH);
             // curY = m_rcGrpEtc.bottom + cGapY;  // Tab1 끝
         }
 
-    // =================================================================
+// =================================================================
     // Tab 2: 시스템 설정
     // =================================================================
         curY = y + cOutY;
@@ -1756,10 +1775,10 @@ void CShopSetupDlg::ShowTab(int nTab)
         IDC_STATIC_PORT,       IDC_EDIT_PORT,
         // 결제 방식
         IDC_STATIC_COMM_TYPE,  IDC_COMBO_COMM_TYPE,
-        IDC_CHECK_CARD_DETECT, IDC_EDIT_CARD_DETECT_PARAM,
+        IDC_STATIC_CASH_RECEIPT,   IDC_COMBO_CASH_RECEIPT,
+        IDC_CHECK_CARD_DETECT, IDC_STATIC_CARD_DETECT_POSINFO, IDC_EDIT_CARD_DETECT_PARAM,
         IDC_STATIC_NO_SIGN_AMOUNT, IDC_EDIT_NO_SIGN_AMOUNT,
         IDC_STATIC_TAX_PERCENT,    IDC_EDIT_TAX_PERCENT,
-        IDC_STATIC_CASH_RECEIPT,   IDC_COMBO_CASH_RECEIPT,
         0
     };
 
@@ -1770,7 +1789,7 @@ void CShopSetupDlg::ShowTab(int nTab)
         IDC_STATIC_SIGN_PAD_USE,   IDC_COMBO_SIGN_PAD_USE,
         IDC_STATIC_SIGN_PAD_PORT,  IDC_EDIT_SIGN_PAD_PORT,
         IDC_STATIC_SIGN_PAD_SPEED, IDC_COMBO_SIGN_PAD_SPEED,
-        IDC_CHECK_SCANNER_USE,     IDC_EDIT_SCANNER_PORT,
+        IDC_CHECK_SCANNER_USE,     IDC_STATIC_SCANNER_PORT_LABEL, IDC_EDIT_SCANNER_PORT,
         IDC_CHECK_MULTI_VOICE,
         0
     };
@@ -2323,6 +2342,11 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 void CShopSetupDlg::OnDestroy()
 {
     if (m_popover.IsVisible()) m_popover.Hide();
+
+    CWnd* pPosInfo = GetDlgItem(IDC_STATIC_CARD_DETECT_POSINFO);
+    if (pPosInfo && pPosInfo->GetSafeHwnd())
+        pPosInfo->DestroyWindow();
+
     CDialog::OnDestroy();
 }
 

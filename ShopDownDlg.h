@@ -27,7 +27,13 @@ protected:
     afx_msg void OnSize(UINT nType, int cx, int cy);
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnDestroy();
-    afx_msg BOOL OnNcActivate(BOOL bActive);  // [FIX] xxxSaveDlgFocus O(N^2) 차단
+    afx_msg BOOL OnNcActivate(BOOL bActive);
+    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg void OnMouseLeave();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);  // [FIX] xxxSaveDlgFocus O(N^2) 차단
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()
@@ -139,13 +145,20 @@ private:
 
     // ---------- Pagination ----------------------------------------------------
     int  m_nCurrentPage;                    // 0-based current page index
-    static const int kBtnPrev = 61201;
-    static const int kBtnNext = 61202;
-
-    CModernButton m_btnPrevPage;
-    CModernButton m_btnNextPage;
-
     CRect m_rcNavBar;   // nav bar rect for OnPaint page indicator
+
+    // Custom nav buttons: drawn in OnPaint, hit-tested in OnLButtonDown
+    CRect m_rcPrevBtn;
+    CRect m_rcNextBtn;
+    bool  m_bHoverPrev;
+    bool  m_bHoverNext;
+    bool  m_bPressedPrev;
+    bool  m_bPressedNext;
+    bool  m_bMouseTracked;
+
+    // Page-transition slide animation
+    int   m_nNavAnim;       // 0=idle, 1-3=animating
+    bool  m_bNavAnimNext;  // true=forward, false=backward
 
     void UpdatePageButtons();
     void RefreshPage();  // lightweight page switch (no control reposition)

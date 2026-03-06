@@ -26,6 +26,12 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_SIZE()
     ON_WM_DESTROY()
     ON_WM_NCACTIVATE()    // [FIX] xxxSaveDlgFocus O(N^2) Â÷´Ü
+    ON_WM_LBUTTONDOWN()
+    ON_WM_LBUTTONDBLCLK()
+    ON_WM_LBUTTONUP()
+    ON_WM_MOUSEMOVE()
+    ON_WM_MOUSELEAVE()
+    ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -87,6 +93,13 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_pFontVal(nullptr)
     , m_pFontValBold(nullptr)
     , m_pFontFamily(nullptr)
+    , m_bHoverPrev(false)
+    , m_bHoverNext(false)
+    , m_bPressedPrev(false)
+    , m_bPressedNext(false)
+    , m_bMouseTracked(false)
+    , m_nNavAnim(0)
+    , m_bNavAnimNext(false)
 {
 
 }
@@ -139,19 +152,6 @@ BOOL CShopDownDlg::OnInitDialog()
 
     CreateControlsOnce();
 
-    // Create Prev/Next navigation buttons (always visible)
-    m_btnPrevPage.Create(_T("<"),
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-        CRect(0,0,10,10), this, kBtnPrev);
-    m_btnPrevPage.SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
-
-    m_btnNextPage.Create(_T(">"),
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-        CRect(0,0,10,10), this, kBtnNext);
-    m_btnNextPage.SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
-    m_btnPrevPage.SetUnderlayColor(KFTC_DLG_CONTENT_BG);
-    m_btnNextPage.SetUnderlayColor(KFTC_DLG_CONTENT_BG);
-    //m_btnNextPage.SetButtonStyle(ButtonStyle::Primary);
 
     ApplyFonts();
     LayoutControls();
@@ -296,7 +296,7 @@ void CShopDownDlg::LayoutControls()
     const int pageStart = m_nCurrentPage * kRowsPerPage;
 
     // prod/biz/pwd/download/delete (5 per row) + 2 nav buttons
-    HDWP hdwp = ::BeginDeferWindowPos(kRowsPerPage * 5 + 2);
+    HDWP hdwp = ::BeginDeferWindowPos(kRowsPerPage * 5);
 
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
@@ -404,24 +404,13 @@ void CShopDownDlg::LayoutControls()
     const int navY = navY_bot;
     m_rcNavBar.SetRect(padX, navY, rc.right - padX, navY + navH);
 
-    const int navBtnW = ModernUIDpi::Scale(m_hWnd, 72);
-    const int navBtnH = ModernUIDpi::Scale(m_hWnd, 28);
-    const int navBtnY = navY + (navH - navBtnH) / 2;
-    const int midX    = rc.Width() / 2;
-    const int half    = ModernUIDpi::Scale(m_hWnd, 56);
-
-    if (m_btnPrevPage.GetSafeHwnd())
-    {
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnPrevPage.m_hWnd, NULL,
-            midX - half - navBtnW, navBtnY, navBtnW, navBtnH,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-    }
-    if (m_btnNextPage.GetSafeHwnd())
-    {
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnNextPage.m_hWnd, NULL,
-            midX + half, navBtnY, navBtnW, navBtnH,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-    }
+    // Custom nav buttons: calculate rects for OnPaint drawing and hit-test
+    const int navBtnSz = ModernUIDpi::Scale(m_hWnd, 28);
+    const int midX     = rc.Width() / 2;
+    const int half     = ModernUIDpi::Scale(m_hWnd, 60);
+    const int navBtnY  = navY + (navH - navBtnSz) / 2 + ModernUIDpi::Scale(m_hWnd, 4);
+    m_rcPrevBtn.SetRect(midX - half - navBtnSz, navBtnY, midX - half, navBtnY + navBtnSz);
+    m_rcNextBtn.SetRect(midX + half, navBtnY, midX + half + navBtnSz, navBtnY + navBtnSz);
 
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
@@ -452,8 +441,6 @@ BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
     UINT nCode = HIWORD(wParam);
     if (nCode == BN_CLICKED)
     {
-        if (nID == kBtnPrev) { OnPrevPageClick(); return TRUE; }
-        if (nID == kBtnNext) { OnNextPageClick(); return TRUE; }
         if (nID >= kBtnBase && nID < kBtnBase + kRowsPerPage)
         {
             int slot   = (int)(nID - kBtnBase);
@@ -777,26 +764,111 @@ void CShopDownDlg::OnPaint()
         }
     }
 
-    // Draw page indicator in navigation bar
-    if (!m_rcNavBar.IsRectEmpty())
+    // Draw modern circular prev/next nav buttons + page indicator
+    if (!m_rcNavBar.IsRectEmpty() && !m_rcPrevBtn.IsRectEmpty())
     {
-        CString pageStr;
-        pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
-        const float navCX = (float)(m_rcNavBar.left + m_rcNavBar.right) / 2.f;
-        const float navCY = (float)(m_rcNavBar.top + m_rcNavBar.bottom) / 2.f;
-        const float pw = (float)ModernUIDpi::Scale(m_hWnd, 80);
-        const float ph = (float)ModernUIDpi::Scale(m_hWnd, 28);
-        Gdiplus::RectF navRF(navCX - pw/2.f, navCY - ph/2.f, pw, ph);
-        Gdiplus::StringFormat sfNav;
-        sfNav.SetAlignment(Gdiplus::StringAlignmentCenter);
-        sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        Gdiplus::SolidBrush brNav(Gdiplus::Color(255, 60, 70, 90));
+        const bool bCanPrev = (m_nCurrentPage > 0);
+        const bool bCanNext = (m_nCurrentPage < kTotalPages - 1);
+
+        // bPressed: draw slightly shrunk circle + darker fill for tactile feedback
+        auto DrawNavCircleBtn = [&](const CRect& btnRc, bool bEnabled, bool bHover, bool bPressed, bool bLeft)
+        {
+            Gdiplus::RectF rf((float)btnRc.left, (float)btnRc.top,
+                              (float)btnRc.Width(), (float)btnRc.Height());
+
+            // Pressed: shrink circle 10% for visual feedback
+            if (bPressed && bEnabled)
+            {
+                float shrink = rf.Width * 0.10f;
+                rf.X      += shrink / 2.f;
+                rf.Y      += shrink / 2.f;
+                rf.Width  -= shrink;
+                rf.Height -= shrink;
+            }
+
+            // Background circle  (BLUE_500 / BLUE_400 / BLUE_600 palette)
+            Gdiplus::Color fillClr;
+            if (!bEnabled)
+                fillClr = Gdiplus::Color(255, 235, 237, 240);   // KFTC_BTN_DISABLED_BG
+            else if (bPressed)
+                fillClr = Gdiplus::Color(255,   0,  76, 168);   // BLUE_600
+            else if (bHover)
+                fillClr = Gdiplus::Color(255,  15, 124, 255);   // BLUE_400 (KFTC_PRIMARY_HOVER)
+            else
+                fillClr = Gdiplus::Color(255,   0, 100, 221);   // BLUE_500 (KFTC_PRIMARY)
+
+            Gdiplus::SolidBrush brFill(fillClr);
+            g.FillEllipse(&brFill, rf);
+
+            // Chevron arrow
+            const float cx = rf.X + rf.Width / 2.f;
+            const float cy = rf.Y + rf.Height / 2.f;
+            const float aw = rf.Width  * 0.17f;
+            const float ah = rf.Height * 0.25f;
+
+            Gdiplus::Color arrowClr = bEnabled
+                ? Gdiplus::Color(255, 255, 255, 255)
+                : Gdiplus::Color(255, 148, 163, 184);   // GRAY_400 equivalent
+
+            Gdiplus::Pen pen(arrowClr, rf.Width * 0.085f);
+            pen.SetStartCap(Gdiplus::LineCapRound);
+            pen.SetEndCap(Gdiplus::LineCapRound);
+            pen.SetLineJoin(Gdiplus::LineJoinRound);
+
+            if (bLeft) {
+                Gdiplus::PointF pts[3] = {
+                    { cx + aw, cy - ah },
+                    { cx - aw, cy      },
+                    { cx + aw, cy + ah }
+                };
+                g.DrawLines(&pen, pts, 3);
+            } else {
+                Gdiplus::PointF pts[3] = {
+                    { cx - aw, cy - ah },
+                    { cx + aw, cy      },
+                    { cx - aw, cy + ah }
+                };
+                g.DrawLines(&pen, pts, 3);
+            }
+        };
+
+        DrawNavCircleBtn(m_rcPrevBtn, bCanPrev, m_bHoverPrev, m_bPressedPrev, true);
+        DrawNavCircleBtn(m_rcNextBtn, bCanNext, m_bHoverNext, m_bPressedNext, false);
+
+        // Page indicator: slides in from direction on page change
+        {
+            CString pageStr;
+            pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
+            const float navCX = (float)(m_rcPrevBtn.right + m_rcNextBtn.left) / 2.f;
+            const float navCY = (float)(m_rcPrevBtn.top + m_rcPrevBtn.bottom) / 2.f;
+            const float pw = (float)ModernUIDpi::Scale(m_hWnd, 80);
+            const float ph = (float)ModernUIDpi::Scale(m_hWnd, 28);
+            float yOff = 0.f;
+            Gdiplus::Color textClr(255, 60, 70, 90);
+            if (m_nNavAnim > 0)
+            {
+                const int dir = m_bNavAnimNext ? 1 : -1;
+                const float step = (float)ModernUIDpi::Scale(m_hWnd, 9);
+                yOff = (float)(dir * m_nNavAnim) * step;
+                BYTE a = (BYTE)(85 + 56 * (3 - m_nNavAnim));
+                textClr = Gdiplus::Color(a, 0, 100, 221);
+            }
+            Gdiplus::RectF navRF(navCX - pw/2.f, navCY - ph/2.f + yOff, pw, ph);
+            Gdiplus::StringFormat sfNav;
+            sfNav.SetAlignment(Gdiplus::StringAlignmentCenter);
+            sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            Gdiplus::RectF clipRF((float)m_rcNavBar.left, (float)m_rcNavBar.top,
+                                  (float)m_rcNavBar.Width(), (float)m_rcNavBar.Height());
+            g.SetClip(clipRF);
+            Gdiplus::SolidBrush brNav(textClr);
 #ifdef UNICODE
-        g.DrawString(pageStr, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+            g.DrawString(pageStr, -1, m_pFontValBold, navRF, &sfNav, &brNav);
 #else
-        CStringW wPage(pageStr);
-        g.DrawString(wPage, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+            CStringW wPage(pageStr);
+            g.DrawString(wPage, -1, m_pFontValBold, navRF, &sfNav, &brNav);
 #endif
+            g.ResetClip();
+        }
     }
 
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
@@ -900,18 +972,126 @@ void CShopDownDlg::RefreshPage()
 
 void CShopDownDlg::OnPrevPageClick()
 {
-    if (m_nCurrentPage > 0) { m_nCurrentPage--; RefreshPage(); }
+    if (m_nCurrentPage > 0)
+    {
+        m_nCurrentPage--;
+        m_bNavAnimNext = false; m_nNavAnim = 3;
+        KillTimer(42); SetTimer(42, 50, NULL);
+        RefreshPage();
+    }
 }
 
 void CShopDownDlg::OnNextPageClick()
 {
-    if (m_nCurrentPage < kTotalPages - 1) { m_nCurrentPage++; RefreshPage(); }
+    if (m_nCurrentPage < kTotalPages - 1)
+    {
+        m_nCurrentPage++;
+        m_bNavAnimNext = true; m_nNavAnim = 3;
+        KillTimer(42); SetTimer(42, 50, NULL);
+        RefreshPage();
+    }
 }
 
+// ============================================================================
+// OnLButtonDown - hit-test custom nav buttons
+// ============================================================================
+void CShopDownDlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+    bool bHitPrev = (!m_rcPrevBtn.IsRectEmpty() && m_rcPrevBtn.PtInRect(point));
+    bool bHitNext = (!m_rcNextBtn.IsRectEmpty() && m_rcNextBtn.PtInRect(point));
+    if (bHitPrev || bHitNext)
+    {
+        m_bPressedPrev = bHitPrev;
+        m_bPressedNext = bHitNext;
+        SetCapture();
+        Invalidate(FALSE);
+    }
+    else
+    {
+        CDialog::OnLButtonDown(nFlags, point);
+    }
+}
+
+// ============================================================================
+// OnMouseMove / OnMouseLeave - hover state for custom nav buttons
+// ============================================================================
+void CShopDownDlg::OnMouseMove(UINT nFlags, CPoint point)
+{
+    if (!m_bMouseTracked)
+    {
+        TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, m_hWnd, 0 };
+        ::TrackMouseEvent(&tme);
+        m_bMouseTracked = true;
+    }
+    bool hp = (!m_rcPrevBtn.IsRectEmpty() && m_rcPrevBtn.PtInRect(point)) ? true : false;
+    bool hn = (!m_rcNextBtn.IsRectEmpty() && m_rcNextBtn.PtInRect(point)) ? true : false;
+    if (hp != m_bHoverPrev || hn != m_bHoverNext)
+    {
+        m_bHoverPrev = hp;
+        m_bHoverNext = hn;
+        Invalidate(FALSE);
+    }
+    CDialog::OnMouseMove(nFlags, point);
+}
+
+
+// ============================================================================
+// OnLButtonDblClk - treat rapid double-click same as single click
+// ============================================================================
+void CShopDownDlg::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+    OnLButtonDown(nFlags, point);
+}
+// ============================================================================
+// OnLButtonUp - fire nav click on release (no UpdateWindow delay)
+// ============================================================================
+void CShopDownDlg::OnLButtonUp(UINT nFlags, CPoint point)
+{
+    if (m_bPressedPrev || m_bPressedNext)
+    {
+        bool wasPrev = m_bPressedPrev;
+        bool wasNext = m_bPressedNext;
+        m_bPressedPrev = false;
+        m_bPressedNext = false;
+        ReleaseCapture();
+        Invalidate(FALSE);
+        if (wasPrev && m_nCurrentPage > 0)
+            OnPrevPageClick();
+        else if (wasNext && m_nCurrentPage < kTotalPages - 1)
+            OnNextPageClick();
+    }
+    else
+    {
+        CDialog::OnLButtonUp(nFlags, point);
+    }
+}
+void CShopDownDlg::OnMouseLeave()
+{
+    m_bMouseTracked = false;
+    m_bPressedPrev = false;
+    m_bPressedNext = false;
+    if (m_bHoverPrev || m_bHoverNext)
+    {
+        m_bHoverPrev = false;
+        m_bHoverNext = false;
+        Invalidate(FALSE);
+    }
+}
+// ============================================================================
+// OnTimer - page indicator slide animation tick
+// ============================================================================
+void CShopDownDlg::OnTimer(UINT_PTR nIDEvent)
+{
+    if (nIDEvent == 42 && m_nNavAnim > 0)
+    {
+        m_nNavAnim--;
+        Invalidate(FALSE);
+        if (m_nNavAnim == 0) KillTimer(42);
+        return;
+    }
+    CDialog::OnTimer(nIDEvent);
+}
 void CShopDownDlg::UpdatePageButtons()
 {
-    if (m_btnPrevPage.GetSafeHwnd())
-        m_btnPrevPage.EnableWindow(m_nCurrentPage > 0);
-    if (m_btnNextPage.GetSafeHwnd())
-        m_btnNextPage.EnableWindow(m_nCurrentPage < kTotalPages - 1);
+    Invalidate(FALSE);
 }
