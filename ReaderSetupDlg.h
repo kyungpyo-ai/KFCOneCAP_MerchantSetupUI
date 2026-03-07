@@ -36,6 +36,9 @@ protected:
 		CPoint& sec2TitlePt
 	) const;
 
+	CRect CalcPortSectionBox(const CRect& card1, const CRect& card2) const;
+	CRect CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const;
+
 	virtual void DoDataExchange(CDataExchange* pDX);
 	BOOL m_bUIReady;
 
@@ -45,7 +48,9 @@ protected:
 
 	CFont m_fontTitle;
 	CFont m_fontSub;
+	CFont m_fontSection;
 	CFont m_fontNormal;
+	CFont m_fontLabel;
 	CFont m_fontSmall;
 
 	int   m_dpi; // 96 기준 스케일
@@ -58,6 +63,7 @@ protected:
 	void  ApplyEnableStateToButtons(int readerIndex, BOOL bEnable);
 
 	void  HideLegacyStatics(); // "리더기1/2/조회 범위" 같은 기존 static 숨김
+	void  RecalcIntegrityColumns(); // 무결성 리스트 컬럼 너비를 화면 폭에 맞게 재계산
 
 	//{{AFX_MSG(CReaderSetupDlg)
 	//virtual BOOL OnInitDialog();
@@ -66,8 +72,6 @@ protected:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
 
-	afx_msg void OnCbnSelchangeComport1();
-	afx_msg void OnCbnSelchangeComport2();
 	//}}AFX_MSG
 	
 // Construction

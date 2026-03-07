@@ -67,13 +67,23 @@ void CReaderSetupDlg::EnsureFonts()
 	lf.lfWeight = FW_NORMAL;
 	m_fontSub.CreateFontIndirect(&lf);
 
+	// Section title
+	lf.lfHeight = -SX(14);
+	lf.lfWeight = FW_BOLD;
+	m_fontSection.CreateFontIndirect(&lf);
+
 	// Normal
 	lf.lfHeight = -SX(13);
 	lf.lfWeight = FW_NORMAL;
 	m_fontNormal.CreateFontIndirect(&lf);
 
+	// Label
+	lf.lfHeight = -SX(12);
+	lf.lfWeight = FW_NORMAL;
+	m_fontLabel.CreateFontIndirect(&lf);
+
 	// Small
-	lf.lfHeight = -SX(11);
+	lf.lfHeight = -SX(12);
 	lf.lfWeight = FW_NORMAL;
 	m_fontSmall.CreateFontIndirect(&lf);
 }
@@ -119,45 +129,48 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int margin = SX(18);
 	inner = CRect(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 
-	// »ó´Ü Å¸ÀÌÆ² ºí·°(¸®´õ±â ¼³Á¤ + ¼­ºê + ¶óÀÎ)
-	const int titleBlock = SX(92);        // ½º¼¦ ´À³¦À¸·Î ¾à°£ ¿©À¯
+	const int titleBlock = SX(92);
 	const int sectionTitleH = SX(28);
-
-	int y = inner.top + titleBlock;
-
-	// ¼½¼Ç1 Á¦¸ñ À§Ä¡(¸®´õ±â ¼³Á¤)
-	sec1TitlePt = CPoint(inner.left + SX(24), y);
-	y += sectionTitleH + SX(10);
-
-	// Ä«µå(¸®´õ±â1/2)
-	const int cardH = SX(118);	// 2Çà ·¹ÀÌ¾Æ¿ô(¶óº§+ÄÞº¸Çà, ¹öÆ°Çà)
+	const int sectionTitleTop = SX(18);
+	const int sectionTitleGap = SX(16);
+	const int sectionBoxPad = SX(18);
+	const int cardH = SX(118);
 	const int cardGap = SX(14);
-
-	card1 = CRect(inner.left, y, inner.right, y + cardH);
-	y = card1.bottom + cardGap;
-
-	card2 = CRect(inner.left, y, inner.right, y + cardH);
-	y = card2.bottom + SX(22);
-
-	// ¼½¼Ç2 Á¦¸ñ À§Ä¡(¸®´õ±â Á¤º¸)
-	sec2TitlePt = CPoint(inner.left + SX(24), y);
-	y += sectionTitleH + SX(10);
-
-	// Á¶È¸ ¹Ú½º
 	const int queryH = SX(62);
-	queryBox = CRect(inner.left, y, inner.right, y + queryH);
-	y = queryBox.bottom + SX(12);
-
-	// ¸®½ºÆ®
+	const int queryGap = SX(12);
+	const int infoBottomPad = SX(18);
 	const int bottomBtnH = SX(42);
 	const int bottomGap = SX(16);
 	const int bottomArea = bottomBtnH + bottomGap + SX(8);
 
-	int listH = inner.bottom - y - bottomArea;
-	if (listH < SX(180)) listH = SX(180);
-	listRc = CRect(inner.left, y, inner.right, y + listH);
+	int y = inner.top + titleBlock;
 
-	// ÇÏ´Ü ¹öÆ° (°¡¿îµ¥ Á¤·Ä)
+	const int sectionLeft = inner.left + SX(12);
+	const int sectionRight = inner.right - SX(12);
+	const int cardLeft = sectionLeft + sectionBoxPad;
+	const int cardRight = sectionRight - sectionBoxPad;
+
+	sec1TitlePt = CPoint(sectionLeft + SX(24), y + sectionTitleTop);
+	int sec1ContentTop = y + sectionTitleTop + sectionTitleH + sectionTitleGap;
+
+	card1 = CRect(cardLeft, sec1ContentTop, cardRight, sec1ContentTop + cardH);
+	card2 = CRect(cardLeft, card1.bottom + cardGap, cardRight, card1.bottom + cardGap + cardH);
+	y = card2.bottom + sectionBoxPad + SX(26);
+
+	sec2TitlePt = CPoint(sectionLeft + SX(24), y + sectionTitleTop);
+	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + sectionTitleGap;
+
+	queryBox = CRect(sectionLeft + sectionBoxPad, sec2ContentTop,
+		sectionRight - sectionBoxPad, y + sectionBoxPad + queryH);
+	y = queryBox.bottom + queryGap;
+
+	int listTop = y;
+	int listBottomLimit = inner.bottom - bottomArea - infoBottomPad - sectionBoxPad;
+	int listH = listBottomLimit - listTop;
+	if (listH < SX(180)) listH = SX(180);
+	listRc = CRect(sectionLeft + sectionBoxPad, listTop,
+		sectionRight - sectionBoxPad, listTop + listH);
+
 	int bw = SX(108), bh = bottomBtnH, bgap = SX(14);
 	int totalW = bw * 2 + bgap;
 	int bx = inner.left + (inner.Width() - totalW) / 2;
@@ -165,13 +178,52 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 	okRc = CRect(bx, by, bx + bw, by + bh);
 	cancelRc = CRect(bx + bw + bgap, by, bx + bw + bgap + bw, by + bh);
-
-	// (infoTitleArea´Â ÇÊ¿ä ½Ã È®Àå¿ë)
 	infoTitleArea = CRect(sec2TitlePt.x, sec2TitlePt.y, inner.right, sec2TitlePt.y + sectionTitleH);
+}
+
+CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2) const
+{
+	return CRect(card1.left - SX(20), card1.top - SX(72), card1.right + SX(20), card2.bottom + SX(18));
+}
+
+CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
+{
+	return CRect(queryBox.left - SX(20), queryBox.top - SX(72), queryBox.right + SX(20), listRc.bottom + SX(18));
+}
+
+void CReaderSetupDlg::RecalcIntegrityColumns()
+{
+	if (!m_bUIReady || !::IsWindow(m_integrity_list.GetSafeHwnd()))
+		return;
+
+	CRect rcList;
+	m_integrity_list.GetClientRect(&rcList);
+	if (rcList.Width() <= 20)
+		return;
+
+	// °¡·Î ½ºÅ©·ÑÀÌ »ý±âÁö ¾Êµµ·Ï ÇöÀç ¸®½ºÆ® Æø¿¡ ¸ÂÃç ÄÃ·³ ÆøÀ» ´Ù½Ã °è»êÇÑ´Ù.
+	// ºñÀ² ÇÕ°è´Â 100ÀÌ¸ç, ¸¶Áö¸· ÄÃ·³¿¡¼­ ³²´Â ÆøÀ» Èí¼öÇÑ´Ù.
+	const int ratios[] = { 14, 12, 11, 13, 24, 26 };
+	const int colCount = sizeof(ratios) / sizeof(ratios[0]);
+	const int bodyWidth = max(120, rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - SX(6));
+
+	int used = 0;
+	for (int i = 0; i < colCount; ++i)
+	{
+		int cx = (i == colCount - 1) ? (bodyWidth - used) : (bodyWidth * ratios[i]) / 100;
+		if (cx < SX(52))
+			cx = SX(52);
+		m_integrity_list.SetColumnWidth(i, cx);
+		used += cx;
+	}
 }
 
 void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 {
+	const COLORREF cardBgEnabled  = RGB(255, 255, 255);
+	const COLORREF cardBgDisabled = RGB(251, 252, 253);
+	const COLORREF cardBg = bEnable ? cardBgEnabled : cardBgDisabled;
+
 	if (readerIndex == 1)
 	{
 		m_reader_init1.EnableWindow(bEnable);
@@ -182,6 +234,16 @@ void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 		m_togglePortOpen1.EnableWindow(bEnable);
 		m_toggleMultipad1.EnableWindow(bEnable);
 		m_bReader1Enabled = bEnable;
+
+		m_reader_init1.SetUnderlayColor(cardBg);
+		m_status_check1.SetUnderlayColor(cardBg);
+		m_keydown1.SetUnderlayColor(cardBg);
+		m_integrity_check1.SetUnderlayColor(cardBg);
+		m_update1.SetUnderlayColor(cardBg);
+		m_togglePortOpen1.SetUnderlayColor(cardBg);
+		m_toggleMultipad1.SetUnderlayColor(cardBg);
+		m_comport1.SetUnderlayColor(cardBg);
+		m_comport1.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_FRAME);
 	}
 	else
 	{
@@ -193,6 +255,16 @@ void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 		m_togglePortOpen2.EnableWindow(bEnable);
 		m_toggleMultipad2.EnableWindow(bEnable);
 		m_bReader2Enabled = bEnable;
+
+		m_reader_init2.SetUnderlayColor(cardBg);
+		m_status_check2.SetUnderlayColor(cardBg);
+		m_keydown2.SetUnderlayColor(cardBg);
+		m_integrity_check2.SetUnderlayColor(cardBg);
+		m_update2.SetUnderlayColor(cardBg);
+		m_togglePortOpen2.SetUnderlayColor(cardBg);
+		m_toggleMultipad2.SetUnderlayColor(cardBg);
+		m_comport2.SetUnderlayColor(cardBg);
+		m_comport2.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_FRAME);
 	}
 }
 
@@ -230,84 +302,73 @@ void CReaderSetupDlg::LayoutControls()
 	CPoint sec1Pt, sec2Pt;
 	CalcLayoutRects(inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc, sec1Pt, sec2Pt);
 
-	const int padL   = SX(74);   // ¹èÁö(54) + ÁÂ¿ìÆÐµù
-	const int padR   = SX(16);
-	const int gap    = SX(8);
-	const int comboW = SX(200);
-	const int btnW   = SX(84);
-	const int btnH   = SX(32);
-	const int toggleW = SX(50);
+	const int padL = SX(64);
+	const int padR = SX(22);
+	const int comboW = SX(178);
+	const int btnW = SX(78);
+	const int btnH = SX(36);
+	const int gap = SX(8);
+	const int toggleW = SX(52);
 	const int toggleH = SX(28);
-	const int labelH  = SX(18);
-	const int rowComboY = SX(28);  // Ä«µå »ó´Ü ¶óº§ ¾Æ·¡ ÄÞº¸Çà ¿ÀÇÁ¼Â
-	const int rowBtnY  = SX(64);   // ¹öÆ°Çà ¿ÀÇÁ¼Â
+	const int rowComboY = SX(34);
+	const int rowBtnY = SX(76);
+	const int openLabelW = SX(56);
+	const int multiLabelW = SX(74);
+	const int textGap = SX(8);
+	const int toggleBlockGap = SX(18);
 
-	// Ä«µå ³»ºÎ ÄÁÆ®·Ñ ¹èÄ¡ ¶÷´Ù
-	auto placeReaderCard = [&](
-		const CRect& card,
+	auto placeReaderCard = [&](const CRect& card,
 		CSkinnedComboBox& cb,
-		CModernButton& bInit,  CModernButton& bStatus,
-		CModernButton& bKey,   CModernButton& bInteg,
+		CModernButton& bInit, CModernButton& bStatus,
+		CModernButton& bKey, CModernButton& bInteg,
 		CModernButton& bUpdate,
 		CModernToggleSwitch& tgOpen, CModernToggleSwitch& tgPad)
 	{
-		// --- ÄÞº¸ Çà ---
 		int x0 = card.left + padL;
 		int yCombo = card.top + rowComboY;
-		cb.SetWindowPos(NULL, x0, yCombo, comboW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		cb.SetWindowPos(NULL, x0, yCombo, comboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
 
-		// Æ÷Æ® ¿­±â Åä±Û
-		int xToggleOpen = x0 + comboW + SX(76); // offset includes room for label
+		int xTogglePad = card.right - padR - toggleW;
+		int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
+		int xToggleOpen = xTogglePadLabel - toggleBlockGap - toggleW;
+		if (xToggleOpen < x0 + comboW + SX(70))
+			xToggleOpen = x0 + comboW + SX(70);
 		tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo + (btnH - toggleH) / 2,
 			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		// ¸ÖÆ¼ÆÐµå ¿©ºÎ Åä±Û
-		int xTogglePad = xToggleOpen + toggleW + SX(94); // offset includes room for label
 		tgPad.SetWindowPos(NULL, xTogglePad, yCombo + (btnH - toggleH) / 2,
 			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		// --- ¹öÆ° Çà ---
 		int yBtn = card.top + rowBtnY;
 		int bx = x0;
-		bInit.SetWindowPos(NULL,   bx,                     yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bStatus.SetWindowPos(NULL, bx + (btnW + gap),      yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bKey.SetWindowPos(NULL,    bx + (btnW + gap) * 2,  yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bInteg.SetWindowPos(NULL,  bx + (btnW + gap) * 3,  yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4,  yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bInit.SetWindowPos(NULL, bx, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bStatus.SetWindowPos(NULL, bx + (btnW + gap), yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bKey.SetWindowPos(NULL, bx + (btnW + gap) * 2, yBtn, btnW + SX(6), btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bInteg.SetWindowPos(NULL, bx + (btnW + gap) * 3 + SX(6), yBtn, btnW + SX(10), btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4 + SX(16), yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 	};
 
 	placeReaderCard(card1, m_comport1,
 		m_reader_init1, m_status_check1, m_keydown1, m_integrity_check1, m_update1,
 		m_togglePortOpen1, m_toggleMultipad1);
-
 	placeReaderCard(card2, m_comport2,
 		m_reader_init2, m_status_check2, m_keydown2, m_integrity_check2, m_update2,
 		m_togglePortOpen2, m_toggleMultipad2);
 
-	// Á¶È¸ ¿µ¿ª
-	int qx = queryBox.left + SX(24);
-	int qy = queryBox.top + (queryBox.Height() - SX(32)) / 2;
-	int qComboW = SX(140);
+	int qx = queryBox.left;
+	int qy = queryBox.top + (queryBox.Height() - SX(36)) / 2;
+	int qComboW = SX(120);
+	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(62), SX(36), SWP_NOZORDER | SWP_NOACTIVATE);
 
-	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(32), SWP_NOZORDER | SWP_NOACTIVATE);
-
-	if (CWnd* pSearch = GetDlgItem(IDC_SEARCH))
-		pSearch->SetWindowPos(NULL, qx + qComboW + SX(10), qy,
-			SX(74), SX(32), SWP_NOZORDER | SWP_NOACTIVATE);
-
-	// ¸®½ºÆ®
 	m_integrity_list.SetWindowPos(NULL, listRc.left, listRc.top, listRc.Width(), listRc.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
-
-	// ÇÏ´Ü ¹öÆ°
-	if (CWnd* pOK = GetDlgItem(IDOK))
-		pOK->SetWindowPos(NULL, okRc.left, okRc.top, okRc.Width(), okRc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
-
-	if (CWnd* pCancel = GetDlgItem(IDCANCEL))
-		pCancel->SetWindowPos(NULL, cancelRc.left, cancelRc.top, cancelRc.Width(), cancelRc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_btnOk.SetWindowPos(NULL, okRc.left, okRc.top, okRc.Width(), okRc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_btnCancel.SetWindowPos(NULL, cancelRc.left, cancelRc.top, cancelRc.Width(), cancelRc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// CReaderSetupDlg dialog/////////////////////////////////////////////////////////////////////////////
 // CReaderSetupDlg dialog
 
 
@@ -317,6 +378,8 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_bUIReady = FALSE;
 	m_bFitDone = FALSE;
 	m_dpi = 96;
+	m_bReader1Enabled = FALSE;
+	m_bReader2Enabled = FALSE;
 	//{{AFX_DATA_INIT(CReaderSetupDlg)
 		// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
@@ -353,20 +416,15 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	//{{AFX_MSG_MAP(CReaderSetupDlg)
 	ON_CBN_SELCHANGE(IDC_COMPORT1, OnSelchangeComport1)
 	ON_CBN_SELCHANGE(IDC_COMPORT2, OnSelchangeComport2)
-	
 	//}}AFX_MSG_MAP
-
-
 	ON_WM_PAINT()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
 	ON_WM_DRAWITEM()
-
-	ON_CBN_SELCHANGE(IDC_COMPORT1, OnCbnSelchangeComport1)
-	ON_CBN_SELCHANGE(IDC_COMPORT2, OnCbnSelchangeComport2)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
+// CReaderSetupDlg message handlers/////////////////////////////////////////////////////////////////////////////
 // CReaderSetupDlg message handlers
 
 int CReaderSetupDlg::GetWindowsVersion()
@@ -482,9 +540,8 @@ BOOL CReaderSetupDlg::OnInitDialog()
 		m_comport2.AddString(buff);
 	}
 
-	CString com_port1;
-	CString com_port2;
-
+	CString com_port1 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, _T(""));
+	CString com_port2 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, _T(""));
 
 	if (com_port1.GetLength() == 0) {
 		com_port1 = "¹Ì»ç¿ë";
@@ -537,7 +594,31 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 	m_search_date.SetCurSel(0);
 
-	ListView_SetExtendedListViewStyle(m_integrity_list.GetSafeHwnd(), LVS_EX_GRIDLINES);
+	// ÆùÆ®¿Í ÅØ½ºÆ® Å©±â¸¦ ShopSetupDlg ´À³¦¿¡ °¡±õ°Ô ¸ÂÃá´Ù.
+	m_comport1.SetFont(&m_fontNormal);
+	m_comport2.SetFont(&m_fontNormal);
+	m_search_date.SetFont(&m_fontNormal);
+	m_reader_init1.SetFont(&m_fontNormal);
+	m_status_check1.SetFont(&m_fontNormal);
+	m_keydown1.SetFont(&m_fontNormal);
+	m_integrity_check1.SetFont(&m_fontNormal);
+	m_update1.SetFont(&m_fontNormal);
+	m_reader_init2.SetFont(&m_fontNormal);
+	m_status_check2.SetFont(&m_fontNormal);
+	m_keydown2.SetFont(&m_fontNormal);
+	m_integrity_check2.SetFont(&m_fontNormal);
+	m_update2.SetFont(&m_fontNormal);
+	m_btnSearch.SetFont(&m_fontNormal);
+	m_btnOk.SetFont(&m_fontNormal);
+	m_btnCancel.SetFont(&m_fontNormal);
+	m_integrity_list.SetFont(&m_fontNormal);
+
+	DWORD exStyle = LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT;
+#ifdef LVS_EX_DOUBLEBUFFER
+	exStyle |= LVS_EX_DOUBLEBUFFER;
+#endif
+	ListView_SetExtendedListViewStyle(m_integrity_list.GetSafeHwnd(), exStyle);
+	m_integrity_list.ModifyStyle(0, LVS_SHOWSELALWAYS);
 	for(i = 0 ; col_info[i].column_name != NULL ; ++i)
 		m_integrity_list.InsertColumn(i, col_info[i].column_name, col_info[i].format, col_info[i].width * 8);
 
@@ -552,6 +633,25 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 	EnsureFonts();
 	HideLegacyStatics();
+
+	// ÆùÆ®¿Í ÅØ½ºÆ® Å©±â¸¦ ShopSetupDlg ´À³¦¿¡ °¡±õ°Ô ¸ÂÃá´Ù.
+	m_comport1.SetFont(&m_fontNormal);
+	m_comport2.SetFont(&m_fontNormal);
+	m_search_date.SetFont(&m_fontNormal);
+	m_reader_init1.SetFont(&m_fontNormal);
+	m_status_check1.SetFont(&m_fontNormal);
+	m_keydown1.SetFont(&m_fontNormal);
+	m_integrity_check1.SetFont(&m_fontNormal);
+	m_update1.SetFont(&m_fontNormal);
+	m_reader_init2.SetFont(&m_fontNormal);
+	m_status_check2.SetFont(&m_fontNormal);
+	m_keydown2.SetFont(&m_fontNormal);
+	m_integrity_check2.SetFont(&m_fontNormal);
+	m_update2.SetFont(&m_fontNormal);
+	m_btnSearch.SetFont(&m_fontNormal);
+	m_btnOk.SetFont(&m_fontNormal);
+	m_btnCancel.SetFont(&m_fontNormal);
+	m_integrity_list.SetFont(&m_fontNormal);
 
 	// === ModernUI ½ºÅ¸ÀÏ Àû¿ë ===
 	// ÄÞº¸¹Ú½º ½ºÅ²
@@ -581,6 +681,22 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_btnSearch.SubclassDlgItem(IDC_SEARCH, this);
 	m_btnSearch.SetButtonStyle(ButtonStyle::Primary);
 
+	m_reader_init1.SetWindowText(_T("ÃÊ±âÈ­"));
+	m_status_check1.SetWindowText(_T("»óÅÂÃ¼Å©"));
+	m_keydown1.SetWindowText(_T("Å°´Ù¿î·Îµå"));
+	m_integrity_check1.SetWindowText(_T("¹«°á¼ºÃ¼Å©"));
+	m_update1.SetWindowText(_T("¾÷µ¥ÀÌÆ®"));
+	m_reader_init2.SetWindowText(_T("ÃÊ±âÈ­"));
+	m_status_check2.SetWindowText(_T("»óÅÂÃ¼Å©"));
+	m_keydown2.SetWindowText(_T("Å°´Ù¿î·Îµå"));
+	m_integrity_check2.SetWindowText(_T("¹«°á¼ºÃ¼Å©"));
+	m_update2.SetWindowText(_T("¾÷µ¥ÀÌÆ®"));
+	m_btnOk.SetWindowText(_T("È®ÀÎ"));
+	m_btnCancel.SetWindowText(_T("Ãë¼Ò"));
+	m_btnSearch.SetWindowText(_T("Á¶È¸"));
+	m_integrity_list.SetBkColor(RGB(255, 255, 255));
+	m_integrity_list.SetTextBkColor(RGB(255, 255, 255));
+
 	// Åä±Û ÃÊ±â »óÅÂ (Æ÷Æ® ¿­±â: ¹Ì»ç¿ëÀÌ¸é OFF)
 	m_togglePortOpen1.SetCheck(BST_UNCHECKED);
 	m_togglePortOpen2.SetCheck(BST_UNCHECKED);
@@ -588,8 +704,8 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_toggleMultipad2.SetCheck(BST_UNCHECKED);
 
 	// Set underlay colors to match card backgrounds
-	COLORREF cardBgEnabled  = RGB(240, 248, 255);
-	COLORREF cardBgDisabled = RGB(245, 246, 248);
+	COLORREF cardBgEnabled  = RGB(255, 255, 255);
+	COLORREF cardBgDisabled = RGB(251, 252, 253);
 	m_togglePortOpen1.SetUnderlayColor(cardBgEnabled);
 	m_togglePortOpen2.SetUnderlayColor(cardBgDisabled);
 	m_toggleMultipad1.SetUnderlayColor(cardBgEnabled);
@@ -606,6 +722,10 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_update2.SetUnderlayColor(cardBgDisabled);
 	m_comport1.SetUnderlayColor(cardBgEnabled);
 	m_comport2.SetUnderlayColor(cardBgDisabled);
+	m_search_date.SetUnderlayColor(RGB(255, 255, 255));
+	m_btnSearch.SetUnderlayColor(RGB(255, 255, 255));
+	m_btnOk.SetUnderlayColor(RGB(255, 255, 255));
+	m_btnCancel.SetUnderlayColor(RGB(255, 255, 255));
 
 	m_bUIReady = TRUE;
 	ModifyStyle(0, WS_CLIPCHILDREN);
@@ -617,71 +737,42 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	UpdateReaderEnableState(1);
 	UpdateReaderEnableState(2);
 
-	return TRUE;  // return TRUE unless you set the focus to a control
+	GetDlgItem(IDOK)->SetFocus();   // È®ÀÎ ¹öÆ°À¸·Î Æ÷Ä¿½º ÀÌµ¿
+	return FALSE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 CSize CReaderSetupDlg::CalcMinClientSize() const
 {
-	// LayoutControls¿¡¼­ ¾²´Â ¼öÄ¡¿Í ¸ÂÃç¾ß ÇÔ
 	const int margin = SX(18);
-	const int titleBlk = SX(86);
-	const int secTitleH = SX(34);
-
-	const int cardPadX = SX(24);
-	const int cardH = SX(82);
-	const int cardGap = SX(12);
-
-	const int badge = SX(54);
-	const int rowH = SX(34);
-
-	const int comboW = SX(250);
-	const int btnW = SX(84);
-	const int btnH = SX(32);
-	const int gap = SX(10);
-
-	const int secGapAfterCards = SX(18) + SX(22);
-
-	const int queryBoxH = SX(56);
-	const int queryGap = SX(14);
-
-	const int listMinH = SX(220);   // Ç¥´Â ÃÖ¼Ò ÀÌ Á¤µµ´Â º¸¿©ÁÖÀÚ(¿øÇÏ¸é Á¶Á¤)
-
-	const int bottomBtnH = SX(40);
+	const int innerW = SX(720);
+	const int titleArea = SX(92);
+	const int sectionPad = SX(18);
+	const int sectionTitleTop = SX(18);
+	const int sectionTitleH = SX(28);
+	const int sectionTitleGap = SX(16);
+	const int cardH = SX(118);
+	const int cardGap = SX(14);
+	const int betweenSections = SX(26);
+	const int queryH = SX(62);
+	const int queryGap = SX(12);
+	const int listMinH = SX(170);
+	const int infoBottomPad = SX(18);
+	const int bottomBtnH = SX(42);
 	const int bottomGap = SX(16);
-	const int bottomArea = bottomBtnH + bottomGap + SX(10);
+	const int bottomArea = bottomBtnH + bottomGap + SX(8);
 
-	// ---- °¡·Î ÃÖ¼Ò: Ä«µå ³»ºÎ¿¡ ÇÑ ÁÙ·Î µé¾î°¡°Ô ----
-	int innerW_need = 0;
-	{
-		int needRowW = badge + gap + comboW + gap + (btnW * 4) + (gap * 3);
-		// Ä«µå ¾ÈÂÊ ÆÐµù °í·Á
-		innerW_need = (cardPadX * 2) + needRowW;
-	}
-
-	// ¹Ù±ù margin °í·Á (Å¬¶óÀÌ¾ðÆ® ÀüÃ¼ Æø)
-	int clientW = (margin * 2) + innerW_need;
-
-	// ---- ¼¼·Î ÃÖ¼Ò ----
+	int clientW = innerW + margin * 2;
 	int clientH = 0;
-	clientH += margin;                  // top
-	clientH += SX(18) + titleBlk;        // Å¸ÀÌÆ² ¿µ¿ª(¿©À¯ Æ÷ÇÔ)
-	clientH += secTitleH + SX(10);       // ¼½¼Ç Å¸ÀÌÆ² + °£°Ý
-
-	clientH += cardH;                   // Ä«µå1
-	clientH += cardGap;
-	clientH += cardH;                   // Ä«µå2
-
-	clientH += secGapAfterCards;        // ¼½¼Ç °£°Ý
-
-	clientH += queryBoxH;               // Á¶È¸ ¹Ú½º
-	clientH += queryGap;
-
-	clientH += listMinH;                // ¸®½ºÆ® ÃÖ¼Ò ³ôÀÌ
-
-	clientH += bottomArea;              // ÇÏ´Ü ¹öÆ° ¿µ¿ª
-	clientH += margin;                  // bottom
-
+	clientH += margin;
+	clientH += titleArea;
+	clientH += sectionTitleTop + sectionTitleH + sectionTitleGap;
+	clientH += cardH + cardGap + cardH + sectionPad;
+	clientH += betweenSections;
+	clientH += sectionTitleTop + sectionTitleH + sectionTitleGap;
+	clientH += queryH + queryGap + listMinH + infoBottomPad;
+	clientH += bottomArea;
+	clientH += margin;
 	return CSize(clientW, clientH);
 }
 
@@ -703,15 +794,6 @@ void CReaderSetupDlg::FitWindowToLayout()
 	CenterWindow();
 }
 
-void CReaderSetupDlg::OnCbnSelchangeComport1()
-{
-	UpdateReaderEnableState(1);
-}
-
-void CReaderSetupDlg::OnCbnSelchangeComport2()
-{
-	UpdateReaderEnableState(2);
-}
 void CReaderSetupDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialog::OnSize(nType, cx, cy);
@@ -720,7 +802,10 @@ void CReaderSetupDlg::OnSize(UINT nType, int cx, int cy)
 		return;
 
 	if (GetSafeHwnd())
+	{
 		LayoutControls();
+		RecalcIntegrityColumns();
+	}
 }
 BOOL CReaderSetupDlg::OnEraseBkgnd(CDC* pDC)
 {
@@ -744,117 +829,116 @@ void CReaderSetupDlg::OnPaint()
 	CBitmap* oldBmp = memDC.SelectObject(&bmp);
 
 	memDC.FillSolidRect(rc, RGB(245, 247, 250));
+	memDC.SetBkMode(TRANSPARENT);
 
-	// ¸ÞÀÎ Ä«µå
 	const int margin = SX(18);
 	CRect mainCard(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 	CRect shadow = mainCard; shadow.OffsetRect(SX(2), SX(3));
-	FillRoundRect(&memDC, shadow, SX(18), RGB(230, 235, 240), RGB(230, 235, 240), 1);
-	FillRoundRect(&memDC, mainCard, SX(18), RGB(255, 255, 255), RGB(220, 226, 232), 1);
+	FillRoundRect(&memDC, shadow, SX(18), RGB(234, 238, 243), RGB(234, 238, 243), 1);
+	FillRoundRect(&memDC, mainCard, SX(18), RGB(255, 255, 255), RGB(224, 229, 235), 1);
 
-	// Header icon: blue rounded square with card-reader symbol
-	memDC.SetBkMode(TRANSPARENT);
-	{
-		const int iconSize = SX(46);
-		const int iconX    = mainCard.left + SX(18);
-		const int iconY    = mainCard.top  + SX(16);
-		CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
-		FillRoundRect(&memDC, rcIcon, SX(10), RGB(0, 100, 221), RGB(0, 100, 221), 1);
-		// Card shape (white rectangle)
-		memDC.FillSolidRect(iconX + SX(9),  iconY + SX(12), SX(28), SX(18), RGB(255, 255, 255));
-		// Magnetic stripe (dark band)
-		memDC.FillSolidRect(iconX + SX(9),  iconY + SX(16), SX(28), SX(4),  RGB(0, 60, 140));
-		// Button dots
-		memDC.FillSolidRect(iconX + SX(11), iconY + SX(34), SX(5), SX(5), RGB(255, 255, 255));
-		memDC.FillSolidRect(iconX + SX(20), iconY + SX(34), SX(5), SX(5), RGB(255, 255, 255));
-		memDC.FillSolidRect(iconX + SX(29), iconY + SX(34), SX(5), SX(5), RGB(255, 255, 255));
-	}
-	const int titleTextX = mainCard.left + SX(74);
+	const int iconSize = SX(38);
+	const int iconStroke = max(1, SX(2));
+	const int iconX = mainCard.left + SX(20);
+	const int iconY = mainCard.top + SX(18);
+	CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
+	FillRoundRect(&memDC, rcIcon, SX(8), RGB(0, 102, 221), RGB(0, 102, 221), 1);
+	CPen penIcon(iconStroke, PS_SOLID, RGB(255, 255, 255));
+	CPen* oldPenIcon = memDC.SelectObject(&penIcon);
+	CBrush* oldBrushIcon = (CBrush*)memDC.SelectStockObject(NULL_BRUSH);
+	CRect body(iconX + SX(11), iconY + SX(12), iconX + SX(27), iconY + SX(23));
+	memDC.RoundRect(body, CPoint(SX(3), SX(3)));
+	memDC.MoveTo(iconX + SX(14), iconY + SX(16));
+	memDC.LineTo(iconX + SX(24), iconY + SX(16));
+	memDC.MoveTo(iconX + SX(14), iconY + SX(19));
+	memDC.LineTo(iconX + SX(22), iconY + SX(19));
+	memDC.SelectObject(oldBrushIcon);
+	memDC.SelectObject(oldPenIcon);
+
+	const int titleTextX = rcIcon.right + SX(14);
 	memDC.SelectObject(&m_fontTitle);
-	memDC.SetTextColor(RGB(6, 52, 109));
+	memDC.SetTextColor(RGB(33, 37, 41));
 	memDC.TextOut(titleTextX, mainCard.top + SX(18), _T("¸®´õ±â ¼³Á¤"));
 
 	memDC.SelectObject(&m_fontSub);
-	memDC.SetTextColor(RGB(0, 100, 180));
-	memDC.TextOut(titleTextX, mainCard.top + SX(44), _T("¸®´õ±â ¿¬°á ¹× Á¦¾î¸¦ °ü¸®ÇÕ´Ï´Ù"));
-	memDC.FillSolidRect(mainCard.left + SX(24), mainCard.top + SX(72), mainCard.Width() - SX(48), 1, RGB(235, 240, 245));
+	memDC.SetTextColor(RGB(106, 119, 133));
+	memDC.TextOut(titleTextX, mainCard.top + SX(46), _T("¸®´õ±â ¿¬°á ¹× Á¦¾î¸¦ °ü¸®ÇÕ´Ï´Ù"));
+	memDC.FillSolidRect(mainCard.left + SX(22), mainCard.top + SX(72), mainCard.Width() - SX(44), 1, RGB(230, 234, 239));
 
-	// µ¿ÀÏ Rect ±â¹ÝÀ¸·Î ¼½¼Ç/Ä«µå ¿µ¿ª ¾ò±â
 	CRect inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc;
 	CPoint sec1Pt, sec2Pt;
 	CalcLayoutRects(inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc, sec1Pt, sec2Pt);
+	CRect portSection = CalcPortSectionBox(card1, card2);
+	CRect integritySection = CalcIntegritySectionBox(queryBox, listRc);
 
-	// ¼½¼Ç Á¦¸ñ 2°³(¿øÇÏ´Â´ë·Î º¸¿©ÁÖ±â)
-	// Section titles with left blue bar indicator
-	memDC.SelectObject(&m_fontNormal);
-	memDC.SetTextColor(RGB(45, 55, 72));
-	memDC.FillSolidRect(sec1Pt.x - SX(10), sec1Pt.y + SX(2), SX(3), SX(18), RGB(0, 100, 221));
-	memDC.TextOut(sec1Pt.x, sec1Pt.y, _T("Æ÷Æ® ¼³Á¤"));
-	memDC.FillSolidRect(sec2Pt.x - SX(10), sec2Pt.y + SX(2), SX(3), SX(18), RGB(0, 100, 221));
-	memDC.TextOut(sec2Pt.x, sec2Pt.y, _T("¹«°á¼º Ã¼Å© Á¤º¸"));
-
-	// Ä«µå 2°³ (2Çà ·¹ÀÌ¾Æ¿ô: ¶óº§+ÄÞº¸+Åä±Û / ¹öÆ°5°³)
-	auto drawCard = [&](const CRect& r, BOOL enabled, int num)
+	auto drawSectionTitle = [&](const CPoint& pt, LPCTSTR text)
 	{
-		COLORREF bg  = enabled ? RGB(240, 248, 255) : RGB(245, 246, 248);
-		COLORREF brd = enabled ? RGB(0, 118, 190)   : RGB(220, 226, 232);
-		int bw = enabled ? 2 : 1;
-		FillRoundRect(&memDC, r, SX(14), bg, brd, bw);
-
-		// ¹èÁö (¹øÈ£)
-		const int badgeSize = SX(38);
-		CRect badge(
-			r.left + SX(16),
-			r.top  + (r.Height() - badgeSize) / 2,
-			r.left + SX(16) + badgeSize,
-			r.top  + (r.Height() - badgeSize) / 2 + badgeSize);
-		FillRoundRect(&memDC, badge, SX(10),
-			enabled ? RGB(0, 90, 156) : RGB(160, 168, 176),
-			enabled ? RGB(0, 90, 156) : RGB(160, 168, 176), 1);
-		memDC.SelectObject(&m_fontNormal);
-		memDC.SetTextColor(RGB(255, 255, 255));
-		CString s; s.Format(_T("%d"), num);
-		memDC.DrawText(s, badge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-		// »ó´Ü ¶óº§ "¸®´õ±âN - COM Æ÷Æ®"
-		const int padL = SX(74);
-		memDC.SelectObject(&m_fontSmall);
-		memDC.SetTextColor(enabled ? RGB(60, 80, 100) : RGB(160, 168, 176));
-		CString label;
-		label.Format(_T("¸®´õ±â%d - COM Æ÷Æ®"), num);
-		memDC.TextOut(r.left + padL, r.top + SX(10), label);
-
-		// "Æ÷Æ® ¿­±â" / "¸ÖÆ¼ÆÐµå ¿©ºÎ" ¶óº§ (Åä±Û ¿ÞÂÊ)
-		const int comboW  = SX(200);
-		const int btnH    = SX(32);
-		const int toggleW = SX(50);
-		const int yComboRow = r.top + SX(28);
-
-		int xToggleOpenLabel = r.left + padL + comboW + SX(20);
-		memDC.SetTextColor(enabled ? RGB(60, 80, 100) : RGB(180, 185, 190));
-		memDC.TextOut(xToggleOpenLabel, yComboRow + (btnH - SX(14)) / 2, _T("Æ÷Æ® ¿­±â"));
-
-		int xTogglePadLabel = r.left + padL + comboW + SX(76) + toggleW + SX(20);
-		memDC.TextOut(xTogglePadLabel, yComboRow + (btnH - SX(14)) / 2, _T("¸ÖÆ¼ÆÐµå ¿©ºÎ"));
+		memDC.FillSolidRect(pt.x - SX(10), pt.y + SX(2), SX(3), SX(16), RGB(0, 102, 221));
+		memDC.SelectObject(&m_fontSection);
+		memDC.SetTextColor(RGB(37, 47, 63));
+		memDC.TextOut(pt.x, pt.y, text);
 	};
 
-	drawCard(card1, m_bReader1Enabled, 1);
-	drawCard(card2, m_bReader2Enabled, 2);
+	FillRoundRect(&memDC, portSection, SX(10), RGB(248, 249, 251), RGB(233, 236, 240), 1);
+	FillRoundRect(&memDC, integritySection, SX(10), RGB(248, 249, 251), RGB(233, 236, 240), 1);
+	drawSectionTitle(sec1Pt, _T("Æ÷Æ® ¼³Á¤"));
+	drawSectionTitle(sec2Pt, _T("¹«°á¼º Ã¼Å© Á¤º¸"));
 
-	// Á¶È¸ ¹Ú½º - "Á¶È¸ ¹üÀ§" ¶óº§ Æ÷ÇÔ
-	FillRoundRect(&memDC, queryBox, SX(14), RGB(248, 249, 251), RGB(230, 235, 240), 1);
-	memDC.SelectObject(&m_fontSmall);
-	memDC.SetTextColor(RGB(60, 80, 100));
-	memDC.TextOut(queryBox.left + SX(24), queryBox.top + SX(8), _T("Á¶È¸ ¹üÀ§"));
+	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
+	{
+		COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(251, 252, 253);
+		COLORREF br = enabled ? RGB(0, 102, 221) : RGB(220, 226, 232);
+		FillRoundRect(&memDC, r, SX(8), bg, br, enabled ? 2 : 1);
 
-	// Draw empty-state text when list has no items
-	if (m_bUIReady && m_integrity_list.GetSafeHwnd() && m_integrity_list.GetItemCount() == 0) {
+		const int badgeSize = SX(34);
+		CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
+		COLORREF badgeBg = enabled ? RGB(0, 102, 221) : RGB(190, 199, 209);
+		FillRoundRect(&memDC, badge, SX(6), badgeBg, badgeBg, 1);
+		CString numText; numText.Format(_T("%d"), num);
+		memDC.SelectObject(&m_fontNormal);
+		memDC.SetTextColor(RGB(255, 255, 255));
+		memDC.DrawText(numText, badge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+		CString label; label.Format(_T("¸®´õ±â%d - COM Æ÷Æ®"), num);
+		memDC.SelectObject(&m_fontLabel);
+		memDC.SetTextColor(enabled ? RGB(122, 133, 148) : RGB(182, 188, 196));
+		memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
+
+		const int comboW = SX(178);
+		const int btnH = SX(36);
+		const int x0 = r.left + SX(64);
+		const int yCombo = r.top + SX(34);
+		const int toggleW = SX(52);
+		const int padR = SX(22);
+		const int textGap = SX(8);
+		const int openLabelW = SX(56);
+		const int multiLabelW = SX(74);
+		const int togglePadX = r.right - padR - toggleW;
+		const int togglePadLabelX = togglePadX - textGap - multiLabelW;
+		int toggleOpenX = togglePadLabelX - SX(18) - toggleW;
+		if (toggleOpenX < x0 + comboW + SX(70))
+			toggleOpenX = x0 + comboW + SX(70);
+		const int xToggleOpenLabel = toggleOpenX - textGap - openLabelW;
+		memDC.TextOut(xToggleOpenLabel, yCombo + (btnH - SX(14)) / 2, _T("Æ÷Æ® ¿­±â"));
+		memDC.TextOut(togglePadLabelX, yCombo + (btnH - SX(14)) / 2, _T("¸ÖÆ¼ÆÐµå ¿©ºÎ"));
+	};
+
+	drawReaderCard(card1, m_bReader1Enabled, 1);
+	drawReaderCard(card2, m_bReader2Enabled, 2);
+
+	memDC.SelectObject(&m_fontLabel);
+	memDC.SetTextColor(RGB(122, 133, 148));
+	memDC.TextOut(queryBox.left, queryBox.top - SX(20), _T("Á¶È¸ ¹üÀ§"));
+
+	if (m_bUIReady && m_integrity_list.GetSafeHwnd() && m_integrity_list.GetItemCount() == 0)
+	{
 		CWindowDC listDC(&m_integrity_list);
 		CRect listWinRc;
 		m_integrity_list.GetClientRect(&listWinRc);
 		CHeaderCtrl* pHdr = m_integrity_list.GetHeaderCtrl();
 		int hdrH = 0;
-		if (pHdr && pHdr->GetSafeHwnd()) {
+		if (pHdr && pHdr->GetSafeHwnd())
+		{
 			RECT rcH; pHdr->GetWindowRect(&rcH);
 			hdrH = rcH.bottom - rcH.top;
 		}
@@ -863,7 +947,7 @@ void CReaderSetupDlg::OnPaint()
 		CFont* pOld = listDC.SelectObject(&m_fontSmall);
 		listDC.SetBkMode(TRANSPARENT);
 		listDC.SetTextColor(RGB(160, 168, 180));
-		listDC.DrawText(_T("ì¡°í???ë¬´ê²°??ì²´í? ??³´ê°€ ??????."), bodyRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		listDC.DrawText(_T("Á¶È¸µÈ ¹«°á¼º Ã¼Å© Á¤º¸°¡ ¾ø½À´Ï´Ù."), bodyRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 		listDC.SelectObject(pOld);
 	}
 	
@@ -872,13 +956,20 @@ void CReaderSetupDlg::OnPaint()
 }
 
 
+
 void CReaderSetupDlg::OnSelchangeComport1() 
 {
+	CString value;
+	m_comport1.GetWindowText(value);
+	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, value);
 	UpdateReaderEnableState(1);
 }
 
 void CReaderSetupDlg::OnSelchangeComport2() 
 {
+	CString value;
+	m_comport2.GetWindowText(value);
+	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, value);
 	UpdateReaderEnableState(2);
 }
 
