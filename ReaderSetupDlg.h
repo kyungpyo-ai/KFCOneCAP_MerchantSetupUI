@@ -73,6 +73,7 @@ protected:
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
 
 	//}}AFX_MSG
+	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 	
 // Construction
 public:

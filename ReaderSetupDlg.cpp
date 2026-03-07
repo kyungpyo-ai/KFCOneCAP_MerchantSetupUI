@@ -27,21 +27,41 @@ static HISTORY_COL_INFO col_info[] =
 	{NULL			, NULL			, 0	}
 } ;
 
-static void FillRoundRect(CDC* pDC, const CRect& rc, int radius, COLORREF fill, COLORREF border, int borderW = 1)
+static void GdipAddRoundRect(Gdiplus::GraphicsPath& p, float x, float y, float w, float h, float r)
 {
-	// 간단한 라운드 렌더링(GDI) - 그림자/알파 없이도 충분히 모던 느낌
-	CRgn rgn;
-	rgn.CreateRoundRectRgn(rc.left, rc.top, rc.right + 1, rc.bottom + 1, radius, radius);
-
-	CBrush brFill(fill);
-	pDC->FillRgn(&rgn, &brFill);
-
-	CPen pen(borderW, PS_SOLID, border);
-	CPen* oldPen = pDC->SelectObject(&pen);
-	pDC->FrameRgn(&rgn, &CBrush(border), borderW, borderW);
-	pDC->SelectObject(oldPen);
+	float d = r * 2.f;
+	Gdiplus::RectF a(x, y, d, d);
+	p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
+	p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
+	p.AddArc(a,   0.f, 90.f); a.X = x;
+	p.AddArc(a,  90.f, 90.f); p.CloseFigure();
 }
 
+static void FillRoundRect(CDC* pDC, const CRect& rc, int radius, COLORREF fill, COLORREF border, int borderW = 1)
+{
+	Gdiplus::Graphics g(pDC->GetSafeHdc());
+	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+
+	float x = (float)rc.left, y = (float)rc.top;
+	float w = (float)rc.Width(), h = (float)rc.Height();
+	float r = (float)radius;
+
+	{
+		Gdiplus::GraphicsPath path;
+		GdipAddRoundRect(path, x, y, w, h, r);
+		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(fill), GetGValue(fill), GetBValue(fill)));
+		g.FillPath(&br, &path);
+	}
+	if (borderW > 0)
+	{
+		Gdiplus::GraphicsPath path;
+		float bw = (float)borderW;
+		GdipAddRoundRect(path, x + bw * 0.5f, y + bw * 0.5f, w - bw, h - bw, r);
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), bw);
+		g.DrawPath(&pen, &path);
+	}
+}
 int CReaderSetupDlg::SX(int v) const
 {
 	// DPI 스케일 (96 기준)
@@ -161,7 +181,7 @@ void CReaderSetupDlg::CalcLayoutRects(
 	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + sectionTitleGap;
 
 	queryBox = CRect(sectionLeft + sectionBoxPad, sec2ContentTop,
-		sectionRight - sectionBoxPad, y + sectionBoxPad + queryH);
+		sectionRight - sectionBoxPad, sec2ContentTop + queryH);
 	y = queryBox.bottom + queryGap;
 
 	int listTop = y;
@@ -657,17 +677,17 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	// 콤보박스 스킨
 
 	// 액션 버튼 스타일 (Secondary: 회색 테두리)
-	m_reader_init1.SetButtonStyle(ButtonStyle::Default);
-	m_status_check1.SetButtonStyle(ButtonStyle::Default);
-	m_keydown1.SetButtonStyle(ButtonStyle::Default);
-	m_integrity_check1.SetButtonStyle(ButtonStyle::Default);
-	m_update1.SetButtonStyle(ButtonStyle::Default);
+	m_reader_init1.SetButtonStyle(ButtonStyle::Download);
+	m_status_check1.SetButtonStyle(ButtonStyle::Download);
+	m_keydown1.SetButtonStyle(ButtonStyle::Download);
+	m_integrity_check1.SetButtonStyle(ButtonStyle::Download);
+	m_update1.SetButtonStyle(ButtonStyle::Download);
 
-	m_reader_init2.SetButtonStyle(ButtonStyle::Default);
-	m_status_check2.SetButtonStyle(ButtonStyle::Default);
-	m_keydown2.SetButtonStyle(ButtonStyle::Default);
-	m_integrity_check2.SetButtonStyle(ButtonStyle::Default);
-	m_update2.SetButtonStyle(ButtonStyle::Default);
+	m_reader_init2.SetButtonStyle(ButtonStyle::Download);
+	m_status_check2.SetButtonStyle(ButtonStyle::Download);
+	m_keydown2.SetButtonStyle(ButtonStyle::Download);
+	m_integrity_check2.SetButtonStyle(ButtonStyle::Download);
+	m_update2.SetButtonStyle(ButtonStyle::Download);
 
 	// 하단 확인/취소 버튼 스타일
 	if (CWnd* pOK = GetDlgItem(IDOK))
@@ -838,22 +858,64 @@ void CReaderSetupDlg::OnPaint()
 	FillRoundRect(&memDC, mainCard, SX(18), RGB(255, 255, 255), RGB(224, 229, 235), 1);
 
 	const int iconSize = SX(38);
-	const int iconStroke = max(1, SX(2));
 	const int iconX = mainCard.left + SX(20);
 	const int iconY = mainCard.top + SX(18);
 	CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
-	FillRoundRect(&memDC, rcIcon, SX(8), RGB(0, 102, 221), RGB(0, 102, 221), 1);
-	CPen penIcon(iconStroke, PS_SOLID, RGB(255, 255, 255));
-	CPen* oldPenIcon = memDC.SelectObject(&penIcon);
-	CBrush* oldBrushIcon = (CBrush*)memDC.SelectStockObject(NULL_BRUSH);
-	CRect body(iconX + SX(11), iconY + SX(12), iconX + SX(27), iconY + SX(23));
-	memDC.RoundRect(body, CPoint(SX(3), SX(3)));
-	memDC.MoveTo(iconX + SX(14), iconY + SX(16));
-	memDC.LineTo(iconX + SX(24), iconY + SX(16));
-	memDC.MoveTo(iconX + SX(14), iconY + SX(19));
-	memDC.LineTo(iconX + SX(22), iconY + SX(19));
-	memDC.SelectObject(oldBrushIcon);
-	memDC.SelectObject(oldPenIcon);
+	// GDI+ anti-aliased icon: card reader (IC card with chip + stripe)
+	{
+		HDC hIco = memDC.GetSafeHdc();
+		Gdiplus::Graphics gIco(hIco);
+		gIco.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
+		const float bx = (float)iconX, by = (float)iconY, bsz = (float)iconSize;
+		const float cx = bx + bsz * 0.5f, cy = by + bsz * 0.5f;
+
+		auto MRR = [](Gdiplus::GraphicsPath& p,
+			float x, float y, float w, float h, float r) {
+			float d = r * 2.f;
+			Gdiplus::RectF a(x, y, d, d);
+			p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
+			p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
+			p.AddArc(a,   0.f, 90.f); a.X = x;
+			p.AddArc(a,  90.f, 90.f); p.CloseFigure();
+		};
+
+		// gradient blue background
+		{
+			Gdiplus::GraphicsPath bp;
+			MRR(bp, bx, by, bsz, bsz, 8.f);
+			Gdiplus::LinearGradientBrush grad(
+				Gdiplus::PointF(bx, by), Gdiplus::PointF(bx, by + bsz),
+				Gdiplus::Color(255, 60, 130, 245),
+				Gdiplus::Color(255, 28,  76, 210));
+			gIco.FillPath(&grad, &bp);
+		}
+
+		// card body (white, landscape, rounded corners)
+		float cW = bsz * 0.72f, cH = bsz * 0.50f;
+		float cX = cx - cW * 0.5f, cY = cy - cH * 0.5f;
+		{
+			Gdiplus::GraphicsPath cp;
+			MRR(cp, cX, cY, cW, cH, 2.5f);
+			Gdiplus::SolidBrush wb(Gdiplus::Color(255, 255, 255, 255));
+			gIco.FillPath(&wb, &cp);
+		}
+
+		// magnetic stripe (semi-transparent dark band across top of card)
+		float sH = cH * 0.28f, sY = cY + cH * 0.22f;
+		Gdiplus::SolidBrush sb(Gdiplus::Color(80, 20, 60, 150));
+		gIco.FillRectangle(&sb, Gdiplus::RectF(cX, sY, cW, sH));
+
+		// IC chip (gold, bottom-left area of card)
+		float chW = cW * 0.22f, chH = cH * 0.36f;
+		float chX = cX + cW * 0.13f, chY = sY + sH + cH * 0.07f;
+		{
+			Gdiplus::GraphicsPath chp;
+			MRR(chp, chX, chY, chW, chH, 1.5f);
+			Gdiplus::SolidBrush gb(Gdiplus::Color(200, 215, 175, 55));
+			gIco.FillPath(&gb, &chp);
+		}
+	}
 
 	const int titleTextX = rcIcon.right + SX(14);
 	memDC.SelectObject(&m_fontTitle);
@@ -928,7 +990,7 @@ void CReaderSetupDlg::OnPaint()
 
 	memDC.SelectObject(&m_fontLabel);
 	memDC.SetTextColor(RGB(122, 133, 148));
-	memDC.TextOut(queryBox.left, queryBox.top - SX(20), _T("조회 범위"));
+	memDC.TextOut(queryBox.left, queryBox.top + (queryBox.Height() - SX(36)) / 2 - SX(18), _T("조회 범위"));
 
 	if (m_bUIReady && m_integrity_list.GetSafeHwnd() && m_integrity_list.GetItemCount() == 0)
 	{
@@ -956,6 +1018,23 @@ void CReaderSetupDlg::OnPaint()
 }
 
 
+
+BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
+{
+	UINT nID  = LOWORD(wParam);
+	int  nCode = (int)(short)HIWORD(wParam);
+
+	// CSkinnedComboBox ON_CONTROL_REFLECT(CBN_SELCHANGE) causes MFC to eat
+	// the notification before the parent message map runs.
+	// Intercept here before default reflection so our handlers fire.
+	if (nCode == CBN_SELCHANGE)
+	{
+		if (nID == IDC_COMPORT1) { OnSelchangeComport1(); return TRUE; }
+		if (nID == IDC_COMPORT2) { OnSelchangeComport2(); return TRUE; }
+	}
+
+	return CDialog::OnCommand(wParam, lParam);
+}
 
 void CReaderSetupDlg::OnSelchangeComport1() 
 {
