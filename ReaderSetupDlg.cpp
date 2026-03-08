@@ -232,13 +232,17 @@ void CReaderSetupDlg::CalcLayoutRects(
 	listRc = CRect(sectionLeft + sectionBoxPad, listTop,
 		sectionRight - sectionBoxPad, listTop + listH);
 
-	int bw = SX(108), bh = bottomBtnH, bgap = SX(14);
-	int totalW = bw * 2 + bgap;
-	int bx = inner.left + (inner.Width() - totalW) / 2;
-	int by = inner.bottom - bh;
+	// ShopSetupDlg 하단 버튼과 동일한 크기/간격/위치 규칙 적용
+	const int buttonW = SX(110);
+	const int buttonH = SX(36);
+	const int buttonGap = SX(8);
+	const int buttonBottom = SX(18);
+	int totalW = buttonW * 2 + buttonGap;
+	int bx = (rc.Width() - totalW) / 2;
+	int by = rc.bottom - (SX(22) + buttonBottom + buttonH);
 
-	okRc = CRect(bx, by, bx + bw, by + bh);
-	cancelRc = CRect(bx + bw + bgap, by, bx + bw + bgap + bw, by + bh);
+	okRc = CRect(bx, by, bx + buttonW, by + buttonH);
+	cancelRc = CRect(bx + buttonW + buttonGap, by, bx + buttonW + buttonGap + buttonW, by + buttonH);
 	infoTitleArea = CRect(sec2TitlePt.x, sec2TitlePt.y, inner.right, sec2TitlePt.y + sectionTitleH);
 }
 
@@ -249,7 +253,7 @@ CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2
 
 CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
 {
-	return CRect(queryBox.left - SX(24), queryBox.top - SX(56), queryBox.right + SX(24), listRc.bottom + SX(18));
+	return CRect(queryBox.left - SX(24), queryBox.top - SX(56), queryBox.right + SX(24), listRc.bottom + SX(10));
 }
 
 void CReaderSetupDlg::RecalcIntegrityColumns()

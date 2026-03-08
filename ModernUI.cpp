@@ -3353,7 +3353,10 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 	HDC hdc = ::GetDC(hRef);
 	if (!hdc) return 0;
 
-	ModernUIGfx::EnsureGdiplusStartup();
+	int hTitle = 0, hBody = 0;
+	{
+		// GDI+ objects scoped so they are destroyed before ReleaseDC
+		ModernUIGfx::EnsureGdiplusStartup();
 	Gdiplus::Graphics g(hdc);
 	g.SetPageUnit(Gdiplus::UnitPixel);
 
@@ -3388,8 +3391,8 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 		return h;
 	};
 
-	int hTitle = MeasureWrapped(title, &fTitle, &sfTitle);
-	int hBody  = MeasureWrapped(body,  &fBody,  &sfBody);
+		hTitle = MeasureWrapped(title, &fTitle, &sfTitle);
+		hBody  = MeasureWrapped(body,  &fBody,  &sfBody);
 	// Extra leading between explicit lines (\r\n / \n) to match modern mobile UI rhythm.
 	{
 		CString norm = body;
@@ -3401,9 +3404,10 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 		for (int i = 0; i < norm.GetLength(); ++i)
 			if (norm[i] == _T('\n')) ++lines;
 
-		if (lines > 1)
-			hBody += ModernUIDpi::Scale(hRef, 2) * (lines - 1);
-	}
+			if (lines > 1)
+				hBody += ModernUIDpi::Scale(hRef, 2) * (lines - 1);
+		}
+	} // end GDI+ scope -- Graphics/Font objects destroyed here
 
 	::ReleaseDC(hRef, hdc);
 	return hTitle + hBody;
@@ -3465,8 +3469,8 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			};
 	
 			idealTextW = max(MeasureOneLineW(m_strTitle, &fTitle), MeasureOneLineW(m_strBody, &fBody));
-			::ReleaseDC(hRef, hdc);
-		}
+		} // end GDI+ scope -- gg/ff/fTitle/fBody destroyed here, before ReleaseDC
+		::ReleaseDC(hRef, hdc);
 	}
 	
 	// Clamp width to a nice range so it doesn't get too narrow/wide.
