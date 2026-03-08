@@ -100,6 +100,8 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_bMouseTracked(false)
     , m_nNavAnim(0)
     , m_bNavAnimNext(false)
+    , m_nAnimFromPage(0)
+    , m_fPillFrom(0.f)
 {
 
 }
@@ -835,38 +837,109 @@ void CShopDownDlg::OnPaint()
         DrawNavCircleBtn(m_rcPrevBtn, bCanPrev, m_bHoverPrev, m_bPressedPrev, true);
         DrawNavCircleBtn(m_rcNextBtn, bCanNext, m_bHoverNext, m_bPressedNext, false);
 
-        // Page indicator: slides in from direction on page change
+        // Modern animated dot-pill indicator + horizontal cross-fade page text
         {
-            CString pageStr;
-            pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
             const float navCX = (float)(m_rcPrevBtn.right + m_rcNextBtn.left) / 2.f;
             const float navCY = (float)(m_rcPrevBtn.top + m_rcPrevBtn.bottom) / 2.f;
-            const float pw = (float)ModernUIDpi::Scale(m_hWnd, 80);
-            const float ph = (float)ModernUIDpi::Scale(m_hWnd, 28);
-            float yOff = 0.f;
-            Gdiplus::Color textClr(255, 60, 70, 90);
+
+            // Cubic ease-out: t=0 at start, t=1 at end of animation
+            float progress = 1.f;
+            int fromPage = m_nCurrentPage;
             if (m_nNavAnim > 0)
             {
-                const int dir = m_bNavAnimNext ? 1 : -1;
-                const float step = (float)ModernUIDpi::Scale(m_hWnd, 9);
-                yOff = (float)(dir * m_nNavAnim) * step;
-                BYTE a = (BYTE)(85 + 56 * (3 - m_nNavAnim));
-                textClr = Gdiplus::Color(a, 0, 100, 221);
+                float t  = 1.f - (float)m_nNavAnim / 10.f;
+                float u  = 1.f - t;
+                progress = 1.f - u * u * u;  // cubic ease-out
+                fromPage = m_nAnimFromPage;
             }
-            Gdiplus::RectF navRF(navCX - pw/2.f, navCY - ph/2.f + yOff, pw, ph);
-            Gdiplus::StringFormat sfNav;
-            sfNav.SetAlignment(Gdiplus::StringAlignmentCenter);
-            sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+
+            // Clip to nav bar area
             Gdiplus::RectF clipRF((float)m_rcNavBar.left, (float)m_rcNavBar.top,
                                   (float)m_rcNavBar.Width(), (float)m_rcNavBar.Height());
             g.SetClip(clipRF);
-            Gdiplus::SolidBrush brNav(textClr);
+
+            // --- Dot-pill row (above nav buttons) ---
+            {
+                const float dotR   = (float)ModernUIDpi::Scale(m_hWnd, 3);
+                const float pillW  = (float)ModernUIDpi::Scale(m_hWnd, 16);
+                const float pillH  = dotR * 2.f + (float)ModernUIDpi::Scale(m_hWnd, 2);
+                const float dotGap = (float)ModernUIDpi::Scale(m_hWnd, 10);
+                const float spanW  = (kTotalPages - 1) * dotGap;
+                const float startX = navCX - spanW / 2.f;
+                const float dotCY  = navCY - (float)ModernUIDpi::Scale(m_hWnd, 19);
+
+                // All inactive dots drawn first (gray)
+                Gdiplus::SolidBrush brDot(Gdiplus::Color(130, 148, 163, 184));
+                for (int i = 0; i < kTotalPages; ++i)
+                {
+                    float cx = startX + i * dotGap;
+                    Gdiplus::RectF dotRF(cx - dotR, dotCY - dotR, dotR * 2.f, dotR * 2.f);
+                    g.FillEllipse(&brDot, dotRF);
+                }
+
+                // Active pill: start from captured visual position (handles rapid clicks)
+                float fromX  = startX + m_fPillFrom * dotGap;
+                float toX    = startX + (float)m_nCurrentPage * dotGap;
+                float pillCX = fromX + (toX - fromX) * progress;
+                Gdiplus::RectF pillRF(pillCX - pillW / 2.f, dotCY - pillH / 2.f, pillW, pillH);
+                Gdiplus::SolidBrush brPill(Gdiplus::Color(255, 0, 100, 221));
+                Gdiplus::GraphicsPath pillPath;
+                ModernUIGfx::AddRoundRect(pillPath, pillRF, pillH / 2.f);
+                g.FillPath(&brPill, &pillPath);
+            }
+
+            // --- Page text: horizontal cross-fade ---
+            {
+                const float pw    = (float)ModernUIDpi::Scale(m_hWnd, 70);
+                const float ph    = (float)ModernUIDpi::Scale(m_hWnd, 22);
+                const float textY = navCY - (float)ModernUIDpi::Scale(m_hWnd, 1);
+                Gdiplus::StringFormat sfNav;
+                sfNav.SetAlignment(Gdiplus::StringAlignmentCenter);
+                sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+
+                if (m_nNavAnim > 0)
+                {
+                    const float slideAmt = (float)ModernUIDpi::Scale(m_hWnd, 16);
+                    const int   dir      = m_bNavAnimNext ? -1 : 1;
+                    BYTE oldAlpha = (BYTE)(255.f * (1.f - progress));
+                    BYTE newAlpha = (BYTE)(255.f * progress);
+                    float oldXOff = dir * slideAmt * progress;
+                    float newXOff = -dir * slideAmt * (1.f - progress);
+
+                    CString oldStr;
+                    oldStr.Format(_T("%d / %d"), fromPage + 1, kTotalPages);
+                    Gdiplus::RectF oldRF(navCX - pw / 2.f + oldXOff, textY - ph / 2.f, pw, ph);
+                    Gdiplus::SolidBrush brOld(Gdiplus::Color(oldAlpha, 60, 70, 90));
 #ifdef UNICODE
-            g.DrawString(pageStr, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+                    g.DrawString(oldStr, -1, m_pFontValBold, oldRF, &sfNav, &brOld);
 #else
-            CStringW wPage(pageStr);
-            g.DrawString(wPage, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+                    { CStringW w(oldStr); g.DrawString(w, -1, m_pFontValBold, oldRF, &sfNav, &brOld); }
 #endif
+
+                    CString newStr;
+                    newStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
+                    Gdiplus::RectF newRF(navCX - pw / 2.f + newXOff, textY - ph / 2.f, pw, ph);
+                    Gdiplus::SolidBrush brNew(Gdiplus::Color(newAlpha, 0, 100, 221));
+#ifdef UNICODE
+                    g.DrawString(newStr, -1, m_pFontValBold, newRF, &sfNav, &brNew);
+#else
+                    { CStringW w(newStr); g.DrawString(w, -1, m_pFontValBold, newRF, &sfNav, &brNew); }
+#endif
+                }
+                else
+                {
+                    CString pageStr;
+                    pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
+                    Gdiplus::RectF navRF(navCX - pw / 2.f, textY - ph / 2.f, pw, ph);
+                    Gdiplus::SolidBrush brNav(Gdiplus::Color(255, 60, 70, 90));
+#ifdef UNICODE
+                    g.DrawString(pageStr, -1, m_pFontValBold, navRF, &sfNav, &brNav);
+#else
+                    { CStringW w(pageStr); g.DrawString(w, -1, m_pFontValBold, navRF, &sfNav, &brNav); }
+#endif
+                }
+            }
+
             g.ResetClip();
         }
     }
@@ -974,9 +1047,19 @@ void CShopDownDlg::OnPrevPageClick()
 {
     if (m_nCurrentPage > 0)
     {
+        // Capture current visual pill position (handles rapid clicks during animation)
+        if (m_nNavAnim > 0) {
+            float t = 1.f - (float)m_nNavAnim / 10.f;
+            float u = 1.f - t;
+            float prog = 1.f - u * u * u;
+            m_fPillFrom = (float)m_nAnimFromPage + ((float)m_nCurrentPage - (float)m_nAnimFromPage) * prog;
+        } else {
+            m_fPillFrom = (float)m_nCurrentPage;
+        }
+        m_nAnimFromPage = m_nCurrentPage;
         m_nCurrentPage--;
-        m_bNavAnimNext = false; m_nNavAnim = 3;
-        KillTimer(42); SetTimer(42, 50, NULL);
+        m_bNavAnimNext = false; m_nNavAnim = 10;
+        KillTimer(42); SetTimer(42, 16, NULL);
         RefreshPage();
     }
 }
@@ -985,9 +1068,18 @@ void CShopDownDlg::OnNextPageClick()
 {
     if (m_nCurrentPage < kTotalPages - 1)
     {
+        if (m_nNavAnim > 0) {
+            float t = 1.f - (float)m_nNavAnim / 10.f;
+            float u = 1.f - t;
+            float prog = 1.f - u * u * u;
+            m_fPillFrom = (float)m_nAnimFromPage + ((float)m_nCurrentPage - (float)m_nAnimFromPage) * prog;
+        } else {
+            m_fPillFrom = (float)m_nCurrentPage;
+        }
+        m_nAnimFromPage = m_nCurrentPage;
         m_nCurrentPage++;
-        m_bNavAnimNext = true; m_nNavAnim = 3;
-        KillTimer(42); SetTimer(42, 50, NULL);
+        m_bNavAnimNext = true; m_nNavAnim = 10;
+        KillTimer(42); SetTimer(42, 16, NULL);
         RefreshPage();
     }
 }

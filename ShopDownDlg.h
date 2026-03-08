@@ -157,8 +157,10 @@ private:
     bool  m_bMouseTracked;
 
     // Page-transition slide animation
-    int   m_nNavAnim;       // 0=idle, 1-3=animating
-    bool  m_bNavAnimNext;  // true=forward, false=backward
+    int   m_nNavAnim;       // 0=idle, 1-10=animating (counts down)
+    bool  m_bNavAnimNext;   // true=forward, false=backward
+    int   m_nAnimFromPage;  // page index transitioning FROM
+    float m_fPillFrom;      // visual pill position at animation start (handles rapid clicks)
 
     void UpdatePageButtons();
     void RefreshPage();  // lightweight page switch (no control reposition)

@@ -64,16 +64,11 @@ protected:
 
 	void  HideLegacyStatics(); // "리더기1/2/조회 범위" 같은 기존 static 숨김
 	void  RecalcIntegrityColumns(); // 무결성 리스트 컬럼 너비를 화면 폭에 맞게 재계산
-	void  InitDialogMetrics();
-	void  InitComPortCombos();
-	void  LoadSavedComPortSelections(const vector<int>& ports);
-	void  InitSearchDateCombo();
-	void  InitIntegrityList();
-	void  ApplyFontsToControls();
-	void  InitModernButtonLabels();
-	void  InitModernButtonStyles();
-	void  InitToggleDefaults();
-	void  InitUnderlayColors();
+	int   m_nIntegrityScrollPos;
+	CRect m_rcIntegrityScrollBar;
+	CRect m_rcIntegrityScrollThumb;
+	void  NormalizeIntegrityScrollPos();
+	int   GetIntegrityVisibleRows() const;
 
 	//{{AFX_MSG(CReaderSetupDlg)
 	//virtual BOOL OnInitDialog();
@@ -81,6 +76,8 @@ protected:
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 
 	//}}AFX_MSG
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);

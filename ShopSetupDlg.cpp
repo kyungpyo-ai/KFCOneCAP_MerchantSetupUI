@@ -2166,6 +2166,7 @@ void CShopSetupDlg::OnPaint()
     memDC.SelectObject(pOldPen);
     memDC.SelectObject(pOldFont);
 
+    // Save-success toast overlay
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
     memDC.SelectObject(pOldBmp);
 }
@@ -2601,61 +2602,42 @@ void CShopSetupDlg::DrawInputBorders() {
 }
 
 // ============================================================================
+// ShowInfoPopover - unified helper to toggle any info popover
+// ============================================================================
+void CShopSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody)
+{
+    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+    CRect rc;
+    btn.GetWindowRect(&rc);
+    m_popover.ShowAt(rc, szTitle, szBody, this);
+}
+
+// ============================================================================
 // OnBnClickedVanServerInfo - toggle popover
 // ============================================================================
 void CShopSetupDlg::OnBnClickedVanServerInfo()
 {
-    if (m_popover.IsVisible())
-    {
-        m_popover.Hide();
-        return;
-    }
-    CRect rc;
-    m_btnVanInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("금융결제원 서버"),
-        _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용"),
-        this);
+    ShowInfoPopover(m_btnVanInfo, _T("금융결제원 서버"), _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용"));
 }
 // ============================================================================
 // 팝오버 아이콘 핸들러 - 탭0
 // ============================================================================
 void CShopSetupDlg::OnBnClickedPortInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnPortInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("포트번호"),
-        _T("금융결제원 서버 접속 포트번호\n· 기본값 : 8002"),
-        this);
+    ShowInfoPopover(m_btnPortInfo, _T("포트번호"), _T("금융결제원 서버 접속 포트번호\n· 기본값 : 8002"));
 }
 void CShopSetupDlg::OnBnClickedCommTypeInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnCommTypeInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("통신방식"),
-        _T("포스 프로그램 통신 방식 선택\n· CS 방식: 윈도우 포스 프로그램 (기본값)\n· WEB 방식: WEB 포스 프로그램 (EASYPOS 포함)"),
-        this);
+    ShowInfoPopover(m_btnCommTypeInfo, _T("통신방식"), _T("포스 프로그램 통신 방식 선택\n· CS 방식: 윈도우 포스 프로그램 (기본값)\n· WEB 방식: WEB 포스 프로그램 (EASYPOS 포함)"));
 }
 void CShopSetupDlg::OnBnClickedCashReceiptInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnCashReceiptInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("현금영수증 거래"),
-        _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력"),
-        this);
+    ShowInfoPopover(m_btnCashReceiptInfo, _T("현금영수증 거래"), _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력"));
 }
 
 void CShopSetupDlg::OnBnClickedTaxPercentInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnTaxPercentInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("세금 자동역산 설정"),
-        _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"),
-        this);
+    ShowInfoPopover(m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"));
 }
 
 // ============================================================================
@@ -2663,125 +2645,60 @@ void CShopSetupDlg::OnBnClickedTaxPercentInfo()
 // ============================================================================
 void CShopSetupDlg::OnBnClickedCardTimeoutInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnCardTimeoutInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("카드입력 Timeout"),
-        _T("카드 입력 대기 시간 (초 단위)\n· 권장값: 100초 / 0 입력 시 자동 100초 설정"),
-        this);
+    ShowInfoPopover(m_btnCardTimeoutInfo, _T("카드입력 Timeout"), _T("카드 입력 대기 시간 (초 단위)\n· 권장값: 100초 / 0 입력 시 자동 100초 설정"));
 }
 void CShopSetupDlg::OnBnClickedInterlockInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnInterlockInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("장치 연동 방식"),
-        _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· 멀티패드(씨큐프라임용): 씨큐프라임 포스 전용\n· 멀티패드(키오스크): 사용 중지\n· AOP 리더기: AOP 리더기(Naver Connect 포함)"),
-        this);
+    ShowInfoPopover(m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· 멀티패드(씨큐프라임용): 씨큐프라임 포스 전용\n· 멀티패드(키오스크): 사용 중지\n· AOP 리더기: AOP 리더기(Naver Connect 포함)"));
 }
 void CShopSetupDlg::OnBnClickedMultiVoiceInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnMultiVoiceInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("음성출력"),
-        _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※ SPAY-8800Q, DP636X 모델만 가능"),
-        this);
+    ShowInfoPopover(m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※ SPAY-8800Q, DP636X 모델만 가능"));
 }
 void CShopSetupDlg::OnBnClickedCardDetectInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnCardDetectInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("우선 거래 설정"),
-        _T("카드 우선 거래 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"),
-        this);
+    ShowInfoPopover(m_btnCardDetectInfo, _T("우선 거래 설정"), _T("카드 우선 거래 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"));
 }
 void CShopSetupDlg::OnBnClickedScannerUseInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnScannerUseInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("스캐너 사용"),
-        _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※ KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용"),
-        this);
+    ShowInfoPopover(m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※ KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용"));
 }
 void CShopSetupDlg::OnBnClickedAutoResetInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnAutoResetInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("자동 재실행"),
-        _T("KFTCOneCAP 종료 시 자동 재실행 여부\n· 기본값 : 사용"),
-        this);
+    ShowInfoPopover(m_btnAutoResetInfo, _T("자동 재실행"), _T("KFTCOneCAP 종료 시 자동 재실행 여부\n· 기본값 : 사용"));
 }
 void CShopSetupDlg::OnBnClickedAutoRebootInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnAutoRebootInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("자동 리부팅"),
-        _T("특정 조건에서 단말/PC를 자동 리부팅할지 설정합니다.\n- 사용: 자동 리부팅\n- 미사용: 리부팅하지 않음"),
-        this);
+    ShowInfoPopover(m_btnAutoRebootInfo, _T("자동 리부팅"), _T("특정 조건에서 단말/PC를 자동 리부팅할지 설정합니다.\n- 사용: 자동 리부팅\n- 미사용: 리부팅하지 않음"));
 }
 void CShopSetupDlg::OnBnClickedAlarmGraphInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnAlarmGraphInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("알림창 그림"),
-        _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용"),
-        this);
+    ShowInfoPopover(m_btnAlarmGraphInfo, _T("알림창 그림"), _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용"));
 }
 void CShopSetupDlg::OnBnClickedAlarmDualInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnAlarmDualInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("알림창 듀얼"),
-        _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용"),
-        this);
+    ShowInfoPopover(m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용"));
 }
 void CShopSetupDlg::OnBnClickedSignPadUseInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnSignPadUseInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("서명패드 사용"),
-        _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력"),
-        this);
+    ShowInfoPopover(m_btnSignPadUseInfo, _T("서명패드 사용"), _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력"));
 }
 
 void CShopSetupDlg::OnBnClickedSignPadPortInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnSignPadPortInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("서명패드 포트번호"),
-        _T("서명패드가 연결된 COM 포트번호"),
-        this);
+    ShowInfoPopover(m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호"));
 }
 
 void CShopSetupDlg::OnBnClickedSignPadSpeedInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnSignPadSpeedInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("서명패드 속도"),
-        _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시"),
-        this);
+    ShowInfoPopover(m_btnSignPadSpeedInfo, _T("서명패드 속도"), _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시"));
 }
 // ============================================================================
 // 팝오버 아이콘 핸들러 - 탭2
 // ============================================================================
 void CShopSetupDlg::OnBnClickedAlarmSizeInfo()
 {
-    if (m_popover.IsVisible()) { m_popover.Hide(); return; }
-    CRect rc; m_btnAlarmSizeInfo.GetWindowRect(&rc);
-    m_popover.ShowAt(rc,
-        _T("알림창 크기"),
-        _T("알림창의 표시 크기를 설정합니다.\n매우 작게로 설정하면 화면 공간을 최소화합니다."),
-        this);
+    ShowInfoPopover(m_btnAlarmSizeInfo, _T("알림창 크기"), _T("알림창의 표시 크기를 설정합니다.\n매우 작게로 설정하면 화면 공간을 최소화합니다."));
 }
 const CShopSetupDlg::ValidationBinding* CShopSetupDlg::GetValidationBindings(int& outCount)
 {
@@ -3196,7 +3113,10 @@ void CShopSetupDlg::DrawSectionIcon(CDC* /*pDC*/, const CRect& /*rcIcon*/,
 // ============================================================================
 // Timer (입력 hover 추적 - 필요시 확장)
 // ============================================================================
-void CShopSetupDlg::OnTimer(UINT_PTR nIDEvent) { CDialog::OnTimer(nIDEvent); }
+void CShopSetupDlg::OnTimer(UINT_PTR nIDEvent)
+{
+    CDialog::OnTimer(nIDEvent);
+}
 void CShopSetupDlg::UpdateInputHoverByCursor() {}
 
 // ============================================================================

@@ -221,6 +221,9 @@ protected:
     afx_msg void OnBnClickedSignPadSpeedInfo();
     afx_msg void OnBnClickedAlarmSizeInfo();
 
+    // Unified popover helper
+    void ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody);
+
     // v10.1: toggle-dependent edits
     afx_msg void OnCbnSelchangeSignPadUse();
     afx_msg void OnBnClickedCardDetectToggle();
