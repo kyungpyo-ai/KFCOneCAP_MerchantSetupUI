@@ -98,7 +98,7 @@ void CReaderSetupDlg::EnsureFonts()
 	m_fontNormal.CreateFontIndirect(&lf);
 
 	// Label
-	lf.lfHeight = -SX(12);
+	lf.lfHeight = -SX(13);
 	lf.lfWeight = FW_NORMAL;
 	m_fontLabel.CreateFontIndirect(&lf);
 
@@ -146,15 +146,15 @@ void CReaderSetupDlg::CalcLayoutRects(
 {
 	CRect rc; GetClientRect(&rc);
 
-	const int margin = SX(18);
+	const int margin = SX(20);
 	inner = CRect(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 
 	const int titleBlock = SX(92);
 	const int sectionTitleH = SX(28);
-	const int sectionTitleTop = SX(18);
-	const int sectionTitleGap = SX(16);
-	const int sectionBoxPad = SX(18);
-	const int cardH = SX(118);
+	const int sectionTitleTop = SX(10);
+	const int sectionTitleGap = SX(12);
+	const int sectionBoxPad = SX(24);
+	const int cardH = SX(126);
 	const int cardGap = SX(14);
 	const int queryH = SX(62);
 	const int queryGap = SX(12);
@@ -165,8 +165,8 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 	int y = inner.top + titleBlock;
 
-	const int sectionLeft = inner.left + SX(12);
-	const int sectionRight = inner.right - SX(12);
+	const int sectionLeft = inner.left + SX(18);
+	const int sectionRight = inner.right - SX(18);
 	const int cardLeft = sectionLeft + sectionBoxPad;
 	const int cardRight = sectionRight - sectionBoxPad;
 
@@ -203,12 +203,12 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2) const
 {
-	return CRect(card1.left - SX(20), card1.top - SX(72), card1.right + SX(20), card2.bottom + SX(18));
+	return CRect(card1.left - SX(24), card1.top - SX(56), card1.right + SX(24), card2.bottom + SX(18));
 }
 
 CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
 {
-	return CRect(queryBox.left - SX(20), queryBox.top - SX(72), queryBox.right + SX(20), listRc.bottom + SX(18));
+	return CRect(queryBox.left - SX(24), queryBox.top - SX(56), queryBox.right + SX(24), listRc.bottom + SX(18));
 }
 
 void CReaderSetupDlg::RecalcIntegrityColumns()
@@ -699,7 +699,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 	// 조회 버튼
 	m_btnSearch.SubclassDlgItem(IDC_SEARCH, this);
-	m_btnSearch.SetButtonStyle(ButtonStyle::Primary);
+	m_btnSearch.SetButtonStyle(ButtonStyle::Download);
 
 	m_reader_init1.SetWindowText(_T("초기화"));
 	m_status_check1.SetWindowText(_T("상태체크"));
@@ -764,14 +764,14 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 CSize CReaderSetupDlg::CalcMinClientSize() const
 {
-	const int margin = SX(18);
+	const int margin = SX(20);
 	const int innerW = SX(720);
 	const int titleArea = SX(92);
-	const int sectionPad = SX(18);
-	const int sectionTitleTop = SX(18);
+	const int sectionPad = SX(24);
+	const int sectionTitleTop = SX(10);
 	const int sectionTitleH = SX(28);
-	const int sectionTitleGap = SX(16);
-	const int cardH = SX(118);
+	const int sectionTitleGap = SX(12);
+	const int cardH = SX(126);
 	const int cardGap = SX(14);
 	const int betweenSections = SX(26);
 	const int queryH = SX(62);
@@ -851,7 +851,7 @@ void CReaderSetupDlg::OnPaint()
 	memDC.FillSolidRect(rc, RGB(245, 247, 250));
 	memDC.SetBkMode(TRANSPARENT);
 
-	const int margin = SX(18);
+	const int margin = SX(20);
 	CRect mainCard(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 	CRect shadow = mainCard; shadow.OffsetRect(SX(2), SX(3));
 	FillRoundRect(&memDC, shadow, SX(18), RGB(234, 238, 243), RGB(234, 238, 243), 1);
@@ -963,7 +963,7 @@ void CReaderSetupDlg::OnPaint()
 
 		CString label; label.Format(_T("리더기%d - COM 포트"), num);
 		memDC.SelectObject(&m_fontLabel);
-		memDC.SetTextColor(enabled ? RGB(122, 133, 148) : RGB(182, 188, 196));
+		memDC.SetTextColor(enabled ? RGB(107, 114, 128) : RGB(156, 163, 175));
 		memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
 
 		const int comboW = SX(178);
@@ -989,7 +989,7 @@ void CReaderSetupDlg::OnPaint()
 	drawReaderCard(card2, m_bReader2Enabled, 2);
 
 	memDC.SelectObject(&m_fontLabel);
-	memDC.SetTextColor(RGB(122, 133, 148));
+	memDC.SetTextColor(RGB(107, 114, 128));
 	memDC.TextOut(queryBox.left, queryBox.top + (queryBox.Height() - SX(36)) / 2 - SX(18), _T("조회 범위"));
 
 	if (m_bUIReady && m_integrity_list.GetSafeHwnd() && m_integrity_list.GetItemCount() == 0)

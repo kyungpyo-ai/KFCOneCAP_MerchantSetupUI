@@ -449,9 +449,9 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		// 버튼 타입: 텍스트 기반(요청 유지)
 	CString t = strText; t.Trim();
 	BOOL isPrimary  = (t.Find(_T("확인")) >= 0);
-	BOOL isExit     = (t.Find(_T("취소")) >= 0) || (t.Find(_T("닫기")) >= 0) || (t.Find(_T("삭제")) >= 0);
+	BOOL isExit     = (t.Find(_T("취소")) >= 0) || (t.Find(_T("닫기")) >= 0);
 	BOOL isDanger   = (t.Find(_T("삭제")) >= 0);
-	BOOL isDownload = (t.Find(_T("다운")) >= 0);
+	BOOL isDownload = (t.Find(_T("다운")) >= 0) || (t.Find(_T("조회")) >= 0);
 	BOOL isMini     = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
 //   (//ε)
 
@@ -515,21 +515,21 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (isDanger)
 	{
-		// Danger (Delete): destructive action
-		COLORREF bg = pressed ? RGB(255, 245, 245) : (hover ? RGB(255, 250, 250) : RGB(255, 255, 255));
+		// Danger (Delete): light destructive action tone
+		COLORREF bg = pressed ? RGB(254, 202, 202) : (hover ? RGB(254, 226, 226) : RGB(254, 242, 242));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
-		COLORREF border = hover ? RGB(248, 113, 113) : RGB(252, 165, 165);
-		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
+		COLORREF border = bg;
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.0f);
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
 	else if (isDownload)
 	{
-		COLORREF bg = pressed ? BLUE_50 : (hover ? RGB(245, 249, 255) : RGB(255, 255, 255));
+		COLORREF bg = pressed ? RGB(120, 188, 255) : (hover ? RGB(168, 208, 255) : RGB(235, 244, 255));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
-		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(BLUE_200), GetGValue(BLUE_200), GetBValue(BLUE_200)), 1.0f);
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)), 1.0f);
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
