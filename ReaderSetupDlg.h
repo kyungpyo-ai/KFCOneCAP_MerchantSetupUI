@@ -64,6 +64,16 @@ protected:
 
 	void  HideLegacyStatics(); // "리더기1/2/조회 범위" 같은 기존 static 숨김
 	void  RecalcIntegrityColumns(); // 무결성 리스트 컬럼 너비를 화면 폭에 맞게 재계산
+	void  InitDialogMetrics();
+	void  InitComPortCombos();
+	void  LoadSavedComPortSelections(const vector<int>& ports);
+	void  InitSearchDateCombo();
+	void  InitIntegrityList();
+	void  ApplyFontsToControls();
+	void  InitModernButtonLabels();
+	void  InitModernButtonStyles();
+	void  InitToggleDefaults();
+	void  InitUnderlayColors();
 
 	//{{AFX_MSG(CReaderSetupDlg)
 	//virtual BOOL OnInitDialog();
