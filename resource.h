@@ -36,7 +36,6 @@
 #define _USE_DECLSPECS_FOR_SAL          0
 #define _USE_ATTRIBUTES_FOR_SAL         0
 #define __drv_typeConst                 0
-#define IDOK                            1
 #define CREATEPROCESS_MANIFEST_RESOURCE_ID 1
 #define MINIMUM_RESERVED_MANIFEST_RESOURCE_ID 1
 #define SW_SHOWNORMAL                   1
@@ -63,6 +62,7 @@
 #define CS_VREDRAW                      0x0001
 #define CF_TEXT                         1
 #define SCF_ISSECURE                    0x00000001
+#define IDOK                            1
 #define BN_PAINT                        1
 #define BST_CHECKED                     0x0001
 #define TBSTYLE_SEP                     0x0001
@@ -219,7 +219,6 @@
 #define VFFF_ISSHAREDFILE               0x0001
 #define VFF_CURNEDEST                   0x0001
 #define VIFF_FORCEINSTALL               0x0001
-#define IDCANCEL                        2
 #define WINAPI_FAMILY_PC_APP            2
 #define ISOLATIONAWARE_MANIFEST_RESOURCE_ID 2
 #define SW_SHOWMINIMIZED                2
@@ -243,6 +242,7 @@
 #define TME_LEAVE                       0x00000002
 #define CS_HREDRAW                      0x0002
 #define CF_BITMAP                       2
+#define IDCANCEL                        2
 #define BN_HILITE                       2
 #define BST_INDETERMINATE               0x0002
 #define HDS_BUTTONS                     0x0002
@@ -877,17 +877,23 @@
 #define WM_NCPAINT                      0x0085
 #define LANG_SAKHA                      0x85
 #define LANG_YAKUT                      0x85
+#define IDD_READER_SETUP_DIALOG         133
 #define VK_F23                          0x86
 #define WM_NCACTIVATE                   0x0086
 #define LANG_KICHE                      0x86
+#define IDD_STARTUP_SELECT_DLG          134
 #define VK_F24                          0x87
 #define WM_GETDLGCODE                   0x0087
 #define LANG_KINYARWANDA                0x87
+#define IDC_STATIC                      135
 #define VK_NAVIGATION_VIEW              0x88
 #define WM_SYNCPAINT                    0x0088
 #define LANG_WOLOF                      0x88
+#define IDC_BTN_START_SHOPSETUP         136
 #define VK_NAVIGATION_MENU              0x89
+#define IDC_BTN_START_READERSETUP       137
 #define VK_NAVIGATION_UP                0x8A
+#define IDC_BTN_START_READERSETUP2      138
 #define VK_NAVIGATION_DOWN              0x8B
 #define VK_NAVIGATION_LEFT              0x8C
 #define LANG_DARI                       0x8c
@@ -923,17 +929,26 @@
 #define WM_NCMBUTTONDOWN                0x00A7
 #define VK_BROWSER_REFRESH              0xA8
 #define WM_NCMBUTTONUP                  0x00A8
+#define IDC_STATIC_HEADER               168
 #define VK_BROWSER_STOP                 0xA9
 #define WM_NCMBUTTONDBLCLK              0x00A9
+#define IDC_STATIC_SUBHEADER            169
 #define VK_BROWSER_SEARCH               0xAA
+#define IDD_KFTCONECAP_DIALOG           170
+#define IDC_STATIC_FOOTER               170
 #define VK_BROWSER_FAVORITES            0xAB
 #define WM_NCXBUTTONDOWN                0x00AB
+#define IDC_READER_SETUP                171
 #define VK_BROWSER_HOME                 0xAC
 #define WM_NCXBUTTONUP                  0x00AC
+#define IDC_SHOP_SETUP                  172
 #define VK_VOLUME_MUTE                  0xAD
 #define WM_NCXBUTTONDBLCLK              0x00AD
+#define IDC_TRANS                       173
 #define VK_VOLUME_DOWN                  0xAE
+#define IDC_MINIMIZE                    174
 #define VK_VOLUME_UP                    0xAF
+#define IDC_EXIT                        175
 #define VK_MEDIA_NEXT_TRACK             0xB0
 #define EM_GETSEL                       0x00B0
 #define VK_MEDIA_PREV_TRACK             0xB1
@@ -1251,7 +1266,26 @@
 #define WM_PENWINFIRST                  0x0380
 #define WM_PENWINLAST                   0x038F
 #define WM_DDE_FIRST                    0x03E0
+#define IDC_STATUS_CHECK1               1000
+#define IDC_STATUS_CHECK2               1001
+#define IDC_INTEGRITY_CHECK1            1002
+#define IDC_INTEGRITY_CHECK2            1003
+#define IDC_KEYDOWN1                    1004
+#define IDC_KEYDOWN2                    1005
+#define IDC_READER_INIT1                1006
+#define IDC_INTEGRITY_LIST              1007
+#define IDC_COMPORT1                    1008
+#define IDC_COMPORT2                    1009
+#define IDC_READER_INIT2                1010
+#define IDC_SEARCH_DATE                 1016
+#define IDC_SEARCH                      1017
+#define IDC_UPDATE1                     1018
+#define IDC_UPDATE2                     1019
+#define IDC_PORT_OPEN1                  1020
+#define IDC_PORT_OPEN2                  1021
+#define IDC_MULTIPAD1                   1022
 #define CF_GDIOBJLAST                   0x03FF
+#define IDC_MULTIPAD2                   1023
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
 #define WM_USER                         0x0400
@@ -1292,6 +1326,7 @@
 #define chx7                            0x0416
 #define chx8                            0x0417
 #define chx9                            0x0418
+#define IDC_BTN_START_KFTCONECAP        1048
 #define chx10                           0x0419
 #define chx11                           0x041a
 #define chx12                           0x041b
@@ -1459,11 +1494,6 @@
 #define IDC_MANAGE_LINK                 1592
 #define _WIN32_IE_IE70                  0x0700
 #define IDD_SHOP_SETUP_DLG              2000
-#define IDD_READER_SETUP_DIALOG         133
-#define IDD_STARTUP_SELECT_DLG			134
-#define IDC_STATIC						135
-#define IDC_BTN_START_SHOPSETUP			136
-#define IDC_BTN_START_READERSETUP		137
 #define IDC_STATIC_VAN_SERVER           2001
 #define IDC_COMBO_VAN_SERVER            2002
 #define IDC_STATIC_PORT                 2003
@@ -1495,8 +1525,8 @@
 #define IDC_COMBO_SIGN_PAD_SPEED        2035
 #define IDC_CHECK_SCANNER_USE           2040
 #define IDC_EDIT_SCANNER_PORT           2042
-#define IDC_STATIC_CARD_DETECT_POSINFO	2043
-#define IDC_STATIC_SCANNER_PORT_LABEL	2044
+#define IDC_STATIC_CARD_DETECT_POSINFO  2043
+#define IDC_STATIC_SCANNER_PORT_LABEL   2044
 #define _WIN32_IE_IE80                  0x0800
 #define CS_SAVEBITS                     0x0800
 #define HDS_NOSIZING                    0x0800
@@ -1550,6 +1580,148 @@
 #define IDC_HDR_SCREEN                  4103
 #define IDD_DIALOG1                     5000
 #define IDD_SHOP_DOWN_DIALOG            5000
+#define IDC_STATIC_SHOP1                5001
+#define IDC_STATIC_SHOP2                5002
+#define IDC_STATIC_SHOP3                5003
+#define IDC_STATIC_SHOP4                5004
+#define IDC_STATIC_SHOP5                5005
+#define IDC_STATIC_SHOP6                5006
+#define IDC_STATIC_SHOP7                5007
+#define IDC_STATIC_SHOP8                5008
+#define IDC_STATIC_SHOP9                5009
+#define IDC_STATIC_SHOP10               5010
+#define IDC_STATIC_SHOP11               5011
+#define IDC_STATIC_SHOP12               5012
+#define IDC_STATIC_SHOP13               5013
+#define IDC_STATIC_SHOP14               5014
+#define IDC_STATIC_SHOP15               5015
+#define IDC_STATIC_SHOP16               5016
+#define IDC_STATIC_SHOP17               5017
+#define IDC_STATIC_SHOP18               5018
+#define IDC_STATIC_SHOP19               5019
+#define IDC_STATIC_SHOP20               5020
+#define IDC_EDIT_TERMINAL1              5021
+#define IDC_EDIT_TERMINAL2              5022
+#define IDC_EDIT_TERMINAL3              5023
+#define IDC_EDIT_TERMINAL4              5024
+#define IDC_EDIT_TERMINAL5              5025
+#define IDC_EDIT_TERMINAL6              5026
+#define IDC_EDIT_TERMINAL7              5027
+#define IDC_EDIT_TERMINAL8              5028
+#define IDC_EDIT_TERMINAL9              5029
+#define IDC_EDIT_TERMINAL10             5030
+#define IDC_EDIT_TERMINAL11             5031
+#define IDC_EDIT_TERMINAL12             5032
+#define IDC_EDIT_TERMINAL13             5033
+#define IDC_EDIT_TERMINAL14             5034
+#define IDC_EDIT_TERMINAL15             5035
+#define IDC_EDIT_TERMINAL16             5036
+#define IDC_EDIT_TERMINAL17             5037
+#define IDC_EDIT_TERMINAL18             5038
+#define IDC_EDIT_TERMINAL19             5039
+#define IDC_EDIT_TERMINAL20             5040
+#define IDC_EDIT_BUSINESS1              5041
+#define IDC_EDIT_BUSINESS2              5042
+#define IDC_EDIT_BUSINESS3              5043
+#define IDC_EDIT_BUSINESS4              5044
+#define IDC_EDIT_BUSINESS5              5045
+#define IDC_EDIT_BUSINESS6              5046
+#define IDC_EDIT_BUSINESS7              5047
+#define IDC_EDIT_BUSINESS8              5048
+#define IDC_EDIT_BUSINESS9              5049
+#define IDC_EDIT_BUSINESS10             5050
+#define IDC_EDIT_BUSINESS11             5051
+#define IDC_EDIT_BUSINESS12             5052
+#define IDC_EDIT_BUSINESS13             5053
+#define IDC_EDIT_BUSINESS14             5054
+#define IDC_EDIT_BUSINESS15             5055
+#define IDC_EDIT_BUSINESS16             5056
+#define IDC_EDIT_BUSINESS17             5057
+#define IDC_EDIT_BUSINESS18             5058
+#define IDC_EDIT_BUSINESS19             5059
+#define IDC_EDIT_BUSINESS20             5060
+#define IDC_EDIT_PASSWORD1              5061
+#define IDC_EDIT_PASSWORD2              5062
+#define IDC_EDIT_PASSWORD3              5063
+#define IDC_EDIT_PASSWORD4              5064
+#define IDC_EDIT_PASSWORD5              5065
+#define IDC_EDIT_PASSWORD6              5066
+#define IDC_EDIT_PASSWORD7              5067
+#define IDC_EDIT_PASSWORD8              5068
+#define IDC_EDIT_PASSWORD9              5069
+#define IDC_EDIT_PASSWORD10             5070
+#define IDC_EDIT_PASSWORD11             5071
+#define IDC_EDIT_PASSWORD12             5072
+#define IDC_EDIT_PASSWORD13             5073
+#define IDC_EDIT_PASSWORD14             5074
+#define IDC_EDIT_PASSWORD15             5075
+#define IDC_EDIT_PASSWORD16             5076
+#define IDC_EDIT_PASSWORD17             5077
+#define IDC_EDIT_PASSWORD18             5078
+#define IDC_EDIT_PASSWORD19             5079
+#define IDC_EDIT_PASSWORD20             5080
+#define IDC_EDIT_SHOPNAME1              5081
+#define IDC_EDIT_SHOPNAME2              5082
+#define IDC_EDIT_SHOPNAME3              5083
+#define IDC_EDIT_SHOPNAME4              5084
+#define IDC_EDIT_SHOPNAME5              5085
+#define IDC_EDIT_SHOPNAME6              5086
+#define IDC_EDIT_SHOPNAME7              5087
+#define IDC_EDIT_SHOPNAME8              5088
+#define IDC_EDIT_SHOPNAME9              5089
+#define IDC_EDIT_SHOPNAME10             5090
+#define IDC_EDIT_SHOPNAME11             5091
+#define IDC_EDIT_SHOPNAME12             5092
+#define IDC_EDIT_SHOPNAME13             5093
+#define IDC_EDIT_SHOPNAME14             5094
+#define IDC_EDIT_SHOPNAME15             5095
+#define IDC_EDIT_SHOPNAME16             5096
+#define IDC_EDIT_SHOPNAME17             5097
+#define IDC_EDIT_SHOPNAME18             5098
+#define IDC_EDIT_SHOPNAME19             5099
+#define IDC_EDIT_SHOPNAME20             5100
+#define IDC_EDIT_STATUS1                5101
+#define IDC_EDIT_STATUS2                5102
+#define IDC_EDIT_STATUS3                5103
+#define IDC_EDIT_STATUS4                5104
+#define IDC_EDIT_STATUS5                5105
+#define IDC_EDIT_STATUS6                5106
+#define IDC_EDIT_STATUS7                5107
+#define IDC_EDIT_STATUS8                5108
+#define IDC_EDIT_STATUS9                5109
+#define IDC_EDIT_STATUS10               5110
+#define IDC_EDIT_STATUS11               5111
+#define IDC_EDIT_STATUS12               5112
+#define IDC_EDIT_STATUS13               5113
+#define IDC_EDIT_STATUS14               5114
+#define IDC_EDIT_STATUS15               5115
+#define IDC_EDIT_STATUS16               5116
+#define IDC_EDIT_STATUS17               5117
+#define IDC_EDIT_STATUS18               5118
+#define IDC_EDIT_STATUS19               5119
+#define IDC_EDIT_STATUS20               5120
+#define IDC_BTN_DOWNLOAD1               5121
+#define IDC_BTN_DOWNLOAD2               5122
+#define IDC_BTN_DOWNLOAD3               5123
+#define IDC_BTN_DOWNLOAD4               5124
+#define IDC_BTN_DOWNLOAD5               5125
+#define IDC_BTN_DOWNLOAD6               5126
+#define IDC_BTN_DOWNLOAD7               5127
+#define IDC_BTN_DOWNLOAD8               5128
+#define IDC_BTN_DOWNLOAD9               5129
+#define IDC_BTN_DOWNLOAD10              5130
+#define IDC_BTN_DOWNLOAD11              5131
+#define IDC_BTN_DOWNLOAD12              5132
+#define IDC_BTN_DOWNLOAD13              5133
+#define IDC_BTN_DOWNLOAD14              5134
+#define IDC_BTN_DOWNLOAD15              5135
+#define IDC_BTN_DOWNLOAD16              5136
+#define IDC_BTN_DOWNLOAD17              5137
+#define IDC_BTN_DOWNLOAD18              5138
+#define IDC_BTN_DOWNLOAD19              5139
+#define IDC_BTN_DOWNLOAD20              5140
+#define IDC_BTN_CONFIRM                 5141
+#define IDC_BTN_CANCEL_SHOP             5142
 #define CS_BYTEALIGNWINDOW              0x2000
 #define TBSTYLE_CUSTOMERASE             0x2000
 #define RBS_AUTOSIZE                    0x00002000
@@ -1643,6 +1815,7 @@
 #define LVS_NOSORTHEADER                0x8000
 #define TVS_NOHSCROLL                   0x8000
 #define TCS_FOCUSNEVER                  0x8000
+#define IDC_STATIC_RECT                 60001
 #define SC_SIZE                         0xF000
 #define SC_SEPARATOR                    0xF00F
 #define SC_MOVE                         0xF010
@@ -1666,211 +1839,15 @@
 #define LVS_TYPESTYLEMASK               0xfc00
 #define SPVERSION_MASK                  0x0000FF00
 #define HTERROR                         -2
-#define PWR_FAIL                        -1
 #define UNICODE_NOCHAR                  0xFFFF
+#define PWR_FAIL                        -1
 #define HTTRANSPARENT                   -1
-
-
-#define IDC_STATIC_SHOP1                    5001
-#define IDC_STATIC_SHOP2                    5002
-#define IDC_STATIC_SHOP3                    5003
-#define IDC_STATIC_SHOP4                    5004
-#define IDC_STATIC_SHOP5                    5005
-#define IDC_STATIC_SHOP6                    5006
-#define IDC_STATIC_SHOP7                    5007
-#define IDC_STATIC_SHOP8                    5008
-#define IDC_STATIC_SHOP9                    5009
-#define IDC_STATIC_SHOP10                   5010
-#define IDC_STATIC_SHOP11                   5011
-#define IDC_STATIC_SHOP12                   5012
-#define IDC_STATIC_SHOP13                   5013
-#define IDC_STATIC_SHOP14                   5014
-#define IDC_STATIC_SHOP15                   5015
-#define IDC_STATIC_SHOP16                   5016
-#define IDC_STATIC_SHOP17                   5017
-#define IDC_STATIC_SHOP18                   5018
-#define IDC_STATIC_SHOP19                   5019
-#define IDC_STATIC_SHOP20                   5020
-
-// ========================================
-// Edit - 단말기 제품번호 (20개)
-// ========================================
-#define IDC_EDIT_TERMINAL1                  5021
-#define IDC_EDIT_TERMINAL2                  5022
-#define IDC_EDIT_TERMINAL3                  5023
-#define IDC_EDIT_TERMINAL4                  5024
-#define IDC_EDIT_TERMINAL5                  5025
-#define IDC_EDIT_TERMINAL6                  5026
-#define IDC_EDIT_TERMINAL7                  5027
-#define IDC_EDIT_TERMINAL8                  5028
-#define IDC_EDIT_TERMINAL9                  5029
-#define IDC_EDIT_TERMINAL10                 5030
-#define IDC_EDIT_TERMINAL11                 5031
-#define IDC_EDIT_TERMINAL12                 5032
-#define IDC_EDIT_TERMINAL13                 5033
-#define IDC_EDIT_TERMINAL14                 5034
-#define IDC_EDIT_TERMINAL15                 5035
-#define IDC_EDIT_TERMINAL16                 5036
-#define IDC_EDIT_TERMINAL17                 5037
-#define IDC_EDIT_TERMINAL18                 5038
-#define IDC_EDIT_TERMINAL19                 5039
-#define IDC_EDIT_TERMINAL20                 5040
-
-// ========================================
-// Edit - 사업자번호 (20개)
-// ========================================
-#define IDC_EDIT_BUSINESS1                  5041
-#define IDC_EDIT_BUSINESS2                  5042
-#define IDC_EDIT_BUSINESS3                  5043
-#define IDC_EDIT_BUSINESS4                  5044
-#define IDC_EDIT_BUSINESS5                  5045
-#define IDC_EDIT_BUSINESS6                  5046
-#define IDC_EDIT_BUSINESS7                  5047
-#define IDC_EDIT_BUSINESS8                  5048
-#define IDC_EDIT_BUSINESS9                  5049
-#define IDC_EDIT_BUSINESS10                 5050
-#define IDC_EDIT_BUSINESS11                 5051
-#define IDC_EDIT_BUSINESS12                 5052
-#define IDC_EDIT_BUSINESS13                 5053
-#define IDC_EDIT_BUSINESS14                 5054
-#define IDC_EDIT_BUSINESS15                 5055
-#define IDC_EDIT_BUSINESS16                 5056
-#define IDC_EDIT_BUSINESS17                 5057
-#define IDC_EDIT_BUSINESS18                 5058
-#define IDC_EDIT_BUSINESS19                 5059
-#define IDC_EDIT_BUSINESS20                 5060
-
-// ========================================
-// Edit - 비밀번호 (20개)
-// ========================================
-#define IDC_EDIT_PASSWORD1                  5061
-#define IDC_EDIT_PASSWORD2                  5062
-#define IDC_EDIT_PASSWORD3                  5063
-#define IDC_EDIT_PASSWORD4                  5064
-#define IDC_EDIT_PASSWORD5                  5065
-#define IDC_EDIT_PASSWORD6                  5066
-#define IDC_EDIT_PASSWORD7                  5067
-#define IDC_EDIT_PASSWORD8                  5068
-#define IDC_EDIT_PASSWORD9                  5069
-#define IDC_EDIT_PASSWORD10                 5070
-#define IDC_EDIT_PASSWORD11                 5071
-#define IDC_EDIT_PASSWORD12                 5072
-#define IDC_EDIT_PASSWORD13                 5073
-#define IDC_EDIT_PASSWORD14                 5074
-#define IDC_EDIT_PASSWORD15                 5075
-#define IDC_EDIT_PASSWORD16                 5076
-#define IDC_EDIT_PASSWORD17                 5077
-#define IDC_EDIT_PASSWORD18                 5078
-#define IDC_EDIT_PASSWORD19                 5079
-#define IDC_EDIT_PASSWORD20                 5080
-
-// ========================================
-// Edit - 가맹점명 (20개)
-// ========================================
-#define IDC_EDIT_SHOPNAME1                  5081
-#define IDC_EDIT_SHOPNAME2                  5082
-#define IDC_EDIT_SHOPNAME3                  5083
-#define IDC_EDIT_SHOPNAME4                  5084
-#define IDC_EDIT_SHOPNAME5                  5085
-#define IDC_EDIT_SHOPNAME6                  5086
-#define IDC_EDIT_SHOPNAME7                  5087
-#define IDC_EDIT_SHOPNAME8                  5088
-#define IDC_EDIT_SHOPNAME9                  5089
-#define IDC_EDIT_SHOPNAME10                 5090
-#define IDC_EDIT_SHOPNAME11                 5091
-#define IDC_EDIT_SHOPNAME12                 5092
-#define IDC_EDIT_SHOPNAME13                 5093
-#define IDC_EDIT_SHOPNAME14                 5094
-#define IDC_EDIT_SHOPNAME15                 5095
-#define IDC_EDIT_SHOPNAME16                 5096
-#define IDC_EDIT_SHOPNAME17                 5097
-#define IDC_EDIT_SHOPNAME18                 5098
-#define IDC_EDIT_SHOPNAME19                 5099
-#define IDC_EDIT_SHOPNAME20                 5100
-
-// ========================================
-// Edit - 상태 (20개)
-// ========================================
-#define IDC_EDIT_STATUS1                    5101
-#define IDC_EDIT_STATUS2                    5102
-#define IDC_EDIT_STATUS3                    5103
-#define IDC_EDIT_STATUS4                    5104
-#define IDC_EDIT_STATUS5                    5105
-#define IDC_EDIT_STATUS6                    5106
-#define IDC_EDIT_STATUS7                    5107
-#define IDC_EDIT_STATUS8                    5108
-#define IDC_EDIT_STATUS9                    5109
-#define IDC_EDIT_STATUS10                   5110
-#define IDC_EDIT_STATUS11                   5111
-#define IDC_EDIT_STATUS12                   5112
-#define IDC_EDIT_STATUS13                   5113
-#define IDC_EDIT_STATUS14                   5114
-#define IDC_EDIT_STATUS15                   5115
-#define IDC_EDIT_STATUS16                   5116
-#define IDC_EDIT_STATUS17                   5117
-#define IDC_EDIT_STATUS18                   5118
-#define IDC_EDIT_STATUS19                   5119
-#define IDC_EDIT_STATUS20                   5120
-
-// ========================================
-// Button - 다운로드 (20개)
-// ========================================
-#define IDC_BTN_DOWNLOAD1                   5121
-#define IDC_BTN_DOWNLOAD2                   5122
-#define IDC_BTN_DOWNLOAD3                   5123
-#define IDC_BTN_DOWNLOAD4                   5124
-#define IDC_BTN_DOWNLOAD5                   5125
-#define IDC_BTN_DOWNLOAD6                   5126
-#define IDC_BTN_DOWNLOAD7                   5127
-#define IDC_BTN_DOWNLOAD8                   5128
-#define IDC_BTN_DOWNLOAD9                   5129
-#define IDC_BTN_DOWNLOAD10                  5130
-#define IDC_BTN_DOWNLOAD11                  5131
-#define IDC_BTN_DOWNLOAD12                  5132
-#define IDC_BTN_DOWNLOAD13                  5133
-#define IDC_BTN_DOWNLOAD14                  5134
-#define IDC_BTN_DOWNLOAD15                  5135
-#define IDC_BTN_DOWNLOAD16                  5136
-#define IDC_BTN_DOWNLOAD17                  5137
-#define IDC_BTN_DOWNLOAD18                  5138
-#define IDC_BTN_DOWNLOAD19                  5139
-#define IDC_BTN_DOWNLOAD20                  5140
-
-// ========================================
-// 하단 버튼
-// ========================================
-#define IDC_BTN_CONFIRM                     5141
-#define IDC_BTN_CANCEL_SHOP                 5142
-
-
-#define IDC_STATUS_CHECK1               1000
-#define IDC_STATUS_CHECK2               1001
-#define IDC_INTEGRITY_CHECK1            1002
-#define IDC_INTEGRITY_CHECK2            1003
-#define IDC_KEYDOWN1                    1004
-#define IDC_KEYDOWN2                    1005
-#define IDC_READER_INIT1                1006
-#define IDC_INTEGRITY_LIST              1007
-#define IDC_COMPORT1                    1008
-#define IDC_COMPORT2                    1009
-#define IDC_READER_INIT2                1010
-#define IDC_SEARCH_DATE                 1016
-#define IDC_SEARCH                      1017
-
-#define IDC_UPDATE1                     1018
-#define IDC_UPDATE2                     1019
-#define IDC_PORT_OPEN1                  1020
-#define IDC_PORT_OPEN2                  1021
-#define IDC_MULTIPAD1                   1022
-#define IDC_MULTIPAD2                   1023
-
-#define IDC_STATIC_RECT 60001
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        5002
+#define _APS_NEXT_RESOURCE_VALUE        5003
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         2107
 #define _APS_NEXT_SYMED_VALUE           3000

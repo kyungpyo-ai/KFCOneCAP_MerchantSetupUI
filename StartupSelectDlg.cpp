@@ -1,9 +1,5 @@
-// StartupSelectDlg.cpp : implementation file
-//
-// [v2.0 추가] 시작 시 다이얼로그 선택창
-
 #include "stdafx.h"
-#include "Resource.h"
+#include "resource.h"
 #include "StartupSelectDlg.h"
 
 #ifdef _DEBUG
@@ -24,8 +20,9 @@ void CStartupSelectDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CStartupSelectDlg, CDialog)
-    ON_BN_CLICKED(IDC_BTN_START_SHOPSETUP, &CStartupSelectDlg::OnBtnShopSetup)
-    ON_BN_CLICKED(IDC_BTN_START_READERSETUP, &CStartupSelectDlg::OnBtnReaderSetup)
+    ON_BN_CLICKED(IDC_BTN_START_SHOPSETUP, OnBtnShopSetup)
+    ON_BN_CLICKED(IDC_BTN_START_READERSETUP, OnBtnReaderSetup)
+    ON_BN_CLICKED(IDC_BTN_START_KFTCONECAP, OnBtnKFTCOneCAP)
 END_MESSAGE_MAP()
 
 BOOL CStartupSelectDlg::OnInitDialog()
@@ -44,5 +41,11 @@ void CStartupSelectDlg::OnBtnShopSetup()
 void CStartupSelectDlg::OnBtnReaderSetup()
 {
     m_choice = CHOICE_READER_SETUP;
+    EndDialog(IDOK);
+}
+
+void CStartupSelectDlg::OnBtnKFTCOneCAP()
+{
+    m_choice = CHOICE_KFTC_ONECAP;
     EndDialog(IDOK);
 }
