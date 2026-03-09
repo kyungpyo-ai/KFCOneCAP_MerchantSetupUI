@@ -193,11 +193,12 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int sectionTitleH = SX(28);
 	const int sectionTitleTop = SX(10);
 	const int sectionTitleGap = SX(12);
+	const int infoTitleGap = SX(4);
 	const int sectionBoxPad = SX(24);
 	const int cardH = SX(126);
 	const int cardGap = SX(14);
 	const int queryH = SX(56);
-	const int queryGap = SX(6);
+	const int queryGap = SX(18);
 	const int infoBottomPad = SX(8);
 	const int bottomBtnH = SX(42);
 	const int bottomGap = SX(16);
@@ -218,7 +219,7 @@ void CReaderSetupDlg::CalcLayoutRects(
 	y = card2.bottom + sectionBoxPad + SX(10);
 
 	sec2TitlePt = CPoint(sectionLeft + SX(24), y + sectionTitleTop);
-	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + sectionTitleGap;
+	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + infoTitleGap;
 
 	queryBox = CRect(sectionLeft + sectionBoxPad, sec2ContentTop,
 		sectionRight - sectionBoxPad, sec2ContentTop + queryH);
@@ -236,10 +237,14 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int buttonW = SX(110);
 	const int buttonH = SX(36);
 	const int buttonGap = SX(8);
-	const int buttonBottom = SX(18);
+	const int buttonBottom = SX(10);
+	const int buttonTopGap = SX(8);
 	int totalW = buttonW * 2 + buttonGap;
 	int bx = (rc.Width() - totalW) / 2;
-	int by = rc.bottom - (SX(22) + buttonBottom + buttonH);
+	int by = listRc.bottom + buttonTopGap;
+	int maxBy = rc.bottom - (SX(12) + buttonBottom + buttonH);
+	if (by > maxBy)
+		by = maxBy;
 
 	okRc = CRect(bx, by, bx + buttonW, by + buttonH);
 	cancelRc = CRect(bx + buttonW + buttonGap, by, bx + buttonW + buttonGap + buttonW, by + buttonH);
@@ -253,7 +258,7 @@ CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2
 
 CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
 {
-	return CRect(queryBox.left - SX(24), queryBox.top - SX(56), queryBox.right + SX(24), listRc.bottom + SX(10));
+	return CRect(queryBox.left - SX(24), queryBox.top - SX(56), queryBox.right + SX(24), listRc.bottom + SX(4));
 }
 
 void CReaderSetupDlg::RecalcIntegrityColumns()
@@ -270,7 +275,8 @@ void CReaderSetupDlg::RecalcIntegrityColumns()
 	// 비율 합계는 100이며, 마지막 컬럼에서 남는 폭을 흡수한다.
 	const int ratios[] = { 20, 13, 7, 14, 23, 23 };
 	const int colCount = sizeof(ratios) / sizeof(ratios[0]);
-	const int bodyWidth = max(120, rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - SX(6));
+	// 스크롤바와 본문 사이에 여백을 조금 더 둬서 마지막 컬럼이 답답해 보이지 않도록 한다.
+	const int bodyWidth = max(120, rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - SX(8));
 
 	int used = 0;
 	for (int i = 0; i < colCount; ++i)
@@ -338,6 +344,19 @@ void CReaderSetupDlg::OnLButtonDown(UINT nFlags, CPoint point)
 		Invalidate(FALSE);
 		return;
 	}
+
+	// 배경/빈 영역을 클릭하면 포커스를 확인 버튼으로 넘겨서
+	// 스킨 콤보박스의 파란 포커스 테두리가 남지 않도록 정리한다.
+	UINT hit = 0;
+	CWnd* pChild = ChildWindowFromPoint(point, hit);
+	if (pChild == this || pChild == NULL)
+	{
+		if (::IsWindow(m_btnOk.GetSafeHwnd()))
+			m_btnOk.SetFocus();
+		else if (::IsWindow(GetSafeHwnd()))
+			SetFocus();
+	}
+
 	CDialog::OnLButtonDown(nFlags, point);
 }
 
@@ -479,10 +498,15 @@ void CReaderSetupDlg::LayoutControls()
 		m_togglePortOpen2, m_toggleMultipad2);
 
 	int qx = queryBox.left;
-	int qy = queryBox.top + (queryBox.Height() - SX(36)) / 2;
 	int qComboW = SX(120);
+	CRect rcSearchCombo;
+	m_search_date.GetWindowRect(&rcSearchCombo);
+	int qVisibleH = rcSearchCombo.Height();
+	if (qVisibleH <= 0)
+		qVisibleH = SX(28);
+	int qy = queryBox.top + (queryBox.Height() - qVisibleH) / 2 + SX(2);
 	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
-	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(62), SX(36), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(62), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 커스텀 표는 OnPaint에서 직접 그리고, 실제 리스트는 데이터 저장용으로만 숨긴다.
 	m_integrity_list.SetWindowPos(NULL, -10000, -10000, 1, 1,
@@ -874,8 +898,8 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_update2.SetUnderlayColor(cardBgDisabled);
 	m_comport1.SetUnderlayColor(cardBgEnabled);
 	m_comport2.SetUnderlayColor(cardBgDisabled);
-	m_search_date.SetUnderlayColor(RGB(255, 255, 255));
-	m_btnSearch.SetUnderlayColor(RGB(255, 255, 255));
+	m_search_date.SetUnderlayColor(RGB(248, 249, 251));
+	m_btnSearch.SetUnderlayColor(RGB(248, 249, 251));
 	m_btnOk.SetUnderlayColor(RGB(255, 255, 255));
 	m_btnCancel.SetUnderlayColor(RGB(255, 255, 255));
 
@@ -903,6 +927,7 @@ CSize CReaderSetupDlg::CalcMinClientSize() const
 	const int sectionTitleTop = SX(10);
 	const int sectionTitleH = SX(28);
 	const int sectionTitleGap = SX(12);
+	const int infoTitleGap = SX(4);
 	const int cardH = SX(126);
 	const int cardGap = SX(14);
 	const int betweenSections = SX(26);
@@ -921,7 +946,7 @@ CSize CReaderSetupDlg::CalcMinClientSize() const
 	clientH += sectionTitleTop + sectionTitleH + sectionTitleGap;
 	clientH += cardH + cardGap + cardH + sectionPad;
 	clientH += betweenSections;
-	clientH += sectionTitleTop + sectionTitleH + sectionTitleGap;
+	clientH += sectionTitleTop + sectionTitleH + infoTitleGap;
 	clientH += queryH + queryGap + listMinH + infoBottomPad;
 	clientH += bottomArea;
 	clientH += margin;
@@ -1120,10 +1145,6 @@ void CReaderSetupDlg::OnPaint()
 	drawReaderCard(card1, m_bReader1Enabled, 1);
 	drawReaderCard(card2, m_bReader2Enabled, 2);
 
-	memDC.SelectObject(&m_fontLabel);
-	memDC.SetTextColor(RGB(107, 114, 128));
-	memDC.TextOut(queryBox.left, queryBox.top + (queryBox.Height() - SX(36)) / 2 - SX(18), _T("조회 범위"));
-
 	// 기본 ListCtrl은 숨기고, 무결성 체크 표는 여기서 직접 그린다.
 	{
 		CRect tableOuter = listRc;
@@ -1159,9 +1180,10 @@ void CReaderSetupDlg::OnPaint()
 		const int itemCount = (m_bUIReady && m_integrity_list.GetSafeHwnd()) ? m_integrity_list.GetItemCount() : 0;
 		const BOOL bNeedScroll = (itemCount > visibleRows);
 		const int scrollW = bNeedScroll ? SX(10) : 0;
+		const int scrollRightPad = bNeedScroll ? SX(2) : 0;
 
 		int widths[colCount] = { 0, };
-		int usableW = headerRc.Width() - (bNeedScroll ? (scrollW + SX(6)) : 0);
+		int usableW = headerRc.Width() - (bNeedScroll ? (scrollW + SX(8) + scrollRightPad) : 0);
 		int usedW = 0;
 		for (int i = 0; i < colCount; ++i)
 		{
@@ -1174,7 +1196,7 @@ void CReaderSetupDlg::OnPaint()
 		CRect contentRc = bodyRc;
 		contentRc.DeflateRect(SX(6), SX(6));
 		if (bNeedScroll)
-			contentRc.right -= (scrollW + SX(6));
+			contentRc.right -= (scrollW + SX(8) + scrollRightPad);
 
 		int cellX = headerRc.left;
 		for (int i = 0; i < colCount; ++i)
@@ -1229,7 +1251,10 @@ void CReaderSetupDlg::OnPaint()
 			}
 			if (bNeedScroll)
 			{
-				m_rcIntegrityScrollBar = CRect(contentRc.right + SX(4), contentRc.top, contentRc.right + SX(4) + scrollW, contentRc.top + rowH * visibleRows);
+				const int scrollLeftGap = SX(4);
+				m_rcIntegrityScrollBar = CRect(contentRc.right + scrollLeftGap, contentRc.top,
+					contentRc.right + scrollLeftGap + scrollW, contentRc.top + rowH * visibleRows);
+				m_rcIntegrityScrollBar.right -= scrollRightPad;
 				const int maxScroll = itemCount - visibleRows;
 				int thumbH = (m_rcIntegrityScrollBar.Height() * visibleRows) / itemCount;
 				if (thumbH < SX(18)) thumbH = SX(18);
