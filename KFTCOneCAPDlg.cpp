@@ -352,8 +352,8 @@ void CKFTCOneCAPDlg::LayoutControls()
     const int marginX = SX(50);
     const int topCardsVisual = SX(135);    // 4개의 버튼 위치(y축)
     const int cardGap = SX(18);
-    const int footerBtnW = SX(160);
-    const int footerBtnH = SX(36);
+    const int footerBtnW = SX(184);
+    const int footerBtnH = SX(40);
 
     int cardW = (rc.Width() - (marginX * 2) - (cardGap * 3));
     cardW /= 4;

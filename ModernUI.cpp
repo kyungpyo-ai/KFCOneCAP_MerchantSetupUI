@@ -622,7 +622,7 @@ Gdiplus::Color txtColor;
 
 	Gdiplus::SolidBrush tb(txtColor);
 	Gdiplus::FontFamily ff(L"Malgun Gothic");
-	const Gdiplus::REAL footerFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 2.5f);
+	const Gdiplus::REAL footerFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
 	const Gdiplus::REAL normalFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
 	Gdiplus::Font font(&ff, isFooterAction ? footerFontSize : normalFontSize, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	Gdiplus::StringFormat sf;
@@ -662,28 +662,30 @@ Gdiplus::Color txtColor;
 	std::wstring wt = kftc_to_wide(strText);
 	if (isFooterAction && !m_bLoading)
 	{
-		const Gdiplus::REAL iconGap = ModernUIDpi::ScaleF(m_hWnd, 7.0f);
-		const Gdiplus::REAL iconSize = ModernUIDpi::ScaleF(m_hWnd, isProgramExit ? 14.0f : 13.0f);
+		const Gdiplus::REAL iconGap = ModernUIDpi::ScaleF(m_hWnd, 9.5f);
+		const Gdiplus::REAL iconSize = ModernUIDpi::ScaleF(m_hWnd, isProgramExit ? 18.0f : 16.5f);
 		Gdiplus::RectF measureRf(0, 0, rf.Width, rf.Height);
 		Gdiplus::RectF bound;
 		g.MeasureString(wt.c_str(), -1, &font, measureRf, &sf, &bound);
 		const Gdiplus::REAL totalW = iconSize + iconGap + bound.Width;
-		const Gdiplus::REAL startX = rf.X + max((Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, 10.0f), (rf.Width - totalW) * 0.5f);
+		const Gdiplus::REAL startX = rf.X + max((Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, 14.0f), (rf.Width - totalW) * 0.5f);
 		const Gdiplus::REAL centerY = rf.Y + rf.Height * 0.5f;
 		const Gdiplus::REAL iconY = centerY - iconSize * 0.5f;
 
-		Gdiplus::Pen iconPen(txtColor, ModernUIDpi::ScaleF(m_hWnd, 1.9f));
+		Gdiplus::Pen iconPen(txtColor, ModernUIDpi::ScaleF(m_hWnd, 1.95f));
 		iconPen.SetStartCap(Gdiplus::LineCapRound);
 		iconPen.SetEndCap(Gdiplus::LineCapRound);
 		iconPen.SetLineJoin(Gdiplus::LineJoinRound);
 
 		if (isProgramExit)
 		{
-			const Gdiplus::REAL ringInset = ModernUIDpi::ScaleF(m_hWnd, 2.2f);
+			const Gdiplus::REAL ringInset = ModernUIDpi::ScaleF(m_hWnd, 3.2f);
 			Gdiplus::RectF ringRc(startX + ringInset, iconY + ringInset, iconSize - ringInset * 2.0f, iconSize - ringInset * 2.0f);
-			g.DrawArc(&iconPen, ringRc, 38.0f, 284.0f);
+			g.DrawArc(&iconPen, ringRc, 312.0f, 276.0f);
 			const Gdiplus::REAL cx = startX + iconSize * 0.5f;
-			g.DrawLine(&iconPen, Gdiplus::PointF(cx, iconY + ModernUIDpi::ScaleF(m_hWnd, 1.6f)), Gdiplus::PointF(cx, iconY + iconSize * 0.47f));
+			const Gdiplus::REAL stemTop = iconY + ModernUIDpi::ScaleF(m_hWnd, 1.8f);
+			const Gdiplus::REAL stemBottom = iconY + iconSize * 0.47f;
+			g.DrawLine(&iconPen, Gdiplus::PointF(cx, stemTop), Gdiplus::PointF(cx, stemBottom));
 		}
 		else
 		{
@@ -692,7 +694,7 @@ Gdiplus::Color txtColor;
 		}
 
 		textRf.X = startX + iconSize + iconGap;
-		textRf.Width = rf.GetRight() - textRf.X - ModernUIDpi::ScaleF(m_hWnd, 6.0f);
+		textRf.Width = rf.GetRight() - textRf.X - ModernUIDpi::ScaleF(m_hWnd, 12.0f);
 		sf.SetAlignment(Gdiplus::StringAlignmentNear);
 	}
 	g.DrawString(wt.c_str(), -1, &font, textRf, &sf, &tb);
