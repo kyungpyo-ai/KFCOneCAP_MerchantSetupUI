@@ -85,12 +85,12 @@ void CHomeCardButton::StepAnimation()
 
     if (m_nHoverProgress < nHoverTarget)
     {
-        m_nHoverProgress = min(100, m_nHoverProgress + 18);
+        m_nHoverProgress = min(100, m_nHoverProgress + 7);   // hover in ~140ms
         bChanged = TRUE;
     }
     else if (m_nHoverProgress > nHoverTarget)
     {
-        m_nHoverProgress = max(0, m_nHoverProgress - 10);
+        m_nHoverProgress = max(0, m_nHoverProgress - 5);    // hover out ~200ms
         bChanged = TRUE;
     }
 
@@ -101,7 +101,9 @@ void CHomeCardButton::StepAnimation()
     }
     else if (m_nPressProgress > nPressTarget)
     {
-        m_nPressProgress = max(0, m_nPressProgress - 12);
+        // ease-out: 처음엔 빠르게, 끝으로 갈수록 부드럽게 감속 → 떨림 없이 자연스러운 복귀
+        int nPressStep = max(2, m_nPressProgress / 5);
+        m_nPressProgress = max(0, m_nPressProgress - nPressStep);
         bChanged = TRUE;
     }
 
@@ -188,13 +190,11 @@ namespace
     COLORREF kCardBorder = RGB(232, 236, 242);
     COLORREF kCardBorderHover = RGB(226, 232, 240);
     COLORREF kCardFillHover = RGB(255, 255, 255);
-    COLORREF kCardFillPressed = RGB(243, 247, 252);
-    COLORREF kIconBg = RGB(234, 241, 249);
-    COLORREF kIconBgHover = RGB(220, 233, 248);
-    COLORREF kIconBgPressed = RGB(22, 103, 222);
-    COLORREF kIconStroke = RGB(31, 114, 214);
-    COLORREF kTitleText = RGB(18, 31, 53);
-    COLORREF kSubText = RGB(126, 142, 163);
+    COLORREF kCardFillPressed = RGB(210, 230, 255);   // 더 진한 파랑: 선명한 눌림감
+    // kIconBg 계열: DrawCardIcon 내부 직접 보간으로 대체됨
+    COLORREF kTitleText = RGB(25, 31, 40);      // 헤더 h1: #191F28
+    COLORREF kCardTitleText = RGB(51, 61, 75);   // 카드 h3: #333D4B
+    COLORREF kSubText = RGB(139, 149, 161);   // #8B95A1
     COLORREF kFooterDivider = RGB(220, 226, 234);
 
     void AddRoundRectPath(GraphicsPath& path, const RectF& rc, REAL radius)
@@ -273,8 +273,11 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     m_btnExit.SetButtonStyle(ButtonStyle::Default);
     m_btnMinimize.SetUnderlayColor(kHomeBg);
     m_btnExit.SetUnderlayColor(kHomeBg);
-    m_btnMinimize.SetColors(kHomeBg, RGB(232, 237, 243), RGB(121, 133, 151));
-    m_btnExit.SetColors(kHomeBg, RGB(229, 234, 240), RGB(107, 119, 137));
+    // sys-btn: normal text=#8B95A1, hover bg=#E5E8EB, hover text=#333D4B
+    m_btnMinimize.SetColors(kHomeBg, RGB(229, 232, 235), RGB(139, 149, 161));
+    m_btnMinimize.SetHoverTextColor(RGB(51, 61, 75));
+    m_btnExit.SetColors(kHomeBg, RGB(229, 232, 235), RGB(139, 149, 161));
+    m_btnExit.SetHoverTextColor(RGB(51, 61, 75));
 
     m_btnMinimize.SetWindowText(_T("최소화"));
     m_btnExit.SetWindowText(_T("프로그램 종료"));
@@ -314,7 +317,7 @@ void CKFTCOneCAPDlg::EnsureFonts()
     _tcscpy(lf.lfFaceName, _T("맑은 고딕"));
 
     lf.lfHeight = -MulDiv(18, m_dpi, 72);
-    lf.lfWeight = FW_BOLD;
+    lf.lfWeight = FW_EXTRABOLD;   // font-weight: 800
     m_fontTitle.CreateFontIndirect(&lf);
 
     lf.lfHeight = -MulDiv(11, m_dpi, 72);
@@ -525,108 +528,160 @@ CString CKFTCOneCAPDlg::GetCardDescription(HomeCardType type) const
 }
 
 // 4. 다시 설계한 리더기 아이콘 (카드가 꽂힌 세로형 리더기)
-void CKFTCOneCAPDlg::DrawReaderIcon(Graphics& g, const RectF& rc, Brush* pBr)
+void CKFTCOneCAPDlg::DrawReaderIcon(Graphics& g, const RectF& rc, const Color& clr)
 {
-    GraphicsPath path;
-    // 단말기 몸체
-    path.AddRectangle(RectF(rc.X + (REAL)4.0, rc.Y + (REAL)2.0, (REAL)20.0, (REAL)24.0));
-    // 화면(액정) 영역
-    path.AddRectangle(RectF(rc.X + (REAL)6.0, rc.Y + (REAL)4.0, (REAL)16.0, (REAL)10.0));
-    // 하단 키패드 (도트 6개)
+    SolidBrush br(clr);
+    Pen pen(clr, 1.3f);
+    pen.SetLineJoin(LineJoinRound);
+
+    auto AddRR = [](GraphicsPath& p, RectF r, REAL rad) {
+        REAL d = rad * 2.0f;
+        p.AddArc(r.X, r.Y, d, d, 180.0f, 90.0f);
+        p.AddArc(r.GetRight()-d, r.Y, d, d, 270.0f, 90.0f);
+        p.AddArc(r.GetRight()-d, r.GetBottom()-d, d, d, 0.0f, 90.0f);
+        p.AddArc(r.X, r.GetBottom()-d, d, d, 90.0f, 90.0f);
+        p.CloseFigure();
+    };
+
+    // 몸체 + 화면 구멍 + 키패드 버튼 구멍을 FillModeAlternate 한 번에 처리
+    // → 배경색이 비쳐서 화면과 키버튼이 뚜렷하게 보임
+    GraphicsPath bodyPath(FillModeAlternate);
+    AddRR(bodyPath, RectF(rc.X+4.5f, rc.Y+1.0f, 19.0f, 23.5f), 3.0f);  // 몸체
+
+    bodyPath.AddRectangle(RectF(rc.X+7.0f, rc.Y+3.5f, 14.0f, 8.0f));    // 화면 구멍
+
+    // 키패드 3x2 버튼 구멍 (배경이 비쳐 버튼처럼 보임)
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 2; j++) {
-            path.AddRectangle(RectF(rc.X + (REAL)7.0 + (i * 5.0f), rc.Y + (REAL)16.0 + (j * 4.0f), (REAL)3.0, (REAL)2.0));
+            REAL kx = rc.X + 7.5f + (i * 4.5f);
+            REAL ky = rc.Y + 14.5f + (j * 4.2f);
+            AddRR(bodyPath, RectF(kx, ky, 3.2f, 2.8f), 0.7f);  // 각 키버튼 구멍
         }
     }
-    g.FillPath(pBr, &path);
+
+    g.FillPath(&br, &bodyPath);
+
+    // 카드 슬롯 (하단 가로선)
+    Pen slotPen(clr, 1.5f);
+    slotPen.SetStartCap(LineCapRound);
+    slotPen.SetEndCap(LineCapRound);
+    g.DrawLine(&slotPen, PointF(rc.X+8.5f, rc.Y+23.2f), PointF(rc.X+19.5f, rc.Y+23.2f));
 }
 
-// 2. 가맹점 설정 (문이 있는 집 모양)
-void CKFTCOneCAPDlg::DrawShopIcon(Graphics& g, const RectF& rc, Brush* pBr)
+void CKFTCOneCAPDlg::DrawShopIcon(Graphics& g, const RectF& rc, const Color& clr)
 {
-    // 지붕 (삼각형)
-    PointF roofPts[] = {
-        {rc.X + (REAL)14.0, rc.Y + (REAL)2.0},
-        {rc.X + (REAL)2.0,  rc.Y + (REAL)12.0},
-        {rc.X + (REAL)26.0, rc.Y + (REAL)12.0}
+    SolidBrush br(clr);
+
+    // 1. 지붕 삼각형
+    PointF roof[] = {
+        {rc.X+14.0f, rc.Y+1.5f},
+        {rc.X+1.5f,  rc.Y+11.5f},
+        {rc.X+26.5f, rc.Y+11.5f}
     };
-    g.FillPolygon(pBr, roofPts, 3);
+    g.FillPolygon(&br, roof, 3);
 
-    // 집 본체 (사각형)
-    g.FillRectangle(pBr, RectF(rc.X + (REAL)5.0, rc.Y + (REAL)12.0, (REAL)18.0, (REAL)13.0));
+    // 2. 건물 본체 + 문 cutout (FillModeAlternate → 문이 투명 구멍)
+    GraphicsPath buildPath(FillModeAlternate);
+    buildPath.AddRectangle(RectF(rc.X+3.5f, rc.Y+11.0f, 21.0f, 15.0f));   // 본체
+    buildPath.AddRectangle(RectF(rc.X+11.0f, rc.Y+17.5f, 6.0f, 8.5f));    // 문 구멍
+    g.FillPath(&br, &buildPath);
 
-    // 문(Door) - 배경색에 따라 구멍처럼 보이거나 반전되도록 별도 처리
-    // 여기서는 path에서 문 영역을 제외(Exclude)하여 그리는 방식이 가장 깔끔합니다.
-    GraphicsPath housePath;
-    housePath.AddRectangle(RectF(rc.X + (REAL)11.0, rc.Y + (REAL)17.0, (REAL)6.0, (REAL)8.0));
-
-    // 일반 상태에서는 배경색으로 문을 그리고, 눌렸을 때는 흰색으로 문을 그립니다.
-    // (이미 pBr이 상태에 맞게 넘어오므로 덧그리기만 해도 충분합니다)
-    // 좀 더 정교하게 보이려면 문 위에 작은 손잡이(점) 하나를 추가해도 좋습니다.
 }
 
-// 결제설정 (IC칩 카드)
-void CKFTCOneCAPDlg::DrawTransIcon(Graphics& g, const RectF& rc, Brush* pBr)
+// 결제설정 (IC칩 카드)// 결제 및 수납 - IC칩 신용카드 (둥근 모서리 + 자기 띠 + IC칩 + 번호)
+ void CKFTCOneCAPDlg::DrawTransIcon(Graphics& g, const RectF& rc, const Color& clr)
 {
-    GraphicsPath path;
-    // 카드 외곽선
-    path.AddRectangle(RectF(rc.X + (REAL)2, rc.Y + (REAL)6, (REAL)24, (REAL)16));
-    // 좌측 상단 IC칩
-    path.AddRectangle(RectF(rc.X + (REAL)5, rc.Y + (REAL)10, (REAL)5, (REAL)4));
-    // 우측 텍스트 라인 2줄 (카드 정보 느낌)
-    path.AddRectangle(RectF(rc.X + (REAL)13, rc.Y + (REAL)10, (REAL)8, (REAL)1.5));
-    path.AddRectangle(RectF(rc.X + (REAL)13, rc.Y + (REAL)13, (REAL)6, (REAL)1.5));
-    // 하단 카드 번호 영역
-    path.AddRectangle(RectF(rc.X + (REAL)5, rc.Y + (REAL)18, (REAL)14, (REAL)1.5));
-    g.FillPath(pBr, &path);
+    SolidBrush br(clr);
+
+    auto AddRR = [](GraphicsPath& p, RectF r, REAL rad) {
+        REAL d = rad * 2.0f;
+        p.AddArc(r.X,           r.Y,            d, d, 180.0f, 90.0f);
+        p.AddArc(r.GetRight()-d, r.Y,            d, d, 270.0f, 90.0f);
+        p.AddArc(r.GetRight()-d, r.GetBottom()-d, d, d,   0.0f, 90.0f);
+        p.AddArc(r.X,           r.GetBottom()-d, d, d,  90.0f, 90.0f);
+        p.CloseFigure();
+    };
+
+    // 카드 외곽 + 자기띠(구멍) + IC칩 슬롯(구멍)
+    GraphicsPath card(FillModeAlternate);
+    AddRR(card, RectF(rc.X+1.0f, rc.Y+4.5f, 26.0f, 19.0f), 2.5f); // 카드 외곽
+    card.AddRectangle(RectF(rc.X+1.0f, rc.Y+8.0f, 26.0f, 3.0f));   // 자기띠
+    AddRR(card, RectF(rc.X+3.5f, rc.Y+13.5f, 9.0f, 6.0f), 1.0f);  // IC칩 슬롯
+    g.FillPath(&br, &card);
+
+    // IC칩 내부 접점 3x2 (FillModeAlternate: 슬롯 위에 채움→구멍 반복)
+    GraphicsPath chip(FillModeAlternate);
+    AddRR(chip, RectF(rc.X+3.5f, rc.Y+13.5f, 9.0f, 6.0f), 1.0f);  // 칩 채움
+    for (int c2 = 0; c2 < 3; c2++)
+        for (int r2 = 0; r2 < 2; r2++)
+            AddRR(chip,
+                RectF(rc.X+4.3f+(c2*2.8f), rc.Y+14.2f+(r2*2.4f), 1.8f, 1.6f),
+                0.3f);
+    g.FillPath(&br, &chip);
 }
 
-// 전표설정 (영수증 모양)
-void CKFTCOneCAPDlg::DrawReceiptIcon(Graphics& g, const RectF& rc, Brush* pBr)
+void CKFTCOneCAPDlg::DrawReceiptIcon(Graphics& g, const RectF& rc, const Color& clr)
 {
-    GraphicsPath path;
+    SolidBrush br(clr);
+
+    // 1. 영수증 본체 (지그재그 하단) + 텍스트 라인 cutout (FillModeAlternate)
+    GraphicsPath path(FillModeAlternate);
     path.StartFigure();
-    path.AddLine(rc.X + (REAL)6, rc.Y + (REAL)4, rc.X + (REAL)22, rc.Y + (REAL)4);   // 상단
-    path.AddLine(rc.X + (REAL)22, rc.Y + (REAL)4, rc.X + (REAL)22, rc.Y + (REAL)21); // 우측
-    // 하단 지그재그
-    path.AddLine(rc.X + (REAL)22, rc.Y + (REAL)21, rc.X + (REAL)19, rc.Y + (REAL)24);
-    path.AddLine(rc.X + (REAL)19, rc.Y + (REAL)24, rc.X + (REAL)16, rc.Y + (REAL)21);
-    path.AddLine(rc.X + (REAL)16, rc.Y + (REAL)21, rc.X + (REAL)13, rc.Y + (REAL)24);
-    path.AddLine(rc.X + (REAL)13, rc.Y + (REAL)24, rc.X + (REAL)10, rc.Y + (REAL)21);
-    path.AddLine(rc.X + (REAL)10, rc.Y + (REAL)21, rc.X + (REAL)7, rc.Y + (REAL)24);
-    path.AddLine(rc.X + (REAL)7, rc.Y + (REAL)24, rc.X + (REAL)6, rc.Y + (REAL)21);
-    path.AddLine(rc.X + (REAL)6, rc.Y + (REAL)21, rc.X + (REAL)6, rc.Y + (REAL)4);   // 좌측
+    // 외곽: 상단 → 우측 → 지그재그 하단 → 좌측
+    path.AddLine(rc.X+6.0f,  rc.Y+2.5f,  rc.X+22.0f, rc.Y+2.5f);
+    path.AddLine(rc.X+22.0f, rc.Y+2.5f,  rc.X+22.0f, rc.Y+21.0f);
+    path.AddLine(rc.X+22.0f, rc.Y+21.0f, rc.X+19.5f, rc.Y+24.0f);
+    path.AddLine(rc.X+19.5f, rc.Y+24.0f, rc.X+17.0f, rc.Y+21.0f);
+    path.AddLine(rc.X+17.0f, rc.Y+21.0f, rc.X+14.0f, rc.Y+24.0f);
+    path.AddLine(rc.X+14.0f, rc.Y+24.0f, rc.X+11.0f, rc.Y+21.0f);
+    path.AddLine(rc.X+11.0f, rc.Y+21.0f, rc.X+8.5f,  rc.Y+24.0f);
+    path.AddLine(rc.X+8.5f,  rc.Y+24.0f, rc.X+6.0f,  rc.Y+21.0f);
+    path.AddLine(rc.X+6.0f,  rc.Y+21.0f, rc.X+6.0f,  rc.Y+2.5f);
     path.CloseFigure();
-    // 영수증 내부 텍스트 라인
-    path.AddRectangle(RectF(rc.X + (REAL)9, rc.Y + (REAL)8, (REAL)10, (REAL)2));
-    path.AddRectangle(RectF(rc.X + (REAL)9, rc.Y + (REAL)12, (REAL)10, (REAL)2));
-    path.AddRectangle(RectF(rc.X + (REAL)9, rc.Y + (REAL)16, (REAL)6, (REAL)2));
-    g.FillPath(pBr, &path);
+
+    // 텍스트 라인 3줄 (구멍 → 배경색으로 텍스트 느낌)
+    path.AddRectangle(RectF(rc.X+8.5f,  rc.Y+6.5f,  10.0f, 1.8f));   // 줄1 (짧음: 제목)
+    path.AddRectangle(RectF(rc.X+8.5f,  rc.Y+10.0f, 10.0f, 1.5f));   // 줄2
+    path.AddRectangle(RectF(rc.X+8.5f,  rc.Y+13.0f,  8.0f, 1.5f));   // 줄3 (더 짧음)
+    path.AddRectangle(RectF(rc.X+8.5f,  rc.Y+16.0f,  6.5f, 1.5f));   // 줄4 (가장 짧음)
+
+    g.FillPath(&br, &path);
 }
+
 
 void CKFTCOneCAPDlg::DrawCardIcon(Graphics& g, const CRect& rcIcon, HomeCardType type, int nHoverProgress, int nPressProgress)
 {
     g.SetSmoothingMode(SmoothingModeAntiAlias);
 
-    // 1. 색상 결정 (회사 팔레트 활용)
+    // 1. 색상 결정 - 3단계 부드러운 보간
+    // Normal: bg=BLUE_50(#EBF4FF), icon=BLUE_500
+    // Hover:  bg=BLUE_100(#A8D0FF), icon=BLUE_500
+    // Press:  bg=BLUE_500, icon=White
     Color colorBg, colorIcon;
-    if (nPressProgress > 0) {
-        colorBg = Color(255, 0, 100, 221);     // BLUE_500 (누를 때 배경)
-        colorIcon = Color(255, 255, 255, 255);   // White (누를 때 아이콘 흰색)
-    }
-    else {
-        // BLUE_50(#EBF4FF)에서 BLUE_100(#A8D0FF)으로 부드럽게 전환
-        BYTE r = 235 + (BYTE)((168 - 235) * nHoverProgress / 100);
-        BYTE g_v = 244 + (BYTE)((208 - 244) * nHoverProgress / 100);
-        colorBg = Color(255, r, g_v, 255);
-        colorIcon = Color(255, 0, 100, 221);   // BLUE_500 (기본 아이콘)
+    {
+        int hBgR = 235 + (168 - 235) * nHoverProgress / 100;
+        int hBgG = 244 + (208 - 244) * nHoverProgress / 100;
+        int hBgB = 255;
+
+        int bgR = hBgR + (0   - hBgR) * nPressProgress / 100;
+        int bgG = hBgG + (100 - hBgG) * nPressProgress / 100;
+        int bgB = hBgB + (221 - hBgB) * nPressProgress / 100;
+        bgR = max(0, min(255, bgR));
+        bgG = max(0, min(255, bgG));
+        bgB = max(0, min(255, bgB));
+        colorBg = Color(255, (BYTE)bgR, (BYTE)bgG, (BYTE)bgB);
+
+        int iconR = 0   + (255 - 0)   * nPressProgress / 100;
+        int iconG = 100 + (255 - 100) * nPressProgress / 100;
+        int iconB = 221 + (255 - 221) * nPressProgress / 100;
+        colorIcon = Color(255, (BYTE)min(255,iconR), (BYTE)min(255,iconG), (BYTE)min(255,iconB));
     }
 
     // 2. 사라졌던 배경 박스 다시 그리기
     RectF rectIcon((REAL)rcIcon.left, (REAL)rcIcon.top, (REAL)rcIcon.Width(), (REAL)rcIcon.Height());
 
     // 누를 때 카드 전체가 쫀득하게 작아지는 효과 (배경만 축소)
-    float cardScale = 1.0f - (0.05f * nPressProgress / 100.0f);
+    float cardScale = 1.0f - (0.10f * nPressProgress / 100.0f);   // 10%: 아이콘 눌림감 강화
     PointF center(rectIcon.X + rectIcon.Width / 2.0f, rectIcon.Y + rectIcon.Height / 2.0f);
 
     g.TranslateTransform(center.X, center.Y);
@@ -657,10 +712,10 @@ void CKFTCOneCAPDlg::DrawCardIcon(Graphics& g, const CRect& rcIcon, HomeCardType
     SolidBrush brIcon(colorIcon);
 
     switch (type) {
-    case CARD_READER:  DrawReaderIcon(g, rcDraw, &brIcon); break;
-    case CARD_SHOP:    DrawShopIcon(g, rcDraw, &brIcon);   break;
-    case CARD_TRANS:   DrawTransIcon(g, rcDraw, &brIcon);  break;
-    case CARD_RECEIPT: DrawReceiptIcon(g, rcDraw, &brIcon); break;
+    case CARD_READER:  DrawReaderIcon(g, rcDraw, colorIcon); break;
+    case CARD_SHOP:    DrawShopIcon(g, rcDraw, colorIcon);   break;
+    case CARD_TRANS:   DrawTransIcon(g, rcDraw, colorIcon);  break;
+    case CARD_RECEIPT: DrawReceiptIcon(g, rcDraw, colorIcon); break;
     }
 
     g.ResetTransform();
@@ -696,11 +751,11 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     g.SetSmoothingMode(SmoothingModeAntiAlias);
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
-    const int hoverLift = MulDiv(SX(9), nHoverProgress, 100);
-    const int pressDown = MulDiv(SX(9), nPressProgress, 100);
+    const int hoverLift = MulDiv(SX(6), nHoverProgress, 100);   // translateY(-6px)
+    const int pressDown = MulDiv(SX(5), nPressProgress, 100);   // 깊은 눌림감
     const int nVisualOffsetY = pressDown - hoverLift;
-    const int pressedInsetX = MulDiv(SX(2), nPressProgress, 100);
-    const int pressedInsetY = MulDiv(SX(1), nPressProgress, 100);
+    const int pressedInsetX = MulDiv(SX(3), nPressProgress, 100);   // 떨림 최소화
+    const int pressedInsetY = MulDiv(SX(2), nPressProgress, 100);
 
     CRect rcPaint(0, SX(18), rc.Width(), rc.Height());
     rcPaint.DeflateRect(SX(2), SX(2));
@@ -714,7 +769,7 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
         (REAL)rcPaint.Height() + (REAL)SX(6));
     GraphicsPath blueGlowOuterPath;
     AddRoundRectPath(blueGlowOuterPath, blueGlowOuterRect, (REAL)SX(28));
-    BYTE blueGlowOuterAlpha = (BYTE)(2 + (nHoverProgress * 20) / 100);
+    BYTE blueGlowOuterAlpha = (BYTE)(3 + (nHoverProgress * 12) / 100);   // 은은하게: max ~15
     if (nPressProgress > 0)
         blueGlowOuterAlpha = (BYTE)max(1, blueGlowOuterAlpha - (nPressProgress * 7) / 100);
 
@@ -724,16 +779,16 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
         (REAL)rcPaint.Height() - (REAL)SX(2));
     GraphicsPath blueGlowInnerPath;
     AddRoundRectPath(blueGlowInnerPath, blueGlowInnerRect, (REAL)SX(25));
-    BYTE blueGlowInnerAlpha = (BYTE)(4 + (nHoverProgress * 28) / 100);
+    BYTE blueGlowInnerAlpha = (BYTE)(3 + (nHoverProgress * 10) / 100);   // 은은하게: max ~13
     if (nPressProgress > 0)
         blueGlowInnerAlpha = (BYTE)max(2, blueGlowInnerAlpha - (nPressProgress * 10) / 100);
 
     if (nHoverProgress > 0 && nPressProgress == 0)
     {
-        SolidBrush blueGlowOuterBrush(Color(blueGlowOuterAlpha, 120, 176, 255));
+        SolidBrush blueGlowOuterBrush(Color(blueGlowOuterAlpha, 66, 152, 255));   // BLUE_300: 더 부드러운 glow
         g.FillPath(&blueGlowOuterBrush, &blueGlowOuterPath);
 
-        SolidBrush blueGlowInnerBrush(Color(blueGlowInnerAlpha, 103, 161, 255));
+        SolidBrush blueGlowInnerBrush(Color(blueGlowInnerAlpha, 66, 152, 255));   // BLUE_300
         g.FillPath(&blueGlowInnerBrush, &blueGlowInnerPath);
     }
 
@@ -746,9 +801,17 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     BYTE shadowAlpha = (BYTE)(12 + (nHoverProgress * 22) / 100);
     if (nPressProgress > 0)
         shadowAlpha = (BYTE)max(6, shadowAlpha - (nPressProgress * 8) / 100);
+    {
+        // 기본 그림자 (항상 표시) - box-shadow: 0 4px 12px rgba(0,0,0,0.04)
+        BYTE baseShadowAlpha = 10;
+        SolidBrush baseShadowBrush(Color(baseShadowAlpha, 17, 24, 39));
+        g.FillPath(&baseShadowBrush, &shadowPath);
+    }
     if (nHoverProgress > 0 && nPressProgress == 0)
     {
-        SolidBrush shadowBrush(Color(shadowAlpha, 17, 24, 39));
+        // 호버 그림자 강화
+        BYTE extraShadowAlpha = (BYTE)((nHoverProgress * 22) / 100);
+        SolidBrush shadowBrush(Color(extraShadowAlpha, 17, 24, 39));
         g.FillPath(&shadowBrush, &shadowPath);
 
         RectF coreShadowRect((REAL)rcPaint.left + (REAL)SX(8),
@@ -757,7 +820,7 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
             (REAL)rcPaint.Height() - (REAL)SX(24));
         GraphicsPath coreShadowPath;
         AddRoundRectPath(coreShadowPath, coreShadowRect, (REAL)SX(20));
-        BYTE coreShadowAlpha = (BYTE)(6 + (nHoverProgress * 14) / 100);
+        BYTE coreShadowAlpha = (BYTE)(4 + (nHoverProgress * 12) / 100);
         SolidBrush coreShadowBrush(Color(coreShadowAlpha, 17, 24, 39));
         g.FillPath(&coreShadowBrush, &coreShadowPath);
     }
@@ -779,24 +842,26 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     AddRoundRectPath(path, card, (REAL)SX(20));
 
     SolidBrush fillBrush(Color(255, fillR, fillG, fillB));
-    BYTE borderAlpha = (BYTE)(210 - (nHoverProgress * 70) / 100);
-    if (nPressProgress > 0)
-        borderAlpha = (BYTE)max(108, borderAlpha - (nPressProgress * 32) / 100);
-    Pen borderPen(Color(borderAlpha, borderR, borderG, borderB), 1.0f);
-    borderPen.SetLineJoin(LineJoinRound);
     g.FillPath(&fillBrush, &path);
-    g.DrawPath(&borderPen, &path);
+    // 테두리: 정지 상태만 미세하게, hover/press 시 사라짐
+    BYTE borderAlpha = (BYTE)((40 * (100 - nHoverProgress) / 100) * (100 - nPressProgress) / 100);
+    if (borderAlpha > 0)
+    {
+        Pen borderPen(Color(borderAlpha, borderR, borderG, borderB), 1.0f);
+        borderPen.SetLineJoin(LineJoinRound);
+        g.DrawPath(&borderPen, &path);
+    }
 
-    const int iconShiftY = -MulDiv(SX(2), nHoverProgress, 100) + MulDiv(SX(4), nPressProgress, 100);
+    const int iconShiftY = -MulDiv(SX(3), nHoverProgress, 100) + MulDiv(SX(3), nPressProgress, 100);
     CRect rcIcon(rcPaint.left + SX(28), rcPaint.top + SX(28) + iconShiftY, rcPaint.left + SX(28) + SX(56), rcPaint.top + SX(24) + iconShiftY + SX(56));
     DrawCardIcon(g, rcIcon, type, nHoverProgress, nPressProgress);
 
-    const int textShiftY = -MulDiv(SX(2), nHoverProgress, 100) + MulDiv(SX(4), nPressProgress, 100);
+    const int textShiftY = -MulDiv(SX(3), nHoverProgress, 100) + MulDiv(SX(3), nPressProgress, 100);
     CRect rcTitle(rcPaint.left + SX(28), rcPaint.top + SX(104) + textShiftY, rcPaint.right - SX(24), rcPaint.top + SX(128) + textShiftY);
     CRect rcDesc(rcPaint.left + SX(28), rcPaint.top + SX(140) + textShiftY, rcPaint.right - SX(28), rcPaint.bottom - SX(20));
 
     memDC.SetBkMode(TRANSPARENT);
-    memDC.SetTextColor(kTitleText);
+    memDC.SetTextColor(kCardTitleText);   // #333D4B
     CFont* pOld = memDC.SelectObject(&m_fontCardTitle);
     memDC.DrawText(GetCardTitle(type), &rcTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_END_ELLIPSIS);
 

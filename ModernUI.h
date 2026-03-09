@@ -160,6 +160,7 @@ public:
     virtual ~CModernButton();
 
     void SetColors(COLORREF normalBg, COLORREF hoverBg, COLORREF textColor);
+    void SetHoverTextColor(COLORREF hoverTextColor);   // hover 시 텍스트 색상 변경 지원
 
     // Underlay (background behind control) to avoid rounded-corner halo
     void SetUnderlayColor(COLORREF underlayBg);
@@ -193,6 +194,8 @@ private:
     COLORREF m_clrNormalBg;
     COLORREF m_clrHoverBg;
     COLORREF m_clrText;
+    COLORREF m_clrHoverText;    // hover 시 텍스트 색상 (#333D4B 등)
+    BOOL     m_bUseHoverText;  // hover text color 사용 여부
     BOOL m_bHover;
     BOOL m_bTracking;
 

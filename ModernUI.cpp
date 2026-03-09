@@ -219,6 +219,8 @@ CModernButton::CModernButton()
 	m_clrNormalBg = RGB(255, 255, 255);
 	m_clrHoverBg = RGB(243, 248, 255);
 	m_clrText = KFTC_TEXT_DARK;
+	m_clrHoverText = 0;
+	m_bUseHoverText = FALSE;
 	m_bHover = FALSE;
 	m_bTracking = FALSE;
 	m_bPressed = FALSE;
@@ -351,6 +353,13 @@ void CModernButton::SetColors(COLORREF normalBg, COLORREF hoverBg, COLORREF text
 	m_clrNormalBg = normalBg;
 	m_clrHoverBg = hoverBg;
 	m_clrText = textColor;
+}
+
+void CModernButton::SetHoverTextColor(COLORREF hoverTextColor)
+{
+	m_clrHoverText = hoverTextColor;
+	m_bUseHoverText = TRUE;
+	Invalidate(FALSE);
 }
 
 void CModernButton::SetUnderlayColor(COLORREF underlayBg)
@@ -617,7 +626,9 @@ Gdiplus::Color txtColor;
 				? Gdiplus::Color(255, 185, 28, 28)
 				: (isDownload
 					? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
-					: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText))));
+					: (m_bUseHoverText && hover
+						? Gdiplus::Color(255, GetRValue(m_clrHoverText), GetGValue(m_clrHoverText), GetBValue(m_clrHoverText))
+						: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText)))));
 
 
 	Gdiplus::SolidBrush tb(txtColor);

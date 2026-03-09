@@ -86,10 +86,10 @@ private:
     void DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type);
 
     void DrawCardIcon(Gdiplus::Graphics& g, const CRect& rcIcon, HomeCardType type, int nHoverProgress, int nPressProgress);
-    void DrawReaderIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
-    void DrawShopIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
-    void DrawTransIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
-    void DrawReceiptIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
+    void DrawReaderIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, const Gdiplus::Color& clr);
+    void DrawShopIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, const Gdiplus::Color& clr);
+    void DrawTransIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, const Gdiplus::Color& clr);
+    void DrawReceiptIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, const Gdiplus::Color& clr);
     CString GetCardTitle(HomeCardType type) const;
     CString GetCardDescription(HomeCardType type) const;
 
