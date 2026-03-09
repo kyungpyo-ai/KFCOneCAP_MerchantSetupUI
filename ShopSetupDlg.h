@@ -390,4 +390,12 @@ private:
     BOOL     m_bUiInitialized;
     BOOL     m_bClosing;
     void     UpdateInputHoverByCursor();
+
+    // GDI+ font objects cached for the dialog lifetime (created once in OnInitDialog,
+    // deleted in OnDestroy). Prevents per-paint allocation that can cause transient
+    // GdipStatus != Ok errors which silently corrupt DrawString output.
+    Gdiplus::FontFamily* m_pFontFamilyMalgun;
+    Gdiplus::Font*       m_pFontCardTitle;   // section card subtitle (bold, DPI-scaled 13px)
+    Gdiplus::Font*       m_pFontHdrTitle;    // header title (bold, DPI-scaled 16px)
+    Gdiplus::Font*       m_pFontHdrSub;      // header subtitle (regular, DPI-scaled 11px)
 };

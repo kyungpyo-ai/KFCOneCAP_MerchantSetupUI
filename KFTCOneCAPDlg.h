@@ -1,6 +1,42 @@
 #pragma once
 
 #include "resource.h"
+#include "ModernUI.h"
+#include <gdiplus.h>
+
+class CHomeCardButton : public CButton
+{
+public:
+    CHomeCardButton();
+
+    BOOL IsHover() const { return m_bHover; }
+    BOOL IsPressed() const { return m_bPressed; }
+    int GetHoverProgress() const { return m_nHoverProgress; }
+    int GetPressProgress() const { return m_nPressProgress; }
+    void ResetVisualState();
+
+protected:
+    afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg LRESULT OnMouseLeave(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnCaptureChanged(CWnd* pWnd);
+    afx_msg void OnCancelMode();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
+    DECLARE_MESSAGE_MAP()
+
+private:
+    void StartTrackMouseLeave();
+    void StartAnimTimer();
+    void StopAnimTimerIfIdle();
+    void StepAnimation();
+
+    BOOL m_bHover;
+    BOOL m_bPressed;
+    BOOL m_bTracking;
+    int  m_nHoverProgress;
+    int  m_nPressProgress;
+};
 
 class CKFTCOneCAPDlg : public CDialog
 {
@@ -8,17 +44,73 @@ public:
     enum { IDD = IDD_KFTCONECAP_DIALOG };
 
     CKFTCOneCAPDlg(CWnd* pParent = NULL);
+    virtual ~CKFTCOneCAPDlg();
 
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
+    virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
+    afx_msg void OnPaint();
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+    afx_msg void OnSize(UINT nType, int cx, int cy);
+    afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnReaderSetup();
     afx_msg void OnShopSetup();
     afx_msg void OnTrans();
+    afx_msg void OnReceiptSetup();
     afx_msg void OnMinimize();
     afx_msg void OnExit();
     afx_msg void OnClose();
-
     DECLARE_MESSAGE_MAP()
+
+private:
+    enum HomeCardType
+    {
+        CARD_READER = 0,
+        CARD_SHOP,
+        CARD_TRANS,
+        CARD_RECEIPT
+    };
+
+    void EnsureFonts();
+    int  SX(int px) const;
+    void LayoutControls();
+    void LoadLogoImage();
+    CString GetLogoPath() const;
+
+    void DrawBackground(CDC& dc);
+    void DrawHeader(CDC& dc);
+    void DrawFooterDivider(CDC& dc);
+    void DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type);
+
+    void DrawCardIcon(Gdiplus::Graphics& g, const CRect& rcIcon, HomeCardType type, int nHoverProgress, int nPressProgress);
+    void DrawReaderIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
+    void DrawShopIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
+    void DrawTransIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
+    void DrawReceiptIcon(Gdiplus::Graphics& g, const Gdiplus::RectF& rc, Gdiplus::Brush* pBr);
+    CString GetCardTitle(HomeCardType type) const;
+    CString GetCardDescription(HomeCardType type) const;
+
+private:
+    CHomeCardButton m_btnReaderCard;
+    CHomeCardButton m_btnShopCard;
+    CHomeCardButton m_btnTransCard;
+    CHomeCardButton m_btnReceiptCard;
+    CModernButton  m_btnMinimize;
+    CModernButton  m_btnExit;
+
+    CFont m_fontTitle;
+    CFont m_fontSubtitle;
+    CFont m_fontCardTitle;
+    CFont m_fontCardDesc;
+    CFont m_fontFooter;
+
+    int m_dpi;
+    BOOL m_bFontsReady;
+    CBrush m_brBackground;
+
+    Gdiplus::Bitmap* m_pLogoBitmap;
+    int m_nFooterDividerY;
 };

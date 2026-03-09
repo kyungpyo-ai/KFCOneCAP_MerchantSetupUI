@@ -53,6 +53,10 @@ protected:
 	CFont m_fontLabel;
 	CFont m_fontSmall;
 
+	// GDI+ section title font (cached, matches ShopSetupDlg DrawMinCard style)
+	Gdiplus::FontFamily* m_pGdipSecFamily;
+	Gdiplus::Font*       m_pGdipSecFont;
+
 	int   m_dpi; // 96 기준 스케일
 
 	int   SX(int v) const; // scale x/y 공용

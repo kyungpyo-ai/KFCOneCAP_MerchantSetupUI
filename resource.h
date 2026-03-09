@@ -945,6 +945,7 @@
 #define VK_VOLUME_MUTE                  0xAD
 #define WM_NCXBUTTONDBLCLK              0x00AD
 #define IDC_TRANS                       173
+#define IDC_RECEIPT_SETUP               176
 #define VK_VOLUME_DOWN                  0xAE
 #define IDC_MINIMIZE                    174
 #define VK_VOLUME_UP                    0xAF

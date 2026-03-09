@@ -388,6 +388,11 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     m_strCardDetectParam = _T("KFTCOneCAP TEST");
     m_intSignPadPort    = 56;
     m_intScannerPort    = 0;
+
+    m_pFontFamilyMalgun = nullptr;
+    m_pFontCardTitle    = nullptr;
+    m_pFontHdrTitle     = nullptr;
+    m_pFontHdrSub       = nullptr;
 }
 
 CShopSetupDlg::~CShopSetupDlg()
@@ -507,6 +512,18 @@ BOOL CShopSetupDlg::OnInitDialog()
     m_brushTabContent.CreateSolidBrush(RGB(255, 255, 255));  // card white
 
     InitializeFonts();
+
+    // Create GDI+ font objects once (DPI-scaled). Must be called after the HWND is
+    // valid so ScaleF can query the monitor DPI. Prevents per-OnPaint allocations
+    // that risk transient GdipStatus != Ok errors causing corrupted DrawString output.
+    ModernUIGfx::EnsureGdiplusStartup();
+    m_pFontFamilyMalgun = new Gdiplus::FontFamily(L"Malgun Gothic");
+    m_pFontCardTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
+        ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
+    m_pFontHdrTitle  = new Gdiplus::Font(m_pFontFamilyMalgun,
+        ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
+    m_pFontHdrSub    = new Gdiplus::Font(m_pFontFamilyMalgun,
+        ModernUIDpi::ScaleF(m_hWnd, 11.0f), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
     ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
     // --------------------------------------------------------
@@ -2063,6 +2080,9 @@ void CShopSetupDlg::OnPaint()
     bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
     CBitmap* pOldBmp = memDC.SelectObject(&bmp);
 
+    // [추가] 여기서 배경을 먼저 한 번만 채웁니다.
+    memDC.FillSolidRect(rc, RGB(249, 250, 252));
+
     DrawBackground(&memDC);
 
     // ── 헤더: 배지 아이콘 + 타이틀 + 서브타이틀 ───────────────────
@@ -2113,9 +2133,7 @@ void CShopSetupDlg::OnPaint()
         }
 
         // 타이틀 (GDI+ ClearType)
-        Gdiplus::FontFamily ff(L"Malgun Gothic");
-        Gdiplus::Font fTitle(&ff, 16.0f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-        Gdiplus::Font fSub(&ff, 11.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+        // Use cached member font objects (created once in OnInitDialog with DPI scaling)
         Gdiplus::SolidBrush bTitle(Gdiplus::Color(255, 18, 24, 40));
         Gdiplus::SolidBrush bSub(Gdiplus::Color(255, 130, 142, 162));
         Gdiplus::StringFormat sf;
@@ -2125,9 +2143,9 @@ void CShopSetupDlg::OnPaint()
         const float tx = bx + bsz + 12.0f;
         // 타이틀: 배지 세로 중앙 기준 위쪽 절반
         const float titleY = by + bsz * 0.5f - 22.0f;
-        gh.DrawString(L"가맹점 설정", -1, &fTitle,
+        gh.DrawString(L"가맹점 설정", -1, m_pFontHdrTitle,
             Gdiplus::RectF(tx, titleY, 300.0f, 24.0f), &sf, &bTitle);
-        gh.DrawString(L"가맹점 및 서버 연결 설정을 관리합니다", -1, &fSub,
+        gh.DrawString(L"가맹점 및 서버 연결 설정을 관리합니다", -1, m_pFontHdrSub,
             Gdiplus::RectF(tx, titleY+26.0f, 360.0f, 16.0f), &sf, &bSub);
 
         // 구분선 (kHdrDividerY 기준)
@@ -2211,7 +2229,7 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
 
     CRect rc;
     GetClientRect(&rc);
-    pDC->FillSolidRect(rc, RGB(249, 250, 252));  // 밝은 회색 배경
+    //pDC->FillSolidRect(rc, RGB(249, 250, 252));  // 밝은 회색 배경
 
     const int kCardMarginL = 20;
     const int kCardMarginT = 10;
@@ -2334,13 +2352,20 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
 
             // 타이틀 (세로 바 오른쪽에 10px 간격)
             const float titleX = barX + barW + 10.0f;
-            Gdiplus::FontFamily ff2(L"Malgun Gothic");
-            Gdiplus::Font fT(&ff2, 12.5f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+            // Use cached member font object (created once in OnInitDialog with DPI scaling)
             Gdiplus::SolidBrush bT(Gdiplus::Color(255, 26, 32, 44));
+
+            // [중요 추가] 텍스트 렌더링 힌트를 ClearType으로 설정 (깨짐 방지 핵심)
+            g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+
             Gdiplus::StringFormat sf2;
             sf2.SetAlignment(Gdiplus::StringAlignmentNear);
             sf2.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-            g.DrawString(title, -1, &fT,
+
+            // [중요 추가] 텍스트가 영역 밖으로 나가거나 줄바꿈되어 깨지는 현상 방지
+            sf2.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
+
+            g.DrawString(title, -1, m_pFontCardTitle,
                 Gdiplus::RectF(titleX, cr.Y, cr.Width - (titleX - cr.X) - 16.0f, hdrH),
                 &sf2, &bT);
         };
@@ -2445,6 +2470,12 @@ void CShopSetupDlg::OnDestroy()
         if (p && p->GetSafeHwnd())
             p->DestroyWindow();
     }
+
+    // Delete cached GDI+ font objects created in OnInitDialog
+    delete m_pFontCardTitle;    m_pFontCardTitle    = nullptr;
+    delete m_pFontHdrTitle;     m_pFontHdrTitle     = nullptr;
+    delete m_pFontHdrSub;       m_pFontHdrSub       = nullptr;
+    delete m_pFontFamilyMalgun; m_pFontFamilyMalgun = nullptr;
 
     CDialog::OnDestroy();
 }

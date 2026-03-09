@@ -505,6 +505,8 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	BOOL isDanger   = (t.Find(_T("삭제")) >= 0);
 	BOOL isDownload = (t.Find(_T("다운")) >= 0) || (t.Find(_T("조회")) >= 0);
 	BOOL isMini     = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
+	BOOL isProgramExit = (t.Find(_T("프로그램 종료")) >= 0);
+	BOOL isFooterAction = (isMini || isProgramExit);
 //   (//ε)
 
 	//  :    1px  
@@ -585,25 +587,22 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
-	else if (isExit)
+	else if (isExit || (!isPrimary && !isDanger && !isDownload))
 	{
-		// Secondary (Cancel/Close): slightly filled for better affordance
-		COLORREF bg = pressed ? GRAY_200 : (hover ? GRAY_100 : GRAY_50);
+		// Secondary / footer blend style: use caller-provided palette so the button melts into the page.
+		const COLORREF bgBase = m_clrNormalBg;
+		const COLORREF bgHover = m_clrHoverBg;
+		const COLORREF bgPress = RGB(
+			max(0, (int)GetRValue(bgHover) - 10),
+			max(0, (int)GetGValue(bgHover) - 10),
+			max(0, (int)GetBValue(bgHover) - 10));
+		COLORREF bg = pressed ? bgPress : (hover ? bgHover : bgBase);
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
-		COLORREF border = hover ? GRAY_300 : GRAY_200;
-		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
-		pen.SetLineJoin(Gdiplus::LineJoinRound);
-		g.DrawPath(&pen, &bp);
-	}
-	else
-	{
-		// Secondary (default)
-		COLORREF bg = pressed ? GRAY_100 : (hover ? GRAY_50 : RGB(255, 255, 255));
-		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
-		g.FillPath(&br, &bp);
-		COLORREF border = hover ? GRAY_300 : GRAY_200;
-		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
+
+		COLORREF border = hover ? RGB(212, 219, 228) : bgBase;
+		if (pressed) border = RGB(204, 212, 222);
+		Gdiplus::Pen pen(Gdiplus::Color(pressed ? 210 : (hover ? 170 : 80), GetRValue(border), GetGValue(border), GetBValue(border)), 1.15f);
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
@@ -618,12 +617,14 @@ Gdiplus::Color txtColor;
 				? Gdiplus::Color(255, 185, 28, 28)
 				: (isDownload
 					? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
-					: Gdiplus::Color(255, GetRValue(GRAY_800), GetGValue(GRAY_800), GetBValue(GRAY_800))));
+					: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText))));
 
 
 	Gdiplus::SolidBrush tb(txtColor);
 	Gdiplus::FontFamily ff(L"Malgun Gothic");
-	Gdiplus::Font font(&ff, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	const Gdiplus::REAL footerFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 2.5f);
+	const Gdiplus::REAL normalFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
+	Gdiplus::Font font(&ff, isFooterAction ? footerFontSize : normalFontSize, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	Gdiplus::StringFormat sf;
 	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
 	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
@@ -659,6 +660,41 @@ Gdiplus::Color txtColor;
 	}
 
 	std::wstring wt = kftc_to_wide(strText);
+	if (isFooterAction && !m_bLoading)
+	{
+		const Gdiplus::REAL iconGap = ModernUIDpi::ScaleF(m_hWnd, 7.0f);
+		const Gdiplus::REAL iconSize = ModernUIDpi::ScaleF(m_hWnd, isProgramExit ? 14.0f : 13.0f);
+		Gdiplus::RectF measureRf(0, 0, rf.Width, rf.Height);
+		Gdiplus::RectF bound;
+		g.MeasureString(wt.c_str(), -1, &font, measureRf, &sf, &bound);
+		const Gdiplus::REAL totalW = iconSize + iconGap + bound.Width;
+		const Gdiplus::REAL startX = rf.X + max((Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, 10.0f), (rf.Width - totalW) * 0.5f);
+		const Gdiplus::REAL centerY = rf.Y + rf.Height * 0.5f;
+		const Gdiplus::REAL iconY = centerY - iconSize * 0.5f;
+
+		Gdiplus::Pen iconPen(txtColor, ModernUIDpi::ScaleF(m_hWnd, 1.9f));
+		iconPen.SetStartCap(Gdiplus::LineCapRound);
+		iconPen.SetEndCap(Gdiplus::LineCapRound);
+		iconPen.SetLineJoin(Gdiplus::LineJoinRound);
+
+		if (isProgramExit)
+		{
+			const Gdiplus::REAL ringInset = ModernUIDpi::ScaleF(m_hWnd, 2.2f);
+			Gdiplus::RectF ringRc(startX + ringInset, iconY + ringInset, iconSize - ringInset * 2.0f, iconSize - ringInset * 2.0f);
+			g.DrawArc(&iconPen, ringRc, 38.0f, 284.0f);
+			const Gdiplus::REAL cx = startX + iconSize * 0.5f;
+			g.DrawLine(&iconPen, Gdiplus::PointF(cx, iconY + ModernUIDpi::ScaleF(m_hWnd, 1.6f)), Gdiplus::PointF(cx, iconY + iconSize * 0.47f));
+		}
+		else
+		{
+			const Gdiplus::REAL lineY = centerY;
+			g.DrawLine(&iconPen, Gdiplus::PointF(startX + ModernUIDpi::ScaleF(m_hWnd, 1.0f), lineY), Gdiplus::PointF(startX + iconSize - ModernUIDpi::ScaleF(m_hWnd, 1.0f), lineY));
+		}
+
+		textRf.X = startX + iconSize + iconGap;
+		textRf.Width = rf.GetRight() - textRf.X - ModernUIDpi::ScaleF(m_hWnd, 6.0f);
+		sf.SetAlignment(Gdiplus::StringAlignmentNear);
+	}
 	g.DrawString(wt.c_str(), -1, &font, textRf, &sf, &tb);
 
 	// 

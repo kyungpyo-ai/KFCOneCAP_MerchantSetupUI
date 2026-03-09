@@ -42,7 +42,7 @@ namespace
 	}
 }
 
-static HISTORY_COL_INFO col_info[] = 
+static HISTORY_COL_INFO col_info[] =
 {
 	{"체크일시"			, LVCFMT_CENTER	, 14 },
 	{"포트"			, LVCFMT_CENTER	, 11 },
@@ -51,7 +51,7 @@ static HISTORY_COL_INFO col_info[] =
 	{"리더기식별번호"	, LVCFMT_CENTER	, 19 },
 	{"POS식별번호"		, LVCFMT_CENTER	, 17 },
 	{NULL			, NULL			, 0	}
-} ;
+};
 
 static void GdipAddRoundRect(Gdiplus::GraphicsPath& p, float x, float y, float w, float h, float r)
 {
@@ -59,8 +59,8 @@ static void GdipAddRoundRect(Gdiplus::GraphicsPath& p, float x, float y, float w
 	Gdiplus::RectF a(x, y, d, d);
 	p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
 	p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
-	p.AddArc(a,   0.f, 90.f); a.X = x;
-	p.AddArc(a,  90.f, 90.f); p.CloseFigure();
+	p.AddArc(a, 0.f, 90.f); a.X = x;
+	p.AddArc(a, 90.f, 90.f); p.CloseFigure();
 }
 
 static void FillRoundRect(CDC* pDC, const CRect& rc, int radius, COLORREF fill, COLORREF border, int borderW = 1)
@@ -172,6 +172,12 @@ void CReaderSetupDlg::EnsureFonts()
 	lf.lfHeight = -SX(12);
 	lf.lfWeight = FW_NORMAL;
 	m_fontSmall.CreateFontIndirect(&lf);
+
+	// GDI+ section title font (cached, matches ShopSetupDlg DrawMinCard style)
+	ModernUIGfx::EnsureGdiplusStartup();
+	m_pGdipSecFamily = new Gdiplus::FontFamily(L"Malgun Gothic");
+	m_pGdipSecFont = new Gdiplus::Font(m_pGdipSecFamily,
+		ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 }
 
 void CReaderSetupDlg::HideLegacyStatics()
@@ -390,7 +396,7 @@ void CReaderSetupDlg::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 {
-	const COLORREF cardBgEnabled  = RGB(255, 255, 255);
+	const COLORREF cardBgEnabled = RGB(255, 255, 255);
 	const COLORREF cardBgDisabled = RGB(251, 252, 253);
 	const COLORREF cardBg = bEnable ? cardBgEnabled : cardBgDisabled;
 
@@ -496,30 +502,30 @@ void CReaderSetupDlg::LayoutControls()
 		CModernButton& bKey, CModernButton& bInteg,
 		CModernButton& bUpdate,
 		CModernToggleSwitch& tgOpen, CModernToggleSwitch& tgPad)
-	{
-		int x0 = card.left + padL;
-		int yCombo = card.top + rowComboY;
-		cb.SetWindowPos(NULL, x0, yCombo, comboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
+		{
+			int x0 = card.left + padL;
+			int yCombo = card.top + rowComboY;
+			cb.SetWindowPos(NULL, x0, yCombo, comboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
 
-		int xTogglePad = card.right - padR - toggleW;
-		int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
-		int xToggleOpen = xTogglePadLabel - toggleBlockGap - toggleW;
-		if (xToggleOpen < x0 + comboW + SX(70))
-			xToggleOpen = x0 + comboW + SX(70);
-		tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo + (btnH - toggleH) / 2,
-			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
+			int xTogglePad = card.right - padR - toggleW;
+			int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
+			int xToggleOpen = xTogglePadLabel - toggleBlockGap - toggleW;
+			if (xToggleOpen < x0 + comboW + SX(70))
+				xToggleOpen = x0 + comboW + SX(70);
+			tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo + (btnH - toggleH) / 2,
+				toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		tgPad.SetWindowPos(NULL, xTogglePad, yCombo + (btnH - toggleH) / 2,
-			toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
+			tgPad.SetWindowPos(NULL, xTogglePad, yCombo + (btnH - toggleH) / 2,
+				toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-		int yBtn = card.top + rowBtnY;
-		int bx = x0;
-		bInit.SetWindowPos(NULL, bx, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bStatus.SetWindowPos(NULL, bx + (btnW + gap), yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bKey.SetWindowPos(NULL, bx + (btnW + gap) * 2, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bInteg.SetWindowPos(NULL, bx + (btnW + gap) * 3, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-	};
+			int yBtn = card.top + rowBtnY;
+			int bx = x0;
+			bInit.SetWindowPos(NULL, bx, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+			bStatus.SetWindowPos(NULL, bx + (btnW + gap), yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+			bKey.SetWindowPos(NULL, bx + (btnW + gap) * 2, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+			bInteg.SetWindowPos(NULL, bx + (btnW + gap) * 3, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+			bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		};
 
 	placeReaderCard(card1, m_comport1,
 		m_reader_init1, m_status_check1, m_keydown1, m_integrity_check1, m_update1,
@@ -567,6 +573,8 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_bBusySearch = FALSE;
 	m_rcIntegrityScrollBar.SetRectEmpty();
 	m_rcIntegrityScrollThumb.SetRectEmpty();
+	m_pGdipSecFamily = nullptr;
+	m_pGdipSecFont = nullptr;
 	//{{AFX_DATA_INIT(CReaderSetupDlg)
 		// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
@@ -577,24 +585,24 @@ void CReaderSetupDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CReaderSetupDlg)
-	DDX_Control(pDX, IDC_INTEGRITY_LIST,    m_integrity_list);
-	DDX_Control(pDX, IDC_SEARCH_DATE,       m_search_date);
-	DDX_Control(pDX, IDC_READER_INIT2,      m_reader_init2);
-	DDX_Control(pDX, IDC_READER_INIT1,      m_reader_init1);
-	DDX_Control(pDX, IDC_STATUS_CHECK2,     m_status_check2);
-	DDX_Control(pDX, IDC_STATUS_CHECK1,     m_status_check1);
-	DDX_Control(pDX, IDC_KEYDOWN2,          m_keydown2);
-	DDX_Control(pDX, IDC_KEYDOWN1,          m_keydown1);
-	DDX_Control(pDX, IDC_INTEGRITY_CHECK2,  m_integrity_check2);
-	DDX_Control(pDX, IDC_INTEGRITY_CHECK1,  m_integrity_check1);
-	DDX_Control(pDX, IDC_COMPORT2,          m_comport2);
-	DDX_Control(pDX, IDC_COMPORT1,          m_comport1);
-	DDX_Control(pDX, IDC_UPDATE1,           m_update1);
-	DDX_Control(pDX, IDC_UPDATE2,           m_update2);
-	DDX_Control(pDX, IDC_PORT_OPEN1,        m_togglePortOpen1);
-	DDX_Control(pDX, IDC_PORT_OPEN2,        m_togglePortOpen2);
-	DDX_Control(pDX, IDC_MULTIPAD1,         m_toggleMultipad1);
-	DDX_Control(pDX, IDC_MULTIPAD2,         m_toggleMultipad2);
+	DDX_Control(pDX, IDC_INTEGRITY_LIST, m_integrity_list);
+	DDX_Control(pDX, IDC_SEARCH_DATE, m_search_date);
+	DDX_Control(pDX, IDC_READER_INIT2, m_reader_init2);
+	DDX_Control(pDX, IDC_READER_INIT1, m_reader_init1);
+	DDX_Control(pDX, IDC_STATUS_CHECK2, m_status_check2);
+	DDX_Control(pDX, IDC_STATUS_CHECK1, m_status_check1);
+	DDX_Control(pDX, IDC_KEYDOWN2, m_keydown2);
+	DDX_Control(pDX, IDC_KEYDOWN1, m_keydown1);
+	DDX_Control(pDX, IDC_INTEGRITY_CHECK2, m_integrity_check2);
+	DDX_Control(pDX, IDC_INTEGRITY_CHECK1, m_integrity_check1);
+	DDX_Control(pDX, IDC_COMPORT2, m_comport2);
+	DDX_Control(pDX, IDC_COMPORT1, m_comport1);
+	DDX_Control(pDX, IDC_UPDATE1, m_update1);
+	DDX_Control(pDX, IDC_UPDATE2, m_update2);
+	DDX_Control(pDX, IDC_PORT_OPEN1, m_togglePortOpen1);
+	DDX_Control(pDX, IDC_PORT_OPEN2, m_togglePortOpen2);
+	DDX_Control(pDX, IDC_MULTIPAD1, m_toggleMultipad1);
+	DDX_Control(pDX, IDC_MULTIPAD2, m_toggleMultipad2);
 	//}}AFX_DATA_MAP
 }
 
@@ -622,17 +630,17 @@ int CReaderSetupDlg::GetWindowsVersion()
 	OSVERSIONINFO osv;
 	osv.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 	CString WindowsPlatform;
-	if(GetVersionEx(&osv))
+	if (GetVersionEx(&osv))
 	{
 		// note: szCSDVersion =  service pack  release
 		CString ServiceRelease = osv.szCSDVersion;
-		switch(osv.dwPlatformId)
+		switch (osv.dwPlatformId)
 		{
 		case VER_PLATFORM_WIN32s:				//Win32s on Windows 3.1.
 			return WINDOWS_VERSION_3;
 
 		case VER_PLATFORM_WIN32_WINDOWS:		//WIN32 on 95 or 98
-			if(osv.dwMinorVersion == 0)
+			if (osv.dwMinorVersion == 0)
 				return WINDOWS_VERSION_95;
 			else
 				return WINDOWS_VERSION_98;
@@ -653,53 +661,53 @@ void CReaderSetupDlg::GetNTComPort(vector<int>& ports)
 {
 	LONG result;
 	HKEY hKey;
-	
-	result = ::RegOpenKeyEx( HKEY_LOCAL_MACHINE, _T( "Hardware\\DeviceMap\\SerialComm" ), 0, KEY_READ, &hKey ) ;
-	int m_nPortNo = 0 ;
-	TCHAR name[255] ;
-	DWORD nameLen ;
-	BYTE data[255] ;
-	DWORD dataLen ;
-	for(;;)
+
+	result = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Hardware\\DeviceMap\\SerialComm"), 0, KEY_READ, &hKey);
+	int m_nPortNo = 0;
+	TCHAR name[255];
+	DWORD nameLen;
+	BYTE data[255];
+	DWORD dataLen;
+	for (;;)
 	{
-		nameLen = sizeof( name ) ;
-		dataLen = sizeof( data ) ;
-		int err = ::RegEnumValue( hKey, ( DWORD )m_nPortNo, name, &nameLen, NULL, NULL, data, &dataLen ) ;
-		if( err != ERROR_SUCCESS )
-			break ;
-		char *ptr = ( char* )data ;
-		while( ( *ptr < '0' ) || ( *ptr > '9' ) )
+		nameLen = sizeof(name);
+		dataLen = sizeof(data);
+		int err = ::RegEnumValue(hKey, (DWORD)m_nPortNo, name, &nameLen, NULL, NULL, data, &dataLen);
+		if (err != ERROR_SUCCESS)
+			break;
+		char* ptr = (char*)data;
+		while ((*ptr < '0') || (*ptr > '9'))
 		{
-			if( *ptr == 0x00 )
-				break ;
-			ptr++ ;
+			if (*ptr == 0x00)
+				break;
+			ptr++;
 		}
 		ports.push_back(atoi(ptr));
-		m_nPortNo++ ;
+		m_nPortNo++;
 	}
-	::RegCloseKey( hKey ) ;
+	::RegCloseKey(hKey);
 }
 
 void CReaderSetupDlg::GetWidowsComPort(vector<int>& ports)
 {
 	LONG result;
 	HKEY hKey;
-	TCHAR tmpdata[10] ;
-	unsigned long tmpsize ;
-	char strCOM[10] ;
+	TCHAR tmpdata[10];
+	unsigned long tmpsize;
+	char strCOM[10];
 
-	result = ::RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Hardware\\DeviceMap\\SerialComm", 0, KEY_QUERY_VALUE, &hKey ) ;
-	for( int i = 0 ; i < 99 ; i++ )
+	result = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Hardware\\DeviceMap\\SerialComm", 0, KEY_QUERY_VALUE, &hKey);
+	for (int i = 0; i < 99; i++)
 	{
-		tmpsize = sizeof( tmpdata ) ;
-		sprintf( strCOM, "COM%d", i+1 ) ;
-		result = ::RegQueryValueEx( hKey, strCOM, NULL, NULL, ( BYTE* )tmpdata, &tmpsize ) ;
-		if( result == ERROR_SUCCESS )	// cannot read com info
+		tmpsize = sizeof(tmpdata);
+		sprintf(strCOM, "COM%d", i + 1);
+		result = ::RegQueryValueEx(hKey, strCOM, NULL, NULL, (BYTE*)tmpdata, &tmpsize);
+		if (result == ERROR_SUCCESS)	// cannot read com info
 		{
 			ports.push_back(i + 1);
 		}
 	}
-	::RegCloseKey( hKey ) ;
+	::RegCloseKey(hKey);
 }
 
 void CReaderSetupDlg::SetReaderCardBusy(int readerIndex, BOOL bBusy)
@@ -831,31 +839,31 @@ void CReaderSetupDlg::LoadSavedPortSelections()
 	}
 
 	auto applySelection = [&](CSkinnedComboBox& combo, const CString& savedValue)
-	{
-		combo.SetCurSel(0);
-		const int count = combo.GetCount();
-		for (int i = 0; i < count; ++i)
-		{
-			CString item;
-			combo.GetLBText(i, item);
-			if (IsSamePortLabel(item, savedValue))
-			{
-				combo.SetCurSel(i);
-				return;
-			}
-		}
-
-		if (!IsSamePortLabel(savedValue, _T("미사용")))
-		{
-			CString unavailable = savedValue + _T("(사용불가)");
-			combo.AddString(unavailable);
-			combo.SetCurSel(combo.GetCount() - 1);
-		}
-		else
 		{
 			combo.SetCurSel(0);
-		}
-	};
+			const int count = combo.GetCount();
+			for (int i = 0; i < count; ++i)
+			{
+				CString item;
+				combo.GetLBText(i, item);
+				if (IsSamePortLabel(item, savedValue))
+				{
+					combo.SetCurSel(i);
+					return;
+				}
+			}
+
+			if (!IsSamePortLabel(savedValue, _T("미사용")))
+			{
+				CString unavailable = savedValue + _T("(사용불가)");
+				combo.AddString(unavailable);
+				combo.SetCurSel(combo.GetCount() - 1);
+			}
+			else
+			{
+				combo.SetCurSel(0);
+			}
+		};
 
 	applySelection(m_comport1, com_port1);
 	applySelection(m_comport2, com_port2);
@@ -1093,7 +1101,7 @@ void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
 		Invalidate(FALSE);
 }
 
-BOOL CReaderSetupDlg::OnInitDialog() 
+BOOL CReaderSetupDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
@@ -1212,7 +1220,7 @@ BOOL CReaderSetupDlg::OnEraseBkgnd(CDC* pDC)
 
 void CReaderSetupDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS)
 {
-    CDialog::OnDrawItem(nIDCtl, lpDIS);
+	CDialog::OnDrawItem(nIDCtl, lpDIS);
 }
 
 void CReaderSetupDlg::OnPaint()
@@ -1250,13 +1258,13 @@ void CReaderSetupDlg::OnPaint()
 
 		auto MRR = [](Gdiplus::GraphicsPath& p,
 			float x, float y, float w, float h, float r) {
-			float d = r * 2.f;
-			Gdiplus::RectF a(x, y, d, d);
-			p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
-			p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
-			p.AddArc(a,   0.f, 90.f); a.X = x;
-			p.AddArc(a,  90.f, 90.f); p.CloseFigure();
-		};
+				float d = r * 2.f;
+				Gdiplus::RectF a(x, y, d, d);
+				p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
+				p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
+				p.AddArc(a, 0.f, 90.f); a.X = x;
+				p.AddArc(a, 90.f, 90.f); p.CloseFigure();
+			};
 
 		// gradient blue background
 		{
@@ -1265,7 +1273,7 @@ void CReaderSetupDlg::OnPaint()
 			Gdiplus::LinearGradientBrush grad(
 				Gdiplus::PointF(bx, by), Gdiplus::PointF(bx, by + bsz),
 				Gdiplus::Color(255, 60, 130, 245),
-				Gdiplus::Color(255, 28,  76, 210));
+				Gdiplus::Color(255, 28, 76, 210));
 			gIco.FillPath(&grad, &bp);
 		}
 
@@ -1312,12 +1320,33 @@ void CReaderSetupDlg::OnPaint()
 	CRect integritySection = CalcIntegritySectionBox(queryBox, listRc);
 
 	auto drawSectionTitle = [&](const CPoint& pt, LPCTSTR text)
-	{
-		memDC.FillSolidRect(pt.x - SX(10), pt.y + SX(2), SX(3), SX(16), RGB(0, 102, 221));
-		memDC.SelectObject(&m_fontSection);
-		memDC.SetTextColor(RGB(37, 47, 63));
-		memDC.TextOut(pt.x, pt.y, text);
-	};
+		{
+			Gdiplus::Graphics gSec(memDC.GetSafeHdc());
+			gSec.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+			gSec.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+			// Accent bar: 4x16px rounded rect (matches ShopSetupDlg DrawMinCard)
+			const float barX = (float)(pt.x - SX(10));
+			const float barY = (float)(pt.y + SX(2));
+			const float barW = 4.0f, barH = 16.0f, barR = 2.0f, bd = barR * 2.0f;
+			Gdiplus::GraphicsPath bp;
+			bp.AddArc(barX, barY, bd, bd, 180, 90);
+			bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
+			bp.AddArc(barX + barW - bd, barY + barH - bd, bd, bd, 0, 90);
+			bp.AddArc(barX, barY + barH - bd, bd, bd, 90, 90);
+			bp.CloseFigure();
+			Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
+			gSec.FillPath(&barBr, &bp);
+			// Section title text: GDI+ ClearType with cached member font
+			wchar_t wbuf[128] = {};
+			MultiByteToWideChar(CP_ACP, 0, text, -1, wbuf, 128);
+			Gdiplus::SolidBrush textBr(Gdiplus::Color(255, 26, 32, 44));
+			Gdiplus::StringFormat sf;
+			sf.SetAlignment(Gdiplus::StringAlignmentNear);
+			sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+			gSec.DrawString(wbuf, -1, m_pGdipSecFont,
+				Gdiplus::RectF((float)pt.x, (float)pt.y, 300.0f, (float)SX(20)),
+				&sf, &textBr);
+		};
 
 	FillRoundRect(&memDC, portSection, SX(10), RGB(248, 249, 251), RGB(233, 236, 240), 1);
 	FillRoundRect(&memDC, integritySection, SX(10), RGB(248, 249, 251), RGB(233, 236, 240), 1);
@@ -1325,43 +1354,43 @@ void CReaderSetupDlg::OnPaint()
 	drawSectionTitle(sec2Pt, _T("무결성 체크 정보"));
 
 	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
-	{
-		COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(251, 252, 253);
-		COLORREF br = enabled ? RGB(0, 102, 221) : RGB(220, 226, 232);
-		FillRoundRect(&memDC, r, SX(8), bg, br, enabled ? 2 : 1);
+		{
+			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(251, 252, 253);
+			COLORREF br = enabled ? RGB(0, 102, 221) : RGB(220, 226, 232);
+			FillRoundRect(&memDC, r, SX(8), bg, br, enabled ? 2 : 1);
 
-		const int badgeSize = SX(34);
-		CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
-		COLORREF badgeBg = enabled ? RGB(0, 102, 221) : RGB(190, 199, 209);
-		FillRoundRect(&memDC, badge, SX(6), badgeBg, badgeBg, 1);
-		CString numText; numText.Format(_T("%d"), num);
-		memDC.SelectObject(&m_fontNormal);
-		memDC.SetTextColor(RGB(255, 255, 255));
-		memDC.DrawText(numText, badge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+			const int badgeSize = SX(34);
+			CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
+			COLORREF badgeBg = enabled ? RGB(0, 102, 221) : RGB(190, 199, 209);
+			FillRoundRect(&memDC, badge, SX(6), badgeBg, badgeBg, 1);
+			CString numText; numText.Format(_T("%d"), num);
+			memDC.SelectObject(&m_fontNormal);
+			memDC.SetTextColor(RGB(255, 255, 255));
+			memDC.DrawText(numText, badge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-		CString label; label.Format(_T("리더기%d - COM 포트"), num);
-		memDC.SelectObject(&m_fontLabel);
-		memDC.SetTextColor(enabled ? RGB(107, 114, 128) : RGB(156, 163, 175));
-		memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
+			CString label; label.Format(_T("리더기%d - COM 포트"), num);
+			memDC.SelectObject(&m_fontLabel);
+			memDC.SetTextColor(enabled ? RGB(107, 114, 128) : RGB(156, 163, 175));
+			memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
 
-		const int comboW = SX(178);
-		const int btnH = SX(36);
-		const int x0 = r.left + SX(64);
-		const int yCombo = r.top + SX(34);
-		const int toggleW = SX(52);
-		const int padR = SX(22);
-		const int textGap = SX(8);
-		const int openLabelW = SX(56);
-		const int multiLabelW = SX(74);
-		const int togglePadX = r.right - padR - toggleW;
-		const int togglePadLabelX = togglePadX - textGap - multiLabelW;
-		int toggleOpenX = togglePadLabelX - SX(18) - toggleW;
-		if (toggleOpenX < x0 + comboW + SX(70))
-			toggleOpenX = x0 + comboW + SX(70);
-		const int xToggleOpenLabel = toggleOpenX - textGap - openLabelW;
-		memDC.TextOut(xToggleOpenLabel, yCombo + (btnH - SX(14)) / 2, _T("포트 열기"));
-		memDC.TextOut(togglePadLabelX, yCombo + (btnH - SX(14)) / 2, _T("멀티패드 여부"));
-	};
+			const int comboW = SX(178);
+			const int btnH = SX(36);
+			const int x0 = r.left + SX(64);
+			const int yCombo = r.top + SX(34);
+			const int toggleW = SX(52);
+			const int padR = SX(22);
+			const int textGap = SX(8);
+			const int openLabelW = SX(56);
+			const int multiLabelW = SX(74);
+			const int togglePadX = r.right - padR - toggleW;
+			const int togglePadLabelX = togglePadX - textGap - multiLabelW;
+			int toggleOpenX = togglePadLabelX - SX(18) - toggleW;
+			if (toggleOpenX < x0 + comboW + SX(70))
+				toggleOpenX = x0 + comboW + SX(70);
+			const int xToggleOpenLabel = toggleOpenX - textGap - openLabelW;
+			memDC.TextOut(xToggleOpenLabel, yCombo + (btnH - SX(14)) / 2, _T("포트 열기"));
+			memDC.TextOut(togglePadLabelX, yCombo + (btnH - SX(14)) / 2, _T("멀티패드 여부"));
+		};
 
 	drawReaderCard(card1, m_bReader1Enabled, 1);
 	drawReaderCard(card2, m_bReader2Enabled, 2);
@@ -1523,7 +1552,7 @@ void CReaderSetupDlg::OnPaint()
 		// 마지막에 라운드 외곽선을 다시 그려 모서리/상단 프레임이 배경에 묻히지 않도록 한다.
 		DrawRoundRectBorder(&memDC, tableOuter, SX(8), tableBorder, 1);
 		DrawRoundRectBorder(&memDC, CRect(tableOuter.left + 1, tableOuter.top + 1, tableOuter.right - 1, tableOuter.bottom - 1), SX(7), RGB(232, 237, 244), 1);
-	}	
+	}
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(oldBmp);
 }
@@ -1532,7 +1561,7 @@ void CReaderSetupDlg::OnPaint()
 
 BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
-	UINT nID  = LOWORD(wParam);
+	UINT nID = LOWORD(wParam);
 	int  nCode = (int)(short)HIWORD(wParam);
 
 	// CSkinnedComboBox는 ON_CONTROL_REFLECT(CBN_SELCHANGE) 때문에
@@ -1567,7 +1596,7 @@ BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 	return CDialog::OnCommand(wParam, lParam);
 }
 
-void CReaderSetupDlg::OnSelchangeComport1() 
+void CReaderSetupDlg::OnSelchangeComport1()
 {
 	CString value;
 	m_comport1.GetWindowText(value);
@@ -1575,7 +1604,7 @@ void CReaderSetupDlg::OnSelchangeComport1()
 	UpdateReaderEnableState(1);
 }
 
-void CReaderSetupDlg::OnSelchangeComport2() 
+void CReaderSetupDlg::OnSelchangeComport2()
 {
 	CString value;
 	m_comport2.GetWindowText(value);
@@ -1606,9 +1635,11 @@ void CReaderSetupDlg::OnTimer(UINT_PTR nIDEvent)
 	CDialog::OnTimer(nIDEvent);
 }
 
-BOOL CReaderSetupDlg::DestroyWindow() 
+BOOL CReaderSetupDlg::DestroyWindow()
 {
 	FinishLoadingOperation(FALSE);
+	delete m_pGdipSecFont;   m_pGdipSecFont = nullptr;
+	delete m_pGdipSecFamily; m_pGdipSecFamily = nullptr;
 	return CDialog::DestroyWindow();
 }
 

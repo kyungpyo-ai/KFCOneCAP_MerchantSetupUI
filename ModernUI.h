@@ -16,12 +16,6 @@ using namespace Gdiplus;
 typedef float REAL;
 #endif
 
-//  Blue Palette 
-#define BLUE_100   RGB(168, 208, 255)   // #A8D0FF
-#define BLUE_200   RGB(117, 180, 255)   // #75B4FF
-#define BLUE_300   RGB( 66, 152, 255)   // #4298FF
-#define BLUE_400   RGB( 15, 124, 255)   // #0F7CFF
-#define BLUE_500   RGB(  0, 100, 221)   // #0064DD
 // Gray Palette
 #define GRAY_50    RGB(249,250,251)
 #define GRAY_100   RGB(243,244,246)
@@ -29,6 +23,13 @@ typedef float REAL;
 #define GRAY_300   RGB(209,213,219)
 #define GRAY_500   RGB(107,114,128)
 #define GRAY_800   RGB(31,41,55)
+
+//  Blue Palette 
+#define BLUE_100   RGB(168, 208, 255)   // #A8D0FF
+#define BLUE_200   RGB(117, 180, 255)   // #75B4FF
+#define BLUE_300   RGB( 66, 152, 255)   // #4298FF
+#define BLUE_400   RGB( 15, 124, 255)   // #0F7CFF
+#define BLUE_500   RGB(  0, 100, 221)   // #0064DD
 #define BLUE_600   RGB(  0,  76, 168)   // #004CA8
 #define BLUE_700   RGB(  9,  63, 129)   // #093F81
 #define BLUE_800   RGB(  6,  52, 109)   // #06346D
