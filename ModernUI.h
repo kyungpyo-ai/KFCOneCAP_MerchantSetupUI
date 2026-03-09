@@ -163,7 +163,10 @@ public:
     // Underlay (background behind control) to avoid rounded-corner halo
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
-    void SetButtonStyle(ButtonStyle style); // 버튼 스타일 명시 설정
+    void SetButtonStyle(ButtonStyle style);
+    void SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText = NULL);
+    BOOL IsLoading() const { return m_bLoading; }
+    CString GetBaseText() const { return m_strBaseText; } // 버튼 스타일 명시 설정
 
 protected:
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct);
@@ -202,6 +205,10 @@ private:
     COLORREF m_clrUnderlayBg;
     CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
     COLORREF m_clrBrushBg;  // cached brush color
+
+    BOOL     m_bLoading;
+    CString  m_strBaseText;
+    CString  m_strLoadingText;
 };
 
 // ========================================
@@ -261,6 +268,10 @@ private:
     COLORREF m_clrUnderlayBg;
     CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
     COLORREF m_clrBrushBg;  // cached brush color
+
+    BOOL     m_bLoading;
+    CString  m_strBaseText;
+    CString  m_strLoadingText;
 };
 
 // ========================================
@@ -440,6 +451,10 @@ private:
     COLORREF m_clrUnderlayBg;
     CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
     COLORREF m_clrBrushBg;  // cached brush color
+
+    BOOL     m_bLoading;
+    CString  m_strBaseText;
+    CString  m_strLoadingText;
 };
 
 // ========================================
@@ -458,7 +473,7 @@ public:
     // Underlay (background behind control) to avoid rounded-corner halo
     void SetUnderlayColor(COLORREF underlayBg);
     void ClearUnderlayColor();
-    void SetButtonStyle(ButtonStyle style); // 버튼 스타일 명시 설정
+    CString GetBaseText() const { return m_strBaseText; } // 버튼 스타일 명시 설정
     void SetValidationError(BOOL bError);
     BOOL HasValidationError() const { return m_bValidationError; }
 
@@ -510,6 +525,10 @@ private:
     COLORREF m_clrUnderlayBg;
     CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
     COLORREF m_clrBrushBg;  // cached brush color
+
+    BOOL     m_bLoading;
+    CString  m_strBaseText;
+    CString  m_strLoadingText;
 };
 
 // ============================================================

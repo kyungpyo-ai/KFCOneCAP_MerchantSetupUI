@@ -69,6 +69,29 @@ protected:
 	CRect m_rcIntegrityScrollThumb;
 	void  NormalizeIntegrityScrollPos();
 	int   GetIntegrityVisibleRows() const;
+	void  StartLoadingOperation(UINT nButtonID);
+	void  FinishLoadingOperation(BOOL bRefresh = TRUE);
+	BOOL  IsReaderCardButton(UINT nID) const;
+	BOOL  IsSearchLoading() const { return m_nLoadingButtonID == IDC_SEARCH; }
+	void  SetReaderCardBusy(int readerIndex, BOOL bBusy);
+	void  SetSearchBusy(BOOL bBusy);
+	CString MakeLoadingText(UINT nButtonID) const;
+
+	// === 초기화/레이아웃/테이블 리팩토링 헬퍼 ===
+	void  InitPortComboItems();              // COM 포트 목록 구성
+	void  LoadSavedPortSelections();         // 저장된 포트 선택값 복원
+	void  InitSearchDateCombo();             // 조회 기간 콤보 초기화
+	void  InitIntegrityListColumns();        // 무결성 리스트 컬럼 생성
+	void  ApplyDialogFonts();                // 대화상자 공통 폰트 적용
+	void  InitModernButtonStyles();          // ModernUI 버튼 스타일/문구 적용
+	void  InitSampleIntegrityRows();         // 커스텀 표 미리보기 샘플 데이터
+	void  InitToggleAndUnderlayColors();     // 토글/버튼 배경색 초기화
+
+	UINT  m_nLoadingButtonID;
+	UINT  m_nLoadingTimerID;
+	UINT  m_nLoadingAnimTimerID;
+	int   m_nBusyReaderIndex;
+	BOOL  m_bBusySearch;
 
 	//{{AFX_MSG(CReaderSetupDlg)
 	//virtual BOOL OnInitDialog();
@@ -78,6 +101,7 @@ protected:
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 
 	//}}AFX_MSG
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);

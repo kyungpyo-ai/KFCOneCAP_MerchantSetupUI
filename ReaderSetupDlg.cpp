@@ -16,10 +16,36 @@ static char THIS_FILE[] = __FILE__;
 
 using namespace std;
 
+namespace
+{
+	// 무결성 테이블 컬럼 비율은 리스트 컬럼 폭 계산과 커스텀 헤더/본문 그리기에서
+	// 같은 값을 공유해야 한다. 한 곳에서만 관리해 헤더/본문 어긋남을 방지한다.
+	static const int kIntegrityColumnRatios[] = { 20, 11, 8, 18, 23, 20 };
+	static const int kIntegrityColumnCount = sizeof(kIntegrityColumnRatios) / sizeof(kIntegrityColumnRatios[0]);
+
+	// Reader 카드 액션 버튼은 폭이 제각각이면 정렬감이 무너지므로
+	// 레이아웃/로딩 상태 모두 동일한 폭을 사용한다.
+	static const int kReaderActionButtonWidth = 100;
+
+	static BOOL IsSamePortLabel(const CString& left, const CString& right)
+	{
+		CString a(left), b(right);
+		a.Trim();
+		b.Trim();
+		return a.Compare(b) == 0;
+	}
+
+	static void ApplyFontIfWindow(CWnd& wnd, CFont& font)
+	{
+		if (::IsWindow(wnd.GetSafeHwnd()))
+			wnd.SetFont(&font);
+	}
+}
+
 static HISTORY_COL_INFO col_info[] = 
 {
 	{"체크일시"			, LVCFMT_CENTER	, 14 },
-	{"COM 포트"			, LVCFMT_CENTER	, 11 },
+	{"포트"			, LVCFMT_CENTER	, 11 },
 	{"결과"			,	 LVCFMT_CENTER	, 8 },
 	{"모듈ID"			, LVCFMT_CENTER	, 13 },
 	{"리더기식별번호"	, LVCFMT_CENTER	, 19 },
@@ -192,8 +218,9 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int titleBlock = SX(92);
 	const int sectionTitleH = SX(28);
 	const int sectionTitleTop = SX(10);
+	const int infoSectionTitleTop = SX(2);
 	const int sectionTitleGap = SX(12);
-	const int infoTitleGap = SX(4);
+	const int infoTitleGap = -SX(10);
 	const int sectionBoxPad = SX(24);
 	const int cardH = SX(126);
 	const int cardGap = SX(14);
@@ -216,9 +243,9 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 	card1 = CRect(cardLeft, sec1ContentTop, cardRight, sec1ContentTop + cardH);
 	card2 = CRect(cardLeft, card1.bottom + cardGap, cardRight, card1.bottom + cardGap + cardH);
-	y = card2.bottom + sectionBoxPad + SX(10);
+	y = card2.bottom + sectionBoxPad + SX(30);
 
-	sec2TitlePt = CPoint(sectionLeft + SX(24), y + sectionTitleTop);
+	sec2TitlePt = CPoint(sectionLeft + SX(24), y + infoSectionTitleTop);
 	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + infoTitleGap;
 
 	queryBox = CRect(sectionLeft + sectionBoxPad, sec2ContentTop,
@@ -228,23 +255,21 @@ void CReaderSetupDlg::CalcLayoutRects(
 	int listTop = y;
 	int listBottomLimit = inner.bottom - bottomArea - infoBottomPad - sectionBoxPad;
 	int listH = listBottomLimit - listTop;
-	if (listH < SX(208)) listH = SX(208);
-	if (listH > SX(208)) listH = SX(208);
+	if (listH < SX(166)) listH = SX(166);
+	if (listH > SX(166)) listH = SX(166);
 	listRc = CRect(sectionLeft + sectionBoxPad, listTop,
 		sectionRight - sectionBoxPad, listTop + listH);
 
 	// ShopSetupDlg 하단 버튼과 동일한 크기/간격/위치 규칙 적용
+	// ShopSetupDlg와 동일한 하단 버튼 규칙 적용
 	const int buttonW = SX(110);
 	const int buttonH = SX(36);
 	const int buttonGap = SX(8);
-	const int buttonBottom = SX(10);
-	const int buttonTopGap = SX(8);
+	const int buttonBottom = SX(18);
+	const int dialogBottomPad = SX(22);
 	int totalW = buttonW * 2 + buttonGap;
 	int bx = (rc.Width() - totalW) / 2;
-	int by = listRc.bottom + buttonTopGap;
-	int maxBy = rc.bottom - (SX(12) + buttonBottom + buttonH);
-	if (by > maxBy)
-		by = maxBy;
+	int by = rc.bottom - (dialogBottomPad + buttonBottom + buttonH);
 
 	okRc = CRect(bx, by, bx + buttonW, by + buttonH);
 	cancelRc = CRect(bx + buttonW + buttonGap, by, bx + buttonW + buttonGap + buttonW, by + buttonH);
@@ -258,9 +283,11 @@ CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2
 
 CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
 {
-	return CRect(queryBox.left - SX(24), queryBox.top - SX(56), queryBox.right + SX(24), listRc.bottom + SX(4));
+	return CRect(queryBox.left - SX(24), queryBox.top - SX(48), queryBox.right + SX(24), listRc.bottom + SX(2));
 }
 
+// 데이터 저장용 ListCtrl의 컬럼 폭도 커스텀 테이블 비율과 동일하게 맞춘다.
+// 실제 화면은 OnPaint가 그리더라도, 데이터 접근 시 컬럼 정의가 일관돼야 유지보수가 쉽다.
 void CReaderSetupDlg::RecalcIntegrityColumns()
 {
 	if (!m_bUIReady || !::IsWindow(m_integrity_list.GetSafeHwnd()))
@@ -273,8 +300,8 @@ void CReaderSetupDlg::RecalcIntegrityColumns()
 
 	// 가로 스크롤이 생기지 않도록 현재 리스트 폭에 맞춰 컬럼 폭을 다시 계산한다.
 	// 비율 합계는 100이며, 마지막 컬럼에서 남는 폭을 흡수한다.
-	const int ratios[] = { 20, 13, 7, 14, 23, 23 };
-	const int colCount = sizeof(ratios) / sizeof(ratios[0]);
+	const int* ratios = kIntegrityColumnRatios;
+	const int colCount = kIntegrityColumnCount;
 	// 스크롤바와 본문 사이에 여백을 조금 더 둬서 마지막 컬럼이 답답해 보이지 않도록 한다.
 	const int bodyWidth = max(120, rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - SX(8));
 
@@ -302,9 +329,10 @@ void CReaderSetupDlg::NormalizeIntegrityScrollPos()
 		m_nIntegrityScrollPos = maxScroll;
 }
 
+// 현재 요구사항: 무결성 표는 한 화면에 3행만 노출한다.
 int CReaderSetupDlg::GetIntegrityVisibleRows() const
 {
-	return 4;
+	return 3;
 }
 
 BOOL CReaderSetupDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
@@ -412,6 +440,8 @@ void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 
 void CReaderSetupDlg::UpdateReaderEnableState(int readerIndex)
 {
+	if (m_nBusyReaderIndex == readerIndex)
+		return;
 	CString sel;
 	if (readerIndex == 1)
 		m_comport1.GetWindowText(sel);
@@ -431,6 +461,7 @@ void CReaderSetupDlg::UpdateReaderEnableState(int readerIndex)
 	Invalidate(FALSE);
 }
 
+// 카드/조회 영역/하단 버튼을 현재 DPI와 창 크기에 맞춰 다시 배치한다.
 void CReaderSetupDlg::LayoutControls()
 {
 	if (!m_bUIReady) return;
@@ -447,7 +478,7 @@ void CReaderSetupDlg::LayoutControls()
 	const int padL = SX(64);
 	const int padR = SX(22);
 	const int comboW = SX(178);
-	const int btnW = SX(78);
+	const int btnW = SX(kReaderActionButtonWidth);
 	const int btnH = SX(36);
 	const int gap = SX(8);
 	const int toggleW = SX(52);
@@ -485,9 +516,9 @@ void CReaderSetupDlg::LayoutControls()
 		int bx = x0;
 		bInit.SetWindowPos(NULL, bx, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 		bStatus.SetWindowPos(NULL, bx + (btnW + gap), yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bKey.SetWindowPos(NULL, bx + (btnW + gap) * 2, yBtn, btnW + SX(6), btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bInteg.SetWindowPos(NULL, bx + (btnW + gap) * 3 + SX(6), yBtn, btnW + SX(10), btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-		bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4 + SX(16), yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bKey.SetWindowPos(NULL, bx + (btnW + gap) * 2, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bInteg.SetWindowPos(NULL, bx + (btnW + gap) * 3, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+		bUpdate.SetWindowPos(NULL, bx + (btnW + gap) * 4, yBtn, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 	};
 
 	placeReaderCard(card1, m_comport1,
@@ -506,7 +537,7 @@ void CReaderSetupDlg::LayoutControls()
 		qVisibleH = SX(28);
 	int qy = queryBox.top + (queryBox.Height() - qVisibleH) / 2 + SX(2);
 	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
-	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(62), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
+	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(78), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 커스텀 표는 OnPaint에서 직접 그리고, 실제 리스트는 데이터 저장용으로만 숨긴다.
 	m_integrity_list.SetWindowPos(NULL, -10000, -10000, 1, 1,
@@ -529,6 +560,11 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_bReader1Enabled = FALSE;
 	m_bReader2Enabled = FALSE;
 	m_nIntegrityScrollPos = 0;
+	m_nLoadingButtonID = 0;
+	m_nLoadingTimerID = 0;
+	m_nLoadingAnimTimerID = 0;
+	m_nBusyReaderIndex = 0;
+	m_bBusySearch = FALSE;
 	m_rcIntegrityScrollBar.SetRectEmpty();
 	m_rcIntegrityScrollThumb.SetRectEmpty();
 	//{{AFX_DATA_INIT(CReaderSetupDlg)
@@ -574,6 +610,7 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_WM_DRAWITEM()
 	ON_WM_MOUSEWHEEL()
 	ON_WM_LBUTTONDOWN()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -665,16 +702,95 @@ void CReaderSetupDlg::GetWidowsComPort(vector<int>& ports)
 	::RegCloseKey( hKey ) ;
 }
 
-BOOL CReaderSetupDlg::OnInitDialog() 
+void CReaderSetupDlg::SetReaderCardBusy(int readerIndex, BOOL bBusy)
 {
-	CDialog::OnInitDialog();
+	CSkinnedComboBox* pCombo = (readerIndex == 1) ? &m_comport1 : &m_comport2;
+	CModernToggleSwitch* pToggleOpen = (readerIndex == 1) ? &m_togglePortOpen1 : &m_togglePortOpen2;
+	CModernToggleSwitch* pToggleMulti = (readerIndex == 1) ? &m_toggleMultipad1 : &m_toggleMultipad2;
+	CModernButton* buttons[] =
+	{
+		(readerIndex == 1) ? &m_reader_init1 : &m_reader_init2,
+		(readerIndex == 1) ? &m_status_check1 : &m_status_check2,
+		(readerIndex == 1) ? &m_keydown1 : &m_keydown2,
+		(readerIndex == 1) ? &m_integrity_check1 : &m_integrity_check2,
+		(readerIndex == 1) ? &m_update1 : &m_update2,
+	};
 
-	ModernUIGfx::EnsureGdiplusStartup();
+	for (int i = 0; i < (int)(sizeof(buttons) / sizeof(buttons[0])); ++i)
+	{
+		if (!buttons[i]->GetSafeHwnd())
+			continue;
+		if (!bBusy)
+			buttons[i]->EnableWindow(TRUE);
+		else if (buttons[i]->GetDlgCtrlID() != (int)m_nLoadingButtonID)
+			buttons[i]->EnableWindow(FALSE);
+	}
 
-	ModifyStyle(0, WS_CLIPCHILDREN);
-	
+	if (pCombo->GetSafeHwnd()) pCombo->EnableWindow(!bBusy);
+	if (pToggleOpen->GetSafeHwnd()) pToggleOpen->EnableWindow(!bBusy);
+	if (pToggleMulti->GetSafeHwnd()) pToggleMulti->EnableWindow(!bBusy);
 
+	if (!bBusy)
+		UpdateReaderEnableState(readerIndex);
+}
 
+void CReaderSetupDlg::SetSearchBusy(BOOL bBusy)
+{
+	m_bBusySearch = bBusy;
+	if (m_search_date.GetSafeHwnd())
+		m_search_date.EnableWindow(!bBusy);
+	if (m_btnSearch.GetSafeHwnd() && !bBusy)
+		m_btnSearch.EnableWindow(TRUE);
+	Invalidate(FALSE);
+}
+
+BOOL CReaderSetupDlg::IsReaderCardButton(UINT nID) const
+{
+	switch (nID)
+	{
+	case IDC_READER_INIT1:
+	case IDC_STATUS_CHECK1:
+	case IDC_KEYDOWN1:
+	case IDC_INTEGRITY_CHECK1:
+	case IDC_UPDATE1:
+	case IDC_READER_INIT2:
+	case IDC_STATUS_CHECK2:
+	case IDC_KEYDOWN2:
+	case IDC_INTEGRITY_CHECK2:
+	case IDC_UPDATE2:
+		return TRUE;
+	}
+	return FALSE;
+}
+
+CString CReaderSetupDlg::MakeLoadingText(UINT nButtonID) const
+{
+	switch (nButtonID)
+	{
+	case IDC_READER_INIT1:
+	case IDC_READER_INIT2:
+		return _T("초기화중...");
+	case IDC_STATUS_CHECK1:
+	case IDC_STATUS_CHECK2:
+		return _T("확인중...");
+	case IDC_KEYDOWN1:
+	case IDC_KEYDOWN2:
+		return _T("다운로드중...");
+	case IDC_INTEGRITY_CHECK1:
+	case IDC_INTEGRITY_CHECK2:
+		return _T("체크중...");
+	case IDC_UPDATE1:
+	case IDC_UPDATE2:
+		return _T("업데이트중...");
+	case IDC_SEARCH:
+		return _T("조회중...");
+	}
+	return _T("처리중...");
+}
+
+// COM 포트 콤보는 항상 "미사용"을 맨 위에 두고, 실제 포트는 COM 01 형태로 정규화해 넣는다.
+void CReaderSetupDlg::InitPortComboItems()
+{
 	vector<int> ports;
 	int windows_platform = GetWindowsVersion();
 	if (windows_platform == WINDOWS_VERSION_95 || windows_platform == WINDOWS_VERSION_98)
@@ -682,147 +798,137 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	else
 		GetNTComPort(ports);
 
-	m_comport1.AddString("미사용");
-	m_comport2.AddString("미사용");
+	m_comport1.ResetContent();
+	m_comport2.ResetContent();
+	m_comport1.AddString(_T("미사용"));
+	m_comport2.AddString(_T("미사용"));
 
-	int i;
-	char buff[64];
-	for(i = 0 ; i < ports.size(); i++) {
-		sprintf(buff, "COM %02d", ports[i]);
-		m_comport1.AddString(buff);
-		m_comport2.AddString(buff);
+	for (size_t i = 0; i < ports.size(); ++i)
+	{
+		CString item;
+		item.Format(_T("COM %02d"), ports[i]);
+		m_comport1.AddString(item);
+		m_comport2.AddString(item);
 	}
+}
 
+// 저장된 COM 포트를 복원하고, 현재 PC에 없는 포트는 '(사용불가)' 표기를 붙여서라도
+// 사용자가 과거 설정값을 볼 수 있게 한다.
+void CReaderSetupDlg::LoadSavedPortSelections()
+{
 	CString com_port1 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, _T(""));
 	CString com_port2 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, _T(""));
 
-	if (com_port1.GetLength() == 0) {
-		com_port1 = "미사용";
+	if (com_port1.IsEmpty())
+	{
+		com_port1 = _T("미사용");
 		AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, com_port1);
 	}
-	if (com_port2.GetLength() == 0) {
-		com_port2 = "미사용";
+	if (com_port2.IsEmpty())
+	{
+		com_port2 = _T("미사용");
 		AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, com_port2);
 	}
 
-	m_comport1.SetCurSel(0);
-	m_comport2.SetCurSel(0);
-	for (i = 0; i < ports.size(); ++i) {
-		sprintf(buff, "COM %02d", ports[i]);
+	auto applySelection = [&](CSkinnedComboBox& combo, const CString& savedValue)
+	{
+		combo.SetCurSel(0);
+		const int count = combo.GetCount();
+		for (int i = 0; i < count; ++i)
+		{
+			CString item;
+			combo.GetLBText(i, item);
+			if (IsSamePortLabel(item, savedValue))
+			{
+				combo.SetCurSel(i);
+				return;
+			}
+		}
 
-		if (com_port1.Compare(buff) == 0)
-			m_comport1.SetCurSel(i + 1);
-		if (com_port2.Compare(buff) == 0)
-			m_comport2.SetCurSel(i + 1);
-	}
+		if (!IsSamePortLabel(savedValue, _T("미사용")))
+		{
+			CString unavailable = savedValue + _T("(사용불가)");
+			combo.AddString(unavailable);
+			combo.SetCurSel(combo.GetCount() - 1);
+		}
+		else
+		{
+			combo.SetCurSel(0);
+		}
+	};
 
-	if (m_comport1.GetCurSel() == 0 && com_port1.Compare("미사용") != 0) {
-		com_port1 += "(사용불가)";
-		m_comport1.AddString(com_port1);
-		m_comport1.SetCurSel(ports.size() + 1);
-	}
-	if (m_comport2.GetCurSel() == 0 && com_port2.Compare("미사용") != 0) {
-		com_port2 += "(사용불가)";
-		m_comport2.AddString(com_port2);
-		m_comport2.SetCurSel(ports.size() + 1);
-	}
+	applySelection(m_comport1, com_port1);
+	applySelection(m_comport2, com_port2);
+}
 
-	if (com_port1.Compare("미사용") == 0) {
-		m_reader_init1.EnableWindow(FALSE);
-		m_status_check1.EnableWindow(FALSE);
-		m_keydown1.EnableWindow(FALSE);
-		m_integrity_check1.EnableWindow(FALSE);
-	}
-	if (com_port2.Compare("미사용") == 0) {
-		m_reader_init2.EnableWindow(FALSE);
-		m_status_check2.EnableWindow(FALSE);
-		m_keydown2.EnableWindow(FALSE);
-		m_integrity_check2.EnableWindow(FALSE);
-	}
-
-	m_search_date.AddString("오늘");
-	m_search_date.AddString("7일");
-	m_search_date.AddString("30일");
-	m_search_date.AddString("100일");
-
+void CReaderSetupDlg::InitSearchDateCombo()
+{
+	m_search_date.ResetContent();
+	m_search_date.AddString(_T("오늘"));
+	m_search_date.AddString(_T("7일"));
+	m_search_date.AddString(_T("30일"));
+	m_search_date.AddString(_T("100일"));
 	m_search_date.SetCurSel(0);
+}
 
-	// 폰트와 텍스트 크기를 ShopSetupDlg 느낌에 가깝게 맞춘다.
-	m_comport1.SetFont(&m_fontNormal);
-	m_comport2.SetFont(&m_fontNormal);
-	m_search_date.SetFont(&m_fontNormal);
-	m_reader_init1.SetFont(&m_fontNormal);
-	m_status_check1.SetFont(&m_fontNormal);
-	m_keydown1.SetFont(&m_fontNormal);
-	m_integrity_check1.SetFont(&m_fontNormal);
-	m_update1.SetFont(&m_fontNormal);
-	m_reader_init2.SetFont(&m_fontNormal);
-	m_status_check2.SetFont(&m_fontNormal);
-	m_keydown2.SetFont(&m_fontNormal);
-	m_integrity_check2.SetFont(&m_fontNormal);
-	m_update2.SetFont(&m_fontNormal);
-	m_btnSearch.SetFont(&m_fontNormal);
-	m_btnOk.SetFont(&m_fontNormal);
-	m_btnCancel.SetFont(&m_fontNormal);
-	m_integrity_list.SetFont(&m_fontNormal);
-
+// 실제 ListCtrl은 커스텀 테이블의 데이터 저장소로만 쓰고, 화면 표시 자체는 OnPaint에서 담당한다.
+void CReaderSetupDlg::InitIntegrityListColumns()
+{
 	DWORD exStyle = LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT;
 #ifdef LVS_EX_DOUBLEBUFFER
 	exStyle |= LVS_EX_DOUBLEBUFFER;
 #endif
 	ListView_SetExtendedListViewStyle(m_integrity_list.GetSafeHwnd(), exStyle);
 	m_integrity_list.ModifyStyle(0, LVS_SHOWSELALWAYS);
-	for(i = 0 ; col_info[i].column_name != NULL ; ++i)
+
+	while (m_integrity_list.DeleteColumn(0))
+	{
+		// 기존 컬럼 제거
+	}
+
+	for (int i = 0; col_info[i].column_name != NULL; ++i)
 		m_integrity_list.InsertColumn(i, col_info[i].column_name, col_info[i].format, col_info[i].width * 8);
 
+	m_integrity_list.SetBkColor(RGB(255, 255, 255));
+	m_integrity_list.SetTextBkColor(RGB(255, 255, 255));
+	m_integrity_list.ShowWindow(SW_HIDE);
+}
 
+void CReaderSetupDlg::ApplyDialogFonts()
+{
+	ApplyFontIfWindow(m_comport1, m_fontNormal);
+	ApplyFontIfWindow(m_comport2, m_fontNormal);
+	ApplyFontIfWindow(m_search_date, m_fontNormal);
+	ApplyFontIfWindow(m_reader_init1, m_fontNormal);
+	ApplyFontIfWindow(m_status_check1, m_fontNormal);
+	ApplyFontIfWindow(m_keydown1, m_fontNormal);
+	ApplyFontIfWindow(m_integrity_check1, m_fontNormal);
+	ApplyFontIfWindow(m_update1, m_fontNormal);
+	ApplyFontIfWindow(m_reader_init2, m_fontNormal);
+	ApplyFontIfWindow(m_status_check2, m_fontNormal);
+	ApplyFontIfWindow(m_keydown2, m_fontNormal);
+	ApplyFontIfWindow(m_integrity_check2, m_fontNormal);
+	ApplyFontIfWindow(m_update2, m_fontNormal);
+	ApplyFontIfWindow(m_btnSearch, m_fontNormal);
+	ApplyFontIfWindow(m_btnOk, m_fontNormal);
+	ApplyFontIfWindow(m_btnCancel, m_fontNormal);
+	ApplyFontIfWindow(m_integrity_list, m_fontNormal);
+}
 
-	// ... (기존 포트 목록/레지스트리/초기 Enable 로직 그대로 유지)
-
-	// DPI/폰트/레이아웃/구 static 숨김
-	HDC hdc = ::GetDC(m_hWnd);
-	m_dpi = GetDeviceCaps(hdc, LOGPIXELSX);
-	::ReleaseDC(m_hWnd, hdc);
-
-	EnsureFonts();
-	HideLegacyStatics();
-
-	// 폰트와 텍스트 크기를 ShopSetupDlg 느낌에 가깝게 맞춘다.
-	m_comport1.SetFont(&m_fontNormal);
-	m_comport2.SetFont(&m_fontNormal);
-	m_search_date.SetFont(&m_fontNormal);
-	m_reader_init1.SetFont(&m_fontNormal);
-	m_status_check1.SetFont(&m_fontNormal);
-	m_keydown1.SetFont(&m_fontNormal);
-	m_integrity_check1.SetFont(&m_fontNormal);
-	m_update1.SetFont(&m_fontNormal);
-	m_reader_init2.SetFont(&m_fontNormal);
-	m_status_check2.SetFont(&m_fontNormal);
-	m_keydown2.SetFont(&m_fontNormal);
-	m_integrity_check2.SetFont(&m_fontNormal);
-	m_update2.SetFont(&m_fontNormal);
-	m_btnSearch.SetFont(&m_fontNormal);
-	m_btnOk.SetFont(&m_fontNormal);
-	m_btnCancel.SetFont(&m_fontNormal);
-	m_integrity_list.SetFont(&m_fontNormal);
-
-	// === ModernUI 스타일 적용 ===
-	// 콤보박스 스킨
-
-	// 액션 버튼 스타일 (Secondary: 회색 테두리)
+void CReaderSetupDlg::InitModernButtonStyles()
+{
+	// 리더 카드 액션 버튼은 전부 동일한 Secondary 계열 스타일을 써서 시선이 분산되지 않게 한다.
 	m_reader_init1.SetButtonStyle(ButtonStyle::Download);
 	m_status_check1.SetButtonStyle(ButtonStyle::Download);
 	m_keydown1.SetButtonStyle(ButtonStyle::Download);
 	m_integrity_check1.SetButtonStyle(ButtonStyle::Download);
 	m_update1.SetButtonStyle(ButtonStyle::Download);
-
 	m_reader_init2.SetButtonStyle(ButtonStyle::Download);
 	m_status_check2.SetButtonStyle(ButtonStyle::Download);
 	m_keydown2.SetButtonStyle(ButtonStyle::Download);
 	m_integrity_check2.SetButtonStyle(ButtonStyle::Download);
 	m_update2.SetButtonStyle(ButtonStyle::Download);
 
-	// 하단 확인/취소 버튼 스타일
 	if (CWnd* pOK = GetDlgItem(IDOK))
 		m_btnOk.SubclassDlgItem(IDOK, this);
 	if (CWnd* pCancel = GetDlgItem(IDCANCEL))
@@ -830,7 +936,6 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_btnOk.SetButtonStyle(ButtonStyle::Primary);
 	m_btnCancel.SetButtonStyle(ButtonStyle::Default);
 
-	// 조회 버튼
 	m_btnSearch.SubclassDlgItem(IDC_SEARCH, this);
 	m_btnSearch.SetButtonStyle(ButtonStyle::Download);
 
@@ -847,41 +952,42 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_btnOk.SetWindowText(_T("확인"));
 	m_btnCancel.SetWindowText(_T("취소"));
 	m_btnSearch.SetWindowText(_T("조회"));
-	m_integrity_list.SetBkColor(RGB(255, 255, 255));
-	m_integrity_list.SetTextBkColor(RGB(255, 255, 255));
-	m_integrity_list.ShowWindow(SW_HIDE);
+}
 
-	// Custom table preview sample rows
-	if (m_integrity_list.GetItemCount() == 0)
+void CReaderSetupDlg::InitSampleIntegrityRows()
+{
+	if (m_integrity_list.GetItemCount() > 0)
+		return;
+
+	const TCHAR* sampleRows[][6] =
 	{
-		const TCHAR* sampleRows[][6] =
-		{
-			{ _T("20260308091234"), _T("COM 01"), _T("00"),   _T("RDR-1001"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
-			{ _T("20260308091234"), _T("COM 01"), _T("04"),   _T("RDR-1001"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
-			{ _T("20260308091234"), _T("COM 02"), _T("00"), _T("RDR-2003"), _T("DAULPAY633RDK201"), _T("KFTCONECAP3001") },
-			{ _T("20260308091234"), _T("COM 03"), _T("00"),   _T("RDR-1010"), _T("DAULPAY633RDK201"), _T("KFTCONECAP3001") },
-			{ _T("20260308091234"), _T("COM 01"), _T("00"),   _T("RDR-1001"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
-			{ _T("20260308091234"), _T("COM 04"), _T("00"), _T("RDR-3011"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
-		};
+		{ _T("20260308091234"), _T("COM 01"), _T("00"), _T("RDR-1001"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 01"), _T("04"), _T("RDR-1001"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 02"), _T("00"), _T("RDR-2003"), _T("DAULPAY633RDK201"), _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 03"), _T("00"), _T("RDR-1010"), _T("DAULPAY633RDK201"), _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 01"), _T("00"), _T("RDR-1001"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 04"), _T("00"), _T("RDR-3011"), _T("##SPAY-8800Q3001"), _T("KFTCONECAP3001") },
+	};
 
-		for (int row = 0; row < 6; ++row)
-		{
-			int idx = m_integrity_list.InsertItem(row, sampleRows[row][0]);
-			for (int col = 1; col < 6; ++col)
-				m_integrity_list.SetItemText(idx, col, sampleRows[row][col]);
-		}
+	for (int row = 0; row < 6; ++row)
+	{
+		int idx = m_integrity_list.InsertItem(row, sampleRows[row][0]);
+		for (int col = 1; col < 6; ++col)
+			m_integrity_list.SetItemText(idx, col, sampleRows[row][col]);
 	}
-	NormalizeIntegrityScrollPos();
+}
 
-	// 토글 초기 상태 (포트 열기: 미사용이면 OFF)
+void CReaderSetupDlg::InitToggleAndUnderlayColors()
+{
+	const COLORREF cardBgEnabled = RGB(255, 255, 255);
+	const COLORREF cardBgDisabled = RGB(251, 252, 253);
+	const COLORREF infoCardBg = RGB(248, 249, 251);
+
 	m_togglePortOpen1.SetCheck(BST_UNCHECKED);
 	m_togglePortOpen2.SetCheck(BST_UNCHECKED);
 	m_toggleMultipad1.SetCheck(BST_UNCHECKED);
 	m_toggleMultipad2.SetCheck(BST_UNCHECKED);
 
-	// Set underlay colors to match card backgrounds
-	COLORREF cardBgEnabled  = RGB(255, 255, 255);
-	COLORREF cardBgDisabled = RGB(251, 252, 253);
 	m_togglePortOpen1.SetUnderlayColor(cardBgEnabled);
 	m_togglePortOpen2.SetUnderlayColor(cardBgDisabled);
 	m_toggleMultipad1.SetUnderlayColor(cardBgEnabled);
@@ -898,24 +1004,138 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	m_update2.SetUnderlayColor(cardBgDisabled);
 	m_comport1.SetUnderlayColor(cardBgEnabled);
 	m_comport2.SetUnderlayColor(cardBgDisabled);
-	m_search_date.SetUnderlayColor(RGB(248, 249, 251));
-	m_btnSearch.SetUnderlayColor(RGB(248, 249, 251));
+	m_search_date.SetUnderlayColor(infoCardBg);
+	m_btnSearch.SetUnderlayColor(infoCardBg);
 	m_btnOk.SetUnderlayColor(RGB(255, 255, 255));
 	m_btnCancel.SetUnderlayColor(RGB(255, 255, 255));
+}
 
-	m_bUIReady = TRUE;
+void CReaderSetupDlg::StartLoadingOperation(UINT nButtonID)
+{
+	if (m_nLoadingButtonID != 0)
+		return;
+
+	CModernButton* pButton = NULL;
+	switch (nButtonID)
+	{
+	case IDC_READER_INIT1: pButton = &m_reader_init1; break;
+	case IDC_STATUS_CHECK1: pButton = &m_status_check1; break;
+	case IDC_KEYDOWN1: pButton = &m_keydown1; break;
+	case IDC_INTEGRITY_CHECK1: pButton = &m_integrity_check1; break;
+	case IDC_UPDATE1: pButton = &m_update1; break;
+	case IDC_READER_INIT2: pButton = &m_reader_init2; break;
+	case IDC_STATUS_CHECK2: pButton = &m_status_check2; break;
+	case IDC_KEYDOWN2: pButton = &m_keydown2; break;
+	case IDC_INTEGRITY_CHECK2: pButton = &m_integrity_check2; break;
+	case IDC_UPDATE2: pButton = &m_update2; break;
+	case IDC_SEARCH: pButton = &m_btnSearch; break;
+	default: return;
+	}
+
+	m_nLoadingButtonID = nButtonID;
+	pButton->SetLoading(TRUE, MakeLoadingText(nButtonID));
+
+	if (nButtonID == IDC_SEARCH)
+	{
+		SetSearchBusy(TRUE);
+	}
+	else
+	{
+		m_nBusyReaderIndex = (nButtonID == IDC_READER_INIT2 || nButtonID == IDC_STATUS_CHECK2 || nButtonID == IDC_KEYDOWN2 || nButtonID == IDC_INTEGRITY_CHECK2 || nButtonID == IDC_UPDATE2) ? 2 : 1;
+		SetReaderCardBusy(m_nBusyReaderIndex, TRUE);
+	}
+
+	m_nLoadingAnimTimerID = 0x4810;
+	m_nLoadingTimerID = 0x4811;
+	SetTimer(m_nLoadingAnimTimerID, 33, NULL);
+	SetTimer(m_nLoadingTimerID, 1200, NULL);
+	Invalidate(FALSE);
+}
+
+void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
+{
+	if (m_nLoadingAnimTimerID != 0)
+		KillTimer(m_nLoadingAnimTimerID);
+	if (m_nLoadingTimerID != 0)
+		KillTimer(m_nLoadingTimerID);
+	m_nLoadingAnimTimerID = 0;
+	m_nLoadingTimerID = 0;
+
+	if (m_nLoadingButtonID != 0)
+	{
+		CModernButton* pButton = NULL;
+		switch (m_nLoadingButtonID)
+		{
+		case IDC_READER_INIT1: pButton = &m_reader_init1; break;
+		case IDC_STATUS_CHECK1: pButton = &m_status_check1; break;
+		case IDC_KEYDOWN1: pButton = &m_keydown1; break;
+		case IDC_INTEGRITY_CHECK1: pButton = &m_integrity_check1; break;
+		case IDC_UPDATE1: pButton = &m_update1; break;
+		case IDC_READER_INIT2: pButton = &m_reader_init2; break;
+		case IDC_STATUS_CHECK2: pButton = &m_status_check2; break;
+		case IDC_KEYDOWN2: pButton = &m_keydown2; break;
+		case IDC_INTEGRITY_CHECK2: pButton = &m_integrity_check2; break;
+		case IDC_UPDATE2: pButton = &m_update2; break;
+		case IDC_SEARCH: pButton = &m_btnSearch; break;
+		}
+		if (pButton != NULL)
+			pButton->SetLoading(FALSE);
+	}
+
+	if (m_bBusySearch)
+		SetSearchBusy(FALSE);
+	if (m_nBusyReaderIndex != 0)
+		SetReaderCardBusy(m_nBusyReaderIndex, FALSE);
+
+	m_nBusyReaderIndex = 0;
+	m_nLoadingButtonID = 0;
+	if (bRefresh)
+		Invalidate(FALSE);
+}
+
+BOOL CReaderSetupDlg::OnInitDialog() 
+{
+	CDialog::OnInitDialog();
+
+	// --- 1) GDI+/윈도우 기본 스타일 준비 ---
+	ModernUIGfx::EnsureGdiplusStartup();
 	ModifyStyle(0, WS_CLIPCHILDREN);
 
+	// --- 2) DPI/폰트/숨길 레거시 Static 초기화 ---
+	HDC hdc = ::GetDC(m_hWnd);
+	m_dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+	::ReleaseDC(m_hWnd, hdc);
+	EnsureFonts();
+	HideLegacyStatics();
+
+	// --- 3) 입력 컨트롤 데이터 초기화 ---
+	InitPortComboItems();
+	LoadSavedPortSelections();
+	InitSearchDateCombo();
+	InitIntegrityListColumns();
+	InitSampleIntegrityRows();
+	NormalizeIntegrityScrollPos();
+
+	// --- 4) 폰트/ModernUI 스타일/배경색 적용 ---
+	ApplyDialogFonts();
+	InitModernButtonStyles();
+	InitToggleAndUnderlayColors();
+
+	// 레이아웃 계산 전에 UI 준비 상태를 TRUE로 올려야 LayoutControls가 정상 동작한다.
+	m_bUIReady = TRUE;
+
+	// --- 5) 창 크기/컨트롤 배치 적용 ---
 	FitWindowToLayout();
 	LayoutControls();
+	RecalcIntegrityColumns();
 
-	// 초기 상태 반영(콤보는 항상 활성, 버튼은 미사용이면 비활성)
+	// --- 6) 최종 상태 반영 ---
 	UpdateReaderEnableState(1);
 	UpdateReaderEnableState(2);
 
-	GetDlgItem(IDOK)->SetFocus();   // 확인 버튼으로 포커스 이동
-	return FALSE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
+	// 초기 포커스는 확인 버튼으로 넘겨 포커스 링이 콤보에 남지 않게 한다.
+	GetDlgItem(IDOK)->SetFocus();
+	return FALSE;
 }
 
 CSize CReaderSetupDlg::CalcMinClientSize() const
@@ -925,9 +1145,10 @@ CSize CReaderSetupDlg::CalcMinClientSize() const
 	const int titleArea = SX(92);
 	const int sectionPad = SX(24);
 	const int sectionTitleTop = SX(10);
+	const int infoSectionTitleTop = SX(2);
 	const int sectionTitleH = SX(28);
 	const int sectionTitleGap = SX(12);
-	const int infoTitleGap = SX(4);
+	const int infoTitleGap = -SX(10);
 	const int cardH = SX(126);
 	const int cardGap = SX(14);
 	const int betweenSections = SX(26);
@@ -1145,7 +1366,8 @@ void CReaderSetupDlg::OnPaint()
 	drawReaderCard(card1, m_bReader1Enabled, 1);
 	drawReaderCard(card2, m_bReader2Enabled, 2);
 
-	// 기본 ListCtrl은 숨기고, 무결성 체크 표는 여기서 직접 그린다.
+	// 기본 ListCtrl은 숨기고, 무결성 테이블 전체를 직접 그린다.
+	// 헤더/본문/스크롤을 한 함수에서 맞춰 그려야 Modern 스타일이 유지된다.
 	{
 		CRect tableOuter = listRc;
 		tableOuter.DeflateRect(1, 1);
@@ -1164,8 +1386,8 @@ void CReaderSetupDlg::OnPaint()
 
 		FillRoundRect(&memDC, tableOuter, SX(8), bodyBg, tableBorder, 0);
 
-		const int ratios[] = { 20, 13, 7, 14, 23, 23 };
-		const int colCount = sizeof(ratios) / sizeof(ratios[0]);
+		const int* ratios = kIntegrityColumnRatios;
+		const int colCount = kIntegrityColumnCount;
 		const int headerH = SX(36);
 		const int rowH = SX(38);
 		const int textPad = SX(10);
@@ -1216,7 +1438,36 @@ void CReaderSetupDlg::OnPaint()
 		m_rcIntegrityScrollThumb.SetRectEmpty();
 		NormalizeIntegrityScrollPos();
 
-		if (itemCount <= 0)
+		if (m_bBusySearch)
+		{
+			const int skeletonH = SX(12);
+			const int skeletonGapY = SX(14);
+			const COLORREF skeletonBg = RGB(241, 244, 248);
+			const COLORREF skeletonHl = RGB(228, 234, 241);
+			for (int row = 0; row < visibleRows; ++row)
+			{
+				CRect rowRc(contentRc.left, contentRc.top + row * rowH, contentRc.right, contentRc.top + (row + 1) * rowH);
+				if (rowRc.bottom > contentRc.bottom)
+					rowRc.bottom = contentRc.bottom;
+				int drawX = bodyRc.left;
+				for (int col = 0; col < colCount; ++col)
+				{
+					CRect cellRc(drawX, rowRc.top, drawX + widths[col], rowRc.bottom);
+					CRect skRc = cellRc;
+					skRc.DeflateRect(textPad, (rowH - skeletonH) / 2 + skeletonGapY / 4);
+					if (skRc.Width() > SX(12))
+						skRc.right = skRc.left + max(SX(20), min(skRc.Width(), (col == 0) ? SX(100) : (cellRc.Width() * 3 / 5)));
+					FillRoundRect(&memDC, skRc, SX(4), skeletonBg, skeletonBg, 1);
+					drawX += widths[col];
+				}
+			}
+			memDC.SelectObject(&m_fontSmall);
+			memDC.SetTextColor(RGB(120, 130, 146));
+			CRect loadingTextRc = bodyRc;
+			loadingTextRc.top = contentRc.bottom - SX(30);
+			memDC.DrawText(_T("조회 중입니다..."), loadingTextRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		}
+		else if (itemCount <= 0)
 		{
 			memDC.SelectObject(&m_fontSmall);
 			memDC.SetTextColor(emptyText);
@@ -1284,13 +1535,33 @@ BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 	UINT nID  = LOWORD(wParam);
 	int  nCode = (int)(short)HIWORD(wParam);
 
-	// CSkinnedComboBox ON_CONTROL_REFLECT(CBN_SELCHANGE) causes MFC to eat
-	// the notification before the parent message map runs.
-	// Intercept here before default reflection so our handlers fire.
+	// CSkinnedComboBox는 ON_CONTROL_REFLECT(CBN_SELCHANGE) 때문에
+	// 부모 다이얼로그의 메시지맵보다 먼저 알림을 소비한다.
+	// 따라서 부모가 반드시 받아야 하는 포트 변경 알림은 OnCommand에서 선점한다.
 	if (nCode == CBN_SELCHANGE)
 	{
 		if (nID == IDC_COMPORT1) { OnSelchangeComport1(); return TRUE; }
 		if (nID == IDC_COMPORT2) { OnSelchangeComport2(); return TRUE; }
+	}
+
+	if (nCode == BN_CLICKED)
+	{
+		switch (nID)
+		{
+		case IDC_READER_INIT1:
+		case IDC_STATUS_CHECK1:
+		case IDC_KEYDOWN1:
+		case IDC_INTEGRITY_CHECK1:
+		case IDC_UPDATE1:
+		case IDC_READER_INIT2:
+		case IDC_STATUS_CHECK2:
+		case IDC_KEYDOWN2:
+		case IDC_INTEGRITY_CHECK2:
+		case IDC_UPDATE2:
+		case IDC_SEARCH:
+			StartLoadingOperation(nID);
+			return TRUE;
+		}
 	}
 
 	return CDialog::OnCommand(wParam, lParam);
@@ -1314,9 +1585,30 @@ void CReaderSetupDlg::OnSelchangeComport2()
 
 
 
+void CReaderSetupDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == m_nLoadingAnimTimerID)
+	{
+		if (m_nLoadingButtonID != 0)
+		{
+			if (CWnd* pWnd = GetDlgItem(m_nLoadingButtonID))
+				pWnd->Invalidate(FALSE);
+			if (m_bBusySearch)
+				Invalidate(FALSE);
+		}
+		return;
+	}
+	if (nIDEvent == m_nLoadingTimerID)
+	{
+		FinishLoadingOperation(TRUE);
+		return;
+	}
+	CDialog::OnTimer(nIDEvent);
+}
+
 BOOL CReaderSetupDlg::DestroyWindow() 
 {
-
+	FinishLoadingOperation(FALSE);
 	return CDialog::DestroyWindow();
 }
 

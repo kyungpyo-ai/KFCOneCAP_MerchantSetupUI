@@ -226,10 +226,46 @@ CModernButton::CModernButton()
 	m_clrUnderlayBg = RGB(255, 255, 255);
 	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
 	m_style = ButtonStyle::Auto; // default: detect style from button text
+	m_bLoading = FALSE;
 }
 
 CModernButton::~CModernButton()
 {
+}
+
+
+void CModernButton::SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText)
+{
+    if (bLoading)
+    {
+        if (!m_bLoading)
+        {
+            GetWindowText(m_strBaseText);
+            if (m_strBaseText.IsEmpty())
+                m_strBaseText = _T(" ");
+        }
+        m_bLoading = TRUE;
+        if (lpszLoadingText != NULL && lpszLoadingText[0] != 0)
+            m_strLoadingText = lpszLoadingText;
+        else
+        {
+            m_strLoadingText = m_strBaseText;
+            if (m_strLoadingText.Right(1) != _T("…") && m_strLoadingText.Right(3) != _T("..."))
+                m_strLoadingText += _T(" 중...");
+        }
+    }
+    else
+    {
+        m_bLoading = FALSE;
+        if (!m_strBaseText.IsEmpty())
+            SetWindowText(m_strBaseText);
+        m_strLoadingText.Empty();
+    }
+
+    if (m_bLoading && !m_strLoadingText.IsEmpty())
+        SetWindowText(m_strLoadingText);
+
+    Invalidate(FALSE);
 }
 
 void CModernButton::SetButtonStyle(ButtonStyle style)
@@ -251,6 +287,20 @@ LRESULT CModernButton::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
     if (GetSafeHwnd() == NULL)
         return CButton::WindowProc(message, wParam, lParam);
+
+    if (m_bLoading)
+    {
+        switch (message)
+        {
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONUP:
+        case WM_MOUSEMOVE:
+        case WM_MOUSEHOVER:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+            return 0;
+        }
+    }
 
     if (message == BM_SETSTYLE)
     {
@@ -444,6 +494,8 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	CString strText;
 	GetWindowText(strText);
+	if (m_bLoading && !m_strLoadingText.IsEmpty())
+		strText = m_strLoadingText;
 
 	//   
 		// 버튼 타입: 텍스트 기반(요청 유지)
@@ -575,9 +627,39 @@ Gdiplus::Color txtColor;
 	Gdiplus::StringFormat sf;
 	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
 	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+	sf.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+	sf.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+
+	Gdiplus::RectF textRf = rf;
+	if (m_bLoading)
+	{
+		const float spinnerSize = ModernUIDpi::ScaleF(m_hWnd, 12.0f);
+		const float spinnerGap = ModernUIDpi::ScaleF(m_hWnd, 5.0f);
+		Gdiplus::RectF measureRf(0, 0, rf.Width, rf.Height);
+		std::wstring wtMeasure = kftc_to_wide(strText);
+		Gdiplus::RectF bound;
+		g.MeasureString(wtMeasure.c_str(), -1, &font, measureRf, &sf, &bound);
+		float totalW = spinnerSize + spinnerGap + bound.Width;
+		float startX = rf.X + max(0.0f, (rf.Width - totalW) * 0.5f);
+		float cy = rf.Y + rf.Height * 0.5f;
+		Gdiplus::RectF spRc(startX, cy - spinnerSize * 0.5f, spinnerSize, spinnerSize);
+		Gdiplus::Pen basePen(Gdiplus::Color(70, txtColor.GetR(), txtColor.GetG(), txtColor.GetB()), ModernUIDpi::ScaleF(m_hWnd, 1.7f));
+		basePen.SetStartCap(Gdiplus::LineCapRound);
+		basePen.SetEndCap(Gdiplus::LineCapRound);
+		g.DrawArc(&basePen, spRc, 0.0f, 360.0f);
+		DWORD tick = ::GetTickCount();
+		float start = (float)(tick % 720) * 360.0f / 720.0f;
+		Gdiplus::Pen actPen(txtColor, ModernUIDpi::ScaleF(m_hWnd, 2.0f));
+		actPen.SetStartCap(Gdiplus::LineCapRound);
+		actPen.SetEndCap(Gdiplus::LineCapRound);
+		g.DrawArc(&actPen, spRc, start, 132.0f);
+		textRf.X = startX + spinnerSize + spinnerGap;
+		textRf.Width = rf.GetRight() - textRf.X;
+		sf.SetAlignment(Gdiplus::StringAlignmentNear);
+	}
 
 	std::wstring wt = kftc_to_wide(strText);
-	g.DrawString(wt.c_str(), -1, &font, rf, &sf, &tb);
+	g.DrawString(wt.c_str(), -1, &font, textRf, &sf, &tb);
 
 	// 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
@@ -3353,10 +3435,7 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 	HDC hdc = ::GetDC(hRef);
 	if (!hdc) return 0;
 
-	int hTitle = 0, hBody = 0;
-	{
-		// GDI+ objects scoped so they are destroyed before ReleaseDC
-		ModernUIGfx::EnsureGdiplusStartup();
+	ModernUIGfx::EnsureGdiplusStartup();
 	Gdiplus::Graphics g(hdc);
 	g.SetPageUnit(Gdiplus::UnitPixel);
 
@@ -3391,8 +3470,8 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 		return h;
 	};
 
-		hTitle = MeasureWrapped(title, &fTitle, &sfTitle);
-		hBody  = MeasureWrapped(body,  &fBody,  &sfBody);
+	int hTitle = MeasureWrapped(title, &fTitle, &sfTitle);
+	int hBody  = MeasureWrapped(body,  &fBody,  &sfBody);
 	// Extra leading between explicit lines (\r\n / \n) to match modern mobile UI rhythm.
 	{
 		CString norm = body;
@@ -3404,10 +3483,9 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 		for (int i = 0; i < norm.GetLength(); ++i)
 			if (norm[i] == _T('\n')) ++lines;
 
-			if (lines > 1)
-				hBody += ModernUIDpi::Scale(hRef, 2) * (lines - 1);
-		}
-	} // end GDI+ scope -- Graphics/Font objects destroyed here
+		if (lines > 1)
+			hBody += ModernUIDpi::Scale(hRef, 2) * (lines - 1);
+	}
 
 	::ReleaseDC(hRef, hdc);
 	return hTitle + hBody;
@@ -3469,8 +3547,8 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			};
 	
 			idealTextW = max(MeasureOneLineW(m_strTitle, &fTitle), MeasureOneLineW(m_strBody, &fBody));
-		} // end GDI+ scope -- gg/ff/fTitle/fBody destroyed here, before ReleaseDC
-		::ReleaseDC(hRef, hdc);
+			::ReleaseDC(hRef, hdc);
+		}
 	}
 	
 	// Clamp width to a nice range so it doesn't get too narrow/wide.
