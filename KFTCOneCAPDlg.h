@@ -58,6 +58,7 @@ protected:
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnReaderSetup();
     afx_msg void OnShopSetup();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnTrans();
     afx_msg void OnReceiptSetup();
     afx_msg void OnMinimize();
@@ -107,7 +108,10 @@ private:
     CFont m_fontCardDesc;
     CFont m_fontFooter;
 
-    BOOL m_bFontsReady;
+    enum EPendingOpen { PENDING_NONE = 0, PENDING_SHOP, PENDING_READER };
+
+    BOOL         m_bFontsReady;
+    EPendingOpen m_ePendingOpen;
     CBrush m_brBackground;
 
     Gdiplus::Bitmap* m_pLogoBitmap;
