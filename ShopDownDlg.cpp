@@ -119,6 +119,8 @@ void CShopDownDlg::OnDestroy()
     delete m_pFontVal;     m_pFontVal     = nullptr;
     delete m_pFontValBold; m_pFontValBold = nullptr;
     delete m_pFontFamily;  m_pFontFamily  = nullptr;
+    m_memDC.DeleteDC();
+    m_memBmp.DeleteObject();
     CDialog::OnDestroy();
 }
 
@@ -156,7 +158,6 @@ BOOL CShopDownDlg::OnInitDialog()
 
 
     ApplyFonts();
-    LayoutControls();
     return TRUE;
 }
 
@@ -180,7 +181,7 @@ void CShopDownDlg::CreateControlsOnce()
     }
 
     // Create kRowsPerPage slot controls (reused across page navigation)
-    const DWORD edtBase  = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_CLIPSIBLINGS
+    const DWORD edtBase  = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS
                          | ES_AUTOHSCROLL | ES_CENTER;
     const DWORD pwdStyle = edtBase | ES_PASSWORD;
     for (int slot = 0; slot < kRowsPerPage; ++slot)
@@ -419,7 +420,8 @@ void CShopDownDlg::LayoutControls()
     RebindSlots();
     UpdatePageButtons();
     ApplyAllRowUnderlays();
-    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+    if (IsWindowVisible())
+        ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN);
     m_bInLayout = FALSE;
 }
 
@@ -593,11 +595,17 @@ void CShopDownDlg::OnPaint()
     CRect rc;
     GetClientRect(&rc);
 
-    CDC memDC;
-    memDC.CreateCompatibleDC(&dc);
-    CBitmap memBmp;
-    memBmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
-    CBitmap* pOldBmp = memDC.SelectObject(&memBmp);
+    if (!m_memDC.GetSafeHdc())
+        m_memDC.CreateCompatibleDC(&dc);
+    CSize sz(rc.Width(), rc.Height());
+    if (m_memBmpSize != sz)
+    {
+        m_memBmp.DeleteObject();
+        m_memBmp.CreateCompatibleBitmap(&dc, sz.cx, sz.cy);
+        m_memBmpSize = sz;
+    }
+    CDC& memDC = m_memDC;
+    CBitmap* pOldBmp = m_memDC.SelectObject(&m_memBmp);
 
     memDC.FillSolidRect(&rc, KFTC_DLG_CONTENT_BG);
 
@@ -1040,7 +1048,8 @@ void CShopDownDlg::RefreshPage()
     RebindSlots();
     UpdatePageButtons();
     ApplyAllRowUnderlays();
-    ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+    if (IsWindowVisible())
+        ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN);
 }
 
 void CShopDownDlg::OnPrevPageClick()

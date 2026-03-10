@@ -143,6 +143,11 @@ private:
 
     BOOL m_bInLayout;
 
+    // ---------- Cached back-buffer (OnPaint) -----------------------------------
+    CDC     m_memDC;
+    CBitmap m_memBmp;
+    CSize   m_memBmpSize;
+
     // ---------- Pagination ----------------------------------------------------
     int  m_nCurrentPage;                    // 0-based current page index
     CRect m_rcNavBar;   // nav bar rect for OnPaint page indicator
