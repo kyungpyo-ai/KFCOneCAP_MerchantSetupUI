@@ -2,7 +2,6 @@
 #include "MerchantSetupApp.h"
 #include "ShopSetupDlg.h"
 #include "ReaderSetupDlg.h"
-#include "StartupSelectDlg.h"
 #include "KFTCOneCAPDlg.h"
 #include "ModernUI.h"
 #ifdef _DEBUG

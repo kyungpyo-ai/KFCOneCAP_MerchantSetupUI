@@ -5,7 +5,6 @@
 #include "Resource.h"
 #include "ShopSetupDlg.h"
 #include "ShopDownDlg.h"
-#include "StartupSelectDlg.h"
 #include "ReaderSetupDlg.h"
 #include "ModernUI.h"
 #include "RegistryUtil.h"
@@ -382,7 +381,7 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     , m_bClosing(FALSE)
 {
     m_intPort           = 8002;
-    m_intCardTimeout    = 60;
+    m_intCardTimeout    = 60;   // 생성자 초기값 (레지스트리 없을 때 기본값 100 적용)
     m_intNoSignAmount   = 50000;
     m_intTaxPercent     = 10;
     m_strCardDetectParam = _T("KFTCOneCAP TEST");
@@ -406,6 +405,7 @@ CShopSetupDlg::~CShopSetupDlg()
     if (m_brushBg.GetSafeHandle())        m_brushBg.DeleteObject();
     if (m_brushWhite.GetSafeHandle())     m_brushWhite.DeleteObject();
     if (m_brushTabContent.GetSafeHandle()) m_brushTabContent.DeleteObject();
+    if (m_brushSection.GetSafeHandle())   m_brushSection.DeleteObject();
 }
 
 // ============================================================================
@@ -543,7 +543,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     CreateInfoBtn(m_btnCashReceiptInfo,  IDC_BTN_CASH_RECEIPT_INFO);
     CreateInfoBtn(m_btnCardTimeoutInfo,  IDC_BTN_CARD_TIMEOUT_INFO);
     CreateInfoBtn(m_btnInterlockInfo,    IDC_BTN_INTERLOCK_INFO);
-CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
+    CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
     CreateInfoBtn(m_btnCardDetectInfo,  IDC_BTN_CARD_DETECT_INFO);
     CreateInfoBtn(m_btnScannerUseInfo,  IDC_BTN_SCANNER_USE_INFO);
     CreateInfoBtn(m_btnAutoResetInfo,   IDC_BTN_AUTO_RESET_INFO);
@@ -791,6 +791,8 @@ void CShopSetupDlg::InitializeControls()
     m_btnCancel.ModifyStyle(0, BS_OWNERDRAW);
     m_btnOk.SetUnderlayColor(RGB(255,255,255));
     m_btnCancel.SetUnderlayColor(RGB(255,255,255));
+    m_btnOk.SetButtonStyle(ButtonStyle::Primary);
+    m_btnCancel.SetButtonStyle(ButtonStyle::Default);
 
     m_comboVanServer.SetUnderlayColor(bgColor);
     m_comboCashReceipt.SetUnderlayColor(bgColor);
@@ -961,12 +963,9 @@ void CShopSetupDlg::ApplyLayoutTab0()
     auto S    = [&](int v)                              { return ScalePx(v); };
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
     const int CTRL_H       = S(40);
-    const int COMBO_DROP_H = S(220);
     const int FIELD_H      = CTRL_H;
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
-     
-
-   if (!btn.GetSafeHwnd()) return;
+        if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;
@@ -1132,12 +1131,9 @@ void CShopSetupDlg::ApplyLayoutTab1()
     auto S    = [&](int v)                              { return ScalePx(v); };
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
     const int CTRL_H       = S(40);
-    const int COMBO_DROP_H = S(220);
     const int FIELD_H      = CTRL_H;
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
-     
-
-   if (!btn.GetSafeHwnd()) return;
+        if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;
@@ -1457,9 +1453,7 @@ void CShopSetupDlg::ApplyLayout()
 
     // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
-     
-
-   if (!btn.GetSafeHwnd()) return;
+        if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;

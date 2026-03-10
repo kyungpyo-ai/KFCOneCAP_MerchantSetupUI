@@ -269,8 +269,8 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     m_btnMinimize.SubclassDlgItem(IDC_MINIMIZE, this);
     m_btnExit.SubclassDlgItem(IDC_EXIT, this);
 
-    m_btnMinimize.SetButtonStyle(ButtonStyle::Default);
-    m_btnExit.SetButtonStyle(ButtonStyle::Default);
+    m_btnMinimize.SetButtonStyle(ButtonStyle::Auto);
+    m_btnExit.SetButtonStyle(ButtonStyle::Auto);
     m_btnMinimize.SetUnderlayColor(kHomeBg);
     m_btnExit.SetUnderlayColor(kHomeBg);
     // sys-btn: normal text=#8B95A1, hover bg=#E5E8EB, hover text=#333D4B
@@ -439,6 +439,11 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     g.SetSmoothingMode(SmoothingModeAntiAlias);
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
+    // 모던 UI의 쨍한 선명도를 위한 고품질 렌더링 옵션 추가
+    g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic); // 이미지 축소/확대 시 선명도 극대화
+    g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);   // 텍스트 가독성 향상
+    g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);                   // GDI+ 경계선 1픽셀 오차 보정
+
     RectF rcLogo((REAL)left, (REAL)(top + SX(6)), (REAL)logoBox, (REAL)logoBox);
 
     if (m_pLogoBitmap != NULL)
@@ -588,8 +593,8 @@ void CKFTCOneCAPDlg::DrawShopIcon(Graphics& g, const RectF& rc, const Color& clr
 
 }
 
-// 결제설정 (IC칩 카드)// 결제 및 수납 - IC칩 신용카드 (둥근 모서리 + 자기 띠 + IC칩 + 번호)
- void CKFTCOneCAPDlg::DrawTransIcon(Graphics& g, const RectF& rc, const Color& clr)
+// 결제 및 수납 - IC칩 신용카드 (둥근 모서리 + 자기 띠 + IC칩 + 번호)
+void CKFTCOneCAPDlg::DrawTransIcon(Graphics& g, const RectF& rc, const Color& clr)
 {
     SolidBrush br(clr);
 

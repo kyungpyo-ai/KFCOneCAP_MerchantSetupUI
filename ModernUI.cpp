@@ -34,8 +34,6 @@ static void kftc_fill_parent_bg(HWND hWnd, HDC hdc, const RECT& rc)
 	if (hbr) ::FillRect(hdc, &rc, hbr);
 	else     ::FillRect(hdc, &rc, (HBRUSH)(COLOR_WINDOW + 1));
 }
-static __inline int kftc_max_i(int a, int b) { return (a > b) ? a : b; }
-
 static std::wstring kftc_to_wide(const CString& s)
 {
 #ifdef UNICODE
@@ -50,6 +48,7 @@ static std::wstring kftc_to_wide(const CString& s)
 	if (!ws.empty() && ws.back() == L'\0') ws.pop_back();
 	return ws;
 #endif
+}
 
 // ==============================================================
 // [ModernUI.cpp]
@@ -68,7 +67,6 @@ static std::wstring kftc_to_wide(const CString& s)
 //  - µå·ÎÀ×Àº ´õºí¹öÆÛ(CMemDC µî) »ç¿ë ÀüÁ¦¸¦ À¯Áö(±ôºýÀÓ/ÀÜ»ó ¹æÁö)
 // ==============================================================
 
-}
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -516,7 +514,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	BOOL isMini     = (t.Find(_T("ÃÖ¼Ò")) >= 0) || (t.Find(_T("Ãà¼Ò")) >= 0);
 	BOOL isProgramExit = (t.Find(_T("ÇÁ·Î±×·¥ Á¾·á")) >= 0);
 	BOOL isFooterAction = (isMini || isProgramExit);
-//   (//¥å)
 
 	//  :    1px  
 	// If style enum is explicitly set, override text-based detection.
@@ -553,10 +550,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	Gdiplus::GraphicsPath bp; AddRoundRect(bp, rf, rad);
 
 	// ==============================
-	// /¥è: Hover/Pressed " "  
-	// (Hover ¥è ¥â , Pressed   )
-	// ==============================
-		// ==============================
 	// ¹è°æ/Å×µÎ¸®: Primary / Secondary / Tint
 	// ==============================
 	if (disabled)
@@ -596,6 +589,17 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
+	else if (m_style == ButtonStyle::Default)
+	{
+		// Default: white background + always-visible gray border
+		COLORREF bg = pressed ? GRAY_100 : (hover ? GRAY_50 : RGB(255, 255, 255));
+		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
+		g.FillPath(&br, &bp);
+		COLORREF border = (pressed || hover) ? GRAY_300 : GRAY_200;
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
+		pen.SetLineJoin(Gdiplus::LineJoinRound);
+		g.DrawPath(&pen, &bp);
+	}
 	else if (isExit || (!isPrimary && !isDanger && !isDownload))
 	{
 		// Secondary / footer blend style: use caller-provided palette so the button melts into the page.
@@ -616,7 +620,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		g.DrawPath(&pen, &bp);
 	}
 
-Gdiplus::Color txtColor;
+	Gdiplus::Color txtColor;
 	if (disabled)
 		txtColor = Gdiplus::Color(255, GetRValue(GRAY_500), GetGValue(GRAY_500), GetBValue(GRAY_500));
 	else
@@ -2002,7 +2006,7 @@ LRESULT CALLBACK CSkinnedComboBox::ListBoxProc(HWND hWnd, UINT msg, WPARAM wp, L
 	// 1.           
 	LRESULT lRes = oldProc ? ::CallWindowProc(oldProc, hWnd, msg, wp, lp) : 0;
 
-	// 2.    ,  ¯C  ¥è 
+	// 2.    ,  ¥è 
 	if (msg == WM_PAINT || msg == WM_NCPAINT)
 	{
 		HDC hdc = ::GetWindowDC(hWnd); //      
