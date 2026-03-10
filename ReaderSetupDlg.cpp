@@ -1120,6 +1120,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 	// 초기 포커스는 확인 버튼으로 넘겨 포커스 링이 콤보에 남지 않게 한다.
 	ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
+	TakeSnapshot();
 	GetDlgItem(IDOK)->SetFocus();
 	return FALSE;
 }
@@ -1611,19 +1612,17 @@ BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 	{
 		switch (nID)
 		{
-		case IDC_READER_INIT1:
-		case IDC_STATUS_CHECK1:
-		case IDC_KEYDOWN1:
-		case IDC_INTEGRITY_CHECK1:
-		case IDC_UPDATE1:
-		case IDC_READER_INIT2:
-		case IDC_STATUS_CHECK2:
-		case IDC_KEYDOWN2:
-		case IDC_INTEGRITY_CHECK2:
-		case IDC_UPDATE2:
-		case IDC_SEARCH:
-			StartLoadingOperation(nID);
-			return TRUE;
+		case IDC_READER_INIT1:     OnReaderInit(1);    return TRUE;
+		case IDC_READER_INIT2:     OnReaderInit(2);    return TRUE;
+		case IDC_STATUS_CHECK1:    OnStatusCheck(1);   return TRUE;
+		case IDC_STATUS_CHECK2:    OnStatusCheck(2);   return TRUE;
+		case IDC_KEYDOWN1:         OnKeyDown(1);       return TRUE;
+		case IDC_KEYDOWN2:         OnKeyDown(2);       return TRUE;
+		case IDC_INTEGRITY_CHECK1: OnIntegrityCheck(1); return TRUE;
+		case IDC_INTEGRITY_CHECK2: OnIntegrityCheck(2); return TRUE;
+		case IDC_UPDATE1:          OnUpdate(1);        return TRUE;
+		case IDC_UPDATE2:          OnUpdate(2);        return TRUE;
+		case IDC_SEARCH:           OnSearch();         return TRUE;
 		}
 	}
 
@@ -1634,7 +1633,6 @@ void CReaderSetupDlg::OnSelchangeComport1()
 {
 	CString value;
 	m_comport1.GetWindowText(value);
-	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, value);
 	UpdateReaderEnableState(1);
 }
 
@@ -1642,7 +1640,6 @@ void CReaderSetupDlg::OnSelchangeComport2()
 {
 	CString value;
 	m_comport2.GetWindowText(value);
-	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, value);
 	UpdateReaderEnableState(2);
 }
 
@@ -1702,3 +1699,92 @@ void CReaderSetupDlg::OnBnClickedMultipad2Info()
 	ShowInfoPopover(m_btnMultipad2Info, _T("멀티패드 여부"), _T("멀티패드 여부 설정\n· ON : QR 기능 사용 가능\n· OFF : QR 기능 사용 불가\n※스캐너가 부착된 리더기의 경우에도 ON 설정"));
 }
 
+
+// ============================================================
+// Button action handlers - TODO: implement each function
+// ============================================================
+
+void CReaderSetupDlg::OnReaderInit(int readerIndex)
+{
+	StartLoadingOperation((readerIndex == 1) ? IDC_READER_INIT1 : IDC_READER_INIT2);
+
+	// 포트 가져오기
+	CString port;
+	if (readerIndex == 1)
+		m_comport1.GetWindowText(port);
+	else
+		m_comport2.GetWindowText(port);
+
+	// TODO: port 사용해서 리더기 통신
+}
+
+void CReaderSetupDlg::OnStatusCheck(int readerIndex)
+{
+	StartLoadingOperation((readerIndex == 1) ? IDC_STATUS_CHECK1 : IDC_STATUS_CHECK2);
+	// TODO: readerIndex 1 or 2
+}
+
+void CReaderSetupDlg::OnKeyDown(int readerIndex)
+{
+	StartLoadingOperation((readerIndex == 1) ? IDC_KEYDOWN1 : IDC_KEYDOWN2);
+	// TODO: readerIndex 1 or 2
+}
+
+void CReaderSetupDlg::OnIntegrityCheck(int readerIndex)
+{
+	StartLoadingOperation((readerIndex == 1) ? IDC_INTEGRITY_CHECK1 : IDC_INTEGRITY_CHECK2);
+	// TODO: readerIndex 1 or 2
+}
+
+void CReaderSetupDlg::OnUpdate(int readerIndex)
+{
+	StartLoadingOperation((readerIndex == 1) ? IDC_UPDATE1 : IDC_UPDATE2);
+	// TODO: readerIndex 1 or 2
+}
+
+void CReaderSetupDlg::OnSearch()
+{
+	StartLoadingOperation(IDC_SEARCH);
+	// TODO: implement search logic
+}
+void CReaderSetupDlg::OnOK()
+{
+	CString port1, port2;
+	m_comport1.GetWindowText(port1);
+	m_comport2.GetWindowText(port2);
+	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, port1);
+	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, port2);
+	// TODO: save toggle states (PORT_OPEN1/2, MULTIPAD1/2)
+	CDialog::OnOK();
+}
+
+void CReaderSetupDlg::OnCancel()
+{
+	if (m_popover.GetSafeHwnd()) m_popover.Hide();
+	if (HasChanges())
+	{
+		if (MessageBox(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), _T("확인"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+			return;
+	}
+	CDialog::OnCancel();
+}
+void CReaderSetupDlg::TakeSnapshot()
+{
+	m_snap.cmbPort1     = m_comport1.GetCurSel();
+	m_snap.cmbPort2     = m_comport2.GetCurSel();
+	m_snap.tglPortOpen1 = m_togglePortOpen1.IsToggled();
+	m_snap.tglPortOpen2 = m_togglePortOpen2.IsToggled();
+	m_snap.tglMultipad1 = m_toggleMultipad1.IsToggled();
+	m_snap.tglMultipad2 = m_toggleMultipad2.IsToggled();
+}
+
+BOOL CReaderSetupDlg::HasChanges() const
+{
+	if (m_comport1.GetCurSel()           != m_snap.cmbPort1)     return TRUE;
+	if (m_comport2.GetCurSel()           != m_snap.cmbPort2)     return TRUE;
+	if (m_togglePortOpen1.IsToggled() != m_snap.tglPortOpen1) return TRUE;
+	if (m_togglePortOpen2.IsToggled() != m_snap.tglPortOpen2) return TRUE;
+	if (m_toggleMultipad1.IsToggled()  != m_snap.tglMultipad1) return TRUE;
+	if (m_toggleMultipad2.IsToggled()  != m_snap.tglMultipad2) return TRUE;
+	return FALSE;
+}

@@ -177,6 +177,26 @@ protected:
 
 	//}}AFX_MSG
 	void ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody);
+
+	struct SettingsSnapshot {
+		int  cmbPort1, cmbPort2;
+		BOOL tglPortOpen1, tglPortOpen2;
+		BOOL tglMultipad1, tglMultipad2;
+	};
+	SettingsSnapshot m_snap;
+	void TakeSnapshot();
+	BOOL HasChanges() const;
+
+	virtual void OnOK();
+	virtual void OnCancel();
+
+	// Button action handlers (to be implemented)
+	void OnReaderInit(int readerIndex);
+	void OnStatusCheck(int readerIndex);
+	void OnKeyDown(int readerIndex);
+	void OnIntegrityCheck(int readerIndex);
+	void OnUpdate(int readerIndex);
+	void OnSearch();
 	DECLARE_MESSAGE_MAP()
 };
 
