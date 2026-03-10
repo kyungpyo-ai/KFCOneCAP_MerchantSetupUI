@@ -436,7 +436,7 @@ private:
     HWND m_hList;
     WNDPROC m_oldListProc;
 
-    // cached font for GDI+ text (avoid per-paint CreateFontIndirect)
+    // GDI+ 텍스트용 캐시 폰트
     HFONT   m_hTextFontCache;
     LOGFONT m_lfTextCache;
     BOOL    m_bHasTextFontCache;

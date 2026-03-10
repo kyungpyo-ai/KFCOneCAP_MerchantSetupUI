@@ -302,13 +302,9 @@ private:
     SettingsSnapshot m_snap;
     void TakeSnapshot();
     BOOL HasChanges() const;
-
-    // 레지스트리 -> UI 로드.
-    // 값이 없으면 이 함수 내부의 else 블록에서 초기값을 지정한다.
-    // 예) m_intPort=8002, m_intTaxPercent=0, m_intCardTimeout=100,
-    //     m_intNoSignAmount=50000, m_intSignPadPort=0, m_intScannerPort=0
+    // 레지스트리 값을 읽어 UI에 반영한다. 값이 없으면 기본값을 사용한다.
     void LoadOptionsFromRegistry();
-    // UI -> 레지스트리 저장. OnOK()에서 전체 검증 통과 후에만 호출된다.
+    // 현재 UI 값을 레지스트리에 저장한다.
     void SaveOptionsToRegistry();
 
     enum SECTION_ICON_TYPE

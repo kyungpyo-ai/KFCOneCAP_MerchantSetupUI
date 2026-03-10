@@ -1,9 +1,8 @@
 #include "stdafx.h"
 #include "MerchantSetupApp.h"
-#include "ShopSetupDlg.h"
-#include "ReaderSetupDlg.h"
 #include "KFTCOneCAPDlg.h"
 #include "ModernUI.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -25,18 +24,10 @@ BOOL CMerchantSetupApp::InitInstance()
     icc.dwICC = ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES | ICC_DATE_CLASSES;
     ::InitCommonControlsEx(&icc);
 
-
-
     CKFTCOneCAPDlg startDlg;
-    INT_PTR nStartResult = startDlg.DoModal();
-    if (nStartResult != IDOK)
+    if (startDlg.DoModal() != IDOK)
         return FALSE;
 
-    INT_PTR nResult = IDCANCEL;
-
-
-
-    UNREFERENCED_PARAMETER(nResult);
     return FALSE;
 }
 

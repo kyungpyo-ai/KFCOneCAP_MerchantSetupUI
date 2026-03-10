@@ -1,12 +1,9 @@
-// ShopSetupDlg.cpp - 탭 UI 버전 (v2.1)
-// 4개 탭(서버 연결 / 장치 정보 / 시스템 코드 / 가맹점 다운로드)
+// ShopSetupDlg.cpp - 메인 설정 화면 구현
 
 #include "stdafx.h"
 #include "Resource.h"
 #include "ShopSetupDlg.h"
 #include "ShopDownDlg.h"
-#include "StartupSelectDlg.h"
-#include "ReaderSetupDlg.h"
 #include "ModernUI.h"
 #include "RegistryUtil.h"
 
