@@ -6,6 +6,24 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
+#ifndef DWMWA_BORDER_COLOR
+#define DWMWA_BORDER_COLOR 34
+#endif
+
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
+#endif
+
+#ifndef DWMWA_TEXT_COLOR
+#define DWMWA_TEXT_COLOR 36
+#endif
 
 // --- small safe helpers (avoid min/max macro conflicts) ---
 static __inline int kftc_min_i(int a, int b) { return (a < b) ? a : b; }
@@ -149,6 +167,27 @@ namespace ModernUIGfx
 //  - GetDpiForHwnd(): Per-monitor DPI 환경에서 HWND 기준 DPI 획득
 //  - Scale()/ScaleF(): 96dpi 기준 px 값을 현재 DPI로 변환
 // --------------------------------------------------------------
+
+
+namespace ModernUIWindow
+{
+	void ApplyWhiteTitleBar(HWND hwnd)
+	{
+		if (!::IsWindow(hwnd))
+			return;
+
+		BOOL useDarkMode = FALSE;
+		COLORREF captionColor = RGB(248, 249, 250);
+		COLORREF textColor    = RGB(32, 35, 39);
+		COLORREF borderColor  = RGB(226, 229, 233);
+
+		// 지원되지 않는 운영체제에서는 실패할 수 있으므로 반환값은 강제하지 않는다.
+		::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode, sizeof(useDarkMode));
+		::DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &captionColor, sizeof(captionColor));
+		::DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, &textColor, sizeof(textColor));
+		::DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &borderColor, sizeof(borderColor));
+	}
+}
 
 namespace ModernUIDpi
 {

@@ -300,6 +300,7 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     LoadLogoImage();
     LayoutControls();
     CenterWindow();
+    ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     return TRUE;
 }
 

@@ -1080,6 +1080,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	UpdateReaderEnableState(2);
 
 	// 초기 포커스는 확인 버튼으로 넘겨 포커스 링이 콤보에 남지 않게 한다.
+	ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
 	GetDlgItem(IDOK)->SetFocus();
 	return FALSE;
 }

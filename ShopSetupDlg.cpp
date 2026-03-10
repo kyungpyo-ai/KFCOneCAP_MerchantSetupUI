@@ -617,6 +617,8 @@ BOOL CShopSetupDlg::OnInitDialog()
 
     m_bUiInitialized = TRUE;
     Invalidate();
+    ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
+
     return TRUE;
 }
 
