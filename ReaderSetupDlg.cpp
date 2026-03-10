@@ -497,7 +497,7 @@ void CReaderSetupDlg::LayoutControls()
 	const int openLabelW = SX(56);
 	const int multiLabelW = SX(74);
 	const int textGap = SX(8);
-	const int toggleBlockGap = SX(18);
+	const int toggleBlockGap = SX(26);
 
 	auto placeReaderCard = [&](const CRect& card,
 		CSkinnedComboBox& cb,
@@ -510,7 +510,7 @@ void CReaderSetupDlg::LayoutControls()
 			int yCombo = card.top + rowComboY;
 			cb.SetWindowPos(NULL, x0, yCombo, comboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
 
-			int xTogglePad = card.right - padR - toggleW;
+			int xTogglePad = card.right - padR - toggleW - SX(22);
 			int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
 			int xToggleOpen = xTogglePadLabel - toggleBlockGap - toggleW;
 			if (xToggleOpen < x0 + comboW + SX(70))
@@ -539,6 +539,20 @@ void CReaderSetupDlg::LayoutControls()
 	// Hide port-open toggle for reader 2 (not used)
 	if (::IsWindow(m_togglePortOpen2.GetSafeHwnd()))
 		m_togglePortOpen2.ShowWindow(SW_HIDE);
+
+	// Place info icon buttons to the right of each toggle
+	if (m_bUIReady) {
+		auto PlaceInfoAfterToggle = [&](CModernToggleSwitch& tg, CInfoIconButton& btn, BOOL bShow) {
+			if (!tg.GetSafeHwnd() || !btn.GetSafeHwnd()) return;
+			CRect tgRc; tg.GetWindowRect(&tgRc); ScreenToClient(&tgRc);
+			const int sz = SX(18);
+			btn.SetWindowPos(NULL, tgRc.right + SX(4), tgRc.top + (tgRc.Height()-sz)/2, sz, sz, SWP_NOZORDER|SWP_NOACTIVATE);
+			btn.ShowWindow(bShow ? SW_SHOW : SW_HIDE);
+		};
+		PlaceInfoAfterToggle(m_togglePortOpen1, m_btnPortOpenInfo,  TRUE);
+		PlaceInfoAfterToggle(m_toggleMultipad1,  m_btnMultipad1Info, TRUE);
+		PlaceInfoAfterToggle(m_toggleMultipad2,  m_btnMultipad2Info, TRUE);
+	}
 
 	int qx = queryBox.left;
 	int qComboW = SX(120);
@@ -626,6 +640,9 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_WM_MOUSEWHEEL()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_BTN_PORT_OPEN_INFO,  OnBnClickedPortOpenInfo)
+	ON_BN_CLICKED(IDC_BTN_MULTIPAD1_INFO,  OnBnClickedMultipad1Info)
+	ON_BN_CLICKED(IDC_BTN_MULTIPAD2_INFO,  OnBnClickedMultipad2Info)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1076,6 +1093,19 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	InitModernButtonStyles();
 	InitToggleAndUnderlayColors();
 
+	// Create info icon buttons and popover
+	{
+		auto CreateInfoBtn = [&](CInfoIconButton& btn, UINT id) {
+			btn.Create(_T(""), WS_CHILD | BS_OWNERDRAW, CRect(0, 0, SX(22), SX(22)), this, id);
+		};
+		CreateInfoBtn(m_btnPortOpenInfo,  IDC_BTN_PORT_OPEN_INFO);
+		CreateInfoBtn(m_btnMultipad1Info, IDC_BTN_MULTIPAD1_INFO);
+		CreateInfoBtn(m_btnMultipad2Info, IDC_BTN_MULTIPAD2_INFO);
+		m_btnPortOpenInfo.SetUnderlayColor(RGB(255, 255, 255));
+		m_btnMultipad1Info.SetUnderlayColor(RGB(255, 255, 255));
+		m_btnMultipad2Info.SetUnderlayColor(RGB(251, 252, 253));
+	}
+
 	// 레이아웃 계산 전에 UI 준비 상태를 TRUE로 올려야 LayoutControls가 정상 동작한다.
 	m_bUIReady = TRUE;
 
@@ -1212,14 +1242,13 @@ void CReaderSetupDlg::OnPaint()
 	const int iconX = mainCard.left + SX(6);
 	const int iconY = mainCard.top + SX(18);
 	CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
-	// GDI+ anti-aliased icon: card reader (IC card with chip + stripe)
+	// GDI+ anti-aliased icon: card terminal (reader device - screen, keypad, card slot)
 	{
 		HDC hIco = memDC.GetSafeHdc();
 		Gdiplus::Graphics gIco(hIco);
 		gIco.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 
 		const float bx = (float)iconX, by = (float)iconY, bsz = (float)iconSize;
-		const float cx = bx + bsz * 0.5f, cy = by + bsz * 0.5f;
 
 		auto MRR = [](Gdiplus::GraphicsPath& p,
 			float x, float y, float w, float h, float r) {
@@ -1242,29 +1271,32 @@ void CReaderSetupDlg::OnPaint()
 			gIco.FillPath(&grad, &bp);
 		}
 
-		// card body (white, landscape, rounded corners)
-		float cW = bsz * 0.72f, cH = bsz * 0.50f;
-		float cX = cx - cW * 0.5f, cY = cy - cH * 0.5f;
+		// Card terminal icon: centered, all elements strictly inside body
+		const float tW = bsz * 0.56f, tH = bsz * 0.76f;
+		const float tX = bx + (bsz - tW) * 0.5f;
+		const float tY = by + (bsz - tH) * 0.5f;
 		{
-			Gdiplus::GraphicsPath cp;
-			MRR(cp, cX, cY, cW, cH, 2.5f);
+			Gdiplus::GraphicsPath iconPath(Gdiplus::FillModeAlternate);
+			MRR(iconPath, tX, tY, tW, tH, bsz * 0.09f);
+			const float si = tW * 0.12f;
+			iconPath.AddRectangle(Gdiplus::RectF(tX+si, tY+tH*0.08f, tW-si*2.0f, tH*0.26f));
+			const float slot = (tW - tW*0.22f) / 3.0f;
+			const float bW = slot * 0.64f, bH = tH * 0.09f;
+			const float kX0 = tX + tW*0.11f + (slot - bW)*0.5f;
+			const float kY0 = tY + tH*0.08f + tH*0.26f + tH*0.10f;
+			for (int ki = 0; ki < 3; ki++)
+				for (int kj = 0; kj < 2; kj++)
+					MRR(iconPath, kX0+ki*slot, kY0+kj*tH*0.14f, bW, bH, 0.8f);
 			Gdiplus::SolidBrush wb(Gdiplus::Color(255, 255, 255, 255));
-			gIco.FillPath(&wb, &cp);
+			gIco.FillPath(&wb, &iconPath);
 		}
-
-		// magnetic stripe (semi-transparent dark band across top of card)
-		float sH = cH * 0.28f, sY = cY + cH * 0.22f;
-		Gdiplus::SolidBrush sb(Gdiplus::Color(80, 20, 60, 150));
-		gIco.FillRectangle(&sb, Gdiplus::RectF(cX, sY, cW, sH));
-
-		// IC chip (gold, bottom-left area of card)
-		float chW = cW * 0.22f, chH = cH * 0.36f;
-		float chX = cX + cW * 0.13f, chY = sY + sH + cH * 0.07f;
 		{
-			Gdiplus::GraphicsPath chp;
-			MRR(chp, chX, chY, chW, chH, 1.5f);
-			Gdiplus::SolidBrush gb(Gdiplus::Color(200, 215, 175, 55));
-			gIco.FillPath(&gb, &chp);
+			Gdiplus::Pen slotPen(Gdiplus::Color(255, 255, 255, 255), 1.5f);
+			slotPen.SetStartCap(Gdiplus::LineCapRound);
+			slotPen.SetEndCap(Gdiplus::LineCapRound);
+			gIco.DrawLine(&slotPen,
+				Gdiplus::PointF(tX + tW*0.18f, tY + tH*0.91f),
+				Gdiplus::PointF(tX + tW*0.82f, tY + tH*0.91f));
 		}
 	}
 
@@ -1383,9 +1415,9 @@ void CReaderSetupDlg::OnPaint()
 			const int textGap = SX(8);
 			const int openLabelW = SX(56);
 			const int multiLabelW = SX(74);
-			const int togglePadX = r.right - padR - toggleW;
+			const int togglePadX = r.right - padR - toggleW - SX(22);
 			const int togglePadLabelX = togglePadX - textGap - multiLabelW;
-			int toggleOpenX = togglePadLabelX - SX(18) - toggleW;
+			int toggleOpenX = togglePadLabelX - SX(26) - toggleW;
 			if (toggleOpenX < x0 + comboW + SX(70))
 				toggleOpenX = x0 + comboW + SX(70);
 			const int xToggleOpenLabel = toggleOpenX - textGap - openLabelW;
@@ -1640,10 +1672,33 @@ void CReaderSetupDlg::OnTimer(UINT_PTR nIDEvent)
 BOOL CReaderSetupDlg::DestroyWindow()
 {
 	FinishLoadingOperation(FALSE);
+	if (m_popover.GetSafeHwnd()) m_popover.Hide();
 	delete m_pGdipSecFont;   m_pGdipSecFont = nullptr;
 	delete m_pGdipSecFamily; m_pGdipSecFamily = nullptr;
 	delete m_pGdipHdrTitleFont; m_pGdipHdrTitleFont = nullptr;
 	delete m_pGdipHdrSubFont;   m_pGdipHdrSubFont = nullptr;
 	return CDialog::DestroyWindow();
+}
+
+void CReaderSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody)
+{
+	if (m_popover.IsVisible()) { m_popover.Hide(); return; }
+	CRect rc; btn.GetWindowRect(&rc);
+	m_popover.ShowAt(rc, szTitle, szBody, this);
+}
+
+void CReaderSetupDlg::OnBnClickedPortOpenInfo()
+{
+	ShowInfoPopover(m_btnPortOpenInfo, _T("포트 열기"), _T("포트 열기 사용 여부\n· ON : 리더기 포트 항시 연결\n· OFF : 거래시에만 리더기 포트 연결\n※ON의 경우 결제 속도 향상\n※리더기1만 사용하는 경우에만 ON 가능"));
+}
+
+void CReaderSetupDlg::OnBnClickedMultipad1Info()
+{
+	ShowInfoPopover(m_btnMultipad1Info, _T("멀티패드 여부"), _T("멀티패드 여부 설정\n· ON : QR 기능 사용 가능\n· OFF : QR 기능 사용 불가\n※스캐너가 부착된 리더기의 경우에도 ON 설정"));
+}
+
+void CReaderSetupDlg::OnBnClickedMultipad2Info()
+{
+	ShowInfoPopover(m_btnMultipad2Info, _T("멀티패드 여부"), _T("멀티패드 여부 설정\n· ON : QR 기능 사용 가능\n· OFF : QR 기능 사용 불가\n※스캐너가 부착된 리더기의 경우에도 ON 설정"));
 }
 

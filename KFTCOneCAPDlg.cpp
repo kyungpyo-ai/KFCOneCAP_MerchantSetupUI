@@ -513,7 +513,7 @@ CString CKFTCOneCAPDlg::GetCardTitle(HomeCardType type) const
     {
     case CARD_READER:  return _T("리더기 설정");
     case CARD_SHOP:    return _T("가맹점 설정");
-    case CARD_TRANS:   return _T("결제 및 수납");
+    case CARD_TRANS:   return _T("결제");
     default:           return _T("전표 설정");
     }
 }
@@ -523,13 +523,13 @@ CString CKFTCOneCAPDlg::GetCardDescription(HomeCardType type) const
     switch (type)
     {
     case CARD_READER:
-        return _T("COM 포트 할당 및 장비 상태\r\n점검 등 기기를 제어합니다.");
+        return _T("리더기 연결 상태를\r\n설정하고 점검합니다.");
     case CARD_SHOP:
-        return _T("가맹점 정보를 다운로드하고\r\n연동 환경을 구성합니다.");
+        return _T("가맹점 정보와 결제 환경을\r\n설정합니다.");
     case CARD_TRANS:
-        return _T("고객의 무인수납기 결제\r\n화면을 띄웁니다.");
+        return _T("결제 화면을 실행하고\r\n결제을 진행합니다.");
     default:
-        return _T("영수증 출력 포맷 및 전표\r\n관련 세부 옵션을\r\n설정합니다.");
+        return _T("프린터 포트와 출력 옵션을\r\n설정합니다.");
     }
 }
 
@@ -951,7 +951,7 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
             (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
             (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard : NULL;
 
-        if (!pBtn || pBtn->GetPressProgress() < 15)  // visually complete, no need to wait for exact 0
+        if (!pBtn || pBtn->GetPressProgress() < 20)  // visually complete, no need to wait for exact 0
         {
             KillTimer(kTimerWaitRelease);
             EPendingOpen ePending = m_ePendingOpen;

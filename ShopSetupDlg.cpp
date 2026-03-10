@@ -176,8 +176,6 @@ namespace
         { _T("단말기(forPOS)"),        _T("FORPOS") },
         { _T("멀티패드(복지단)"),      _T("DP636-MND") },
         { _T("멀티패드(동반위)"),      _T("TRANSINFO") },
-        { _T("멀티패드(씨큐프라임)"),  _T("CQPRIME") },
-        { _T("멀티패드(키오스크)"),    _T("KIOSK") },
         { _T("AOP 리더기"),            _T("AOP") },
         { _T("연동 안함"),             _T("NOTHING") },
     };
@@ -2658,19 +2656,19 @@ void CShopSetupDlg::OnBnClickedCardTimeoutInfo()
 }
 void CShopSetupDlg::OnBnClickedInterlockInfo()
 {
-    ShowInfoPopover(m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· 멀티패드(씨큐프라임용): 씨큐프라임 포스 전용\n· 멀티패드(키오스크): 사용 중지\n· AOP 리더기: AOP 리더기(Naver Connect 포함)"));
+    ShowInfoPopover(m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· AOP 리더기: AOP 리더기(Naver Connect 포함)"));
 }
 void CShopSetupDlg::OnBnClickedMultiVoiceInfo()
 {
-    ShowInfoPopover(m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※ SPAY-8800Q, DP636X 모델만 가능"));
+    ShowInfoPopover(m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※SPAY-8800Q, DP636X 모델만 가능"));
 }
 void CShopSetupDlg::OnBnClickedCardDetectInfo()
 {
-    ShowInfoPopover(m_btnCardDetectInfo, _T("우선 거래 설정"), _T("카드 우선 거래 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"));
+    ShowInfoPopover(m_btnCardDetectInfo, _T("카드 감지 우선 거래 사용"), _T("카드 감지 우선 거래 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"));
 }
 void CShopSetupDlg::OnBnClickedScannerUseInfo()
 {
-    ShowInfoPopover(m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※ KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용"));
+    ShowInfoPopover(m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용 \n※POS 프로그램에서 연동하는 경우 사용 X"));
 }
 void CShopSetupDlg::OnBnClickedAutoResetInfo()
 {
@@ -2678,7 +2676,7 @@ void CShopSetupDlg::OnBnClickedAutoResetInfo()
 }
 void CShopSetupDlg::OnBnClickedAutoRebootInfo()
 {
-    ShowInfoPopover(m_btnAutoRebootInfo, _T("자동 리부팅"), _T("특정 조건에서 단말/PC를 자동 리부팅할지 설정합니다.\n- 사용: 자동 리부팅\n- 미사용: 리부팅하지 않음"));
+    ShowInfoPopover(m_btnAutoRebootInfo, _T("자동 리부팅"), _T("일일 단위 KFTCOneCAP 자동 리부팅 여부\n· 기본값 : 사용"));
 }
 void CShopSetupDlg::OnBnClickedAlarmGraphInfo()
 {
@@ -2707,7 +2705,7 @@ void CShopSetupDlg::OnBnClickedSignPadSpeedInfo()
 // ============================================================================
 void CShopSetupDlg::OnBnClickedAlarmSizeInfo()
 {
-    ShowInfoPopover(m_btnAlarmSizeInfo, _T("알림창 크기"), _T("알림창의 표시 크기를 설정합니다.\n매우 작게로 설정하면 화면 공간을 최소화합니다."));
+    ShowInfoPopover(m_btnAlarmSizeInfo, _T("알림창 크기"), _T("거래 알림창의 표시 크기를 설정합니다.\n· 기본값 : 매우작게 "));
 }
 const CShopSetupDlg::ValidationBinding* CShopSetupDlg::GetValidationBindings(int& outCount)
 {

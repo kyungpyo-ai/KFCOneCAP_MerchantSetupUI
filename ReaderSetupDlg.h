@@ -59,6 +59,12 @@ protected:
 	Gdiplus::Font*       m_pGdipHdrTitleFont;
 	Gdiplus::Font*       m_pGdipHdrSubFont;
 
+	// Popover info icon buttons
+	CInfoIconButton m_btnPortOpenInfo;
+	CInfoIconButton m_btnMultipad1Info;
+	CInfoIconButton m_btnMultipad2Info;
+	CModernPopover  m_popover;
+
 	int   SX(int v) const; // scale x/y °ø¿ë
 	void  EnsureFonts();
 	void  LayoutControls();
@@ -164,9 +170,13 @@ protected:
 	
 	afx_msg void OnSelchangeComport1();
 	afx_msg void OnSelchangeComport2();
+	afx_msg void OnBnClickedPortOpenInfo();
+	afx_msg void OnBnClickedMultipad1Info();
+	afx_msg void OnBnClickedMultipad2Info();
 
 
 	//}}AFX_MSG
+	void ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody);
 	DECLARE_MESSAGE_MAP()
 };
 
