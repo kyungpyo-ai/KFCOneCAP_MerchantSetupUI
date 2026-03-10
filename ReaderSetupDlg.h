@@ -57,8 +57,6 @@ protected:
 	Gdiplus::FontFamily* m_pGdipSecFamily;
 	Gdiplus::Font*       m_pGdipSecFont;
 
-	int   m_dpi; // 96 기준 스케일
-
 	int   SX(int v) const; // scale x/y 공용
 	void  EnsureFonts();
 	void  LayoutControls();
@@ -156,9 +154,7 @@ public:
 
 // Implementation
 protected:
-	int GetWindowsVersion();
 	void GetNTComPort(vector<int>& ports);
-	void GetWidowsComPort(vector<int>& ports);
 
 	// Generated message map functions
 	//{{AFX_MSG(CReaderSetupDlg)

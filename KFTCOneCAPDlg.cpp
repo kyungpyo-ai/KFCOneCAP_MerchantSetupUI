@@ -210,7 +210,6 @@ namespace
 
 CKFTCOneCAPDlg::CKFTCOneCAPDlg(CWnd* pParent /*=NULL*/)
     : CDialog(CKFTCOneCAPDlg::IDD, pParent)
-    , m_dpi(96)
     , m_bFontsReady(FALSE)
     , m_pLogoBitmap(NULL)
     , m_nFooterDividerY(0)
@@ -252,7 +251,6 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
 
     ModernUIGfx::EnsureGdiplusStartup();
 
-    m_dpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
     EnsureFonts();
 
     SetWindowText(_T("KFTCOneCAP3001"));
@@ -316,23 +314,23 @@ void CKFTCOneCAPDlg::EnsureFonts()
     lf.lfQuality = CLEARTYPE_QUALITY;
     _tcscpy(lf.lfFaceName, _T("맑은 고딕"));
 
-    lf.lfHeight = -MulDiv(18, m_dpi, 72);
+    lf.lfHeight = -MulDiv(18, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
     lf.lfWeight = FW_EXTRABOLD;   // font-weight: 800
     m_fontTitle.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(11, m_dpi, 72);
+    lf.lfHeight = -MulDiv(11, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
     lf.lfWeight = FW_NORMAL;
     m_fontSubtitle.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(14, m_dpi, 72);
+    lf.lfHeight = -MulDiv(14, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
     lf.lfWeight = FW_BOLD;
     m_fontCardTitle.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(10, m_dpi, 72);
+    lf.lfHeight = -MulDiv(10, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
     lf.lfWeight = FW_NORMAL;
     m_fontCardDesc.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(12, m_dpi, 72);
+    lf.lfHeight = -MulDiv(12, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
     lf.lfWeight = FW_NORMAL;
     m_fontFooter.CreateFontIndirect(&lf);
 
@@ -341,7 +339,7 @@ void CKFTCOneCAPDlg::EnsureFonts()
 
 int CKFTCOneCAPDlg::SX(int px) const
 {
-    return MulDiv(px, m_dpi, 96);
+    return ModernUIDpi::Scale(m_hWnd, px);
 }
 
 void CKFTCOneCAPDlg::LayoutControls()
@@ -438,11 +436,6 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     Graphics g(dc.GetSafeHdc());
     g.SetSmoothingMode(SmoothingModeAntiAlias);
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
-
-    // 모던 UI의 쨍한 선명도를 위한 고품질 렌더링 옵션 추가
-    g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic); // 이미지 축소/확대 시 선명도 극대화
-    g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);   // 텍스트 가독성 향상
-    g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);                   // GDI+ 경계선 1픽셀 오차 보정
 
     RectF rcLogo((REAL)left, (REAL)(top + SX(6)), (REAL)logoBox, (REAL)logoBox);
 

@@ -5,6 +5,7 @@
 #include "Resource.h"
 #include "ShopSetupDlg.h"
 #include "ShopDownDlg.h"
+#include "StartupSelectDlg.h"
 #include "ReaderSetupDlg.h"
 #include "ModernUI.h"
 #include "RegistryUtil.h"
@@ -505,7 +506,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     // --------------------------------------------------------
  
 
-    auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
+    auto S = [&](int v) { return ScalePx(v); };
 
     m_brushBg.CreateSolidBrush(RGB(249, 250, 252));  // 밝은 회색 배경
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
@@ -630,7 +631,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
      * 3) 현재 클라이언트 높이보다 크면 스크롤/클리핑 처리 기준으로 사용한다.
      */
 
-    auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
+    auto S = [&](int v) { return ScalePx(v); };
 
     // ── 카드 공통 파라미터 (ApplyLayout과 동일 값) ─────────────────
     const int FIELD_H  = S(44);
@@ -1403,24 +1404,24 @@ void CShopSetupDlg::ApplyLayoutTab3()
 
         // 하단 버튼 윗쪽까지를 카드 영역으로 사용
         int btnY = rc.bottom - (cardBottomPad + BUTTON_BOTTOM + BUTTON_H);
-        int cardLeft  = m_rcTabContent.left  + ModernUIDpi::Scale(m_hWnd, cOutX);
-        int cardRight = m_rcTabContent.right - ModernUIDpi::Scale(m_hWnd, cOutX);
-        int cardTop   = y + ModernUIDpi::Scale(m_hWnd, cOutY);
-        int cardBot   = btnY - ModernUIDpi::Scale(m_hWnd, cardBottomPad);
-        if (cardBot < cardTop + ModernUIDpi::Scale(m_hWnd, 240))
-            cardBot = cardTop + ModernUIDpi::Scale(m_hWnd, 240);
+        int cardLeft  = m_rcTabContent.left  + ScalePx( cOutX);
+        int cardRight = m_rcTabContent.right - ScalePx( cOutX);
+        int cardTop   = y + ScalePx( cOutY);
+        int cardBot   = btnY - ScalePx( cardBottomPad);
+        if (cardBot < cardTop + ScalePx( 240))
+            cardBot = cardTop + ScalePx( 240);
 
         m_rcCardShopDown = CRect(cardLeft, cardTop, cardRight, cardBot);
 
         // Child(ShopDownDlg)는 카드 내부 컨텐츠 영역(헤더 아래)만 차지하도록 한다.
         CRect rcHost(
-            cardLeft + ModernUIDpi::Scale(m_hWnd, cPadX),
-            cardTop  + ModernUIDpi::Scale(m_hWnd, cHdrH + cPadY),
-            cardRight - ModernUIDpi::Scale(m_hWnd, cPadX),
-            cardBot  - ModernUIDpi::Scale(m_hWnd, cPadY + hostGapBottom));
+            cardLeft + ScalePx( cPadX),
+            cardTop  + ScalePx( cHdrH + cPadY),
+            cardRight - ScalePx( cPadX),
+            cardBot  - ScalePx( cPadY + hostGapBottom));
 
-        if (rcHost.Height() < ModernUIDpi::Scale(m_hWnd, 200))
-            rcHost.bottom = rcHost.top + ModernUIDpi::Scale(m_hWnd, 200);
+        if (rcHost.Height() < ScalePx( 200))
+            rcHost.bottom = rcHost.top + ScalePx( 200);
 
         if (m_staticShopContainer.GetSafeHwnd())
         {
@@ -1449,7 +1450,7 @@ void CShopSetupDlg::ApplyLayout()
     CRect rc;
     GetClientRect(&rc);
 
-    auto S = [&](int v) { return ModernUIDpi::Scale(m_hWnd, v); };
+    auto S = [&](int v) { return ScalePx(v); };
 
     // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {

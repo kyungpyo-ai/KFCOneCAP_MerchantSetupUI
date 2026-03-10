@@ -34,6 +34,19 @@ static void kftc_fill_parent_bg(HWND hWnd, HDC hdc, const RECT& rc)
 	if (hbr) ::FillRect(hdc, &rc, hbr);
 	else     ::FillRect(hdc, &rc, (HBRUSH)(COLOR_WINDOW + 1));
 }
+// Shared mouse-tracking helper: starts TME_LEAVE|TME_HOVER for any control window.
+static inline void kftc_track_mouse(HWND hwnd, BOOL& bTracking)
+{
+	if (bTracking) return;
+	TRACKMOUSEEVENT tme = {};
+	tme.cbSize    = sizeof(tme);
+	tme.dwFlags   = TME_LEAVE | TME_HOVER;
+	tme.hwndTrack = hwnd;
+	tme.dwHoverTime = 1;
+	if (::TrackMouseEvent(&tme))
+		bTracking = TRUE;
+}
+
 static std::wstring kftc_to_wide(const CString& s)
 {
 #ifdef UNICODE
@@ -382,20 +395,7 @@ void CModernButton::ClearUnderlayColor()
 void CModernButton::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
-	if (!m_bTracking)
-	{
-		TRACKMOUSEEVENT tme;
-		tme.cbSize = sizeof(TRACKMOUSEEVENT);
-		tme.dwFlags = TME_LEAVE | TME_HOVER;
-		tme.hwndTrack = m_hWnd;
-		tme.dwHoverTime = 1;
-
-		if (TrackMouseEvent(&tme))
-		{
-			m_bTracking = TRUE;
-		}
-	}
-
+	kftc_track_mouse(m_hWnd, m_bTracking);
 	CButton::OnMouseMove(nFlags, point);
 }
 
@@ -542,12 +542,12 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		const int shadowA = pressed ? kBtnShadowAlphaPrs : kBtnShadowAlphaNrm;
 		const float shDy = 1.0f;
 		Gdiplus::RectF sh(rf.X, rf.Y + shDy, rf.Width, rf.Height - shDy);
-		Gdiplus::GraphicsPath sp; AddRoundRect(sp, sh, rad);
+		Gdiplus::GraphicsPath sp; ModernUIGfx::AddRoundRect(sp, sh, rad);
 		Gdiplus::SolidBrush sb(Gdiplus::Color(shadowA, 0, 0, 0));
 		g.FillPath(&sb, &sp);
 	}
 
-	Gdiplus::GraphicsPath bp; AddRoundRect(bp, rf, rad);
+	Gdiplus::GraphicsPath bp; ModernUIGfx::AddRoundRect(bp, rf, rad);
 
 	// ==============================
 	// 배경/테두리: Primary / Secondary / Tint
@@ -720,11 +720,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	memDC.SelectObject(pOldBmp);
 }
 
-void CModernButton::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
-{
-	// Delegates to the shared ModernUIGfx implementation.
-	ModernUIGfx::AddRoundRect(path, rect, radius);
-}
 // ========================================
 // CModernCheckBox 
 // ========================================
@@ -787,20 +782,7 @@ void CModernCheckBox::SetChecked(BOOL bChecked)
 void CModernCheckBox::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
-	if (!m_bTracking)
-	{
-		TRACKMOUSEEVENT tme;
-		tme.cbSize = sizeof(TRACKMOUSEEVENT);
-		tme.dwFlags = TME_LEAVE | TME_HOVER;
-		tme.hwndTrack = m_hWnd;
-		tme.dwHoverTime = 1;
-
-		if (TrackMouseEvent(&tme))
-		{
-			m_bTracking = TRUE;
-		}
-	}
-
+	kftc_track_mouse(m_hWnd, m_bTracking);
 	CButton::OnMouseMove(nFlags, point);
 }
 
@@ -877,7 +859,7 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	//  
 	Gdiplus::GraphicsPath boxPath;
-	AddRoundRect(boxPath, boxRect, ModernUIDpi::ScaleF(m_hWnd, 4.0f));
+	ModernUIGfx::AddRoundRect(boxPath, boxRect, ModernUIDpi::ScaleF(m_hWnd, 4.0f));
 
 	if (m_bChecked)
 	{
@@ -1003,11 +985,6 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 }
 
-void CModernCheckBox::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
-{
-	// Delegates to the shared ModernUIGfx implementation.
-	ModernUIGfx::AddRoundRect(path, rect, radius);
-}
 // ========================================
 // CPortToggleButton 
 // ========================================
@@ -1039,20 +1016,7 @@ void CPortToggleButton::SetToggled(BOOL bToggled)
 void CPortToggleButton::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
-	if (!m_bTracking)
-	{
-		TRACKMOUSEEVENT tme;
-		tme.cbSize = sizeof(TRACKMOUSEEVENT);
-		tme.dwFlags = TME_LEAVE | TME_HOVER;
-		tme.hwndTrack = m_hWnd;
-		tme.dwHoverTime = 1;
-
-		if (TrackMouseEvent(&tme))
-		{
-			m_bTracking = TRUE;
-		}
-	}
-
+	kftc_track_mouse(m_hWnd, m_bTracking);
 	CButton::OnMouseMove(nFlags, point);
 }
 
@@ -1113,11 +1077,6 @@ void CModernToggleSwitch::SetToggled(BOOL bToggled)
 	Invalidate(FALSE);
 }
 
-void CModernToggleSwitch::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
-{
-	// Delegates to the shared ModernUIGfx implementation.
-	ModernUIGfx::AddRoundRect(path, rect, (float)radius);
-}
 
 void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
@@ -1170,7 +1129,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	// ()
 	Gdiplus::GraphicsPath switchPath;
-	AddRoundRect(switchPath, switchRect, switchH / 2);
+	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchH / 2);
 
 	if (m_bToggled)
 	{
@@ -1276,23 +1235,8 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 void CModernToggleSwitch::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
-	if (!m_bTracking)
-	{
-		TRACKMOUSEEVENT tme;
-		::ZeroMemory(&tme, sizeof(tme));
-		tme.cbSize = sizeof(tme);
-		tme.dwFlags = TME_LEAVE | TME_HOVER;
-		tme.hwndTrack = m_hWnd;
-		tme.dwHoverTime = 1;
-		m_bTracking = ::TrackMouseEvent(&tme);
-	}
-
-	if (!m_bHover)
-	{
-		m_bHover = TRUE;
-		Invalidate(FALSE);
-	}
-
+	kftc_track_mouse(m_hWnd, m_bTracking);
+	if (!m_bHover) { m_bHover = TRUE; Invalidate(FALSE); }
 	CButton::OnMouseMove(nFlags, point);
 }
 
@@ -1351,7 +1295,7 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	// 
 	Gdiplus::GraphicsPath switchPath;
-	AddRoundRect(switchPath, switchRect, switchH / 2);
+	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchH / 2);
 
 	if (m_bToggled)
 	{
@@ -1439,11 +1383,6 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 }
 
-void CPortToggleButton::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
-{
-	// Delegates to the shared ModernUIGfx implementation.
-	ModernUIGfx::AddRoundRect(path, rect, radius);
-}
 
 // ========================================
 // CSkinnedComboBox implementation
@@ -3271,15 +3210,7 @@ CInfoIconButton::CInfoIconButton()
 void CInfoIconButton::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
-	if (!m_bTracking)
-	{
-		TRACKMOUSEEVENT tme = { sizeof(TRACKMOUSEEVENT) };
-		tme.dwFlags = TME_LEAVE | TME_HOVER;
-		tme.hwndTrack = m_hWnd;
-		tme.dwHoverTime = 1;
-		TrackMouseEvent(&tme);
-		m_bTracking = TRUE;
-	}
+	kftc_track_mouse(m_hWnd, m_bTracking);
 	if (!m_bHover) { m_bHover = TRUE; Invalidate(FALSE); }
 	CButton::OnMouseMove(nFlags, point);
 }
@@ -3421,12 +3352,6 @@ CModernPopover::CModernPopover()
 	::RegisterClassEx(&wc);
 }
 
-void CModernPopover::AddRoundRect(Gdiplus::GraphicsPath& path,
-	const Gdiplus::RectF& r, REAL radius)
-{
-	// Delegates to the shared ModernUIGfx implementation.
-	ModernUIGfx::AddRoundRect(path, r, (float)radius);
-}
 
 
 void CModernPopover::AddPopoverPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& cardRc,

@@ -187,9 +187,7 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    const KFTCInputTheme& GetActiveInputTheme() const;
     ButtonStyle m_style; // 버튼 시각 스타일 (Auto이면 텍스트로 자동 감지)
-    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius);
 
     COLORREF m_clrNormalBg;
     COLORREF m_clrHoverBg;
@@ -253,8 +251,6 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    const KFTCInputTheme& GetActiveInputTheme() const;
-    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius);
 
     BOOL m_bChecked;
     BOOL m_bHover;
@@ -301,8 +297,6 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    const KFTCInputTheme& GetActiveInputTheme() const;
-    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius);
 
     BOOL m_bToggled;
     BOOL m_bHover;
@@ -341,7 +335,6 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius);
 
     BOOL m_bToggled;
     BOOL m_bHover;
@@ -672,7 +665,6 @@ protected:
 
 private:
     static void RegisterPopoverClass();
-    void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, REAL radius);
         void AddPopoverPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& cardRc, REAL radius, float arrowX, float arrowTipY, float arrowHalfW);
 void RefreshLayered();
     static LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);

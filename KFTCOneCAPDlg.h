@@ -107,7 +107,6 @@ private:
     CFont m_fontCardDesc;
     CFont m_fontFooter;
 
-    int m_dpi;
     BOOL m_bFontsReady;
     CBrush m_brBackground;
 

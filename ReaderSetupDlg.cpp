@@ -130,8 +130,7 @@ static void DrawRoundRectBorder(CDC* pDC, const CRect& rc, int radius, COLORREF 
 }
 int CReaderSetupDlg::SX(int v) const
 {
-	// DPI 스케일 (96 기준)
-	return (v * m_dpi) / 96;
+	return ModernUIDpi::Scale(m_hWnd, v);
 }
 
 void CReaderSetupDlg::EnsureFonts()
@@ -562,7 +561,6 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 {
 	m_bUIReady = FALSE;
 	m_bFitDone = FALSE;
-	m_dpi = 96;
 	m_bReader1Enabled = FALSE;
 	m_bReader2Enabled = FALSE;
 	m_nIntegrityScrollPos = 0;
@@ -625,44 +623,13 @@ END_MESSAGE_MAP()
 // CReaderSetupDlg message handlers/////////////////////////////////////////////////////////////////////////////
 // CReaderSetupDlg message handlers
 
-int CReaderSetupDlg::GetWindowsVersion()
-{
-	OSVERSIONINFO osv;
-	osv.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	CString WindowsPlatform;
-	if (GetVersionEx(&osv))
-	{
-		// note: szCSDVersion =  service pack  release
-		CString ServiceRelease = osv.szCSDVersion;
-		switch (osv.dwPlatformId)
-		{
-		case VER_PLATFORM_WIN32s:				//Win32s on Windows 3.1.
-			return WINDOWS_VERSION_3;
-
-		case VER_PLATFORM_WIN32_WINDOWS:		//WIN32 on 95 or 98
-			if (osv.dwMinorVersion == 0)
-				return WINDOWS_VERSION_95;
-			else
-				return WINDOWS_VERSION_98;
-
-		case VER_PLATFORM_WIN32_NT:				//Win32 on Windows NT.
-			return WINDOWS_VERSION_NT;
-
-		default:
-			AfxMessageBox("Failed to get correct Operating System.", MB_OK);
-			return 0;
-		}
-	}
-
-	return 0;
-}
-
 void CReaderSetupDlg::GetNTComPort(vector<int>& ports)
 {
-	LONG result;
-	HKEY hKey;
+	HKEY hKey = NULL;
+	if (::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Hardware\\DeviceMap\\SerialComm"),
+	                   0, KEY_READ, &hKey) != ERROR_SUCCESS)
+		return;
 
-	result = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Hardware\\DeviceMap\\SerialComm"), 0, KEY_READ, &hKey);
 	int m_nPortNo = 0;
 	TCHAR name[255];
 	DWORD nameLen;
@@ -684,28 +651,6 @@ void CReaderSetupDlg::GetNTComPort(vector<int>& ports)
 		}
 		ports.push_back(atoi(ptr));
 		m_nPortNo++;
-	}
-	::RegCloseKey(hKey);
-}
-
-void CReaderSetupDlg::GetWidowsComPort(vector<int>& ports)
-{
-	LONG result;
-	HKEY hKey;
-	TCHAR tmpdata[10];
-	unsigned long tmpsize;
-	char strCOM[10];
-
-	result = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Hardware\\DeviceMap\\SerialComm", 0, KEY_QUERY_VALUE, &hKey);
-	for (int i = 0; i < 99; i++)
-	{
-		tmpsize = sizeof(tmpdata);
-		sprintf(strCOM, "COM%d", i + 1);
-		result = ::RegQueryValueEx(hKey, strCOM, NULL, NULL, (BYTE*)tmpdata, &tmpsize);
-		if (result == ERROR_SUCCESS)	// cannot read com info
-		{
-			ports.push_back(i + 1);
-		}
 	}
 	::RegCloseKey(hKey);
 }
@@ -800,11 +745,7 @@ CString CReaderSetupDlg::MakeLoadingText(UINT nButtonID) const
 void CReaderSetupDlg::InitPortComboItems()
 {
 	vector<int> ports;
-	int windows_platform = GetWindowsVersion();
-	if (windows_platform == WINDOWS_VERSION_95 || windows_platform == WINDOWS_VERSION_98)
-		GetWidowsComPort(ports);
-	else
-		GetNTComPort(ports);
+	GetNTComPort(ports);
 
 	m_comport1.ResetContent();
 	m_comport2.ResetContent();
@@ -1110,9 +1051,6 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	ModifyStyle(0, WS_CLIPCHILDREN);
 
 	// --- 2) DPI/폰트/숨길 레거시 Static 초기화 ---
-	HDC hdc = ::GetDC(m_hWnd);
-	m_dpi = GetDeviceCaps(hdc, LOGPIXELSX);
-	::ReleaseDC(m_hWnd, hdc);
 	EnsureFonts();
 	HideLegacyStatics();
 
