@@ -393,7 +393,7 @@ void CShopDownDlg::LayoutControls()
                 m_btnDelete[slot].SetColors(KFTC_CARD_DISABLED_BG, KFTC_CARD_DISABLED_BG, RGB(160,160,160));
         }
 
-        const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE;
+        const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
         const UINT showHide  = bValid ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
 
         if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[slot].m_hWnd,    NULL, m_rcProd[slot].left, m_rcProd[slot].top, m_rcProd[slot].Width(), m_rcProd[slot].Height(), baseFlags | showHide);
@@ -1105,7 +1105,7 @@ void CShopDownDlg::OnLButtonDown(UINT nFlags, CPoint point)
         m_bPressedPrev = bHitPrev;
         m_bPressedNext = bHitNext;
         SetCapture();
-        Invalidate(FALSE);
+        InvalidateRect(&m_rcNavBar, FALSE);
     }
     else
     {
@@ -1130,7 +1130,7 @@ void CShopDownDlg::OnMouseMove(UINT nFlags, CPoint point)
     {
         m_bHoverPrev = hp;
         m_bHoverNext = hn;
-        Invalidate(FALSE);
+        InvalidateRect(&m_rcNavBar, FALSE);
     }
     CDialog::OnMouseMove(nFlags, point);
 }
@@ -1155,7 +1155,7 @@ void CShopDownDlg::OnLButtonUp(UINT nFlags, CPoint point)
         m_bPressedPrev = false;
         m_bPressedNext = false;
         ReleaseCapture();
-        Invalidate(FALSE);
+        InvalidateRect(&m_rcNavBar, FALSE);
         if (wasPrev && m_nCurrentPage > 0)
             OnPrevPageClick();
         else if (wasNext && m_nCurrentPage < kTotalPages - 1)
@@ -1175,7 +1175,7 @@ void CShopDownDlg::OnMouseLeave()
     {
         m_bHoverPrev = false;
         m_bHoverNext = false;
-        Invalidate(FALSE);
+        InvalidateRect(&m_rcNavBar, FALSE);
     }
 }
 // ============================================================================
@@ -1186,7 +1186,7 @@ void CShopDownDlg::OnTimer(UINT_PTR nIDEvent)
     if (nIDEvent == 42 && m_nNavAnim > 0)
     {
         m_nNavAnim--;
-        Invalidate(FALSE);
+        InvalidateRect(&m_rcNavBar, FALSE);
         if (m_nNavAnim == 0) KillTimer(42);
         return;
     }
@@ -1194,5 +1194,5 @@ void CShopDownDlg::OnTimer(UINT_PTR nIDEvent)
 }
 void CShopDownDlg::UpdatePageButtons()
 {
-    Invalidate(FALSE);
+    InvalidateRect(&m_rcNavBar, FALSE);
 }
