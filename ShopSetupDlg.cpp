@@ -592,20 +592,6 @@ BOOL CShopSetupDlg::OnInitDialog()
 
     ApplyLayout();
 
-    // 하단 Child Dialog 생성
-    if (m_staticShopContainer.GetSafeHwnd() && !m_shopDownDlg.GetSafeHwnd())
-    {
-        if (m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer))
-            m_shopDownDlg.ShowWindow(SW_SHOW);
-    }
-    if (m_shopDownDlg.GetSafeHwnd() && m_staticShopContainer.GetSafeHwnd())
-    {
-        CRect rcHost;
-        m_staticShopContainer.GetClientRect(&rcHost);
-        m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(),
-            SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-
     // 첫 번째 탭 표시
     m_tabCtrl.SetCurSel(0);
     ShowTab(0);
@@ -1905,6 +1891,33 @@ void CShopSetupDlg::ShowTab(int nTab)
     {
         if (m_staticShopContainer.GetSafeHwnd())
             m_staticShopContainer.ShowWindow(SW_SHOW);
+
+        if (m_staticShopContainer.GetSafeHwnd() && !m_shopDownDlg.GetSafeHwnd())
+        {
+            m_staticShopContainer.SetRedraw(FALSE);
+
+            if (m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer))
+            {
+                CRect rcHost;
+                m_staticShopContainer.GetClientRect(&rcHost);
+                m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(),
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+                m_shopDownDlg.ShowWindow(SW_SHOW);
+            }
+
+            m_staticShopContainer.SetRedraw(TRUE);
+            m_staticShopContainer.Invalidate(FALSE);
+            m_staticShopContainer.UpdateWindow();
+        }
+        else if (m_shopDownDlg.GetSafeHwnd())
+        {
+            CRect rcHost;
+            m_staticShopContainer.GetClientRect(&rcHost);
+            m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(),
+                SWP_NOZORDER | SWP_NOACTIVATE);
+            m_shopDownDlg.ShowWindow(SW_SHOW);
+        }
+
     }
 
     // Info button visibility per tab
