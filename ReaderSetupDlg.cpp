@@ -532,6 +532,9 @@ void CReaderSetupDlg::LayoutControls()
 	placeReaderCard(card2, m_comport2,
 		m_reader_init2, m_status_check2, m_keydown2, m_integrity_check2, m_update2,
 		m_togglePortOpen2, m_toggleMultipad2);
+	// Hide port-open toggle for reader 2 (not used)
+	if (::IsWindow(m_togglePortOpen2.GetSafeHwnd()))
+		m_togglePortOpen2.ShowWindow(SW_HIDE);
 
 	int qx = queryBox.left;
 	int qComboW = SX(120);
@@ -1327,7 +1330,8 @@ void CReaderSetupDlg::OnPaint()
 			if (toggleOpenX < x0 + comboW + SX(70))
 				toggleOpenX = x0 + comboW + SX(70);
 			const int xToggleOpenLabel = toggleOpenX - textGap - openLabelW;
-			memDC.TextOut(xToggleOpenLabel, yCombo + (btnH - SX(14)) / 2, _T("포트 열기"));
+			if (num == 1)
+				memDC.TextOut(xToggleOpenLabel, yCombo + (btnH - SX(14)) / 2, _T("포트 열기"));
 			memDC.TextOut(togglePadLabelX, yCombo + (btnH - SX(14)) / 2, _T("멀티패드 여부"));
 		};
 

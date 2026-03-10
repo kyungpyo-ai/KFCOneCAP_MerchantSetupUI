@@ -798,37 +798,36 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
         g.FillPath(&blueGlowInnerBrush, &blueGlowInnerPath);
     }
 
-    RectF shadowRect((REAL)rcPaint.left + (REAL)SX(4),
-        (REAL)rcPaint.top + (REAL)SX(16) + (REAL)MulDiv(SX(5), nHoverProgress, 100),
-        (REAL)rcPaint.Width() - (REAL)SX(8),
-        (REAL)rcPaint.Height() - (REAL)SX(14));
-    GraphicsPath shadowPath;
-    AddRoundRectPath(shadowPath, shadowRect, (REAL)SX(22));
-    BYTE shadowAlpha = (BYTE)(12 + (nHoverProgress * 22) / 100);
-    if (nPressProgress > 0)
-        shadowAlpha = (BYTE)max(6, shadowAlpha - (nPressProgress * 8) / 100);
-    {
-        // 기본 그림자 (항상 표시) - box-shadow: 0 4px 12px rgba(0,0,0,0.04)
-        BYTE baseShadowAlpha = 10;
-        SolidBrush baseShadowBrush(Color(baseShadowAlpha, 17, 24, 39));
-        g.FillPath(&baseShadowBrush, &shadowPath);
-    }
-    if (nHoverProgress > 0 && nPressProgress == 0)
-    {
-        // 호버 그림자 강화
-        BYTE extraShadowAlpha = (BYTE)((nHoverProgress * 22) / 100);
-        SolidBrush shadowBrush(Color(extraShadowAlpha, 17, 24, 39));
-        g.FillPath(&shadowBrush, &shadowPath);
+    // 면(Fill) 기반의 3단 층 그림자 대신, 선(Pen)을 겹쳐 그리는 스무딩 블러 그림자로 교체
+    int blurSpread = 8 + (nHoverProgress * 6) / 100; // 호버 시 그림자가 밖으로 더 퍼짐
 
-        RectF coreShadowRect((REAL)rcPaint.left + (REAL)SX(8),
-            (REAL)rcPaint.top + (REAL)SX(20) + (REAL)MulDiv(SX(3), nHoverProgress, 100),
-            (REAL)rcPaint.Width() - (REAL)SX(16),
-            (REAL)rcPaint.Height() - (REAL)SX(24));
-        GraphicsPath coreShadowPath;
-        AddRoundRectPath(coreShadowPath, coreShadowRect, (REAL)SX(20));
-        BYTE coreShadowAlpha = (BYTE)(4 + (nHoverProgress * 12) / 100);
-        SolidBrush coreShadowBrush(Color(coreShadowAlpha, 17, 24, 39));
-        g.FillPath(&coreShadowBrush, &coreShadowPath);
+    BYTE maxAlpha = (BYTE)(15 + (nHoverProgress * 18) / 100);
+    if (nPressProgress > 0)
+    {
+        // 눌림(Press) 상태가 진행될수록 maxAlpha를 0으로 완전히 수렴시킴
+        maxAlpha = (BYTE)(maxAlpha * (100 - nPressProgress) / 100);
+    }
+
+    // 투명도가 0보다 클 때만 그림자 렌더링 (눌림 상태에서 완전히 숨김 및 성능 최적화)
+    if (maxAlpha > 0)
+    {
+        REAL shadowOffsetY = (REAL)SX(14) + (REAL)MulDiv(SX(5), nHoverProgress, 100);
+        RectF baseShadowRect((REAL)rcPaint.left + (REAL)SX(4),
+            (REAL)rcPaint.top + shadowOffsetY,
+            (REAL)rcPaint.Width() - (REAL)SX(8),
+            (REAL)rcPaint.Height() - (REAL)SX(14));
+
+        GraphicsPath shadowPath;
+        AddRoundRectPath(shadowPath, baseShadowRect, (REAL)SX(22));
+
+        for (int i = blurSpread; i >= 1; i--)
+        {
+            BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 1) / blurSpread);
+            Pen shadowPen(Color(currentAlpha, GetRValue(BLUE_300), GetGValue(BLUE_300), GetBValue(BLUE_300)), (REAL)(i * 2));
+            shadowPen.SetLineJoin(LineJoinRound);
+
+            g.DrawPath(&shadowPen, &shadowPath);
+        }
     }
 
     int fillR = GetRValue(kCardBg) + ((GetRValue(kCardFillHover) - GetRValue(kCardBg)) * nHoverProgress) / 100;
@@ -866,15 +865,33 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     CRect rcTitle(rcPaint.left + SX(28), rcPaint.top + SX(104) + textShiftY, rcPaint.right - SX(24), rcPaint.top + SX(128) + textShiftY);
     CRect rcDesc(rcPaint.left + SX(28), rcPaint.top + SX(140) + textShiftY, rcPaint.right - SX(28), rcPaint.bottom - SX(20));
 
-    memDC.SetBkMode(TRANSPARENT);
-    memDC.SetTextColor(kCardTitleText);   // #333D4B
-    CFont* pOld = memDC.SelectObject(&m_fontCardTitle);
-    memDC.DrawText(GetCardTitle(type), &rcTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_END_ELLIPSIS);
+    // 텍스트 애니메이션(textShiftY) 시 픽셀 단위 끊김(Jittering)을 방지하기 위해
+        // GDI+의 서브픽셀 렌더링 옵션을 적용합니다.
+        g.SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
 
-    memDC.SelectObject(&m_fontCardDesc);
-    memDC.SetTextColor(kSubText);
-    memDC.DrawText(GetCardDescription(type), &rcDesc, DT_LEFT | DT_TOP | DT_WORDBREAK);
-    memDC.SelectObject(pOld);
+    // 1. 기존 MFC CFont 객체를 GDI+ Font로 안전하게 변환
+    LOGFONT lfTitle, lfDesc;
+    m_fontCardTitle.GetLogFont(&lfTitle);
+    m_fontCardDesc.GetLogFont(&lfDesc);
+    Font gdiFontTitle(memDC.GetSafeHdc(), &lfTitle);
+    Font gdiFontDesc(memDC.GetSafeHdc(), &lfDesc);
+
+    // 2. 텍스트 색상 브러시 생성 (COLORREF -> Gdiplus::Color 변환)
+    SolidBrush titleBrush(Color(255, GetRValue(kCardTitleText), GetGValue(kCardTitleText), GetBValue(kCardTitleText)));
+    SolidBrush descBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
+
+    // 3. 텍스트 정렬 및 말줄임표(Ellipsis) 설정
+    StringFormat format;
+    format.SetAlignment(StringAlignmentNear);
+    format.SetLineAlignment(StringAlignmentNear);
+    format.SetTrimming(StringTrimmingEllipsisCharacter);
+
+    // 4. 서브픽셀 단위로 부드럽게 텍스트 렌더링 (DrawString)
+    RectF layoutTitle((REAL)rcTitle.left, (REAL)rcTitle.top, (REAL)rcTitle.Width(), (REAL)rcTitle.Height());
+    g.DrawString(CT2W(GetCardTitle(type)), -1, &gdiFontTitle, layoutTitle, &format, &titleBrush);
+
+    RectF layoutDesc((REAL)rcDesc.left, (REAL)rcDesc.top, (REAL)rcDesc.Width(), (REAL)rcDesc.Height());
+    g.DrawString(CT2W(GetCardDescription(type)), -1, &gdiFontDesc, layoutDesc, &format, &descBrush);
 
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 
