@@ -63,12 +63,8 @@ static void GdipAddRoundRect(Gdiplus::GraphicsPath& p, float x, float y, float w
 	p.AddArc(a, 90.f, 90.f); p.CloseFigure();
 }
 
-static void FillRoundRect(CDC* pDC, const CRect& rc, int radius, COLORREF fill, COLORREF border, int borderW = 1)
+static void FillRoundRect(Gdiplus::Graphics& g, const CRect& rc, int radius, COLORREF fill, COLORREF border, int borderW = 1)
 {
-	Gdiplus::Graphics g(pDC->GetSafeHdc());
-	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
-
 	float x = (float)rc.left, y = (float)rc.top;
 	float w = (float)rc.Width(), h = (float)rc.Height();
 	float r = (float)radius;
@@ -102,25 +98,18 @@ static void GdipAddTopRoundRect(Gdiplus::GraphicsPath& p, float x, float y, floa
 	p.CloseFigure();
 }
 
-static void FillTopRoundRect(CDC* pDC, const CRect& rc, int radius, COLORREF fill)
+static void FillTopRoundRect(Gdiplus::Graphics& g, const CRect& rc, int radius, COLORREF fill)
 {
-	Gdiplus::Graphics g(pDC->GetSafeHdc());
-	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 	Gdiplus::GraphicsPath path;
 	GdipAddTopRoundRect(path, (float)rc.left, (float)rc.top, (float)rc.Width(), (float)rc.Height(), (float)radius);
 	Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(fill), GetGValue(fill), GetBValue(fill)));
 	g.FillPath(&br, &path);
 }
 
-static void DrawRoundRectBorder(CDC* pDC, const CRect& rc, int radius, COLORREF border, int borderW = 1)
+static void DrawRoundRectBorder(Gdiplus::Graphics& g, const CRect& rc, int radius, COLORREF border, int borderW = 1)
 {
 	if (borderW <= 0)
 		return;
-
-	Gdiplus::Graphics g(pDC->GetSafeHdc());
-	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 	Gdiplus::GraphicsPath path;
 	float bw = (float)borderW;
 	GdipAddRoundRect(path, (float)rc.left + bw * 0.5f, (float)rc.top + bw * 0.5f,
@@ -1215,6 +1204,9 @@ void CReaderSetupDlg::OnPaint()
 
 	memDC.FillSolidRect(rc, RGB(249, 250, 252));
 	memDC.SetBkMode(TRANSPARENT);
+	Gdiplus::Graphics gPaint(memDC.GetSafeHdc());
+	gPaint.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+	gPaint.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
 	const int cardMarginL = SX(20);
 	const int cardMarginT = SX(10);
@@ -1237,7 +1229,7 @@ void CReaderSetupDlg::OnPaint()
 			gShad.FillPath(&shBrush, &shPath);
 		}
 	}
-	FillRoundRect(&memDC, mainCard, SX(12), RGB(255, 255, 255), RGB(220, 224, 234), 1);
+	FillRoundRect(gPaint, mainCard, SX(12), RGB(255, 255, 255), RGB(220, 224, 234), 1);
 
 	const int iconSize = SX(38);
 	const int iconX = mainCard.left + SX(6);
@@ -1391,12 +1383,12 @@ void CReaderSetupDlg::OnPaint()
 		{
 			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(252, 253, 255);
 			COLORREF br = enabled ? RGB(214, 226, 246) : RGB(232, 237, 244);
-			FillRoundRect(&memDC, r, SX(10), bg, br, 1);
+			FillRoundRect(gPaint, r, SX(10), bg, br, 1);
 
 			const int badgeSize = SX(34);
 			CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
 			COLORREF badgeBg = enabled ? RGB(0, 96, 210) : RGB(190, 199, 209);
-			FillRoundRect(&memDC, badge, SX(6), badgeBg, badgeBg, 1);
+			FillRoundRect(gPaint, badge, SX(6), badgeBg, badgeBg, 1);
 			CString numText; numText.Format(_T("%d"), num);
 			memDC.SelectObject(&m_fontNormal);
 			memDC.SetTextColor(RGB(255, 255, 255));
@@ -1448,7 +1440,7 @@ void CReaderSetupDlg::OnPaint()
 		const COLORREF scrollTrack = RGB(243, 246, 250);
 		const COLORREF scrollThumb = RGB(196, 205, 216);
 
-		FillRoundRect(&memDC, tableOuter, SX(8), bodyBg, tableBorder, 0);
+		FillRoundRect(gPaint, tableOuter, SX(8), bodyBg, tableBorder, 0);
 
 		const int* ratios = kIntegrityColumnRatios;
 		const int colCount = kIntegrityColumnCount;
@@ -1460,7 +1452,7 @@ void CReaderSetupDlg::OnPaint()
 		CRect headerRc = tableOuter;
 		headerRc.DeflateRect(1, 1);
 		headerRc.bottom = headerRc.top + headerH;
-		FillTopRoundRect(&memDC, headerRc, SX(8), headerBg);
+		FillTopRoundRect(gPaint, headerRc, SX(8), headerBg);
 		memDC.FillSolidRect(headerRc.left + SX(10), headerRc.bottom - 1, headerRc.Width() - SX(20), 1, RGB(238, 241, 247));
 
 		const int itemCount = (m_bUIReady && m_integrity_list.GetSafeHwnd()) ? m_integrity_list.GetItemCount() : 0;
@@ -1521,7 +1513,7 @@ void CReaderSetupDlg::OnPaint()
 					skRc.DeflateRect(textPad, (rowH - skeletonH) / 2 + skeletonGapY / 4);
 					if (skRc.Width() > SX(12))
 						skRc.right = skRc.left + max(SX(20), min(skRc.Width(), (col == 0) ? SX(100) : (cellRc.Width() * 3 / 5)));
-					FillRoundRect(&memDC, skRc, SX(4), skeletonBg, skeletonBg, 1);
+					FillRoundRect(gPaint, skRc, SX(4), skeletonBg, skeletonBg, 1);
 					drawX += widths[col];
 				}
 			}
@@ -1578,15 +1570,15 @@ void CReaderSetupDlg::OnPaint()
 				int thumbTop = m_rcIntegrityScrollBar.top;
 				if (maxScroll > 0 && thumbTravel > 0)
 					thumbTop += (thumbTravel * m_nIntegrityScrollPos) / maxScroll;
-				FillRoundRect(&memDC, m_rcIntegrityScrollBar, SX(4), scrollTrack, scrollTrack, 1);
+				FillRoundRect(gPaint, m_rcIntegrityScrollBar, SX(4), scrollTrack, scrollTrack, 1);
 				m_rcIntegrityScrollThumb = CRect(m_rcIntegrityScrollBar.left, thumbTop, m_rcIntegrityScrollBar.right, thumbTop + thumbH);
-				FillRoundRect(&memDC, m_rcIntegrityScrollThumb, SX(4), scrollThumb, scrollThumb, 1);
+				FillRoundRect(gPaint, m_rcIntegrityScrollThumb, SX(4), scrollThumb, scrollThumb, 1);
 			}
 		}
 
 		// 마지막에 라운드 외곽선을 다시 그려 모서리/상단 프레임이 배경에 묻히지 않도록 한다.
-		DrawRoundRectBorder(&memDC, tableOuter, SX(8), tableBorder, 1);
-		DrawRoundRectBorder(&memDC, CRect(tableOuter.left + 1, tableOuter.top + 1, tableOuter.right - 1, tableOuter.bottom - 1), SX(7), RGB(232, 237, 244), 1);
+		DrawRoundRectBorder(gPaint, tableOuter, SX(8), tableBorder, 1);
+		DrawRoundRectBorder(gPaint, CRect(tableOuter.left + 1, tableOuter.top + 1, tableOuter.right - 1, tableOuter.bottom - 1), SX(7), RGB(232, 237, 244), 1);
 	}
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(oldBmp);

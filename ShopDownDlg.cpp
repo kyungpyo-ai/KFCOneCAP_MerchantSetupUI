@@ -193,11 +193,11 @@ void CShopDownDlg::CreateControlsOnce()
         m_editPwd[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
             pwdStyle, CRect(0,0,10,10), this, 62000+(slot*10)+3);
         m_btnDownload[slot].Create(_T("다운로드"),
-            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+            WS_CHILD|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
             CRect(0,0,10,10), this, kBtnBase+slot);
         m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
         m_btnDelete[slot].Create(_T("삭제"),
-            WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
+            WS_CHILD|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
             CRect(0,0,10,10), this, kDelBase+slot);
         m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
     }
@@ -243,6 +243,25 @@ void CShopDownDlg::ApplyFonts()
         m_editBiz[slot].SetFont(&m_fontCell);
         m_editPwd[slot].SetFont(&m_fontCell);
         m_btnDownload[slot].SetFont(&m_fontCell);
+    }
+
+    // Pre-create GDI+ paint fonts so first OnPaint does not block on font load
+    {
+        const int dpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
+        if (m_nCachedPaintDpi != dpi || !m_pFontFamily)
+        {
+            delete m_pFontLbl;     m_pFontLbl     = nullptr;
+            delete m_pFontVal;     m_pFontVal     = nullptr;
+            delete m_pFontValBold; m_pFontValBold = nullptr;
+            delete m_pFontFamily;  m_pFontFamily  = nullptr;
+            const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 12);
+            const float valPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
+            m_pFontFamily  = new Gdiplus::FontFamily(L"Malgun Gothic");
+            m_pFontLbl     = new Gdiplus::Font(m_pFontFamily, lblPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+            m_pFontVal     = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+            m_pFontValBold = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
+            m_nCachedPaintDpi = dpi;
+        }
     }
 }
 
@@ -419,7 +438,6 @@ void CShopDownDlg::LayoutControls()
 
     RebindSlots();
     UpdatePageButtons();
-    ApplyAllRowUnderlays();
     if (IsWindowVisible())
         ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN);
     m_bInLayout = FALSE;
@@ -1047,7 +1065,6 @@ void CShopDownDlg::RefreshPage()
 {
     RebindSlots();
     UpdatePageButtons();
-    ApplyAllRowUnderlays();
     if (IsWindowVisible())
         ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN);
 }

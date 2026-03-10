@@ -948,6 +948,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
     const int CTRL_H       = S(40);
     const int FIELD_H      = CTRL_H;
+    CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
@@ -956,13 +957,12 @@ void CShopSetupDlg::ApplyLayoutTab0()
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
-            CClientDC cdc(pLbl);
             CFont* pFont = pLbl->GetFont();
-            CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+            CFont* pOld  = pFont ? measureDC.SelectObject(pFont) : NULL;
             CString strLbl;
             pLbl->GetWindowText(strLbl);
-            CSize sz = cdc.GetTextExtent(strLbl);
-            if (pOld) cdc.SelectObject(pOld);
+            CSize sz = measureDC.GetTextExtent(strLbl);
+            if (pOld) measureDC.SelectObject(pOld);
             bx = lx + sz.cx + BtnGap;
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -1002,29 +1002,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
         Move(IDC_STATIC_VAN_SERVER, innerX, y1, colW, capH);
         Move(IDC_COMBO_VAN_SERVER,  innerX, y1 + capH + capGap, colW, FIELD_H);
 
-        // Info icon button: right next to label text
-        if (m_btnVanInfo.GetSafeHwnd())
-        {
-            const int INFO_BTN_SZ = S(18);
-            const int INFO_BTN_GAP = S(4);
-            int btnX = innerX + INFO_BTN_GAP;  // fallback
-            int btnY = y1 + (capH - INFO_BTN_SZ) / 2;
-            // Measure text width to place button immediately after label
-            CWnd* pLbl = GetDlgItem(IDC_STATIC_VAN_SERVER);
-            if (pLbl && pLbl->GetSafeHwnd())
-            {
-                CClientDC cdc(pLbl);
-                CFont* pFont = pLbl->GetFont();
-                CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
-                CString strLbl;
-                pLbl->GetWindowText(strLbl);
-                CSize sz = cdc.GetTextExtent(strLbl);
-                if (pOld) cdc.SelectObject(pOld);
-                btnX = innerX + sz.cx + INFO_BTN_GAP;
-            }
-            m_btnVanInfo.SetWindowPos(NULL, btnX, btnY, INFO_BTN_SZ, INFO_BTN_SZ,
-                SWP_NOZORDER | SWP_NOACTIVATE);
-        }
+        PlaceInfoBtn(m_btnVanInfo, IDC_STATIC_VAN_SERVER, innerX, y1, capH);
         // 우: 포트번호
         Move(IDC_STATIC_PORT,       innerX + colW + colGap, y1, colW, capH);
         PlaceInfoBtn(m_btnPortInfo, IDC_STATIC_PORT, innerX + colW + colGap, y1, capH);
@@ -1116,6 +1094,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
     const int CTRL_H       = S(40);
     const int FIELD_H      = CTRL_H;
+    CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
@@ -1124,13 +1103,12 @@ void CShopSetupDlg::ApplyLayoutTab1()
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
-            CClientDC cdc(pLbl);
             CFont* pFont = pLbl->GetFont();
-            CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+            CFont* pOld  = pFont ? measureDC.SelectObject(pFont) : NULL;
             CString strLbl;
             pLbl->GetWindowText(strLbl);
-            CSize sz = cdc.GetTextExtent(strLbl);
-            if (pOld) cdc.SelectObject(pOld);
+            CSize sz = measureDC.GetTextExtent(strLbl);
+            if (pOld) measureDC.SelectObject(pOld);
             bx = lx + sz.cx + BtnGap;
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -1436,6 +1414,7 @@ void CShopSetupDlg::ApplyLayout()
     auto S = [&](int v) { return ScalePx(v); };
 
     // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
+    CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
         const int BtnSz  = S(18);
@@ -1444,13 +1423,12 @@ void CShopSetupDlg::ApplyLayout()
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
-            CClientDC cdc(pLbl);
             CFont* pFont = pLbl->GetFont();
-            CFont* pOld  = pFont ? cdc.SelectObject(pFont) : NULL;
+            CFont* pOld  = pFont ? measureDC.SelectObject(pFont) : NULL;
             CString strLbl;
             pLbl->GetWindowText(strLbl);
-            CSize sz = cdc.GetTextExtent(strLbl);
-            if (pOld) cdc.SelectObject(pOld);
+            CSize sz = measureDC.GetTextExtent(strLbl);
+            if (pOld) measureDC.SelectObject(pOld);
             bx = lx + sz.cx + BtnGap;
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
