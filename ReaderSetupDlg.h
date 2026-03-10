@@ -56,6 +56,8 @@ protected:
 	// GDI+ section title font (cached, matches ShopSetupDlg DrawMinCard style)
 	Gdiplus::FontFamily* m_pGdipSecFamily;
 	Gdiplus::Font*       m_pGdipSecFont;
+	Gdiplus::Font*       m_pGdipHdrTitleFont;
+	Gdiplus::Font*       m_pGdipHdrSubFont;
 
 	int   SX(int v) const; // scale x/y °ø¿ë
 	void  EnsureFonts();

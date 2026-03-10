@@ -142,13 +142,13 @@ void CReaderSetupDlg::EnsureFonts()
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0);
 
 	// Title
-	lf.lfHeight = -SX(20);
+	lf.lfHeight = -SX(16);
 	lf.lfWeight = FW_BOLD;
 	lstrcpy(lf.lfFaceName, _T("맑은 고딕"));
 	m_fontTitle.CreateFontIndirect(&lf);
 
 	// Sub
-	lf.lfHeight = -SX(12);
+	lf.lfHeight = -SX(11);
 	lf.lfWeight = FW_NORMAL;
 	m_fontSub.CreateFontIndirect(&lf);
 
@@ -177,6 +177,10 @@ void CReaderSetupDlg::EnsureFonts()
 	m_pGdipSecFamily = new Gdiplus::FontFamily(L"Malgun Gothic");
 	m_pGdipSecFont = new Gdiplus::Font(m_pGdipSecFamily,
 		ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	m_pGdipHdrTitleFont = new Gdiplus::Font(m_pGdipSecFamily,
+		ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	m_pGdipHdrSubFont = new Gdiplus::Font(m_pGdipSecFamily,
+		ModernUIDpi::ScaleF(m_hWnd, 11.0f), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 }
 
 void CReaderSetupDlg::HideLegacyStatics()
@@ -220,17 +224,17 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int margin = SX(20);
 	inner = CRect(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 
-	const int titleBlock = SX(92);
+	const int titleBlock = SX(84);
 	const int sectionTitleH = SX(28);
-	const int sectionTitleTop = SX(10);
+	const int sectionTitleTop = SX(12);
 	const int infoSectionTitleTop = SX(2);
-	const int sectionTitleGap = SX(12);
+	const int sectionTitleGap = SX(10);
 	const int infoTitleGap = -SX(10);
-	const int sectionBoxPad = SX(24);
-	const int cardH = SX(126);
-	const int cardGap = SX(14);
+	const int sectionBoxPad = SX(20);
+	const int cardH = SX(128);
+	const int cardGap = SX(16);
 	const int queryH = SX(56);
-	const int queryGap = SX(18);
+	const int queryGap = SX(16);
 	const int infoBottomPad = SX(8);
 	const int bottomBtnH = SX(42);
 	const int bottomGap = SX(16);
@@ -576,6 +580,8 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_rcIntegrityScrollThumb.SetRectEmpty();
 	m_pGdipSecFamily = nullptr;
 	m_pGdipSecFont = nullptr;
+	m_pGdipHdrTitleFont = nullptr;
+	m_pGdipHdrSubFont = nullptr;
 	//{{AFX_DATA_INIT(CReaderSetupDlg)
 		// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
@@ -1094,13 +1100,13 @@ CSize CReaderSetupDlg::CalcMinClientSize() const
 	const int innerW = SX(720);
 	const int titleArea = SX(92);
 	const int sectionPad = SX(24);
-	const int sectionTitleTop = SX(10);
+	const int sectionTitleTop = SX(12);
 	const int infoSectionTitleTop = SX(2);
 	const int sectionTitleH = SX(28);
-	const int sectionTitleGap = SX(12);
+	const int sectionTitleGap = SX(10);
 	const int infoTitleGap = -SX(10);
-	const int cardH = SX(126);
-	const int cardGap = SX(14);
+	const int cardH = SX(128);
+	const int cardGap = SX(16);
 	const int betweenSections = SX(26);
 	const int queryH = SX(62);
 	const int queryGap = SX(12);
@@ -1176,17 +1182,34 @@ void CReaderSetupDlg::OnPaint()
 	CBitmap bmp; bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
 	CBitmap* oldBmp = memDC.SelectObject(&bmp);
 
-	memDC.FillSolidRect(rc, RGB(245, 247, 250));
+	memDC.FillSolidRect(rc, RGB(249, 250, 252));
 	memDC.SetBkMode(TRANSPARENT);
 
-	const int margin = SX(20);
-	CRect mainCard(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
-	CRect shadow = mainCard; shadow.OffsetRect(SX(2), SX(3));
-	FillRoundRect(&memDC, shadow, SX(18), RGB(234, 238, 243), RGB(234, 238, 243), 1);
-	FillRoundRect(&memDC, mainCard, SX(18), RGB(255, 255, 255), RGB(224, 229, 235), 1);
+	const int cardMarginL = SX(20);
+	const int cardMarginT = SX(10);
+	const int cardMarginR = SX(20);
+	const int cardMarginB = SX(20);
+	CRect mainCard(rc.left + cardMarginL, rc.top + cardMarginT, rc.right - cardMarginR, rc.bottom - cardMarginB);
+	{
+		Gdiplus::Graphics gShad(memDC.GetSafeHdc());
+		gShad.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		gShad.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+		float mX = (float)mainCard.left, mY = (float)mainCard.top;
+		float mW = (float)mainCard.Width(), mH = (float)mainCard.Height();
+		float mR = (float)SX(12);
+		for (int sh = 3; sh >= 1; --sh)
+		{
+			Gdiplus::GraphicsPath shPath;
+			GdipAddRoundRect(shPath, mX, mY + (float)sh, mW, mH, mR);
+			BYTE alpha = (BYTE)(sh == 3 ? 8 : sh == 2 ? 14 : 20);
+			Gdiplus::SolidBrush shBrush(Gdiplus::Color(alpha, 10, 30, 70));
+			gShad.FillPath(&shBrush, &shPath);
+		}
+	}
+	FillRoundRect(&memDC, mainCard, SX(12), RGB(255, 255, 255), RGB(220, 224, 234), 1);
 
 	const int iconSize = SX(38);
-	const int iconX = mainCard.left + SX(20);
+	const int iconX = mainCard.left + SX(6);
 	const int iconY = mainCard.top + SX(18);
 	CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
 	// GDI+ anti-aliased icon: card reader (IC card with chip + stripe)
@@ -1245,15 +1268,26 @@ void CReaderSetupDlg::OnPaint()
 		}
 	}
 
-	const int titleTextX = rcIcon.right + SX(14);
-	memDC.SelectObject(&m_fontTitle);
-	memDC.SetTextColor(RGB(33, 37, 41));
-	memDC.TextOut(titleTextX, mainCard.top + SX(18), _T("리더기 설정"));
-
-	memDC.SelectObject(&m_fontSub);
-	memDC.SetTextColor(RGB(106, 119, 133));
-	memDC.TextOut(titleTextX, mainCard.top + SX(46), _T("리더기 연결 및 제어를 관리합니다"));
-	memDC.FillSolidRect(mainCard.left + SX(22), mainCard.top + SX(72), mainCard.Width() - SX(44), 1, RGB(230, 234, 239));
+	{
+		Gdiplus::Graphics gHdr(memDC.GetSafeHdc());
+		gHdr.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		gHdr.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+		const float tx = (float)(rcIcon.right + SX(12));
+		const float titleY = (float)iconY + (float)iconSize * 0.5f - 22.0f;
+		Gdiplus::SolidBrush bTitle(Gdiplus::Color(255, 18, 24, 40));
+		Gdiplus::SolidBrush bSub(Gdiplus::Color(255, 130, 142, 162));
+		Gdiplus::StringFormat sf;
+		sf.SetAlignment(Gdiplus::StringAlignmentNear);
+		sf.SetLineAlignment(Gdiplus::StringAlignmentNear);
+		wchar_t wTitle[128] = {}, wSub[256] = {};
+		MultiByteToWideChar(CP_ACP, 0, _T("리더기 설정"), -1, wTitle, 128);
+		MultiByteToWideChar(CP_ACP, 0, _T("리더기 연결 및 제어 설정을 관리합니다"), -1, wSub, 256);
+		gHdr.DrawString(wTitle, -1, m_pGdipHdrTitleFont,
+			Gdiplus::RectF(tx, titleY, 300.0f, 24.0f), &sf, &bTitle);
+		gHdr.DrawString(wSub, -1, m_pGdipHdrSubFont,
+			Gdiplus::RectF(tx, titleY + 26.0f, 360.0f, 16.0f), &sf, &bSub);
+	}
+	memDC.FillSolidRect(mainCard.left + SX(6), mainCard.top + SX(74), mainCard.Width() - SX(12), 1, RGB(228, 232, 240));
 
 	CRect inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc;
 	CPoint sec1Pt, sec2Pt;
@@ -1290,20 +1324,45 @@ void CReaderSetupDlg::OnPaint()
 				&sf, &textBr);
 		};
 
-	FillRoundRect(&memDC, portSection, SX(10), RGB(248, 249, 251), RGB(233, 236, 240), 1);
-	FillRoundRect(&memDC, integritySection, SX(10), RGB(248, 249, 251), RGB(233, 236, 240), 1);
+	{
+		Gdiplus::Graphics gSecShad(memDC.GetSafeHdc());
+		gSecShad.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		gSecShad.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+		auto drawSecCard = [&](const CRect& sc)
+		{
+			float scX = (float)sc.left, scY = (float)sc.top;
+			float scW = (float)sc.Width(), scH = (float)sc.Height();
+			float scR = (float)SX(12);
+			for (int sh = 2; sh >= 1; --sh)
+			{
+				Gdiplus::GraphicsPath sp;
+				GdipAddRoundRect(sp, scX, scY + (float)sh, scW, scH, scR);
+				BYTE alpha = (BYTE)(sh == 2 ? 8 : 16);
+				Gdiplus::SolidBrush sb(Gdiplus::Color(alpha, 20, 40, 80));
+				gSecShad.FillPath(&sb, &sp);
+			}
+			Gdiplus::GraphicsPath cp;
+			GdipAddRoundRect(cp, scX, scY, scW, scH, scR);
+			Gdiplus::SolidBrush cf(Gdiplus::Color(255, 250, 251, 253));
+			gSecShad.FillPath(&cf, &cp);
+		};
+		drawSecCard(portSection);
+		drawSecCard(integritySection);
+	}
+	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + SX(43), portSection.Width() - SX(32), 1, RGB(238, 241, 247));
+	memDC.FillSolidRect(integritySection.left + SX(16), integritySection.top + SX(43), integritySection.Width() - SX(32), 1, RGB(238, 241, 247));
 	drawSectionTitle(sec1Pt, _T("포트 설정"));
 	drawSectionTitle(sec2Pt, _T("무결성 체크 정보"));
 
 	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
 		{
-			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(251, 252, 253);
-			COLORREF br = enabled ? RGB(0, 102, 221) : RGB(220, 226, 232);
-			FillRoundRect(&memDC, r, SX(8), bg, br, enabled ? 2 : 1);
+			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(252, 253, 255);
+			COLORREF br = enabled ? RGB(214, 226, 246) : RGB(232, 237, 244);
+			FillRoundRect(&memDC, r, SX(10), bg, br, 1);
 
 			const int badgeSize = SX(34);
 			CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
-			COLORREF badgeBg = enabled ? RGB(0, 102, 221) : RGB(190, 199, 209);
+			COLORREF badgeBg = enabled ? RGB(0, 96, 210) : RGB(190, 199, 209);
 			FillRoundRect(&memDC, badge, SX(6), badgeBg, badgeBg, 1);
 			CString numText; numText.Format(_T("%d"), num);
 			memDC.SelectObject(&m_fontNormal);
@@ -1344,14 +1403,14 @@ void CReaderSetupDlg::OnPaint()
 		CRect tableOuter = listRc;
 		tableOuter.DeflateRect(1, 1);
 		tableOuter.OffsetRect(0, -SX(14));
-		const COLORREF tableBorder = RGB(184, 196, 212);
-		const COLORREF headerBg = RGB(244, 247, 250);
-		const COLORREF headerLine = RGB(227, 233, 240);
-		const COLORREF bodyLine = RGB(238, 242, 247);
+		const COLORREF tableBorder = RGB(214, 223, 235);
+		const COLORREF headerBg = RGB(250, 251, 253);
+		const COLORREF headerLine = RGB(238, 241, 247);
+		const COLORREF bodyLine = RGB(242, 245, 249);
 		const COLORREF bodyBg = RGB(255, 255, 255);
-		const COLORREF altRowBg = RGB(249, 251, 254);
-		const COLORREF headerText = RGB(42, 58, 84);
-		const COLORREF bodyText = RGB(86, 98, 115);
+		const COLORREF altRowBg = RGB(251, 252, 255);
+		const COLORREF headerText = RGB(26, 32, 44);
+		const COLORREF bodyText = RGB(92, 104, 122);
 		const COLORREF emptyText = RGB(160, 168, 180);
 		const COLORREF scrollTrack = RGB(243, 246, 250);
 		const COLORREF scrollThumb = RGB(196, 205, 216);
@@ -1369,7 +1428,7 @@ void CReaderSetupDlg::OnPaint()
 		headerRc.DeflateRect(1, 1);
 		headerRc.bottom = headerRc.top + headerH;
 		FillTopRoundRect(&memDC, headerRc, SX(8), headerBg);
-		memDC.FillSolidRect(headerRc.left + SX(10), headerRc.bottom - 1, headerRc.Width() - SX(20), 1, RGB(220, 227, 236));
+		memDC.FillSolidRect(headerRc.left + SX(10), headerRc.bottom - 1, headerRc.Width() - SX(20), 1, RGB(238, 241, 247));
 
 		const int itemCount = (m_bUIReady && m_integrity_list.GetSafeHwnd()) ? m_integrity_list.GetItemCount() : 0;
 		const BOOL bNeedScroll = (itemCount > visibleRows);
@@ -1583,6 +1642,8 @@ BOOL CReaderSetupDlg::DestroyWindow()
 	FinishLoadingOperation(FALSE);
 	delete m_pGdipSecFont;   m_pGdipSecFont = nullptr;
 	delete m_pGdipSecFamily; m_pGdipSecFamily = nullptr;
+	delete m_pGdipHdrTitleFont; m_pGdipHdrTitleFont = nullptr;
+	delete m_pGdipHdrSubFont;   m_pGdipHdrSubFont = nullptr;
 	return CDialog::DestroyWindow();
 }
 
