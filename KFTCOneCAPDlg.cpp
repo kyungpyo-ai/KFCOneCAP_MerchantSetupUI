@@ -311,6 +311,8 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     CDialog::OnInitDialog();
 
     ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+    // [Fix] Double-buffer entire window + children atomically to eliminate flicker
+    ModifyStyleEx(0, WS_EX_COMPOSITED);
 
     ModernUIGfx::EnsureGdiplusStartup();
 
@@ -581,9 +583,18 @@ void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
 void CKFTCOneCAPDlg::OnPaint()
 {
     CPaintDC dc(this);
-    DrawBackground(dc);
-    DrawHeader(dc);
-    DrawFooterDivider(dc);
+    CRect rc;
+    GetClientRect(&rc);
+    CDC memDC;
+    memDC.CreateCompatibleDC(&dc);
+    CBitmap bmp;
+    bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+    CBitmap* pOld = memDC.SelectObject(&bmp);
+    DrawBackground(memDC);
+    DrawHeader(memDC);
+    DrawFooterDivider(memDC);
+    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+    memDC.SelectObject(pOld);
 }
 
 BOOL CKFTCOneCAPDlg::OnEraseBkgnd(CDC* pDC)
@@ -1021,10 +1032,24 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
                 this->Invalidate(FALSE);
                 this->UpdateWindow();
 
+                // [Fix] Stop button anim timer before SetRedraw(FALSE) to prevent flicker on dialog close
+                if (pBtn) { pBtn->ResetVisualState(); pBtn->UpdateWindow(); }
+
+                // [Fix2] SetRedraw(TRUE) before DoModal so the parent can repaint
+                // immediately when the modal dialog closes, preventing flicker.
                 this->SetRedraw(FALSE);
                 this->EnableWindow(FALSE);
+                this->SetRedraw(TRUE);
 
                 // 모달 실행
+                // [Fix3] Suppress button repaints during DoModal enable/disable transition
+                m_btnReaderCard.SetRedraw(FALSE);
+                m_btnShopCard.SetRedraw(FALSE);
+                m_btnTransCard.SetRedraw(FALSE);
+                m_btnReceiptCard.SetRedraw(FALSE);
+                m_btnMinimize.SetRedraw(FALSE);
+                m_btnExit.SetRedraw(FALSE);
+
                 if (ePending == PENDING_SHOP)
                 {
                     CShopSetupDlg dlg(this);
@@ -1037,11 +1062,12 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
                 }
 
                 // 모달 종료 후 복구
-                this->EnableWindow(TRUE);
-                this->SetRedraw(TRUE);
-
-                if (pBtn) pBtn->ResetVisualState();
-
+                m_btnReaderCard.SetRedraw(TRUE);
+                m_btnShopCard.SetRedraw(TRUE);
+                m_btnTransCard.SetRedraw(TRUE);
+                m_btnReceiptCard.SetRedraw(TRUE);
+                m_btnMinimize.SetRedraw(TRUE);
+                m_btnExit.SetRedraw(TRUE);
                 this->RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
             }
         }

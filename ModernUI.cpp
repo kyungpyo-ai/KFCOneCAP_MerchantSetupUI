@@ -1670,6 +1670,7 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	GetClientRect(&rc);
 	const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
 
+	// 1. 더블 버퍼링 설정
 	CDC memDC;
 	memDC.CreateCompatibleDC(&dc);
 	CBitmap bmp;
@@ -1677,228 +1678,137 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	CBitmap* pOldBmp = memDC.SelectObject(&bmp);
 
 	Gdiplus::Graphics g(memDC.m_hDC);
+
+	// [품질 설정] 선명도 및 깨짐 방지
 	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);
+	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
 	g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-	// colors (modern style)
 	const KFTCInputTheme& th = GetActiveInputTheme();
-	const COLORREF crBorderN = th.borderN;
-	const COLORREF crBorderH = th.borderH;
-	const COLORREF crBorderF = th.borderF;
+	const bool isActive = enabled && (m_bFocus || m_bDropped);
 
-	//    :
-// -  
-// - UnderlayColor  (/  ð  )
-//      UnderlayColor  " "   .
-	Gdiplus::Color bg(255, GetRValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetGValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetBValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG));
-	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
-	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
-	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
-
-	Gdiplus::Color dropN(255, 255, 255, 255);
-	Gdiplus::Color dropH(255, 255, 255, 255);
-	Gdiplus::Color dropF(255, 255, 255, 255);
-
-	Gdiplus::Color dividerC(255, 232, 235, 240);
-	Gdiplus::Color arrowC(255, 100, 100, 100);
-
-	if (m_bUseUnderlayBg)
-	{
+	// 2. 부모 배경 채우기
+	if (m_bUseUnderlayBg) {
 		HBRUSH hbr = ::CreateSolidBrush(m_clrUnderlayBg);
 		::FillRect(memDC.m_hDC, &rc, hbr);
 		::DeleteObject(hbr);
 	}
-	else
-	{
-		HBRUSH hbr = NULL;
-		HWND hParent = ::GetParent(m_hWnd);
-		if (hParent)
-			hbr = (HBRUSH)::SendMessage(hParent, WM_CTLCOLORSTATIC, (WPARAM)memDC.m_hDC, (LPARAM)m_hWnd);
-
-		if (hbr)
-			::FillRect(memDC.m_hDC, &rc, hbr);
-		else
-			::FillRect(memDC.m_hDC, &rc, (HBRUSH)(COLOR_WINDOW + 1));
+	else {
+		HBRUSH hbr = (HBRUSH)::SendMessage(::GetParent(m_hWnd), WM_CTLCOLORSTATIC, (WPARAM)memDC.m_hDC, (LPARAM)m_hWnd);
+		if (hbr) ::FillRect(memDC.m_hDC, &rc, hbr);
+		else ::FillRect(memDC.m_hDC, &rc, (HBRUSH)(COLOR_WINDOW + 1));
 	}
 
-	const int dropW = kftc_min_i(m_nDropW, rc.Width());
-	CRect rcDrop(rc.right - dropW, rc.top, rc.right, rc.bottom);
+	// [좌표 설정] Glow 공간 확보 (2.0f)
+	Gdiplus::RectF rfOuter(2.0f, 2.0f, (Gdiplus::REAL)rc.Width() - 4.0f, (Gdiplus::REAL)rc.Height() - 4.0f);
 
-	const int thickI = (enabled && (m_bFocus || m_bDropped)) ? (int)th.thickF : (int)th.thickN;
-	const Gdiplus::REAL thick = (Gdiplus::REAL)thickI;
+	// 3. Glow 효과 (BLUE_500 기반)
+	if (isActive)
+	{
+		Gdiplus::RectF rfGlow = rfOuter;
+		rfGlow.Inflate(1.5f, 1.5f);
+		Gdiplus::GraphicsPath pathGlow;
+		AddRoundRect(pathGlow, rfGlow, (Gdiplus::REAL)m_nRadius + 1.2f);
 
-	int radI = m_nRadius;
-	int maxRad = (kftc_min_i(rc.Width(), rc.Height()) - 2) / 2;
-	if (maxRad < 1) maxRad = 1;
-	if (radI > maxRad) radI = maxRad;
-	if (radI < 1) radI = 1;
+		// BLUE_500 (0, 100, 221) 기반으로 연한 그림자 생성 (Alpha 40)
+		Gdiplus::Color glowColor(40, 0, 100, 221);
+		Gdiplus::SolidBrush brGlow(glowColor);
+		g.FillPath(&brGlow, &pathGlow);
+	}
 
-	Gdiplus::RectF rfOuter(0.5f, 0.5f, (Gdiplus::REAL)rc.Width() - 1.0f, (Gdiplus::REAL)rc.Height() - 1.0f);
-	Gdiplus::RectF rfInner(rfOuter.X + thick, rfOuter.Y + thick,
-		rfOuter.Width - (thick * 2.0f), rfOuter.Height - (thick * 2.0f));
-
-	if (rfInner.Width < 2.0f) rfInner.Width = 2.0f;
-	if (rfInner.Height < 2.0f) rfInner.Height = 2.0f;
-
-	Gdiplus::Color bc = borderN;
-	if (!enabled)
-		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
-	else if (m_bFocus || m_bDropped) bc = borderF;
-	else if (m_bHover) bc = borderH;
-
+	// 4. 본체 배경 및 테두리 그리기
 	Gdiplus::GraphicsPath pathOuter;
-	Gdiplus::GraphicsPath pathInner;
+	AddRoundRect(pathOuter, rfOuter, (Gdiplus::REAL)m_nRadius);
 
-	AddRoundRect(pathOuter, rfOuter, (Gdiplus::REAL)radI);
+	Gdiplus::Color bgColor = enabled ? Gdiplus::Color(255, 255, 255, 255) : Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BG), GetGValue(KFTC_DISABLED_BG), GetBValue(KFTC_DISABLED_BG));
+	Gdiplus::SolidBrush brBg(bgColor);
+	g.FillPath(&brBg, &pathOuter);
 
-	Gdiplus::REAL innerRad = (Gdiplus::REAL)radI - thick;
-	if (innerRad < 1.0f) innerRad = 1.0f;
-	AddRoundRect(pathInner, rfInner, innerRad);
-
-	{
-		Gdiplus::SolidBrush brBorder(bc);
-		g.FillPath(&brBorder, &pathOuter);
+	// [테두리 색상 결정]
+	Gdiplus::Color bc;
+	if (!enabled) {
+		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
 	}
-	{
-		Gdiplus::SolidBrush brBg(bg);
-		g.FillPath(&brBg, &pathInner);
+	else if (isActive) {
+		// 활성화 시 BLUE_500 메인 색상을 불투명(255)하게 적용
+		bc = Gdiplus::Color(255, 0, 100, 221);
 	}
-
-	{
-		Gdiplus::Pen edgePen(bc, 1.0f);
-		edgePen.SetLineJoin(Gdiplus::LineJoinRound);
-		edgePen.SetStartCap(Gdiplus::LineCapFlat);
-		edgePen.SetEndCap(Gdiplus::LineCapFlat);
-		g.DrawPath(&edgePen, &pathOuter);
+	else if (m_bHover) {
+		bc = Gdiplus::Color(255, GetRValue(th.borderH), GetGValue(th.borderH), GetBValue(th.borderH));
+	}
+	else {
+		bc = Gdiplus::Color(255, GetRValue(th.borderN), GetGValue(th.borderN), GetBValue(th.borderN));
 	}
 
+	// 테두리 긋기 (두께를 1.6f로 상향하여 BLUE_500의 진한 맛을 살림)
+	Gdiplus::Pen penBorder(bc, isActive ? 1.6f : 1.2f);
+	penBorder.SetLineJoin(Gdiplus::LineJoinRound);
+	g.DrawPath(&penBorder, &pathOuter);
+
+	// 5. 우측 화살표 영역 및 구분선
+	float dropW = (float)m_nDropW;
+	Gdiplus::RectF rfDrop(rfOuter.GetRight() - dropW, rfOuter.Y, dropW, rfOuter.Height);
+
+	Gdiplus::Color divClr = (!enabled) ? Gdiplus::Color(255, 210, 215, 225) : Gdiplus::Color(255, 230, 235, 245);
+	Gdiplus::Pen divPen(divClr, 1.0f);
+	g.DrawLine(&divPen, Gdiplus::PointF(rfDrop.X, rfOuter.Y + 5.0f), Gdiplus::PointF(rfDrop.X, rfOuter.GetBottom() - 5.0f));
+
+	// 6. 화살표 아이콘(V) 그리기 (BLUE_500 동기화)
 	{
-		g.SetClip(Gdiplus::Rect(rcDrop.left, rcDrop.top, rcDrop.Width(), rcDrop.Height()));
-		Gdiplus::Color dropColor = dropN;
-		if (!enabled)
-			dropColor = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BG), GetGValue(KFTC_DISABLED_BG), GetBValue(KFTC_DISABLED_BG));
-		else if (m_bFocus || m_bDropped) dropColor = dropF;
-		else if (m_bHover) dropColor = dropH;
+		float cx = rfDrop.X + rfDrop.Width / 2.0f;
+		float cy = rfDrop.Y + rfDrop.Height / 2.0f;
+		float sz = 4.0f;
 
-		Gdiplus::SolidBrush dropBrush(dropColor);
-		g.FillPath(&dropBrush, &pathInner);
-
-		Gdiplus::Color divColor = (!enabled)
-			? Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER))
-			: dividerC;
-		Gdiplus::Pen divPen(divColor, 1.0f);
-		const Gdiplus::REAL x = (Gdiplus::REAL)rcDrop.left + 0.5f;
-		g.DrawLine(&divPen, Gdiplus::PointF(x, 2.0f), Gdiplus::PointF(x, (Gdiplus::REAL)rc.Height() - 3.0f));
-
-		g.ResetClip();
-	}
-
-	{
-		Gdiplus::REAL cx = (Gdiplus::REAL)rcDrop.CenterPoint().x;
-		Gdiplus::REAL cy = (Gdiplus::REAL)rcDrop.CenterPoint().y;
-		Gdiplus::REAL sz = 4.0f; // V  
-
-		Gdiplus::PointF pts[3] = {
-			Gdiplus::PointF(cx - sz, cy - sz * 0.4f),
-			Gdiplus::PointF(cx,      cy + sz * 0.6f),
-			Gdiplus::PointF(cx + sz, cy - sz * 0.4f)
-		};
-
+		Gdiplus::PointF pts[3];
 		if (m_bDropped) {
-			pts[0] = Gdiplus::PointF(cx - sz, cy + sz * 0.6f);
-			pts[1] = Gdiplus::PointF(cx, cy - sz * 0.4f);
-			pts[2] = Gdiplus::PointF(cx + sz, cy + sz * 0.6f);
+			pts[0] = { cx - sz, cy + sz * 0.45f }; pts[1] = { cx, cy - sz * 0.55f }; pts[2] = { cx + sz, cy + sz * 0.45f };
+		}
+		else {
+			pts[0] = { cx - sz, cy - sz * 0.45f }; pts[1] = { cx, cy + sz * 0.55f }; pts[2] = { cx + sz, cy - sz * 0.45f };
 		}
 
-		Gdiplus::Color arrColor = (!enabled)
-			? Gdiplus::Color(255, GetRValue(GRAY_300), GetGValue(GRAY_300), GetBValue(GRAY_300))
-			: (m_bHover ? Gdiplus::Color(255, 100, 100, 100) : Gdiplus::Color(255, 160, 160, 160));
-		if (enabled && (m_bDropped || m_bFocus)) arrColor = Gdiplus::Color(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
-
-		Gdiplus::Pen arrPen(arrColor, 2.0f); //  β 2.0
+		// 활성화 상태면 화살표도 BLUE_500으로 선명하게
+		Gdiplus::Color arrColor = (!enabled) ? Gdiplus::Color(255, 190, 190, 190) : (isActive ? bc : Gdiplus::Color(255, 160, 160, 160));
+		Gdiplus::Pen arrPen(arrColor, 2.0f);
 		arrPen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
 		arrPen.SetLineJoin(Gdiplus::LineJoinRound);
-
 		g.DrawLines(&arrPen, pts, 3);
 	}
 
-	{
-		CString text = GetDisplayText();
-
-		const int padL = ModernUIDpi::Scale(m_hWnd, 10);
-		const int padR = ModernUIDpi::Scale(m_hWnd, 6);
-
-		CRect rcText;
-		rcText.left = (int)(rfInner.X) + padL;
-		rcText.top = (int)(rfInner.Y);
-		rcText.right = (int)(rfInner.X + rfInner.Width) - dropW - padR;
-		rcText.bottom = (int)(rfInner.Y + rfInner.Height);
+	// 7. 선택된 텍스트 출력
+	CString text = GetDisplayText();
+	if (!text.IsEmpty()) {
+		const int padL = ModernUIDpi::Scale(m_hWnd, 12);
+		Gdiplus::RectF rfText = rfOuter;
+		rfText.X += padL; rfText.Width -= (padL + dropW);
 
 		CFont* pFont = GetFont();
-		LOGFONT lf;
-		::ZeroMemory(&lf, sizeof(lf));
-		if (pFont && pFont->GetSafeHandle() && pFont->GetLogFont(&lf))
-		{
-			lf.lfQuality = CLEARTYPE_QUALITY;
-			lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
-		}
-		else
-		{
-			::ZeroMemory(&lf, sizeof(lf));
-			lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
-			_tcscpy_s(lf.lfFaceName, _T("Malgun Gothic"));
-			lf.lfQuality = CLEARTYPE_QUALITY;
-		}
+		LOGFONT lf; ::ZeroMemory(&lf, sizeof(lf));
+		if (pFont && pFont->GetLogFont(&lf)) lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
+		else { lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx); _tcscpy_s(lf.lfFaceName, _T("Malgun Gothic")); }
+		lf.lfQuality = CLEARTYPE_QUALITY;
 
-		if (!m_bHasTextFontCache || m_hTextFontCache == NULL || 0 != ::memcmp(&m_lfTextCache, &lf, sizeof(LOGFONT)))
-		{
-			if (m_hTextFontCache)
-			{
-				::DeleteObject(m_hTextFontCache);
-				m_hTextFontCache = NULL;
-			}
+		if (!m_bHasTextFontCache || 0 != ::memcmp(&m_lfTextCache, &lf, sizeof(LOGFONT))) {
+			if (m_hTextFontCache) ::DeleteObject(m_hTextFontCache);
 			m_hTextFontCache = ::CreateFontIndirect(&lf);
-			m_lfTextCache = lf;
-			m_bHasTextFontCache = (m_hTextFontCache != NULL);
+			m_lfTextCache = lf; m_bHasTextFontCache = TRUE;
 		}
 
-		HFONT hFont = m_hTextFontCache ? m_hTextFontCache : (HFONT)::GetStockObject(DEFAULT_GUI_FONT);
-		Gdiplus::Font font(memDC.m_hDC, hFont);
+		Gdiplus::Font gdiFont(memDC.m_hDC, m_hTextFontCache);
+		Gdiplus::SolidBrush brText(Gdiplus::Color(255, 35, 45, 60)); // 텍스트는 가독성을 위해 짙은 회색
+		if (!enabled) brText.SetColor(Gdiplus::Color(255, GetRValue(KFTC_DISABLED_TEXT), GetGValue(KFTC_DISABLED_TEXT), GetBValue(KFTC_DISABLED_TEXT)));
 
-		if (!text.IsEmpty())
-		{
-			const COLORREF crTxt = enabled ? RGB(30, 45, 70) : KFTC_DISABLED_TEXT;
-			Gdiplus::SolidBrush brText(Gdiplus::Color(255, GetRValue(crTxt), GetGValue(crTxt), GetBValue(crTxt)));
+		Gdiplus::StringFormat fmt;
+		fmt.SetAlignment(Gdiplus::StringAlignmentNear);
+		fmt.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+		fmt.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
 
-			Gdiplus::StringFormat fmt;
-			fmt.SetAlignment(Gdiplus::StringAlignmentNear);
-			fmt.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-			fmt.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-			fmt.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-
-			Gdiplus::RectF rfText((Gdiplus::REAL)rcText.left, (Gdiplus::REAL)rcText.top,
-				(Gdiplus::REAL)rcText.Width(), (Gdiplus::REAL)rcText.Height());
-
-#ifdef _UNICODE
-			const WCHAR* w = text.GetString();
-			g.DrawString(w, -1, &font, rfText, &fmt, &brText);
-#else
-			int len = text.GetLength();
-			if (len > 0)
-			{
-				std::vector<WCHAR> wbuf((size_t)len + 1);
-				::MultiByteToWideChar(CP_ACP, 0, text, -1, &wbuf[0], len + 1);
-				g.DrawString(&wbuf[0], -1, &font, rfText, &fmt, &brText);
-			}
-#endif
-		}
+		g.DrawString(kftc_to_wide(text).c_str(), -1, &gdiFont, rfText, &fmt, &brText);
 	}
-	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 
+	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(pOldBmp);
 }
-
 /*
 [커스텀 페인팅]
 - 배경/카드/구분선/입력 보더 등 Modern UI 스타일을 직접 그립니다.
@@ -2506,16 +2416,6 @@ void CSkinnedEdit::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::Rect
 */
 void CSkinnedEdit::OnPaint()
 {
-    /* [UI-STEP] 스킨 에딧 커스텀 페인팅(배경/보더/포커스 링)
-     * 1) 기본 WM_PAINT 처리 대신, 배경/보더를 직접 그려 현대 UI 스타일을 유지한다.
-     * 2) 배경색은 카드/다이얼로그 배경과 대비되도록 테마에서 결정한다.
-     * 3) 포커스가 있으면 포커스 링(강조 보더)을 한 단계 더 그린다.
-     * 4) 텍스트 그리기는 기본 에딧의 클라이언트 그리기와 충돌하지 않도록 PrintClient/WM_PRINTCLIENT 등을 활용한다.
-     *
-     * [참고]
-     * - 에딧은 내부적으로 그리는 영역이 있어서, 보더를 '부모가' 그릴지 '컨트롤이' 그릴지 정책을 통일해야 잔상이 줄어든다.
-     */
-
 	if (m_bInPaint)
 	{
 		CPaintDC dc(this);
@@ -2532,106 +2432,102 @@ void CSkinnedEdit::OnPaint()
 		return;
 	}
 
+	// 1. 더블 버퍼링 설정 (콤보박스와 동일)
 	CDC memDC;
 	memDC.CreateCompatibleDC(&dc);
 	CBitmap bmp;
 	bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
 	CBitmap* pOldBmp = memDC.SelectObject(&bmp);
 
-	//  θ : underlay  θ 
+	// 부모 배경 채우기
 	if (m_bUseUnderlayBg)
 		memDC.FillSolidRect(&rc, m_clrUnderlayBg);
 	else
 		kftc_fill_parent_bg(m_hWnd, memDC.GetSafeHdc(), rc);
 
 	Gdiplus::Graphics g(memDC.m_hDC);
+
+	// [품질 설정] 콤보박스와 100% 동일하게 설정
 	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);
+	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
 	g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-		const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
-
+	const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
 	const KFTCInputTheme& th = GetActiveInputTheme();
-	const COLORREF crBorderN = th.borderN;
-	const COLORREF crBorderH = th.borderH;
-	const COLORREF crBorderF = th.borderF;
+	const bool isActive = enabled && m_bFocus; // 에딧은 포커스 시 활성화
 
-	//    :   ( rect )
-	Gdiplus::Color bg(255, GetRValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetGValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG), GetBValue(enabled ? RGB(255,255,255) : KFTC_DISABLED_BG));
-	Gdiplus::Color borderN(255, GetRValue(crBorderN), GetGValue(crBorderN), GetBValue(crBorderN));
-	Gdiplus::Color borderH(255, GetRValue(crBorderH), GetGValue(crBorderH), GetBValue(crBorderH));
-	Gdiplus::Color borderF(255, GetRValue(crBorderF), GetGValue(crBorderF), GetBValue(crBorderF));
+	// [좌표 설정] 콤보박스와 정확히 일치 (2.0f 여백)
+	Gdiplus::RectF rfOuter(2.0f, 2.0f, (Gdiplus::REAL)rc.Width() - 4.0f, (Gdiplus::REAL)rc.Height() - 4.0f);
 
-	Gdiplus::Color bc = borderN;
-	if (!enabled)
-		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
-	else if (m_bFocus && m_bValidationError)
-		bc = Gdiplus::Color(255, 239, 68, 68);
-	else if (m_bFocus)
-		bc = borderF;
-	else if (m_bHover)
-		bc = borderH;
-
-	const int thickI = (enabled && m_bFocus) ? (int)th.thickF : (int)th.thickN;
-	const Gdiplus::REAL thick = (Gdiplus::REAL)thickI;
-
-	int radI = m_nRadius;
-	int maxRad = (kftc_min_i(rc.Width(), rc.Height()) - 2) / 2;
-	if (maxRad < 1) maxRad = 1;
-	if (radI > maxRad) radI = maxRad;
-	if (radI < 1) radI = 1;
-
-	Gdiplus::RectF rfOuter(0.5f, 0.5f, (Gdiplus::REAL)rc.Width() - 1.0f, (Gdiplus::REAL)rc.Height() - 1.0f);
-	Gdiplus::RectF rfInner(rfOuter.X + thick, rfOuter.Y + thick,
-		rfOuter.Width - (thick * 2.0f), rfOuter.Height - (thick * 2.0f));
-
-	if (rfInner.Width < 2.0f) rfInner.Width = 2.0f;
-	if (rfInner.Height < 2.0f) rfInner.Height = 2.0f;
-
-	Gdiplus::GraphicsPath pathOuter;
-	Gdiplus::GraphicsPath pathInner;
-
-	AddRoundRect(pathOuter, rfOuter, (Gdiplus::REAL)radI);
-
-	Gdiplus::REAL innerRad = (Gdiplus::REAL)radI - thick;
-	if (innerRad < 1.0f) innerRad = 1.0f;
-	AddRoundRect(pathInner, rfInner, innerRad);
-
-	Gdiplus::SolidBrush brBorder(bc);
-	g.FillPath(&brBorder, &pathOuter);
-
-	Gdiplus::SolidBrush brBg(bg);
-	g.FillPath(&brBg, &pathInner);
-
+	// 2. Glow 효과 (콤보박스 수치와 1:1 매칭)
+	if (isActive)
 	{
-		Gdiplus::Pen edgePen(bc, 1.0f);
-		edgePen.SetLineJoin(Gdiplus::LineJoinRound);
-		edgePen.SetStartCap(Gdiplus::LineCapFlat);
-		edgePen.SetEndCap(Gdiplus::LineCapFlat);
-		g.DrawPath(&edgePen, &pathOuter);
+		Gdiplus::RectF rfGlow = rfOuter;
+		rfGlow.Inflate(1.5f, 1.5f);
+		Gdiplus::GraphicsPath pathGlow;
+		AddRoundRect(pathGlow, rfGlow, (Gdiplus::REAL)m_nRadius + 1.2f);
+
+		// BLUE_500 (0, 100, 221), Alpha 40
+		Gdiplus::Color glowColor(40, 0, 100, 221);
+		Gdiplus::SolidBrush brGlow(glowColor);
+		g.FillPath(&brGlow, &pathGlow);
 	}
 
+	// 3. 본체 배경 그리기
+	Gdiplus::GraphicsPath pathOuter;
+	AddRoundRect(pathOuter, rfOuter, (Gdiplus::REAL)m_nRadius);
+
+	Gdiplus::Color bgColor = enabled ? Gdiplus::Color(255, 255, 255, 255) : Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BG), GetGValue(KFTC_DISABLED_BG), GetBValue(KFTC_DISABLED_BG));
+	Gdiplus::SolidBrush brBg(bgColor);
+	g.FillPath(&brBg, &pathOuter);
+
+	// 4. 테두리 색상 및 긋기 (BLUE_500 직접 명시)
+	Gdiplus::Color bc;
+	if (!enabled) {
+		bc = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
+	}
+	else if (isActive) {
+		bc = Gdiplus::Color(255, 0, 100, 221); // BLUE_500 (#0064DD)
+	}
+	else if (m_bHover) {
+		bc = Gdiplus::Color(255, GetRValue(th.borderH), GetGValue(th.borderH), GetBValue(th.borderH));
+	}
+	else {
+		bc = Gdiplus::Color(255, GetRValue(th.borderN), GetGValue(th.borderN), GetBValue(th.borderN));
+	}
+
+	// 콤보박스와 동일한 두께 (Active: 1.6f / Normal: 1.2f)
+	Gdiplus::Pen penBorder(bc, isActive ? 1.6f : 1.2f);
+	penBorder.SetLineJoin(Gdiplus::LineJoinRound);
+	g.DrawPath(&penBorder, &pathOuter);
+
+	// 5. 네이티브 텍스트 영역 렌더링 (WM_PRINTCLIENT)
+	// 이 부분이 콤보박스의 DrawString을 대신하는 에딧 박스의 핵심입니다.
 	int save = memDC.SaveDC();
 	{
-		int inset = thickI + 1;
-		int l = inset, t = inset;
-		int r = rc.Width() - inset;
-		int b = rc.Height() - inset;
-		if (r <= l) r = l + 1;
-		if (b <= t) b = t + 1;
+		// 테두리 안쪽만 텍스트가 나오도록 정확히 클리핑
+		float thick = isActive ? 1.6f : 1.2f;
+		int inset = (int)(thick + 1.0f);
 
-		int rr = radI - thickI;
+		int l = (int)rfOuter.X + inset;
+		int t = (int)rfOuter.Y + inset;
+		int r = (int)rfOuter.GetRight() - inset;
+		int b = (int)rfOuter.GetBottom() - inset;
+
+		int rr = (int)m_nRadius - (int)thick;
 		if (rr < 1) rr = 1;
-		int d = rr * 2;
 
-		HRGN hrgn = ::CreateRoundRectRgn(l, t, r + 1, b + 1, d, d);
+		// 텍스트가 테두리를 덮어써서 색이 연해지는 것을 방지하기 위한 Region 생성
+		HRGN hrgn = ::CreateRoundRectRgn(l, t, r + 1, b + 1, rr * 2, rr * 2);
 		::SelectClipRgn(memDC.m_hDC, hrgn);
 		::DeleteObject(hrgn);
 
+		// 네이티브 에딧의 텍스트/커서 그리기 호출
 		::SendMessage(m_hWnd, WM_PRINTCLIENT, (WPARAM)memDC.m_hDC, (LPARAM)(PRF_CLIENT));
 	}
 	memDC.RestoreDC(save);
 
+	// 최종 비트맵 전송
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 
 	memDC.SelectObject(pOldBmp);
