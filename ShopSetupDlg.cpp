@@ -1585,13 +1585,17 @@ void CShopSetupDlg::ShowTab(int nTab)
         if (m_staticShopContainer.GetSafeHwnd()) {
             // ★ 깜빡임 방지 핵심: 자식 영역을 그리기에서 제외
             m_staticShopContainer.ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-            m_staticShopContainer.ShowWindow(SW_SHOW);
             if (!m_shopDownDlg.GetSafeHwnd()) {
+                // [FIX] Create hidden: WS_VISIBLE in RC style would cause a DWM intermediate
+                // frame visible to other windows (e.g. Notepad). Hide immediately after Create.
                 m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer);
+                m_shopDownDlg.ShowWindow(SW_HIDE);
             }
             CRect rcHost;
             m_staticShopContainer.GetClientRect(&rcHost);
-            m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(), SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            // [FIX] Position only - no SWP_SHOWWINDOW here. Showing happens after
+            // SetRedraw(TRUE) so DWM sees a single clean composition frame.
+            m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
             // 자식 창의 레이아웃 재계산 강제 트리거
             m_shopDownDlg.SendMessage(WM_SIZE, 0, MAKELPARAM(rcHost.Width(), rcHost.Height()));
         }
@@ -1628,6 +1632,16 @@ void CShopSetupDlg::ShowTab(int nTab)
     RefreshValidationVisibilityByTab();
     // [5] 잠금 해제 및 부모/자식 전체 부드럽게 갱신
     this->SendMessage(WM_SETREDRAW, TRUE);
+    // [FIX] Show container + ShopDownDlg AFTER SetRedraw(TRUE).
+    // SWP_NOREDRAW marks them visible in the window hierarchy without triggering a
+    // DWM composition update. The single RedrawWindow below then paints everything
+    // in one frame, eliminating the intermediate-state flicker on external windows.
+    if (nTab == 3 && m_staticShopContainer.GetSafeHwnd() && m_shopDownDlg.GetSafeHwnd()) {
+        m_staticShopContainer.SetWindowPos(NULL, 0, 0, 0, 0,
+            SWP_NOREDRAW | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_SHOWWINDOW);
+        m_shopDownDlg.SetWindowPos(NULL, 0, 0, 0, 0,
+            SWP_NOREDRAW | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    }
     this->RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 // ============================================================================
@@ -1939,11 +1953,12 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
                 Gdiplus::RectF cr(
                     (float)rcSec.left, (float)rcSec.top,
                     (float)rcSec.Width(), (float)rcSec.Height());
-                // 그림자 2단계
-                for (int sh = 2; sh >= 1; sh--) {
-                    Gdiplus::RectF sr(cr.X, cr.Y + (float)sh, cr.Width, cr.Height);
+                // 그림자를 더 연하게, 레이어는 줄이되 간격을 넓힘
+                for (int sh = 1; sh <= 2; sh++) {
+                    Gdiplus::RectF sr(cr.X, cr.Y + (float)sh * 1.5f, cr.Width, cr.Height);
                     Gdiplus::GraphicsPath sp; RR(sp, sr, crad);
-                    Gdiplus::SolidBrush sb(Gdiplus::Color((BYTE)(sh == 2 ? 8 : 16), 20, 40, 80));
+                    // 투명도를 8(매우 연하게)로 조정하여 '스며드는' 느낌 강조
+                    Gdiplus::SolidBrush sb(Gdiplus::Color(8, 0, 0, 0));
                     g.FillPath(&sb, &sp);
                 }
                 // 카드 본체 흰색

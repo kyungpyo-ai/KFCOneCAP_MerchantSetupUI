@@ -1219,17 +1219,20 @@ void CReaderSetupDlg::OnPaint()
 		gShad.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 		float mX = (float)mainCard.left, mY = (float)mainCard.top;
 		float mW = (float)mainCard.Width(), mH = (float)mainCard.Height();
-		float mR = (float)SX(12);
-		for (int sh = 3; sh >= 1; --sh)
+		// 수정: 16px 곡률 및 2단계 연한 그림자 (ShopSetup과 동일)
+		float mR = (float)SX(16);
+		for (int sh = 1; sh <= 2; sh++)
 		{
 			Gdiplus::GraphicsPath shPath;
-			GdipAddRoundRect(shPath, mX, mY + (float)sh, mW, mH, mR);
-			BYTE alpha = (BYTE)(sh == 3 ? 8 : sh == 2 ? 14 : 20);
-			Gdiplus::SolidBrush shBrush(Gdiplus::Color(alpha, 10, 30, 70));
-			gShad.FillPath(&shBrush, &shPath);
+			// Y축 오프셋을 sh * 1.5f로 주어 아래로 부드럽게 퍼지게 함
+			GdipAddRoundRect(shPath, mX, mY + (float)sh * 1.5f, mW, mH, mR);
+			// 알파값을 8로 고정하여 아주 연하게 처리 (핵심)
+			Gdiplus::SolidBrush shBrush(Gdiplus::Color(8, 0, 0, 0));
+			gPaint.FillPath(&shBrush, &shPath);
 		}
 	}
-	FillRoundRect(gPaint, mainCard, SX(12), RGB(255, 255, 255), RGB(220, 224, 234), 1);
+	// 본체: 곡률 16px 적용 및 테두리 색상을 더 연하게(RGB 232, 235, 242) 변경
+	FillRoundRect(gPaint, mainCard, SX(16), RGB(255, 255, 255), RGB(232, 235, 242), 1);
 
 	const int iconSize = SX(38);
 	const int iconX = mainCard.left + SX(6);
@@ -1297,8 +1300,10 @@ void CReaderSetupDlg::OnPaint()
 		Gdiplus::Graphics gHdr(memDC.GetSafeHdc());
 		gHdr.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 		gHdr.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-		const float tx = (float)(rcIcon.right + SX(12));
-		const float titleY = (float)iconY + (float)iconSize * 0.5f - 22.0f;
+// ShopSetup의 kHdrTitleGap(13)과 시각적 균형을 위해 SX(14)로 통일
+const float tx = (float)(rcIcon.right + SX(14)); 
+// -22.0f에서 -20.0f로 수정하여 텍스트의 수직 중앙 정렬을 보정
+const float titleY = (float)iconY + (float)iconSize * 0.5f - 20.0f;
 		Gdiplus::SolidBrush bTitle(Gdiplus::Color(255, 18, 24, 40));
 		Gdiplus::SolidBrush bSub(Gdiplus::Color(255, 130, 142, 162));
 		Gdiplus::StringFormat sf;
@@ -1312,7 +1317,9 @@ void CReaderSetupDlg::OnPaint()
 		gHdr.DrawString(wSub, -1, m_pGdipHdrSubFont,
 			Gdiplus::RectF(tx, titleY + 26.0f, 360.0f, 16.0f), &sf, &bSub);
 	}
-	memDC.FillSolidRect(mainCard.left + SX(6), mainCard.top + SX(74), mainCard.Width() - SX(12), 1, RGB(228, 232, 240));
+	// 시작점을 mainCard.left + SX(6)으로 변경하여 절대좌표 26px(아이콘 시작점)에 맞춤
+	// 길이를 mainCard.Width() - SX(12)로 변경하여 우측 여백도 26px로 대칭을 맞춤
+	memDC.FillSolidRect(mainCard.left + SX(6), mainCard.top + SX(74), mainCard.Width() - SX(12), 1, RGB(242, 244, 247));
 
 	CRect inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc;
 	CPoint sec1Pt, sec2Pt;
@@ -1355,27 +1362,29 @@ void CReaderSetupDlg::OnPaint()
 		gSecShad.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 		auto drawSecCard = [&](const CRect& sc)
 		{
-			float scX = (float)sc.left, scY = (float)sc.top;
-			float scW = (float)sc.Width(), scH = (float)sc.Height();
-			float scR = (float)SX(12);
-			for (int sh = 2; sh >= 1; --sh)
-			{
-				Gdiplus::GraphicsPath sp;
-				GdipAddRoundRect(sp, scX, scY + (float)sh, scW, scH, scR);
-				BYTE alpha = (BYTE)(sh == 2 ? 8 : 16);
-				Gdiplus::SolidBrush sb(Gdiplus::Color(alpha, 20, 40, 80));
-				gSecShad.FillPath(&sb, &sp);
-			}
-			Gdiplus::GraphicsPath cp;
-			GdipAddRoundRect(cp, scX, scY, scW, scH, scR);
-			Gdiplus::SolidBrush cf(Gdiplus::Color(255, 250, 251, 253));
-			gSecShad.FillPath(&cf, &cp);
+				float scR = (float)SX(16); // 곡률 16px로 통일
+				// 섹션 카드도 메인 카드와 동일한 그림자 규칙 적용
+				for (int sh = 1; sh <= 2; sh++)
+				{
+					Gdiplus::GraphicsPath sp;
+					GdipAddRoundRect(sp, (float)sc.left, (float)sc.top + (float)sh * 1.5f, (float)sc.Width(), (float)sc.Height(), scR);
+					gPaint.FillPath(&Gdiplus::SolidBrush(Gdiplus::Color(8, 0, 0, 0)), &sp);
+				}
+				Gdiplus::GraphicsPath cp;
+				GdipAddRoundRect(cp, (float)sc.left, (float)sc.top, (float)sc.Width(), (float)sc.Height(), scR);
+				// 배경색(#FAFBFD) 채우기
+				gPaint.FillPath(&Gdiplus::SolidBrush(Gdiplus::Color(255, 250, 251, 253)), &cp);
+				// 섹션 외곽선 추가 (더 깔끔한 경계선)
+				Gdiplus::Pen secPen(Gdiplus::Color(255, 238, 241, 247), 1.0f);
+				gPaint.DrawPath(&secPen, &cp);
 		};
 		drawSecCard(portSection);
 		drawSecCard(integritySection);
 	}
-	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + SX(43), portSection.Width() - SX(32), 1, RGB(238, 241, 247));
-	memDC.FillSolidRect(integritySection.left + SX(16), integritySection.top + SX(43), integritySection.Width() - SX(32), 1, RGB(238, 241, 247));
+	// 섹션 내부 구분선 색상을 더 연하게 변경
+	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + SX(43), portSection.Width() - SX(32), 1, RGB(242, 244, 247));
+	// 모든 내부 구분선을 연한 회색(RGB 242, 244, 247)으로 통일
+	memDC.FillSolidRect(integritySection.left + SX(16), integritySection.top + SX(43), integritySection.Width() - SX(32), 1, RGB(242, 244, 247));
 	drawSectionTitle(sec1Pt, _T("포트 설정"));
 	drawSectionTitle(sec2Pt, _T("무결성 체크 정보"));
 
@@ -1550,9 +1559,32 @@ void CReaderSetupDlg::OnPaint()
 					CString cellText = m_integrity_list.GetItemText(dataRow, col);
 					CRect drawRc = cellRc;
 					drawRc.DeflateRect(textPad, 0);
-					memDC.SelectObject(&m_fontSmall);
-					memDC.SetTextColor(bodyText);
-					memDC.DrawText(cellText, drawRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+					if (col == 2) // 결과 컬럼 (Index 2)
+					{
+						CRect chipRc = cellRc;
+						// 좌우 여백을 SX(4)로 줄여서 "00" 같은 숫자가 꽉 차게 보이도록 설정
+						chipRc.DeflateRect(SX(4), SX(7));
+
+						// "00"이면 녹색 계열, 그 외 모든 숫자는 빨간색 계열 테마
+						BOOL bNormal = (cellText == _T("00"));
+						COLORREF bgColor = bNormal ? RGB(232, 252, 241) : RGB(255, 235, 235);
+						COLORREF txtColor = bNormal ? RGB(21, 128, 61) : RGB(220, 38, 38);
+
+						// 배지 배경 그리기 (곡률 6px)
+						FillRoundRect(gPaint, chipRc, SX(6), bgColor, bgColor, 0);
+
+						memDC.SelectObject(&m_fontSmall);
+						memDC.SetTextColor(txtColor);
+						// cellText를 그대로 사용하여 "00", "04" 등이 그대로 출력됨
+						memDC.DrawText(cellText, chipRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					}
+					else
+					{
+						// 나머지 컬럼은 기존처럼 일반 텍스트로 출력
+						memDC.SelectObject(&m_fontSmall);
+						memDC.SetTextColor(bodyText);
+						memDC.DrawText(cellText, drawRc, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+					}
 					drawX += widths[col];
 				}
 			}
