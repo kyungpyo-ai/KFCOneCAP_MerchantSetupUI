@@ -261,6 +261,7 @@ BEGIN_MESSAGE_MAP(CModernButton, CButton)
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
 	ON_WM_ERASEBKGND()
+	ON_WM_SETCURSOR()
 	ON_MESSAGE(WM_MOUSEHOVER, OnMouseHover)
 END_MESSAGE_MAP()
 
@@ -318,6 +319,16 @@ void CModernButton::SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText)
         SetWindowText(m_strLoadingText);
 
     Invalidate(FALSE);
+}
+
+BOOL CModernButton::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (::IsWindowEnabled(m_hWnd))
+	{
+		::SetCursor(::LoadCursor(NULL, IDC_HAND)); // 손가락 커서로 강제 설정
+		return TRUE;
+	}
+	return CButton::OnSetCursor(pWnd, nHitTest, message);
 }
 
 void CModernButton::SetButtonStyle(ButtonStyle style)
@@ -433,7 +444,17 @@ void CModernButton::ClearUnderlayColor()
 */
 void CModernButton::OnMouseMove(UINT nFlags, CPoint point)
 {
-	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
+	if (!::IsWindowEnabled(m_hWnd)) {
+		CButton::OnMouseMove(nFlags, point);
+		return;
+	}
+
+	// [개선] 마우스가 움직이는 순간 즉시 호버 상태로 만들고 다시 그리기
+	if (!m_bHover) {
+		m_bHover = TRUE;
+		Invalidate(FALSE); // 즉시 갱신
+	}
+
 	kftc_track_mouse(m_hWnd, m_bTracking);
 	CButton::OnMouseMove(nFlags, point);
 }
@@ -491,40 +512,22 @@ BOOL CModernButton::OnEraseBkgnd(CDC* pDC)
 
 void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
-    /* [UI-STEP] 모던 버튼 Owner-draw 렌더링(상태별 색/보더/텍스트)
-     * 1) lpDIS로 전달된 상태(pressed/disabled/focused)를 읽어 렌더링 톤을 결정한다.
-     * 2) hover 상태는 OnMouseMove/OnMouseLeave에서 갱신된 플래그를 사용한다.
-     * 3) 배경(라운드) → 보더 → 텍스트 순서로 그려 겹침/클리핑 문제를 줄인다.
-     * 4) 텍스트는 중앙 정렬 + 폰트 적용(필요 시 ellipsis)로 버튼 폭이 바뀌어도 안정적으로 표시한다.
-     *
-     * [참고]
-     * - Owner-draw는 WM_DRAWITEM 기반이라, 컨트롤 스타일(BS_OWNERDRAW)이 세팅되어야 한다.
-     * - 그리기 중 GDI 오브젝트(브러시/펜/폰트) Select/Restore 누수에 주의.
-     */
-
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rect = lpDrawItemStruct->rcItem;
 
-
-
-	
 	const bool disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
 	const bool enabled = !disabled;
 	const bool pressed = (!disabled) && ((m_bPressed != FALSE) || ((lpDrawItemStruct->itemState & ODS_SELECTED) != 0));
-	const bool hover   = (!disabled) && (m_bHover != FALSE);
+	const bool hover = (!disabled) && (m_bHover != FALSE);
 
-	// :  DC      (hover/pressed  )
 	CDC memDC;
 	memDC.CreateCompatibleDC(pDC);
-
 	CBitmap memBmp;
 	memBmp.CreateCompatibleBitmap(pDC, rect.Width(), rect.Height());
 	CBitmap* pOldBmp = memDC.SelectObject(&memBmp);
 
-	//  (0,0) 
 	CRect rc(0, 0, rect.Width(), rect.Height());
 
-	//   :   θ(or underlay)   
 	{
 		COLORREF bgC = m_bUseUnderlayBg
 			? m_clrUnderlayBg
@@ -543,57 +546,55 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	if (m_bLoading && !m_strLoadingText.IsEmpty())
 		strText = m_strLoadingText;
 
-	//   
-		// 버튼 타입: 텍스트 기반(요청 유지)
 	CString t = strText; t.Trim();
-	BOOL isPrimary  = (t.Find(_T("확인")) >= 0);
-	BOOL isExit     = (t.Find(_T("취소")) >= 0) || (t.Find(_T("닫기")) >= 0);
-	BOOL isDanger   = (t.Find(_T("삭제")) >= 0);
+	BOOL isPrimary = (t.Find(_T("확인")) >= 0);
+	BOOL isExit = (t.Find(_T("취소")) >= 0) || (t.Find(_T("닫기")) >= 0);
+	BOOL isDanger = (t.Find(_T("삭제")) >= 0);
 	BOOL isDownload = (t.Find(_T("다운")) >= 0) || (t.Find(_T("조회")) >= 0);
-	BOOL isMini     = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
+	BOOL isMini = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
 	BOOL isProgramExit = (t.Find(_T("프로그램 종료")) >= 0);
 	BOOL isFooterAction = (isMini || isProgramExit);
 
-	//  :    1px  
-	// If style enum is explicitly set, override text-based detection.
 	if (m_style != ButtonStyle::Auto) {
-		isPrimary  = (m_style == ButtonStyle::Primary)  ? TRUE : FALSE;
-		isExit     = (m_style == ButtonStyle::Exit)     ? TRUE : FALSE;
-		isDanger   = (m_style == ButtonStyle::Danger)   ? TRUE : FALSE;
+		isPrimary = (m_style == ButtonStyle::Primary) ? TRUE : FALSE;
+		isExit = (m_style == ButtonStyle::Exit) ? TRUE : FALSE;
+		isDanger = (m_style == ButtonStyle::Danger) ? TRUE : FALSE;
 		isDownload = (m_style == ButtonStyle::Download) ? TRUE : FALSE;
-		isMini     = FALSE;
+		isMini = FALSE;
 	}
-	const int pressOffset = pressed ? 1 : 0;
 
-	// Safe padding to avoid right/bottom clipping even with AA + shadow.
+	// --- [Sinking 피드백 추가 시작] ---
+	float scale = pressed ? 0.975f : 1.0f;
+	float pressYOffset = pressed ? ModernUIDpi::ScaleF(m_hWnd, 1.2f) : 0.0f; // 아래로 살짝 밀림
+
 	CRect rcSafe = rc;
 	rcSafe.DeflateRect(0, 0, 1, 1);
 
-	const float rad = kBtnCornerRadius; // corner rounding radius
-	Gdiplus::RectF rf(
-		(float)rcSafe.left + kBtnDrawInset,
-		(float)rcSafe.top  + kBtnDrawInset + (float)pressOffset,
-		(float)rcSafe.Width()  - kBtnDrawShrink,
-		(float)rcSafe.Height() - kBtnDrawShrink);
+	const float rad = kBtnCornerRadius;
+	float centerW = (float)rcSafe.Width() - kBtnDrawShrink;
+	float centerH = (float)rcSafe.Height() - kBtnDrawShrink;
+	float newW = centerW * scale;
+	float newH = centerH * scale;
 
-	//  (Pressed    "" )
+	Gdiplus::RectF rf(
+		(float)rcSafe.left + kBtnDrawInset + (centerW - newW) / 2.0f,
+		(float)rcSafe.top + kBtnDrawInset + (centerH - newH) / 2.0f + pressYOffset,
+		newW, newH);
+	// --- [Sinking 피드백 추가 끝] ---
+
 	{
 		const int shadowA = pressed ? kBtnShadowAlphaPrs : kBtnShadowAlphaNrm;
 		const float shDy = 1.0f;
 		Gdiplus::RectF sh(rf.X, rf.Y + shDy, rf.Width, rf.Height - shDy);
-		Gdiplus::GraphicsPath sp; ModernUIGfx::AddRoundRect(sp, sh, rad);
+		Gdiplus::GraphicsPath sp; ModernUIGfx::AddRoundRect(sp, sh, rad * scale);
 		Gdiplus::SolidBrush sb(Gdiplus::Color(shadowA, 0, 0, 0));
 		g.FillPath(&sb, &sp);
 	}
 
-	Gdiplus::GraphicsPath bp; ModernUIGfx::AddRoundRect(bp, rf, rad);
+	Gdiplus::GraphicsPath bp; ModernUIGfx::AddRoundRect(bp, rf, rad * scale);
 
-	// ==============================
-	// 배경/테두리: Primary / Secondary / Tint
-	// ==============================
 	if (disabled)
 	{
-		// Disabled: muted background/border/text
 		COLORREF dbg = GRAY_100;
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(dbg), GetGValue(dbg), GetBValue(dbg)));
 		g.FillPath(&br, &bp);
@@ -602,7 +603,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
-	else 	if (isPrimary)
+	else if (isPrimary)
 	{
 		COLORREF c = pressed ? BLUE_700 : (hover ? BLUE_600 : BLUE_500);
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(c), GetGValue(c), GetBValue(c)));
@@ -610,7 +611,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (isDanger)
 	{
-		// Danger (Delete): light destructive action tone
 		COLORREF bg = pressed ? RGB(254, 202, 202) : (hover ? RGB(254, 226, 226) : RGB(254, 242, 242));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
@@ -630,7 +630,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (m_style == ButtonStyle::Default)
 	{
-		// Default: white background + always-visible gray border
 		COLORREF bg = pressed ? GRAY_100 : (hover ? GRAY_50 : RGB(255, 255, 255));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
@@ -641,7 +640,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (isExit || (!isPrimary && !isDanger && !isDownload))
 	{
-		// Secondary / footer blend style: use caller-provided palette so the button melts into the page.
 		const COLORREF bgBase = m_clrNormalBg;
 		const COLORREF bgHover = m_clrHoverBg;
 		const COLORREF bgPress = RGB(
@@ -664,14 +662,14 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		txtColor = Gdiplus::Color(255, GetRValue(GRAY_500), GetGValue(GRAY_500), GetBValue(GRAY_500));
 	else
 		txtColor = (isPrimary)
-			? Gdiplus::Color(255, 255, 255, 255)
-			: (isDanger
-				? Gdiplus::Color(255, 185, 28, 28)
-				: (isDownload
-					? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
-					: (m_bUseHoverText && hover
-						? Gdiplus::Color(255, GetRValue(m_clrHoverText), GetGValue(m_clrHoverText), GetBValue(m_clrHoverText))
-						: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText)))));
+		? Gdiplus::Color(255, 255, 255, 255)
+		: (isDanger
+			? Gdiplus::Color(255, 185, 28, 28)
+			: (isDownload
+				? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
+				: (m_bUseHoverText && hover
+					? Gdiplus::Color(255, GetRValue(m_clrHoverText), GetGValue(m_clrHoverText), GetBValue(m_clrHoverText))
+					: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText)))));
 
 
 	Gdiplus::SolidBrush tb(txtColor);
@@ -685,7 +683,9 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	sf.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
 	sf.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
 
+	// 텍스트 좌표(textRf)를 이미 축소/이동이 반영된 rf로 설정
 	Gdiplus::RectF textRf = rf;
+
 	if (m_bLoading)
 	{
 		const float spinnerSize = ModernUIDpi::ScaleF(m_hWnd, 12.0f);
@@ -753,9 +753,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	g.DrawString(wt.c_str(), -1, &font, textRf, &sf, &tb);
 
-	// 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
-
 	memDC.SelectObject(pOldBmp);
 }
 
@@ -1091,7 +1089,9 @@ void CPortToggleButton::OnLButtonUp(UINT nFlags, CPoint point)
 BEGIN_MESSAGE_MAP(CModernToggleSwitch, CButton)
 	ON_WM_MOUSEMOVE()
 	ON_WM_MOUSELEAVE()
+	ON_WM_LBUTTONDOWN() 
 	ON_WM_LBUTTONUP()
+	ON_WM_SETCURSOR() // 추가
 	ON_MESSAGE(WM_MOUSEHOVER, OnMouseHover)
 END_MESSAGE_MAP()
 
@@ -1104,6 +1104,7 @@ CModernToggleSwitch::CModernToggleSwitch()
 	m_bNoWrapEllipsis = TRUE;
 	m_bUseUnderlay = FALSE;
 	m_clrUnderlay = RGB(255, 255, 255);
+	m_bPressed = FALSE; // 추가
 }
 
 CModernToggleSwitch::~CModernToggleSwitch()
@@ -1116,153 +1117,125 @@ void CModernToggleSwitch::SetToggled(BOOL bToggled)
 	Invalidate(FALSE);
 }
 
+BOOL CModernToggleSwitch::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (::IsWindowEnabled(m_hWnd))
+	{
+		// 마우스가 스위치 위에 있을 때 손가락 커서로 변경
+		::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		return TRUE;
+	}
+	return CButton::OnSetCursor(pWnd, nHitTest, message);
+}
 
 void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
-    /* [UI-STEP] 토글 스위치 Owner-draw 렌더링(ON/OFF + hover + disabled)
-     * 1) 현재 체크 상태(GetCheck 또는 내부 상태)를 읽어 ON/OFF 색을 선택한다.
-     * 2) 트랙(바) 라운드 배경을 그리고, 썸(동그라미)을 ON/OFF 위치로 배치해 그린다.
-     * 3) hover 시 보더/트랙 톤을 살짝 강조하고, disabled 시 전체 톤을 낮춘다.
-     * 4) 정보 아이콘이 활성화된 경우 아이콘 영역을 함께 그려 클릭 히트테스트와 일치시킨다.
-     */
-
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
 	CRect rcItem = lpDrawItemStruct->rcItem;
 
 	const int w = rcItem.Width();
 	const int h = rcItem.Height();
 
+	// 1. 상태 판별
 	const BOOL disabled = ((lpDrawItemStruct->itemState & ODS_DISABLED) != 0) || (::IsWindowEnabled(m_hWnd) == FALSE);
+	// m_bPressed 변수가 없다면 (lpDrawItemStruct->itemState & ODS_SELECTED)를 사용하세요.
+	const BOOL pressed = (!disabled) && (m_bPressed || (lpDrawItemStruct->itemState & ODS_SELECTED));
+
 	if (disabled) { m_bHover = FALSE; }
 
-	// Double buffering (toggle click/focus flicker )
+	// 더블 버퍼링
 	CDC memDC;
 	memDC.CreateCompatibleDC(pDC);
-
 	CBitmap memBmp;
 	memBmp.CreateCompatibleBitmap(pDC, w, h);
 	CBitmap* pOldBmp = memDC.SelectObject(&memBmp);
 
-	// : underlay 켱,  θ  (  )
-	COLORREF bg = m_bUseUnderlay
-		? m_clrUnderlay
-		: kftc_parent_bg_color(m_hWnd, memDC.GetSafeHdc());
+	COLORREF bg = m_bUseUnderlay ? m_clrUnderlay : kftc_parent_bg_color(m_hWnd, memDC.GetSafeHdc());
 	memDC.FillSolidRect(0, 0, w, h, bg);
 
 	Gdiplus::Graphics graphics(memDC.GetSafeHdc());
 	graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 	graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
 
-	//   (0,0)
-	CRect rect(0, 0, w, h);
+	// 2. [핵심] Scale + Sinking 수치 적용
+	float scale = pressed ? 0.97f : 1.0f;
+	float pressY = pressed ? ModernUIDpi::ScaleF(m_hWnd, 1.2f) : 0.0f;
 
-	//  /:  ,   (TOSS/Kakao )
-	REAL switchW = ModernUIDpi::ScaleF(m_hWnd, 44.0f);
-	REAL switchH = ModernUIDpi::ScaleF(m_hWnd, 24.0f);
+	// 원래 스위치 트랙 크기
+	REAL origW = ModernUIDpi::ScaleF(m_hWnd, 44.0f);
+	REAL origH = ModernUIDpi::ScaleF(m_hWnd, 24.0f);
 	REAL marginR = (float)ModernUIDpi::Scale(m_hWnd, 2);
-	REAL switchX = (REAL)rect.Width() - switchW - marginR;
-	REAL switchY = (rect.Height() - switchH) / 2.0f;
+	REAL origX = (REAL)w - origW - marginR;
+	REAL origY = (h - origH) / 2.0f;
 
-	// keep stroke inside (avoid right-edge clipping)
-	Gdiplus::RectF switchRect(switchX + ModernUIDpi::ScaleF(m_hWnd, 0.5f), switchY + ModernUIDpi::ScaleF(m_hWnd, 0.5f), switchW - ModernUIDpi::ScaleF(m_hWnd, 1.0f), switchH - ModernUIDpi::ScaleF(m_hWnd, 1.0f));
+	// [수정] 스위치 본체 좌표 계산 (기존 위치 유지 + 내부에서만 움직임)
+	Gdiplus::RectF switchRect(
+		origX + (origW * (1.0f - scale) / 2.0f),
+		origY + pressY + (origH * (1.0f - scale) / 2.0f), // 여기서만 pressY 적용
+		origW * scale,
+		origH * scale
+	);
 
-	// ()
 	Gdiplus::GraphicsPath switchPath;
-	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchH / 2);
+	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchRect.Height / 2.0f);
 
-	if (m_bToggled)
-	{
-		// ON:   /      
+	// 트랙 그리기 (ON/OFF 색상 로직)
+	if (m_bToggled) {
 		Gdiplus::Color c1, c2;
-		if (disabled)
-		{
-			c1 = Gdiplus::Color(255, GetRValue(GRAY_300), GetGValue(GRAY_300), GetBValue(GRAY_300));
-			c2 = Gdiplus::Color(255, GetRValue(GRAY_200), GetGValue(GRAY_200), GetBValue(GRAY_200));
+		if (disabled) {
+			c1 = Gdiplus::Color(255, 200, 200, 200); c2 = Gdiplus::Color(255, 220, 220, 220);
 		}
-		else if (m_bHover)
-		{
-			c1 = Gdiplus::Color(255, 20, 118, 245);  // :   
-			c2 = Gdiplus::Color(255, 10, 140, 255);
+		else {
+			c1 = m_bHover ? Gdiplus::Color(255, 20, 118, 245) : Gdiplus::Color(255, 0, 100, 221);
+			c2 = m_bHover ? Gdiplus::Color(255, 10, 140, 255) : Gdiplus::Color(255, 15, 124, 255);
 		}
-		else
-		{
-			c1 = Gdiplus::Color(255, 0, 100, 221);
-			c2 = Gdiplus::Color(255, 15, 124, 255);
-		}
-		Gdiplus::LinearGradientBrush trackBrush(
-			Gdiplus::PointF(switchRect.X, switchRect.Y),
-			Gdiplus::PointF(switchRect.X, switchRect.Y + switchRect.Height),
-			c1, c2);
+		Gdiplus::LinearGradientBrush trackBrush(Gdiplus::PointF(switchRect.X, switchRect.Y),
+			Gdiplus::PointF(switchRect.X, switchRect.Y + switchRect.Height), c1, c2);
 		graphics.FillPath(&trackBrush, &switchPath);
 	}
-	else
-	{
-		// OFF:   /     
-		Gdiplus::Color offColor = disabled
-			? Gdiplus::Color(255, GetRValue(GRAY_200), GetGValue(GRAY_200), GetBValue(GRAY_200))
-			: (m_bHover
-				? Gdiplus::Color(255, 208, 218, 232)   // :   
-				: Gdiplus::Color(255, 230, 236, 245));   // 
+	else {
+		Gdiplus::Color offColor = disabled ? Gdiplus::Color(255, 220, 220, 220) :
+			(m_bHover ? Gdiplus::Color(255, 208, 218, 232) : Gdiplus::Color(255, 230, 236, 245));
 		Gdiplus::SolidBrush trackBrush(offColor);
 		graphics.FillPath(&trackBrush, &switchPath);
 	}
 
-	//    θ( ) :    
-
-	// ():   1.5px 
-	REAL knobSize = ModernUIDpi::ScaleF(m_hWnd, m_bHover ? 19.5f : 18.0f);
+	// 4. 노브(Knob) 그리기 - switchRect 기준으로 자동 스케일링됨
+	REAL knobSize = switchRect.Height * 0.85f; // 트랙 높이의 85% 크기
 	REAL knobPadding = (switchRect.Height - knobSize) / 2.0f;
-	REAL knobX = m_bToggled
-		? (switchRect.X + switchRect.Width - knobSize - knobPadding)
-		: (switchRect.X + knobPadding);
+	REAL knobX = m_bToggled ? (switchRect.X + switchRect.Width - knobSize - knobPadding) : (switchRect.X + knobPadding);
 	REAL knobY = switchRect.Y + knobPadding;
 
 	Gdiplus::RectF knobRect(knobX, knobY, knobSize, knobSize);
 
-	//  (    )
-	BYTE shadowAlpha = m_bHover ? 40 : 28;
-	Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(shadowAlpha, 0, 0, 0));
-	Gdiplus::RectF shadowRect(knobX + ModernUIDpi::ScaleF(m_hWnd, 0.5f),
-		knobY + ModernUIDpi::ScaleF(m_hWnd, 0.8f),
-		knobSize, knobSize);
-	graphics.FillEllipse(&shadowBrush, shadowRect);
+	// 노브 그림자
+	Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(pressed ? 20 : 40, 0, 0, 0));
+	graphics.FillEllipse(&shadowBrush, knobX, knobY + 1.0f, knobSize, knobSize);
 
-	//   (,    )
-	Gdiplus::Color knobColor = disabled
-		? Gdiplus::Color(255, GetRValue(GRAY_100), GetGValue(GRAY_100), GetBValue(GRAY_100))
-		: (m_bHover
-			? Gdiplus::Color(255, 252, 252, 255)   // :    
-			: Gdiplus::Color(255, 255, 255, 255));
-	Gdiplus::SolidBrush knobBrush(knobColor);
+	// 노브 본체
+	Gdiplus::Color kClr = disabled ? Gdiplus::Color(255, 240, 240, 240) : Gdiplus::Color(255, 255, 255, 255);
+	Gdiplus::SolidBrush knobBrush(kClr);
 	graphics.FillEllipse(&knobBrush, knobRect);
 
-	// 
+	// 5. 텍스트 그리기 - pressY 만큼 아래로 이동
 	CString strText;
 	GetWindowText(strText);
-
-	if (!strText.IsEmpty())
-	{
-		//     : GDI DrawText 
-		// GDI+  GDI  Windows  
-		//     .
+	if (!strText.IsEmpty()) {
 		HFONT hFont = (HFONT)::SendMessage(m_hWnd, WM_GETFONT, 0, 0);
 		if (!hFont) hFont = (HFONT)::GetStockObject(DEFAULT_GUI_FONT);
-
 		HFONT hOld = (HFONT)::SelectObject(memDC.GetSafeHdc(), hFont);
-		//   RGB(100, 112, 132) 
-		::SetTextColor(memDC.GetSafeHdc(), disabled ? GRAY_500 : RGB(100, 112, 132));
-		::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
 
-		CRect rcText(0, 0, (int)switchX - 6, rect.Height());
+		::SetTextColor(memDC.GetSafeHdc(), disabled ? RGB(160, 160, 160) : RGB(100, 112, 132));
+		::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
+		// pressY를 더하지 않고 원래 h(높이) 기준으로 중앙 정렬
+		CRect rcText(0, 0, (int)origX - 6, h);
 		::DrawText(memDC.GetSafeHdc(), strText, -1, &rcText,
 			DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 
 		::SelectObject(memDC.GetSafeHdc(), hOld);
 	}
 
-	// Present
 	pDC->BitBlt(rcItem.left, rcItem.top, w, h, &memDC, 0, 0, SRCCOPY);
-
 	memDC.SelectObject(pOldBmp);
 }
 
@@ -1296,15 +1269,20 @@ LRESULT CModernToggleSwitch::OnMouseHover(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point)
-{
-	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnLButtonUp(nFlags, point); return; }
+void CModernToggleSwitch::OnLButtonDown(UINT nFlags, CPoint point) {
+	if (!::IsWindowEnabled(m_hWnd)) return;
+	m_bPressed = TRUE;
+	Invalidate(FALSE);
+	CButton::OnLButtonDown(nFlags, point);
+}
+
+// 기존 OnLButtonUp 수정
+void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point) {
+	if (!::IsWindowEnabled(m_hWnd)) return;
+	m_bPressed = FALSE; // 상태 해제
 	m_bToggled = !m_bToggled;
 	Invalidate(FALSE);
-
-	// θ BN_CLICKED 
 	GetParent()->SendMessage(WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(), BN_CLICKED), (LPARAM)m_hWnd);
-
 	CButton::OnLButtonUp(nFlags, point);
 }
 

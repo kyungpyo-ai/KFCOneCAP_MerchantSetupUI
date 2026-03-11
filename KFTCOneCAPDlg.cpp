@@ -59,9 +59,12 @@ void CHomeCardButton::ResetVisualState()
 // 2. 함수 전체 구현
 BOOL CHomeCardButton::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 {
-    // 마우스가 버튼 영역 안에 있을 때 손가락 커서로 변경
-    ::SetCursor(AfxGetApp()->LoadStandardCursor(IDC_HAND));
-    return TRUE;
+    if (::IsWindowEnabled(m_hWnd))
+    {
+        ::SetCursor(::LoadCursor(NULL, IDC_HAND)); // 손가락 커서로 강제 설정
+        return TRUE;
+    }
+    return CButton::OnSetCursor(pWnd, nHitTest, message);
 }
 
 void CHomeCardButton::StartTrackMouseLeave()

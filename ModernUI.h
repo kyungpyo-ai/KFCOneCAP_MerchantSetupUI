@@ -189,7 +189,7 @@ protected:
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
-
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
     DECLARE_MESSAGE_MAP()
@@ -255,6 +255,7 @@ protected:
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+
 
     DECLARE_MESSAGE_MAP()
 
@@ -339,6 +340,8 @@ protected:
     afx_msg void OnMouseLeave();
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 
     DECLARE_MESSAGE_MAP()
 
@@ -347,6 +350,7 @@ private:
     BOOL m_bToggled;
     BOOL m_bHover;
     BOOL m_bTracking;
+    BOOL m_bPressed; // 마우스 눌림 상태 저장용 추가
 
     int  m_nTextPx;
     BOOL m_bNoWrapEllipsis;
