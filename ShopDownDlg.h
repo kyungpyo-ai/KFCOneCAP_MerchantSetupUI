@@ -27,13 +27,14 @@ protected:
     afx_msg void OnSize(UINT nType, int cx, int cy);
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnDestroy();
-    afx_msg BOOL OnNcActivate(BOOL bActive);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
     afx_msg void OnTimer(UINT_PTR nIDEvent);  // [FIX] xxxSaveDlgFocus O(N^2) Â÷´Ü
+    afx_msg BOOL OnNcActivate(BOOL bActive);
+    afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()

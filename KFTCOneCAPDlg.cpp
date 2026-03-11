@@ -26,6 +26,7 @@ CHomeCardButton::CHomeCardButton()
     : m_bHover(FALSE)
     , m_bPressed(FALSE)
     , m_bTracking(FALSE)
+    , m_bIgnoreMouse(FALSE)
     , m_nHoverProgress(0)
     , m_nPressProgress(0)
 {
@@ -39,6 +40,7 @@ BEGIN_MESSAGE_MAP(CHomeCardButton, CButton)
     ON_WM_CAPTURECHANGED()
     ON_WM_CANCELMODE()
     ON_WM_TIMER()
+    ON_WM_SETCURSOR()
 END_MESSAGE_MAP()
 
 void CHomeCardButton::ResetVisualState()
@@ -46,11 +48,20 @@ void CHomeCardButton::ResetVisualState()
     m_bHover = FALSE;
     m_bPressed = FALSE;
     m_bTracking = FALSE;
+    m_bIgnoreMouse = FALSE;
     m_nHoverProgress = 0;
     m_nPressProgress = 0;
     KillTimer(kCardAnimTimerId);
     if (::IsWindow(m_hWnd))
         Invalidate(FALSE);
+}
+
+// 2. 함수 전체 구현
+BOOL CHomeCardButton::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+    // 마우스가 버튼 영역 안에 있을 때 손가락 커서로 변경
+    ::SetCursor(AfxGetApp()->LoadStandardCursor(IDC_HAND));
+    return TRUE;
 }
 
 void CHomeCardButton::StartTrackMouseLeave()
@@ -64,6 +75,14 @@ void CHomeCardButton::StartTrackMouseLeave()
     tme.hwndTrack = m_hWnd;
     if (_TrackMouseEvent(&tme))
         m_bTracking = TRUE;
+}
+
+void CHomeCardButton::ForceFadeOut()
+{
+    m_bIgnoreMouse = TRUE; // 마우스 이벤트를 차단합니다.
+    m_bHover = FALSE;   // 마우스 위치와 상관없이 호버 상태 해제
+    m_bPressed = FALSE; // 눌림 상태 해제
+    StartAnimTimer();   // 애니메이션 타이머 돌려서 StepAnimation이 작동하게 함
 }
 
 void CHomeCardButton::StartAnimTimer()
@@ -87,28 +106,37 @@ void CHomeCardButton::StepAnimation()
     const int nPressTarget = m_bPressed ? 100 : 0;
     BOOL bChanged = FALSE;
 
-    if (m_nHoverProgress < nHoverTarget)
+    // [Hover] 사라질 때의 속도를 다시 부드럽게 (/4)
+    if (m_nHoverProgress != nHoverTarget)
     {
-        m_nHoverProgress = min(100, m_nHoverProgress + 14);  // hover in ~70ms
-        bChanged = TRUE;
-    }
-    else if (m_nHoverProgress > nHoverTarget)
-    {
-        m_nHoverProgress = max(0, m_nHoverProgress - 10);   // hover out ~100ms
+        int diff = nHoverTarget - m_nHoverProgress;
+        int step = diff / 4;
+        if (step == 0) step = (diff > 0) ? 1 : -1;
+        m_nHoverProgress += step;
         bChanged = TRUE;
     }
 
-    if (m_nPressProgress < nPressTarget)
+    // [Press] 복귀 속도를 너무 빠르지 않게 쫀득한 수준으로 조정
+    if (m_nPressProgress != nPressTarget)
     {
-        m_nPressProgress = min(100, m_nPressProgress + 34);
-        bChanged = TRUE;
-    }
-    else if (m_nPressProgress > nPressTarget)
-    {
-        // ease-out: 처음엔 빠르게, 끝으로 갈수록 부드럽게 감속 → 떨림 없이 자연스러운 복귀
-        // exponential decay: step always shrinks proportionally, no plateau
-        m_nPressProgress = m_nPressProgress * 70 / 100;
-        if (m_nPressProgress < 2) m_nPressProgress = 0;
+        int diff = nPressTarget - m_nPressProgress;
+        int step = 0;
+
+        if (diff > 0) // 누를 때
+        {
+            step = (diff + 3) / 4;
+        }
+        else // 뗄 때 (복귀)
+        {
+            // [수정] /2 대신 /3으로 조정하여 너무 '탁' 튀어 오르는 느낌을 줄였습니다.
+            step = diff / 3;
+            if (step == 0) step = -1;
+
+            // 마지막 도착 지점에서만 확실히 붙여줍니다.
+            if (abs(diff) < 5) step = diff;
+        }
+
+        m_nPressProgress += step;
         bChanged = TRUE;
     }
 
@@ -120,6 +148,11 @@ void CHomeCardButton::StepAnimation()
 
 void CHomeCardButton::OnMouseMove(UINT nFlags, CPoint point)
 {
+
+    // 강제 종료 중(Ignore)이라면 마우스 이벤트를 아예 무시합니다.
+    if (m_bIgnoreMouse)
+        return;
+
     StartTrackMouseLeave();
     if (!m_bHover)
     {
@@ -140,6 +173,9 @@ LRESULT CHomeCardButton::OnMouseLeave(WPARAM, LPARAM)
 
 void CHomeCardButton::OnLButtonDown(UINT nFlags, CPoint point)
 {
+    // 이미 클릭되어 처리 중(Ignore)이라면 추가 클릭 무시
+    if (m_bIgnoreMouse) return;
+
     m_bPressed = TRUE;
     StartAnimTimer();
     CButton::OnLButtonDown(nFlags, point);
@@ -219,11 +255,24 @@ CKFTCOneCAPDlg::CKFTCOneCAPDlg(CWnd* pParent /*=NULL*/)
     , m_ePendingOpen(PENDING_NONE)
     , m_pLogoBitmap(NULL)
     , m_nFooterDividerY(0)
+    , m_pGdiFontTitle(NULL) // 추가: GDI+ 폰트 포인터 초기화
+    , m_pGdiFontDesc(NULL)  // 추가: GDI+ 폰트 포인터 초기화
 {
 }
 
 CKFTCOneCAPDlg::~CKFTCOneCAPDlg()
 {
+    // 1. GDI+ 캐시 폰트 해제 (추가됨)
+    if (m_pGdiFontTitle != NULL) {
+        delete m_pGdiFontTitle;
+        m_pGdiFontTitle = NULL;
+    }
+    if (m_pGdiFontDesc != NULL) {
+        delete m_pGdiFontDesc;
+        m_pGdiFontDesc = NULL;
+    }
+
+    // 2. 로고 비트맵 해제
     if (m_pLogoBitmap != NULL)
     {
         delete m_pLogoBitmap;
@@ -249,12 +298,16 @@ BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
     ON_WM_DRAWITEM()
     ON_WM_CTLCOLOR()
     ON_WM_CLOSE()
+    ON_WM_ACTIVATE()
+    ON_WM_NCACTIVATE()
     ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 BOOL CKFTCOneCAPDlg::OnInitDialog()
 {
     CDialog::OnInitDialog();
+
+    ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
     ModernUIGfx::EnsureGdiplusStartup();
 
@@ -311,37 +364,70 @@ BOOL CKFTCOneCAPDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 
 void CKFTCOneCAPDlg::EnsureFonts()
 {
+    // [1] 이미 폰트가 생성되었다면 중복 생성을 방지합니다.
     if (m_bFontsReady)
         return;
 
+    // [2] 시스템 기본 폰트 정보(메시지 폰트 등)를 가져옵니다.
     NONCLIENTMETRICS ncm = { 0 };
     ncm.cbSize = sizeof(ncm);
     SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
 
     LOGFONT lf = ncm.lfMessageFont;
-    lf.lfQuality = CLEARTYPE_QUALITY;
-    _tcscpy(lf.lfFaceName, _T("맑은 고딕"));
+    lf.lfQuality = CLEARTYPE_QUALITY;       // 폰트 외곽선을 부드럽게 처리
+    _tcscpy(lf.lfFaceName, _T("맑은 고딕")); // 기본 폰트 설정
 
-    lf.lfHeight = -MulDiv(18, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
-    lf.lfWeight = FW_EXTRABOLD;   // font-weight: 800
+    // 현재 창의 DPI 세팅을 가져옵니다.
+    UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
+
+    // --- (A) MFC CFont 객체 생성 섹션 ---
+
+    // 1. 메인 타이틀 (KFTCOneCAP) - 18pt, Extra Bold(800)
+    lf.lfHeight = -MulDiv(18, dpi, 72);
+    lf.lfWeight = FW_EXTRABOLD;
     m_fontTitle.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(11, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
+    // 2. 서브 타이틀 (버전 정보 등) - 11pt, Normal
+    lf.lfHeight = -MulDiv(11, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontSubtitle.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(14, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
+    // 3. 카드 제목 (리더기 설정 등) - 14pt, Bold
+    lf.lfHeight = -MulDiv(14, dpi, 72);
     lf.lfWeight = FW_BOLD;
     m_fontCardTitle.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(10, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
+    // 4. 카드 설명 (두 줄 설명) - 10pt, Normal
+    lf.lfHeight = -MulDiv(10, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontCardDesc.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -MulDiv(12, ModernUIDpi::GetDpiForHwnd(m_hWnd), 72);
+    // 5. 푸터 버튼 및 기타 - 12pt, Normal
+    lf.lfHeight = -MulDiv(12, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontFooter.CreateFontIndirect(&lf);
 
+
+    // --- (B) GDI+ 캐시 폰트 생성 섹션 (성능 최적화 핵심) ---
+
+    // 현재 다이얼로그의 DC를 잠시 빌려 폰트 생성의 기준점(Resolution)으로 삼습니다.
+    HDC hDC = ::GetDC(m_hWnd);
+    if (hDC != NULL)
+    {
+        // 1. 카드 제목용 GDI+ 폰트 캐싱
+        LOGFONT lfCardTitle;
+        m_fontCardTitle.GetLogFont(&lfCardTitle);
+        m_pGdiFontTitle = new Gdiplus::Font(hDC, &lfCardTitle);
+
+        // 2. 카드 설명용 GDI+ 폰트 캐싱
+        LOGFONT lfCardDesc;
+        m_fontCardDesc.GetLogFont(&lfCardDesc);
+        m_pGdiFontDesc = new Gdiplus::Font(hDC, &lfCardDesc);
+
+        ::ReleaseDC(m_hWnd, hDC);
+    }
+
+    // [3] 모든 폰트 준비 완료 플래그 설정
     m_bFontsReady = TRUE;
 }
 
@@ -434,6 +520,9 @@ void CKFTCOneCAPDlg::DrawBackground(CDC& dc)
     dc.FillSolidRect(&rc, kHomeBg);
 }
 
+// ==========================================
+// [CKFTCOneCAPDlg::DrawHeader 함수 수정]
+// ==========================================
 void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
 {
     const int left = SX(56);
@@ -442,39 +531,37 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     const int textLeft = left + logoBox + SX(15);
 
     Graphics g(dc.GetSafeHdc());
+    // 최고 품질의 렌더링 설정
     g.SetSmoothingMode(SmoothingModeAntiAlias);
+    g.SetTextRenderingHint(TextRenderingHintAntiAlias);
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
+    // --- 로고 그리기 ---
     RectF rcLogo((REAL)left, (REAL)(top + SX(6)), (REAL)logoBox, (REAL)logoBox);
-
-    if (m_pLogoBitmap != NULL)
-    {
+    if (m_pLogoBitmap != NULL) {
         const REAL pad = (REAL)SX(1);
         g.DrawImage(m_pLogoBitmap, RectF(rcLogo.X + pad, rcLogo.Y + pad, rcLogo.Width - pad * 2.0f, rcLogo.Height - pad * 2.0f));
     }
-    else
-    {
+    else {
         SolidBrush fillBrush(Color(255, 18, 148, 233));
         g.FillEllipse(&fillBrush, RectF(rcLogo.X + SX(10), rcLogo.Y + SX(10), rcLogo.Width - SX(20), rcLogo.Height - SX(20)));
     }
 
-    dc.SetBkMode(TRANSPARENT);
+    // --- 타이틀/서브타이틀 그리기 (GDI+ 방식으로 교체) ---
+    LOGFONT lfTitle, lfSub;
+    m_fontTitle.GetLogFont(&lfTitle);
+    m_fontSubtitle.GetLogFont(&lfSub);
 
-    //메인타이틀 위치
-    CRect rcTitle(textLeft, top + SX(2), textLeft + SX(360), top + SX(34));
-    // 서브타이틀 위치
-    CRect rcSub(textLeft, top + SX(40), textLeft + SX(470), top + SX(63));
+    Font gdiFontTitle(dc.GetSafeHdc(), &lfTitle);
+    Font gdiFontSub(dc.GetSafeHdc(), &lfSub);
 
-    CFont* pOld = dc.SelectObject(&m_fontTitle);
-    dc.SetTextColor(kTitleText);
-    dc.DrawText(_T("KFTCOneCAP"), &rcTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    SolidBrush titleBrush(Color(255, GetRValue(kTitleText), GetGValue(kTitleText), GetBValue(kTitleText)));
+    SolidBrush subBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
 
-    dc.SelectObject(&m_fontSubtitle);
-    dc.SetTextColor(kSubText);
-    dc.DrawText(_T("금융결제원 결제 솔루션 프로그램 v1.0.0.1"), &rcSub, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
-    dc.SelectObject(pOld);
+    // 텍스트 출력
+    g.DrawString(L"KFTCOneCAP", -1, &gdiFontTitle, PointF((REAL)textLeft, (REAL)(top + SX(2))), &titleBrush);
+    g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, &gdiFontSub, PointF((REAL)textLeft, (REAL)(top + SX(40))), &subBrush);
 }
-
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
 {
     CRect rc;
@@ -657,46 +744,42 @@ void CKFTCOneCAPDlg::DrawReceiptIcon(Graphics& g, const RectF& rc, const Color& 
 
 void CKFTCOneCAPDlg::DrawCardIcon(Graphics& g, const CRect& rcIcon, HomeCardType type, int nHoverProgress, int nPressProgress)
 {
+    // [중요] 현재 버튼 전체의 움직임(Transform) 상태를 저장합니다.
+    GraphicsState state = g.Save();
+
     g.SetSmoothingMode(SmoothingModeAntiAlias);
 
-    // 1. 색상 결정 - 3단계 부드러운 보간
-    // Normal: bg=BLUE_50(#EBF4FF), icon=BLUE_500
-    // Hover:  bg=BLUE_100(#A8D0FF), icon=BLUE_500
-    // Press:  bg=BLUE_500, icon=White
+    // 1. 색상 결정 로직 (기존과 동일)
     Color colorBg, colorIcon;
     {
         int hBgR = 235 + (168 - 235) * nHoverProgress / 100;
         int hBgG = 244 + (208 - 244) * nHoverProgress / 100;
         int hBgB = 255;
-
         int bgR = hBgR + (0 - hBgR) * nPressProgress / 100;
         int bgG = hBgG + (100 - hBgG) * nPressProgress / 100;
         int bgB = hBgB + (221 - hBgB) * nPressProgress / 100;
-        bgR = max(0, min(255, bgR));
-        bgG = max(0, min(255, bgG));
-        bgB = max(0, min(255, bgB));
-        colorBg = Color(255, (BYTE)bgR, (BYTE)bgG, (BYTE)bgB);
+        colorBg = Color(255, (BYTE)max(0, min(255, bgR)), (BYTE)max(0, min(255, bgG)), (BYTE)max(0, min(255, bgB)));
 
         int iconR = 0 + (255 - 0) * nPressProgress / 100;
         int iconG = 100 + (255 - 100) * nPressProgress / 100;
         int iconB = 221 + (255 - 221) * nPressProgress / 100;
-        colorIcon = Color(255, (BYTE)min(255, iconR), (BYTE)min(255, iconG), (BYTE)min(255, iconB));
+        int iconA = 255 - (35 * nPressProgress / 100);
+        colorIcon = Color((BYTE)iconA, (BYTE)min(255, iconR), (BYTE)min(255, iconG), (BYTE)min(255, iconB));
     }
 
-    // 2. 사라졌던 배경 박스 다시 그리기
+    // 2. 배경 박스 그리기
     RectF rectIcon((REAL)rcIcon.left, (REAL)rcIcon.top, (REAL)rcIcon.Width(), (REAL)rcIcon.Height());
-
-    // 누를 때 카드 전체가 쫀득하게 작아지는 효과 (배경만 축소)
-    float cardScale = 1.0f - (0.10f * nPressProgress / 100.0f);   // 10%: 아이콘 눌림감 강화
     PointF center(rectIcon.X + rectIcon.Width / 2.0f, rectIcon.Y + rectIcon.Height / 2.0f);
 
+    // [아이콘 전용 로컬 변환] 누를 때 아이콘 배경만 살짝 더 작아지는 효과
+    float localScale = 1.0f - (0.03f * nPressProgress / 100.0f);
     g.TranslateTransform(center.X, center.Y);
-    g.ScaleTransform(cardScale, cardScale);
+    g.ScaleTransform(localScale, localScale);
     g.TranslateTransform(-center.X, -center.Y);
 
     SolidBrush brBg(colorBg);
     GraphicsPath pathBg;
-    REAL rad = 12.0f; // 둥근 모서리 반지름
+    REAL rad = 12.0f;
     pathBg.AddArc(rectIcon.X, rectIcon.Y, rad * 2, rad * 2, 180, 90);
     pathBg.AddArc(rectIcon.GetRight() - rad * 2, rectIcon.Y, rad * 2, rad * 2, 270, 90);
     pathBg.AddArc(rectIcon.GetRight() - rad * 2, rectIcon.GetBottom() - rad * 2, rad * 2, rad * 2, 0, 90);
@@ -704,19 +787,13 @@ void CKFTCOneCAPDlg::DrawCardIcon(Graphics& g, const CRect& rcIcon, HomeCardType
     pathBg.CloseFigure();
     g.FillPath(&brBg, &pathBg);
 
-    g.ResetTransform(); // 배경 축소 효과 해제 (아이콘을 위해 리셋)
-
-    // 3.  아이콘 그리기 (누를 때 작아지지 않게 설정)
-    // 호버 시에는 커지지만, 누를 때는 작아지지 않고 호버 크기(1.1배) 유지
-    float iconScale = 1.0f + (0.1f * nHoverProgress / 100.0f);
-
+    // 3. 실제 아이콘 모양 그리기 (호버 시 살짝 커짐)
+    float iconScale = 1.0f + (0.05f * nHoverProgress / 100.0f);
     g.TranslateTransform(center.X, center.Y);
     g.ScaleTransform(iconScale, iconScale);
     g.TranslateTransform(-center.X, -center.Y);
 
     RectF rcDraw(center.X - 14.0f, center.Y - 14.0f, 28.0f, 28.0f);
-    SolidBrush brIcon(colorIcon);
-
     switch (type) {
     case CARD_READER:  DrawReaderIcon(g, rcDraw, colorIcon); break;
     case CARD_SHOP:    DrawShopIcon(g, rcDraw, colorIcon);   break;
@@ -724,14 +801,14 @@ void CKFTCOneCAPDlg::DrawCardIcon(Graphics& g, const CRect& rcIcon, HomeCardType
     case CARD_RECEIPT: DrawReceiptIcon(g, rcDraw, colorIcon); break;
     }
 
-    g.ResetTransform();
+    // [가장 중요] 아이콘 전용 변환을 종료하고, 아까 저장했던 버튼 전체 움직임 상태로 복구합니다.
+    g.Restore(state);
 }
 
 void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
 {
     CDC dc;
     dc.Attach(lpDIS->hDC);
-
     CRect rc = lpDIS->rcItem;
 
     CDC memDC;
@@ -740,15 +817,12 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
     CBitmap* pOldBmp = memDC.SelectObject(&bmp);
 
+    // [1] 배경 초기화
     memDC.FillSolidRect(0, 0, rc.Width(), rc.Height(), kHomeBg);
 
-    int nHoverProgress = 0;
-    int nPressProgress = 0;
-
-    CWnd* pWnd = GetDlgItem((int)lpDIS->CtlID);
-    CHomeCardButton* pCard = (CHomeCardButton*)pWnd;
-    if (pCard != NULL && ::IsWindow(pCard->m_hWnd))
-    {
+    int nHoverProgress = 0, nPressProgress = 0;
+    CHomeCardButton* pCard = (CHomeCardButton*)GetDlgItem((int)lpDIS->CtlID);
+    if (pCard != NULL && ::IsWindow(pCard->m_hWnd)) {
         nHoverProgress = pCard->GetHoverProgress();
         nPressProgress = pCard->GetPressProgress();
     }
@@ -757,144 +831,109 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     g.SetSmoothingMode(SmoothingModeAntiAlias);
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
-    const int hoverLift = MulDiv(SX(6), nHoverProgress * (100 - nPressProgress) / 100, 100);  // hover lift suppressed while pressed
-    const int pressDown = MulDiv(SX(5), nPressProgress, 100);   // 깊은 눌림감
-    const int nVisualOffsetY = pressDown - hoverLift;
-    const int pressedInsetX = MulDiv(SX(3), nPressProgress, 100);   // 떨림 최소화
-    const int pressedInsetY = MulDiv(SX(2), nPressProgress, 100);
-
+    // [2] 기준 사각형 고정
     CRect rcPaint(0, SX(18), rc.Width(), rc.Height());
     rcPaint.DeflateRect(SX(2), SX(2));
     rcPaint.bottom -= SX(16);
-    rcPaint.DeflateRect(pressedInsetX, pressedInsetY);
-    rcPaint.OffsetRect(0, nVisualOffsetY);
 
-    RectF blueGlowOuterRect((REAL)rcPaint.left - (REAL)SX(10),
-        (REAL)rcPaint.top + (REAL)SX(2),
-        (REAL)rcPaint.Width() + (REAL)SX(20),
-        (REAL)rcPaint.Height() + (REAL)SX(6));
-    GraphicsPath blueGlowOuterPath;
-    AddRoundRectPath(blueGlowOuterPath, blueGlowOuterRect, (REAL)SX(28));
-    BYTE blueGlowOuterAlpha = (BYTE)(3 + (nHoverProgress * 12) / 100);   // 은은하게: max ~15
-    if (nPressProgress > 0)
-        blueGlowOuterAlpha = (BYTE)max(1, blueGlowOuterAlpha - (nPressProgress * 7) / 100);
+    // [3] 물리 변화량 계산
+    REAL cardScale = 1.0f - (0.04f * nPressProgress / 100.0f); // 배경은 4% 축소
+    REAL textScale = 1.0f - (0.02f * nPressProgress / 100.0f); // 글자는 2%만 축소 (선명도 유지)
 
-    RectF blueGlowInnerRect((REAL)rcPaint.left - (REAL)SX(4),
-        (REAL)rcPaint.top + (REAL)SX(6),
-        (REAL)rcPaint.Width() + (REAL)SX(8),
-        (REAL)rcPaint.Height() - (REAL)SX(2));
-    GraphicsPath blueGlowInnerPath;
-    AddRoundRectPath(blueGlowInnerPath, blueGlowInnerRect, (REAL)SX(25));
-    BYTE blueGlowInnerAlpha = (BYTE)(3 + (nHoverProgress * 10) / 100);   // 은은하게: max ~13
-    if (nPressProgress > 0)
-        blueGlowInnerAlpha = (BYTE)max(2, blueGlowInnerAlpha - (nPressProgress * 10) / 100);
+    REAL liftY = (REAL)SX(5) * nHoverProgress / 100.0f;
+    REAL pushY = (REAL)SX(6) * nPressProgress / 100.0f;
+    REAL totalOffsetY = pushY - liftY;
 
-    if (nHoverProgress > 0 && nPressProgress == 0)
-    {
-        SolidBrush blueGlowOuterBrush(Color(blueGlowOuterAlpha, 66, 152, 255));   // BLUE_300: 더 부드러운 glow
-        g.FillPath(&blueGlowOuterBrush, &blueGlowOuterPath);
+    PointF cardCenter((REAL)rcPaint.left + rcPaint.Width() / 2.0f, (REAL)rcPaint.top + rcPaint.Height() / 2.0f);
 
-        SolidBrush blueGlowInnerBrush(Color(blueGlowInnerAlpha, 66, 152, 255));   // BLUE_300
-        g.FillPath(&blueGlowInnerBrush, &blueGlowInnerPath);
-    }
+    // ---------------------------------------------------------
+    // [4] 카드 본체 및 아이콘 그리기 (4% 축소)
+    // ---------------------------------------------------------
+    GraphicsState cardState = g.Save();
 
-    // 면(Fill) 기반의 3단 층 그림자 대신, 선(Pen)을 겹쳐 그리는 스무딩 블러 그림자로 교체
-    int blurSpread = 8 + (nHoverProgress * 6) / 100; // 호버 시 그림자가 밖으로 더 퍼짐
+    // 이동 + 카드 전용 축소
+    g.TranslateTransform(cardCenter.X, cardCenter.Y + totalOffsetY);
+    g.ScaleTransform(cardScale, cardScale);
+    g.TranslateTransform(-cardCenter.X, -cardCenter.Y);
 
+    // --- 그림자 및 발광(Glow) ---
+    int blurSpread = 8 + (nHoverProgress * 6) / 100;
     BYTE maxAlpha = (BYTE)(15 + (nHoverProgress * 18) / 100);
-    if (nPressProgress > 0)
-    {
-        // 눌림(Press) 상태가 진행될수록 maxAlpha를 0으로 완전히 수렴시킴
-        maxAlpha = (BYTE)(maxAlpha * (100 - nPressProgress) / 100);
-    }
-
-    // 투명도가 0보다 클 때만 그림자 렌더링 (눌림 상태에서 완전히 숨김 및 성능 최적화)
-    if (maxAlpha > 0)
-    {
-        REAL shadowOffsetY = (REAL)SX(14) + (REAL)MulDiv(SX(5), nHoverProgress, 100);
-        RectF baseShadowRect((REAL)rcPaint.left + (REAL)SX(4),
-            (REAL)rcPaint.top + shadowOffsetY,
-            (REAL)rcPaint.Width() - (REAL)SX(8),
-            (REAL)rcPaint.Height() - (REAL)SX(14));
-
-        GraphicsPath shadowPath;
-        AddRoundRectPath(shadowPath, baseShadowRect, (REAL)SX(22));
-
-        for (int i = blurSpread; i >= 1; i--)
-        {
-            BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 1) / blurSpread);
-            Pen shadowPen(Color(currentAlpha, GetRValue(BLUE_300), GetGValue(BLUE_300), GetBValue(BLUE_300)), (REAL)(i * 2));
-            shadowPen.SetLineJoin(LineJoinRound);
-
-            g.DrawPath(&shadowPen, &shadowPath);
+    if (nPressProgress > 0) maxAlpha = (BYTE)(maxAlpha * (100 - nPressProgress) / 100);
+    if (maxAlpha > 0) {
+        REAL glowOffsetY = (REAL)SX(12) + (REAL)MulDiv(SX(6), nHoverProgress, 100);
+        RectF baseGlowRect((REAL)rcPaint.left + (REAL)SX(4), (REAL)rcPaint.top + glowOffsetY, (REAL)rcPaint.Width() - (REAL)SX(8), (REAL)rcPaint.Height() - (REAL)SX(14));
+        GraphicsPath glowPath;
+        AddRoundRectPath(glowPath, baseGlowRect, (REAL)SX(22));
+        for (int i = blurSpread; i >= 1; i -= 2) {
+            BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 2) / (blurSpread * 2));
+            Pen glowPen(Color(currentAlpha, 0, 100, 221), (REAL)(i * 2));
+            glowPen.SetLineJoin(LineJoinRound);
+            g.DrawPath(&glowPen, &glowPath);
         }
     }
 
+    // --- 카드 배경색 채우기 ---
     int fillR = GetRValue(kCardBg) + ((GetRValue(kCardFillHover) - GetRValue(kCardBg)) * nHoverProgress) / 100;
     int fillG = GetGValue(kCardBg) + ((GetGValue(kCardFillHover) - GetGValue(kCardBg)) * nHoverProgress) / 100;
     int fillB = GetBValue(kCardBg) + ((GetBValue(kCardFillHover) - GetBValue(kCardBg)) * nHoverProgress) / 100;
-
     fillR += ((GetRValue(kCardFillPressed) - fillR) * nPressProgress) / 100;
     fillG += ((GetGValue(kCardFillPressed) - fillG) * nPressProgress) / 100;
     fillB += ((GetBValue(kCardFillPressed) - fillB) * nPressProgress) / 100;
 
-    int borderR = GetRValue(kCardBorder) + ((GetRValue(kCardBorderHover) - GetRValue(kCardBorder)) * nHoverProgress) / 100;
-    int borderG = GetGValue(kCardBorder) + ((GetGValue(kCardBorderHover) - GetGValue(kCardBorder)) * nHoverProgress) / 100;
-    int borderB = GetBValue(kCardBorder) + ((GetBValue(kCardBorderHover) - GetBValue(kCardBorder)) * nHoverProgress) / 100;
-
-    RectF card((REAL)rcPaint.left + 0.5f, (REAL)rcPaint.top + 0.5f, (REAL)rcPaint.Width() - 1.0f, (REAL)rcPaint.Height() - 1.0f);
+    RectF cardRect((REAL)rcPaint.left + 0.5f, (REAL)rcPaint.top + 0.5f, (REAL)rcPaint.Width() - 1.0f, (REAL)rcPaint.Height() - 1.0f);
     GraphicsPath path;
-    AddRoundRectPath(path, card, (REAL)SX(20));
-
-    SolidBrush fillBrush(Color(255, fillR, fillG, fillB));
+    AddRoundRectPath(path, cardRect, (REAL)SX(20));
+    SolidBrush fillBrush(Color(255, (BYTE)fillR, (BYTE)fillG, (BYTE)fillB));
     g.FillPath(&fillBrush, &path);
-    // 테두리: 정지 상태만 미세하게, hover/press 시 사라짐
+
+    // --- 테두리 ---
     BYTE borderAlpha = (BYTE)((40 * (100 - nHoverProgress) / 100) * (100 - nPressProgress) / 100);
-    if (borderAlpha > 0)
-    {
-        Pen borderPen(Color(borderAlpha, borderR, borderG, borderB), 1.0f);
-        borderPen.SetLineJoin(LineJoinRound);
+    if (borderAlpha > 0) {
+        Pen borderPen(Color(borderAlpha, 226, 232, 240), 1.0f);
         g.DrawPath(&borderPen, &path);
     }
 
-    const int iconShiftY = -MulDiv(SX(3), nHoverProgress, 100) + MulDiv(SX(3), nPressProgress, 100);
-    CRect rcIcon(rcPaint.left + SX(28), rcPaint.top + SX(28) + iconShiftY, rcPaint.left + SX(28) + SX(56), rcPaint.top + SX(24) + iconShiftY + SX(56));
+    // --- 아이콘 ---
+    CRect rcIcon(rcPaint.left + SX(28), rcPaint.top + SX(28), rcPaint.left + SX(28) + SX(56), rcPaint.top + SX(28) + SX(56));
     DrawCardIcon(g, rcIcon, type, nHoverProgress, nPressProgress);
 
-    const int textShiftY = -MulDiv(SX(3), nHoverProgress, 100) + MulDiv(SX(3), nPressProgress, 100);
-    CRect rcTitle(rcPaint.left + SX(28), rcPaint.top + SX(104) + textShiftY, rcPaint.right - SX(24), rcPaint.top + SX(128) + textShiftY);
-    CRect rcDesc(rcPaint.left + SX(28), rcPaint.top + SX(140) + textShiftY, rcPaint.right - SX(28), rcPaint.bottom - SX(20));
+    g.Restore(cardState); // 카드 축소 변환 종료
 
-    // 텍스트 애니메이션(textShiftY) 시 픽셀 단위 끊김(Jittering)을 방지하기 위해
-        // GDI+의 서브픽셀 렌더링 옵션을 적용합니다.
-        g.SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
+    // ---------------------------------------------------------
+    // [5] 텍스트 그리기 (2%만 축소하여 선명도와 눌림감 모두 확보)
+    // ---------------------------------------------------------
+    GraphicsState textState = g.Save();
 
-    // 1. 기존 MFC CFont 객체를 GDI+ Font로 안전하게 변환
-    LOGFONT lfTitle, lfDesc;
-    m_fontCardTitle.GetLogFont(&lfTitle);
-    m_fontCardDesc.GetLogFont(&lfDesc);
-    Font gdiFontTitle(memDC.GetSafeHdc(), &lfTitle);
-    Font gdiFontDesc(memDC.GetSafeHdc(), &lfDesc);
+    // 텍스트는 카드보다 아주 미세하게 더 아래로 내려가게 해서 깊이감을 줍니다. (Parallax)
+    REAL textOffsetY = totalOffsetY + (pushY * 0.2f);
+    g.TranslateTransform(cardCenter.X, cardCenter.Y + textOffsetY);
+    g.ScaleTransform(textScale, textScale);
+    g.TranslateTransform(-cardCenter.X, -cardCenter.Y);
 
-    // 2. 텍스트 색상 브러시 생성 (COLORREF -> Gdiplus::Color 변환)
+    g.SetTextRenderingHint(TextRenderingHintAntiAlias);
+    if (m_pGdiFontTitle == NULL || m_pGdiFontDesc == NULL)
+        EnsureFonts(); // 혹시
+
     SolidBrush titleBrush(Color(255, GetRValue(kCardTitleText), GetGValue(kCardTitleText), GetBValue(kCardTitleText)));
     SolidBrush descBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
 
-    // 3. 텍스트 정렬 및 말줄임표(Ellipsis) 설정
     StringFormat format;
     format.SetAlignment(StringAlignmentNear);
     format.SetLineAlignment(StringAlignmentNear);
     format.SetTrimming(StringTrimmingEllipsisCharacter);
 
-    // 4. 서브픽셀 단위로 부드럽게 텍스트 렌더링 (DrawString)
-    RectF layoutTitle((REAL)rcTitle.left, (REAL)rcTitle.top, (REAL)rcTitle.Width(), (REAL)rcTitle.Height());
-    g.DrawString(CT2W(GetCardTitle(type)), -1, &gdiFontTitle, layoutTitle, &format, &titleBrush);
+    RectF layoutTitle((REAL)rcPaint.left + SX(28), (REAL)rcPaint.top + SX(104), (REAL)rcPaint.Width() - SX(56), (REAL)SX(24));
+    RectF layoutDesc((REAL)rcPaint.left + SX(28), (REAL)rcPaint.top + SX(136), (REAL)rcPaint.Width() - SX(56), (REAL)rcPaint.Height() - SX(150));
 
-    RectF layoutDesc((REAL)rcDesc.left, (REAL)rcDesc.top, (REAL)rcDesc.Width(), (REAL)rcDesc.Height());
-    g.DrawString(CT2W(GetCardDescription(type)), -1, &gdiFontDesc, layoutDesc, &format, &descBrush);
+    // 캐싱된 폰트 포인터(*m_pGdiFontTitle)를 사용하여 그리기
+    g.DrawString(CT2W(GetCardTitle(type)), -1, m_pGdiFontTitle, layoutTitle, &format, &titleBrush);
+    g.DrawString(CT2W(GetCardDescription(type)), -1, m_pGdiFontDesc, layoutDesc, &format, &descBrush);
 
+    g.Restore(textState);
+
+    // [6] 최종 출력
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
-
     memDC.SelectObject(pOldBmp);
     bmp.DeleteObject();
     memDC.DeleteDC();
@@ -935,9 +974,26 @@ HBRUSH CKFTCOneCAPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     return hbr;
 }
 
+BOOL CKFTCOneCAPDlg::OnNcActivate(BOOL bActive)
+{
+    // [FIX] Prevent DefDlgProc -> xxxSaveDlgFocus -> BM_SETSTYLE on card buttons.
+    // Same pattern as CShopSetupDlg::OnNcActivate / CShopDownDlg::OnNcActivate.
+    UNREFERENCED_PARAMETER(bActive);
+    return TRUE;
+}
+
+void CKFTCOneCAPDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+    // [FIX] Skip base class to avoid DefDlgProc -> xxxSaveDlgFocus chain.
+    UNREFERENCED_PARAMETER(nState);
+    UNREFERENCED_PARAMETER(pWndOther);
+    UNREFERENCED_PARAMETER(bMinimized);
+}
+
 void CKFTCOneCAPDlg::OnReaderSetup()
 {
     m_ePendingOpen = PENDING_READER;
+    m_btnReaderCard.ForceFadeOut(); //
     SetTimer(kTimerWaitRelease, 16, NULL);
 }
 
@@ -945,30 +1001,47 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
 {
     if (nIDEvent == kTimerWaitRelease)
     {
-        // Wait until the clicked card button finishes its release animation.
-        // PressProgress reaches 0 regardless of PC speed -> no fixed delay needed.
-        CHomeCardButton* pBtn =
-            (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
+        CHomeCardButton* pBtn = (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
             (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard : NULL;
 
-        if (!pBtn || pBtn->GetPressProgress() < 20)  // visually complete, no need to wait for exact 0
+        if (pBtn)
         {
-            KillTimer(kTimerWaitRelease);
-            EPendingOpen ePending = m_ePendingOpen;
-            m_ePendingOpen = PENDING_NONE;
+            // [수정] 임계값을 12로 설정했습니다 (88% 지점).
+            // 20보다는 조금 더 기다리지만, 5보다는 훨씬 빨리 창이 뜹니다.
+            if (pBtn->GetPressProgress() <= 12 && pBtn->GetHoverProgress() <= 12)
+            {
+                KillTimer(kTimerWaitRelease);
+                EPendingOpen ePending = m_ePendingOpen;
+                m_ePendingOpen = PENDING_NONE;
 
-            if (ePending == PENDING_SHOP)
-            {
-                CShopSetupDlg dlg(this);
-                dlg.DoModal();
-            }
-            else if (ePending == PENDING_READER)
-            {
-                CReaderSetupDlg dlg(this);
-                dlg.DoModal();
+                // [박제] 현재의 부드러운 상태를 화면에 고정합니다.
+                this->Invalidate(FALSE);
+                this->UpdateWindow();
+
+                this->SetRedraw(FALSE);
+                this->EnableWindow(FALSE);
+
+                // 모달 실행
+                if (ePending == PENDING_SHOP)
+                {
+                    CShopSetupDlg dlg(this);
+                    dlg.DoModal();
+                }
+                else if (ePending == PENDING_READER)
+                {
+                    CReaderSetupDlg dlg(this);
+                    dlg.DoModal();
+                }
+
+                // 모달 종료 후 복구
+                this->EnableWindow(TRUE);
+                this->SetRedraw(TRUE);
+
+                if (pBtn) pBtn->ResetVisualState();
+
+                this->RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
             }
         }
-        // else: still animating, wait for next tick
     }
     else
     {
@@ -979,6 +1052,7 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
 void CKFTCOneCAPDlg::OnShopSetup()
 {
     m_ePendingOpen = PENDING_SHOP;
+    m_btnShopCard.ForceFadeOut(); // <-- "자연스럽게 호버 풀어!"라고 명령
     SetTimer(kTimerWaitRelease, 16, NULL);
 }
 

@@ -1,15 +1,11 @@
-// ShopSetupDlg.cpp - 메인 설정 화면 구현
-
 #include "stdafx.h"
 #include "Resource.h"
 #include "ShopSetupDlg.h"
 #include "ShopDownDlg.h"
 #include "ModernUI.h"
 #include "RegistryUtil.h"
-
 #include <gdiplus.h>
 #pragma comment(lib, "gdiplus.lib")
-
 // ==============================================================
 // [ShopSetupDlg.cpp]
 //  - 메인 설정 다이얼로그 구현부
@@ -28,14 +24,11 @@
 //  - 옵션 추가 시: (1) 컨트롤 생성 (2) Load/Save 매핑 (3) 레이아웃 반영 순서로 작업
 //  - 인풋 보더/포커스 스타일은 ModernUITheme::GetInputTheme() 기준
 // ==============================================================
-
-
 // ============================================================================
 // Registry spec (Word 기준)
 // - 저장: AfxGetApp()->WriteProfileString(section, field, value) 그대로 사용
 // - 불러오기: GetRegisterData(section, field, outValue) 로만 접근
 // ============================================================================
-
 // ============================================================================
 // [검증 프로세스 유지보수 안내]
 // ----------------------------------------------------------------------------
@@ -72,47 +65,42 @@
 //    - 예) 서명패드 포트번호 0, 스캐너 포트번호 0, 우선 거래 프로그램 공백 문자열
 //    - 토글/콤보 기본값은 ReadToggle_DefaultOnWhenMissing() 및 SelectComboByValue(..., defaultValue)에서 설정한다.
 // ============================================================================
-
 namespace
 {
     // Sections
-    static LPCTSTR SEC_TCP        = _T("TCP");
+    static LPCTSTR SEC_TCP = _T("TCP");
     static LPCTSTR SEC_SERIALPORT = _T("SERIALPORT");
-
     // TCP
-    static LPCTSTR VAN_SERVER_IP_FIELD   = _T("VAN_SERVER_IP");
+    static LPCTSTR VAN_SERVER_IP_FIELD = _T("VAN_SERVER_IP");
     static LPCTSTR VAN_SERVER_PORT_FIELD = _T("VAN_SERVER_PORT");
-    static LPCTSTR TAX_SETTING_FIELD     = _T("TAX_SETTING");   // 세금 자동 역산 (IDC_EDIT_TAX_PERCENT)
-
+    static LPCTSTR TAX_SETTING_FIELD = _T("TAX_SETTING");   // 세금 자동 역산 (IDC_EDIT_TAX_PERCENT)
     // SERIALPORT
-    static LPCTSTR TIMEOUT_FIELD         = _T("TIMEOUT");
-    static LPCTSTR NOSIGN_AMT_FIELD      = _T("NOSIGN_AMT");
-    static LPCTSTR CASH_FIRST_FIELD      = _T("CASH_FIRST");
-    static LPCTSTR INTERLOCK_FIELD       = _T("INTERLOCK");
-    static LPCTSTR SOCKET_TYPE_FIELD     = _T("SOCKET_TYPE");
-    static LPCTSTR SIGNPAD_USE_FIELD     = _T("SIGNPAD_USE");
-    static LPCTSTR SIGNPAD_FIELD         = _T("SIGNPAD");
-    static LPCTSTR SIGNPAD_SPEED_FIELD   = _T("SIGNPAD_SPEED");
-    static LPCTSTR NOTIFY_POS_FIELD      = _T("NOTIFY_POS");
-    static LPCTSTR NOTIFY_SIZE_FIELD     = _T("NOTIFY_SIZE");
-    static LPCTSTR CANCEL_HOTKEY_FIELD   = _T("CANCEL_HOTKEY");
-    static LPCTSTR MSR_HOTKEY_FIELD      = _T("MSR_HOTKEY");
-    static LPCTSTR MULTIPAD_SOUND_FIELD  = _T("MULTIPAD_SOUND");
-    static LPCTSTR BARCODE_USE_FIELD     = _T("BARCODE_USE");
-    static LPCTSTR BARCODE_PORT_FIELD    = _T("BARCODE_PORT");
-    static LPCTSTR CARD_DETECT_FIELD     = _T("CARD_DETECT");
-    static LPCTSTR DETECT_PROGRAM_FIELD  = _T("DETECT_PROGRAM");
-    static LPCTSTR AUTO_RESTART_FIELD    = _T("AUTO_RESTART");
-    static LPCTSTR AUTO_REBOOT_FIELD     = _T("AUTO_REBOOT");
-    static LPCTSTR NOTIFY_IMG_FIELD      = _T("NOTIFY_IMG");
-    static LPCTSTR NOTIFY_DUAL_FIELD     = _T("NOTIFY_DUAL_MONITOR");
-
+    static LPCTSTR TIMEOUT_FIELD = _T("TIMEOUT");
+    static LPCTSTR NOSIGN_AMT_FIELD = _T("NOSIGN_AMT");
+    static LPCTSTR CASH_FIRST_FIELD = _T("CASH_FIRST");
+    static LPCTSTR INTERLOCK_FIELD = _T("INTERLOCK");
+    static LPCTSTR SOCKET_TYPE_FIELD = _T("SOCKET_TYPE");
+    static LPCTSTR SIGNPAD_USE_FIELD = _T("SIGNPAD_USE");
+    static LPCTSTR SIGNPAD_FIELD = _T("SIGNPAD");
+    static LPCTSTR SIGNPAD_SPEED_FIELD = _T("SIGNPAD_SPEED");
+    static LPCTSTR NOTIFY_POS_FIELD = _T("NOTIFY_POS");
+    static LPCTSTR NOTIFY_SIZE_FIELD = _T("NOTIFY_SIZE");
+    static LPCTSTR CANCEL_HOTKEY_FIELD = _T("CANCEL_HOTKEY");
+    static LPCTSTR MSR_HOTKEY_FIELD = _T("MSR_HOTKEY");
+    static LPCTSTR MULTIPAD_SOUND_FIELD = _T("MULTIPAD_SOUND");
+    static LPCTSTR BARCODE_USE_FIELD = _T("BARCODE_USE");
+    static LPCTSTR BARCODE_PORT_FIELD = _T("BARCODE_PORT");
+    static LPCTSTR CARD_DETECT_FIELD = _T("CARD_DETECT");
+    static LPCTSTR DETECT_PROGRAM_FIELD = _T("DETECT_PROGRAM");
+    static LPCTSTR AUTO_RESTART_FIELD = _T("AUTO_RESTART");
+    static LPCTSTR AUTO_REBOOT_FIELD = _T("AUTO_REBOOT");
+    static LPCTSTR NOTIFY_IMG_FIELD = _T("NOTIFY_IMG");
+    static LPCTSTR NOTIFY_DUAL_FIELD = _T("NOTIFY_DUAL_MONITOR");
     struct ComboItem
     {
         LPCTSTR text;   // 화면 표시값
         LPCTSTR value;  // 저장값(레지스트리 데이터)
     };
-
     static void FillCombo(CSkinnedComboBox& cb, const ComboItem* items, int count)
     {
         cb.ResetContent();
@@ -120,7 +108,6 @@ namespace
             cb.AddString(items[i].text);
         cb.SetCurSel(0);
     }
-
     static int FindIndexByValue(const ComboItem* items, int count, const CString& value)
     {
         for (int i = 0; i < count; ++i)
@@ -130,9 +117,8 @@ namespace
         }
         return -1;
     }
-
     static void SelectComboByValue(CSkinnedComboBox& cb, const ComboItem* items, int count,
-                                   const CString& value, int defaultIndex)
+        const CString& value, int defaultIndex)
     {
         int idx = FindIndexByValue(items, count, value);
         if (idx < 0) idx = defaultIndex;
@@ -140,16 +126,14 @@ namespace
         if (idx >= count) idx = 0;
         cb.SetCurSel(idx);
     }
-
     static CString GetSelectedComboValue(const CSkinnedComboBox& cb, const ComboItem* items, int count,
-                                        LPCTSTR defaultValue)
+        LPCTSTR defaultValue)
     {
         int idx = cb.GetCurSel();
         if (idx < 0 || idx >= count)
             return CString(defaultValue ? defaultValue : _T(""));
         return CString(items[idx].value);
     }
-
     // Combo mappings (Word 기준)
     static const ComboItem kVanServers[] =
     {
@@ -157,14 +141,12 @@ namespace
         { _T("테스트 서버"),                 _T("203.175.190.145") },
         { _T("테스트 서버(내부용)"),         _T("192.168.53.28") },
     };
-
     static const ComboItem kCashReceipt[] =
     {
         { _T("PINPAD/KEYIN"), _T("PINPAD/KEYIN") },
         { _T("MS"),           _T("MS") },
         { _T("KEYIN"),        _T("KEYIN") },
     };
-
     static const ComboItem kInterlock[] =
     {
         { _T("IC/MS 리더기"),          _T("NORMAL") },
@@ -176,33 +158,28 @@ namespace
         { _T("AOP 리더기"),            _T("AOP") },
         { _T("연동 안함"),             _T("NOTHING") },
     };
-
     static const ComboItem kCommType[] =
     {
         { _T("CS 방식"),  _T("CS 방식") },
         { _T("WEB 방식"), _T("WEB 방식") },
     };
-
     static const ComboItem kSignPadUse[] =
     {
         { _T("예"),       _T("YES") },
         { _T("아니오"),   _T("NO") },
         { _T("자체 서명"), _T("SELF") },
     };
-
     static const ComboItem kSignPadSpeed[] =
     {
         { _T("57600bps"),  _T("57600") },
         { _T("115200bps"), _T("115200") },
     };
-
     static const ComboItem kAlarmPos[] =
     {
         { _T("기본"),      _T("default") },
         { _T("중앙"),      _T("mid") },
         { _T("표시 안함"), _T("hide") },
     };
-
     static const ComboItem kAlarmSize[] =
     {
         { _T("기본"),     _T("default") },
@@ -211,7 +188,6 @@ namespace
         { _T("크게"),     _T("big") },
         { _T("매우크게"), _T("very big") },
     };
-
     static const ComboItem kHotkeys[] =
     {
         { _T("기본"),      _T("NORMAL") },
@@ -234,20 +210,16 @@ namespace
         { _T("LEFT"),      _T("VK_LEFT") },
         { _T("RIGHT"),     _T("VK_RIGHT") },
     };
-
     // Toggle mapping helpers
     static BOOL ReadToggle_DefaultOnWhenMissing(LPCTSTR field, BOOL bDefaultOn, LPCTSTR valueOn, LPCTSTR valueOff)
     {
         CString s;
         if (!GetRegisterData(SEC_SERIALPORT, field, s))
             return bDefaultOn;
-
         if (s.CompareNoCase(valueOn) == 0) return TRUE;
         if (s.CompareNoCase(valueOff) == 0) return FALSE;
-
         return bDefaultOn;
     }
-
     static void WriteToggleValue(LPCTSTR field, BOOL bOn, LPCTSTR valueOn, LPCTSTR valueOff)
     {
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, field, bOn ? valueOn : valueOff);
@@ -256,43 +228,35 @@ namespace
 // ============================================================================
 // [TUNE] 헤더 / 탭 / 컨텐츠 레이아웃 튜닝 파라미터
 // ============================================================================
-
 // ── 헤더 영역 ────────────────────────────────────────────────────────────────
 // [TUNE] kHdrBadgeY    : 배지 아이콘 상단 Y (다이얼로그 좌상단 기준)
-static const int kHdrBadgeY      = 28;   // [TUNE] 배지 상단 위치 (기본 20)
+static const int kHdrBadgeY = 28;   // [TUNE] 배지 상단 위치 (기본 20)
 // [TUNE] kHdrBadgeSz   : 배지 크기(정사각형)
-static const int kHdrBadgeSz     = 38;   // [TUNE] 배지 크기 px (기본 38)
+static const int kHdrBadgeSz = 38;   // [TUNE] 배지 크기 px (기본 38)
 // [TUNE] kHdrBadgeX    : 배지 좌측 여백
-static const int kHdrBadgeX      = 26;   // [TUNE] 배지 좌측 여백 (기본 26)
+static const int kHdrBadgeX = 26;   // [TUNE] 배지 좌측 여백 (기본 26)
 // [TUNE] kHdrTitleGap  : 배지-텍스트 간격
-static const int kHdrTitleGap    = 13;   // [TUNE] 배지→텍스트 간격 (기본 13)
+static const int kHdrTitleGap = 13;   // [TUNE] 배지→텍스트 간격 (기본 13)
 // [TUNE] kHdrDividerY  : 헤더 하단 구분선 Y 위치
-static const int kHdrDividerY    = 84;   // [TUNE] 헤더 구분선 Y (기본 76)
-
+static const int kHdrDividerY = 84;   // [TUNE] 헤더 구분선 Y (기본 76)
 // ── 탭 컨트롤 ────────────────────────────────────────────────────────────────
 // [TUNE] kTabBarTop : 탭 바 상단 Y (헤더 구분선 아래)
-static const int kTabBarTop     = kHdrDividerY + 6;  // [TUNE] 탭 바 시작 Y
-static const int kTabBarH       = 34;                // [TUNE] 탭 바 높이
-static const int kTabPadTop     = 12;                // [TUNE] 탭 내용 상단 여백
-static const int kTabPadLeft    = 40;                // [TUNE] 탭 내용 좌측 여백
-
+static const int kTabBarTop = kHdrDividerY + 6;  // [TUNE] 탭 바 시작 Y
+static const int kTabBarH = 34;                // [TUNE] 탭 바 높이
+static const int kTabPadTop = 12;                // [TUNE] 탭 내용 상단 여백
+static const int kTabPadLeft = 40;                // [TUNE] 탭 내용 좌측 여백
 // [DEPRECATED] kHeaderShiftY - 하위 호환용 (새 코드는 kHdrDividerY 사용)
 static const int kHeaderShiftY = kHdrDividerY - 88; // 자동 계산
-
 // 컨텐츠 시작 Y = kTabBarTop + kTabBarH + kTabPadTop
 static const int kContentStartY = kTabBarTop + kTabBarH + kTabPadTop;
-
 // ── 그룹/카드 공통 ───────────────────────────────────────────────────────────
-static const int kGroupTitleH        = 20;
+static const int kGroupTitleH = 20;
 static const int kGroupGapBelowTitle = 1;
-static const int kGapToNextGroup     = 6;
-
+static const int kGapToNextGroup = 6;
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
-
 IMPLEMENT_DYNAMIC(CShopSetupDlg, CDialog)
-
 BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_DRAWITEM()
     ON_WM_MEASUREITEM()
@@ -305,66 +269,44 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_NCACTIVATE()          // [FIX v2.1] xxxSaveDlgFocus O(N^2) 차단
     ON_WM_ACTIVATE()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
-    ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO,     OnBnClickedVanServerInfo)
-    ON_BN_CLICKED(IDC_BTN_PORT_INFO,           OnBnClickedPortInfo)
-    ON_BN_CLICKED(IDC_BTN_TAX_PERCENT_INFO,   OnBnClickedTaxPercentInfo)
-    ON_BN_CLICKED(IDC_BTN_COMM_TYPE_INFO,      OnBnClickedCommTypeInfo)
-    ON_BN_CLICKED(IDC_BTN_CASH_RECEIPT_INFO,   OnBnClickedCashReceiptInfo)
-    ON_BN_CLICKED(IDC_BTN_CARD_TIMEOUT_INFO,   OnBnClickedCardTimeoutInfo)
-    ON_BN_CLICKED(IDC_BTN_INTERLOCK_INFO,      OnBnClickedInterlockInfo)
-    ON_BN_CLICKED(IDC_BTN_MULTI_VOICE_INFO,    OnBnClickedMultiVoiceInfo)
-    ON_BN_CLICKED(IDC_BTN_CARD_DETECT_INFO,   OnBnClickedCardDetectInfo)
-    ON_BN_CLICKED(IDC_BTN_SCANNER_USE_INFO,   OnBnClickedScannerUseInfo)
-    ON_BN_CLICKED(IDC_BTN_AUTO_RESET_INFO,    OnBnClickedAutoResetInfo)
-    ON_BN_CLICKED(IDC_BTN_AUTO_REBOOT_INFO,   OnBnClickedAutoRebootInfo)
-    ON_BN_CLICKED(IDC_BTN_ALARM_GRAPH_INFO,   OnBnClickedAlarmGraphInfo)
-    ON_BN_CLICKED(IDC_BTN_ALARM_DUAL_INFO,    OnBnClickedAlarmDualInfo)
-    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_USE_INFO,   OnBnClickedSignPadUseInfo)
-    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_PORT_INFO,  OnBnClickedSignPadPortInfo)
+    ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO, OnBnClickedVanServerInfo)
+    ON_BN_CLICKED(IDC_BTN_PORT_INFO, OnBnClickedPortInfo)
+    ON_BN_CLICKED(IDC_BTN_TAX_PERCENT_INFO, OnBnClickedTaxPercentInfo)
+    ON_BN_CLICKED(IDC_BTN_COMM_TYPE_INFO, OnBnClickedCommTypeInfo)
+    ON_BN_CLICKED(IDC_BTN_CASH_RECEIPT_INFO, OnBnClickedCashReceiptInfo)
+    ON_BN_CLICKED(IDC_BTN_CARD_TIMEOUT_INFO, OnBnClickedCardTimeoutInfo)
+    ON_BN_CLICKED(IDC_BTN_INTERLOCK_INFO, OnBnClickedInterlockInfo)
+    ON_BN_CLICKED(IDC_BTN_MULTI_VOICE_INFO, OnBnClickedMultiVoiceInfo)
+    ON_BN_CLICKED(IDC_BTN_CARD_DETECT_INFO, OnBnClickedCardDetectInfo)
+    ON_BN_CLICKED(IDC_BTN_SCANNER_USE_INFO, OnBnClickedScannerUseInfo)
+    ON_BN_CLICKED(IDC_BTN_AUTO_RESET_INFO, OnBnClickedAutoResetInfo)
+    ON_BN_CLICKED(IDC_BTN_AUTO_REBOOT_INFO, OnBnClickedAutoRebootInfo)
+    ON_BN_CLICKED(IDC_BTN_ALARM_GRAPH_INFO, OnBnClickedAlarmGraphInfo)
+    ON_BN_CLICKED(IDC_BTN_ALARM_DUAL_INFO, OnBnClickedAlarmDualInfo)
+    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_USE_INFO, OnBnClickedSignPadUseInfo)
+    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_PORT_INFO, OnBnClickedSignPadPortInfo)
     ON_BN_CLICKED(IDC_BTN_SIGN_PAD_SPEED_INFO, OnBnClickedSignPadSpeedInfo)
-    ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO,     OnBnClickedAlarmSizeInfo)
-    ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE,    OnCbnSelchangeSignPadUse)
-    ON_BN_CLICKED(IDC_CHECK_CARD_DETECT,        OnBnClickedCardDetectToggle)
-    ON_BN_CLICKED(IDC_CHECK_SCANNER_USE,        OnBnClickedScannerUseToggle)
-    ON_EN_CHANGE(IDC_EDIT_PORT,                 OnEnChangeValidateInput)
-    ON_EN_CHANGE(IDC_EDIT_NO_SIGN_AMOUNT,       OnEnChangeValidateInput)
-    ON_EN_CHANGE(IDC_EDIT_TAX_PERCENT,          OnEnChangeValidateInput)
-    ON_EN_CHANGE(IDC_EDIT_CARD_TIMEOUT,         OnEnChangeValidateInput)
-    ON_EN_CHANGE(IDC_EDIT_CARD_DETECT_PARAM,    OnEnChangeValidateInput)
-    ON_EN_CHANGE(IDC_EDIT_SIGN_PAD_PORT,        OnEnChangeValidateInput)
-    ON_EN_CHANGE(IDC_EDIT_SCANNER_PORT,         OnEnChangeValidateInput)
+    ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO, OnBnClickedAlarmSizeInfo)
+    ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE, OnCbnSelchangeSignPadUse)
+    ON_BN_CLICKED(IDC_CHECK_CARD_DETECT, OnBnClickedCardDetectToggle)
+    ON_BN_CLICKED(IDC_CHECK_SCANNER_USE, OnBnClickedScannerUseToggle)
+    ON_EN_CHANGE(IDC_EDIT_PORT, OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_NO_SIGN_AMOUNT, OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_TAX_PERCENT, OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_CARD_TIMEOUT, OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_CARD_DETECT_PARAM, OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_SIGN_PAD_PORT, OnEnChangeValidateInput)
+    ON_EN_CHANGE(IDC_EDIT_SCANNER_PORT, OnEnChangeValidateInput)
 END_MESSAGE_MAP()
-
-// ============================================================================
-// OnNcActivate  [FIX v2.1] - DefDlgProc xxxSaveDlgFocus O(N^2) SendMessage 차단
-// ============================================================================
-// [문제] DefDlgProc(WM_NCACTIVATE) 내부의 xxxSaveDlgFocus 가 모든 자식/손자
-//        버튼에 BM_SETSTYLE 을 SendMessage 한다.
-//        CShopDownDlg 에 CModernButton 이 50개(다운로드 25 + 삭제 25) 있으므로
-//        각 BM_SETSTYLE -> DefWindowProc -> DM_SETDEFID -> DefDlgProc 재진입으로
-//        O(N^2) 동기 연쇄가 발생 -> 창 전환 시 "응답없음".
-// [해결] DefWindowProc(일반 윈도우 프록)만 직접 호출한다.
-//        타이틀바 활성/비활성 렌더링은 유지되고 버튼 순회는 생략된다.
+// +++ 추가: 시스템 기본 메시지 처리로 변경
 BOOL CShopSetupDlg::OnNcActivate(BOOL bActive)
 {
-    // DefWindowProc(dialogHwnd) 는 결국 DefDlgProcA 로 라우팅되어
-    // xxxSaveDlgFocus -> 버튼 50개 BM_SETSTYLE SendMessage -> O(N^2) 연쇄
-    // -> "응답없음" 이 발생한다.
-    // TRUE 반환만으로 USER32 가 타이틀바를 다시 그리므로 DefProc 호출 불필요.
-    UNREFERENCED_PARAMETER(bActive);
-    return TRUE;
+    return (BOOL)::DefWindowProc(m_hWnd, WM_NCACTIVATE, bActive, 0);
 }
-
 void CShopSetupDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 {
-    // WM_ACTIVATE 도 DefDlgProcA -> xxxSaveDlgFocus -> 버튼 50개 BM_SETSTYLE
-    // -> O(N^2) 연쇄 -> "응답없음" 유발.
-    // base 클래스(CDialog::OnActivate) 호출 금지.
-    UNREFERENCED_PARAMETER(nState);
-    UNREFERENCED_PARAMETER(pWndOther);
-    UNREFERENCED_PARAMETER(bMinimized);
+    ::DefWindowProc(m_hWnd, WM_ACTIVATE, nState, (LPARAM)(pWndOther ? pWndOther->m_hWnd : NULL));
 }
-
 // ============================================================================
 // 생성자 / 소멸자
 // ============================================================================
@@ -376,20 +318,18 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     , m_bUiInitialized(FALSE)
     , m_bClosing(FALSE)
 {
-    m_intPort           = 8002;
-    m_intCardTimeout    = 60;   // 생성자 초기값 (레지스트리 없을 때 기본값 100 적용)
-    m_intNoSignAmount   = 50000;
-    m_intTaxPercent     = 10;
+    m_intPort = 8002;
+    m_intCardTimeout = 60;   // 생성자 초기값 (레지스트리 없을 때 기본값 100 적용)
+    m_intNoSignAmount = 50000;
+    m_intTaxPercent = 10;
     m_strCardDetectParam = _T("KFTCOneCAP TEST");
-    m_intSignPadPort    = 56;
-    m_intScannerPort    = 0;
-
+    m_intSignPadPort = 56;
+    m_intScannerPort = 0;
     m_pFontFamilyMalgun = nullptr;
-    m_pFontCardTitle    = nullptr;
-    m_pFontHdrTitle     = nullptr;
-    m_pFontHdrSub       = nullptr;
+    m_pFontCardTitle = nullptr;
+    m_pFontHdrTitle = nullptr;
+    m_pFontHdrSub = nullptr;
 }
-
 CShopSetupDlg::~CShopSetupDlg()
 {
     if (m_fontTitle.GetSafeHandle())      m_fontTitle.DeleteObject();
@@ -403,50 +343,46 @@ CShopSetupDlg::~CShopSetupDlg()
     if (m_brushTabContent.GetSafeHandle()) m_brushTabContent.DeleteObject();
     if (m_brushSection.GetSafeHandle())   m_brushSection.DeleteObject();
 }
-
 // ============================================================================
 // DoDataExchange
 // ============================================================================
 void CShopSetupDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialog::DoDataExchange(pDX);
-
-    DDX_Control(pDX, IDC_COMBO_VAN_SERVER,    m_comboVanServer);
-    DDX_Control(pDX, IDC_EDIT_PORT,           m_editPort);
+    DDX_Control(pDX, IDC_COMBO_VAN_SERVER, m_comboVanServer);
+    DDX_Control(pDX, IDC_EDIT_PORT, m_editPort);
     DDX_Control(pDX, IDC_EDIT_NO_SIGN_AMOUNT, m_editNoSignAmount);
-    DDX_Control(pDX, IDC_EDIT_TAX_PERCENT,    m_editTaxPercent);
-    DDX_Control(pDX, IDC_EDIT_CARD_TIMEOUT,   m_editCardTimeout);
+    DDX_Control(pDX, IDC_EDIT_TAX_PERCENT, m_editTaxPercent);
+    DDX_Control(pDX, IDC_EDIT_CARD_TIMEOUT, m_editCardTimeout);
     DDX_Control(pDX, IDC_EDIT_CARD_DETECT_PARAM, m_editCardDetectParam);
-    DDX_Control(pDX, IDC_EDIT_SIGN_PAD_PORT,  m_editSignPadPort);
-    DDX_Control(pDX, IDC_EDIT_SCANNER_PORT,   m_editScannerPort);
-    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intPort);        DDX_Text(pDX, IDC_EDIT_PORT,           _s); if (pDX->m_bSaveAndValidate) m_intPort        = _ttoi(_s); }
-    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intCardTimeout);  DDX_Text(pDX, IDC_EDIT_CARD_TIMEOUT,   _s); if (pDX->m_bSaveAndValidate) m_intCardTimeout  = _ttoi(_s); }
+    DDX_Control(pDX, IDC_EDIT_SIGN_PAD_PORT, m_editSignPadPort);
+    DDX_Control(pDX, IDC_EDIT_SCANNER_PORT, m_editScannerPort);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intPort);        DDX_Text(pDX, IDC_EDIT_PORT, _s); if (pDX->m_bSaveAndValidate) m_intPort = _ttoi(_s); }
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intCardTimeout);  DDX_Text(pDX, IDC_EDIT_CARD_TIMEOUT, _s); if (pDX->m_bSaveAndValidate) m_intCardTimeout = _ttoi(_s); }
     { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intNoSignAmount); DDX_Text(pDX, IDC_EDIT_NO_SIGN_AMOUNT, _s); if (pDX->m_bSaveAndValidate) m_intNoSignAmount = _ttoi(_s); }
-    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intTaxPercent);   DDX_Text(pDX, IDC_EDIT_TAX_PERCENT,    _s); if (pDX->m_bSaveAndValidate) m_intTaxPercent   = _ttoi(_s); }
-    DDX_Control(pDX, IDC_COMBO_CASH_RECEIPT,  m_comboCashReceipt);
-    DDX_Control(pDX, IDC_COMBO_INTERLOCK,     m_comboInterlock);
-    DDX_Control(pDX, IDC_COMBO_COMM_TYPE,     m_comboCommType);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intTaxPercent);   DDX_Text(pDX, IDC_EDIT_TAX_PERCENT, _s); if (pDX->m_bSaveAndValidate) m_intTaxPercent = _ttoi(_s); }
+    DDX_Control(pDX, IDC_COMBO_CASH_RECEIPT, m_comboCashReceipt);
+    DDX_Control(pDX, IDC_COMBO_INTERLOCK, m_comboInterlock);
+    DDX_Control(pDX, IDC_COMBO_COMM_TYPE, m_comboCommType);
     DDX_Text(pDX, IDC_EDIT_CARD_DETECT_PARAM, m_strCardDetectParam);
-    DDX_Control(pDX, IDC_COMBO_SIGN_PAD_USE,  m_comboSignPadUse);
-    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intSignPadPort);  DDX_Text(pDX, IDC_EDIT_SIGN_PAD_PORT,  _s); if (pDX->m_bSaveAndValidate) m_intSignPadPort  = _ttoi(_s); }
+    DDX_Control(pDX, IDC_COMBO_SIGN_PAD_USE, m_comboSignPadUse);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intSignPadPort);  DDX_Text(pDX, IDC_EDIT_SIGN_PAD_PORT, _s); if (pDX->m_bSaveAndValidate) m_intSignPadPort = _ttoi(_s); }
     DDX_Control(pDX, IDC_COMBO_SIGN_PAD_SPEED, m_comboSignPadSpeed);
-    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intScannerPort);  DDX_Text(pDX, IDC_EDIT_SCANNER_PORT,   _s); if (pDX->m_bSaveAndValidate) m_intScannerPort  = _ttoi(_s); }
-    DDX_Control(pDX, IDC_COMBO_ALARM_POS,     m_comboAlarmPos);
-    DDX_Control(pDX, IDC_COMBO_ALARM_SIZE,    m_comboAlarmSize);
-    DDX_Control(pDX, IDC_COMBO_CANCEL_KEY,    m_comboCancelKey);
-    DDX_Control(pDX, IDC_COMBO_MSR_KEY,       m_comboMSRKey);
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intScannerPort);  DDX_Text(pDX, IDC_EDIT_SCANNER_PORT, _s); if (pDX->m_bSaveAndValidate) m_intScannerPort = _ttoi(_s); }
+    DDX_Control(pDX, IDC_COMBO_ALARM_POS, m_comboAlarmPos);
+    DDX_Control(pDX, IDC_COMBO_ALARM_SIZE, m_comboAlarmSize);
+    DDX_Control(pDX, IDC_COMBO_CANCEL_KEY, m_comboCancelKey);
+    DDX_Control(pDX, IDC_COMBO_MSR_KEY, m_comboMSRKey);
 }
-
 // ============================================================================
 // Edit 높이를 콤보 높이로 통일
 // ============================================================================
 static void NormalizeInputHeightsToCombo(CWnd* pDlg, int comboId,
-                                         const int* editIds, int editCount)
+    const int* editIds, int editCount)
 {
     if (!pDlg) return;
     CWnd* pCombo = pDlg->GetDlgItem(comboId);
     if (!pCombo || !::IsWindow(pCombo->GetSafeHwnd())) return;
-
     CRect rcCombo;
     pCombo->GetWindowRect(&rcCombo);
     int h = 0;
@@ -455,7 +391,6 @@ static void NormalizeInputHeightsToCombo(CWnd* pDlg, int comboId,
     if (ih > 0) h = (int)ih + 14; // border/padding
     if (h <= 0) h = rcCombo.Height();
     if (h < 22) h = 22;
-
     for (int i = 0; i < editCount; ++i)
     {
         CWnd* pEdit = pDlg->GetDlgItem(editIds[i]);
@@ -467,7 +402,6 @@ static void NormalizeInputHeightsToCombo(CWnd* pDlg, int comboId,
             SWP_NOZORDER | SWP_NOACTIVATE);
     }
 }
-
 // ============================================================================
 // OnInitDialog
 // ============================================================================
@@ -489,9 +423,10 @@ BOOL CShopSetupDlg::OnInitDialog()
      * - 초기화 순서가 바뀌면(예: 레지스트리 로드가 레이아웃보다 먼저) 컨트롤 크기/상태가 어긋날 수 있다.
      * - 컨트롤 생성은 1회, 배치는 여러 번(리사이즈/탭 전환) 호출되도록 분리해두는 것이 유지보수에 유리하다.
      */
-
     CDialog::OnInitDialog();
-
+    // +++ 추가: 시스템 레벨 더블 버퍼링 및 자식 클리핑 적용
+    //ModifyStyleEx(0, WS_EX_COMPOSITED);
+    ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
     // --------------------------------------------------------
     // [v2.0] 시작 시 다이얼로그 선택(가맹점 설정 / 리더기 설정)
     //  - 기존에는 프로그램 실행 시 바로 CShopSetupDlg가 열렸으나,
@@ -499,110 +434,91 @@ BOOL CShopSetupDlg::OnInitDialog()
     //  - 선택 창은 모달로 띄워서, CShopSetupDlg가 화면에 표시되기 전에
     //    사용자가 먼저 선택할 수 있도록 한다.
     // --------------------------------------------------------
- 
-
     auto S = [&](int v) { return ScalePx(v); };
-
     m_brushBg.CreateSolidBrush(RGB(249, 250, 252));  // 밝은 회색 배경
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
     m_brushTabContent.CreateSolidBrush(RGB(255, 255, 255));  // card white
-
     InitializeFonts();
-
     // Create GDI+ font objects once (DPI-scaled). Must be called after the HWND is
     // valid so ScaleF can query the monitor DPI. Prevents per-OnPaint allocations
     // that risk transient GdipStatus != Ok errors causing corrupted DrawString output.
     ModernUIGfx::EnsureGdiplusStartup();
     m_pFontFamilyMalgun = new Gdiplus::FontFamily(L"Malgun Gothic");
     m_pFontCardTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
-        ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
-    m_pFontHdrTitle  = new Gdiplus::Font(m_pFontFamilyMalgun,
-        ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
-    m_pFontHdrSub    = new Gdiplus::Font(m_pFontFamilyMalgun,
+        ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    m_pFontHdrTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
+        ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    m_pFontHdrSub = new Gdiplus::Font(m_pFontFamilyMalgun,
         ModernUIDpi::ScaleF(m_hWnd, 11.0f), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-
-    ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
     // --------------------------------------------------------
     // 탭 컨트롤 생성 (다이얼로그 리소스에 없으므로 동적 생성)
     // --------------------------------------------------------
     m_tabCtrl.Create(this, IDC_TAB_MAIN, CRect(0, 0, 10, 10));
-
     // Info icon buttons
     auto CreateInfoBtn = [&](CInfoIconButton& btn, UINT id) {
         btn.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
             CRect(0, 0, S(22), S(22)), this, id);
-    };
-    CreateInfoBtn(m_btnVanInfo,          IDC_BTN_VAN_SERVER_INFO);
-    CreateInfoBtn(m_btnPortInfo,         IDC_BTN_PORT_INFO);
-    CreateInfoBtn(m_btnTaxPercentInfo,  IDC_BTN_TAX_PERCENT_INFO);
-    CreateInfoBtn(m_btnCommTypeInfo,     IDC_BTN_COMM_TYPE_INFO);
-    CreateInfoBtn(m_btnCashReceiptInfo,  IDC_BTN_CASH_RECEIPT_INFO);
-    CreateInfoBtn(m_btnCardTimeoutInfo,  IDC_BTN_CARD_TIMEOUT_INFO);
-    CreateInfoBtn(m_btnInterlockInfo,    IDC_BTN_INTERLOCK_INFO);
-    CreateInfoBtn(m_btnMultiVoiceInfo,   IDC_BTN_MULTI_VOICE_INFO);
-    CreateInfoBtn(m_btnCardDetectInfo,  IDC_BTN_CARD_DETECT_INFO);
-    CreateInfoBtn(m_btnScannerUseInfo,  IDC_BTN_SCANNER_USE_INFO);
-    CreateInfoBtn(m_btnAutoResetInfo,   IDC_BTN_AUTO_RESET_INFO);
-    CreateInfoBtn(m_btnAutoRebootInfo,  IDC_BTN_AUTO_REBOOT_INFO);
-    CreateInfoBtn(m_btnAlarmGraphInfo,  IDC_BTN_ALARM_GRAPH_INFO);
-    CreateInfoBtn(m_btnAlarmDualInfo,   IDC_BTN_ALARM_DUAL_INFO);
-    CreateInfoBtn(m_btnSignPadUseInfo,   IDC_BTN_SIGN_PAD_USE_INFO);
-    CreateInfoBtn(m_btnSignPadPortInfo,  IDC_BTN_SIGN_PAD_PORT_INFO);
+        };
+    CreateInfoBtn(m_btnVanInfo, IDC_BTN_VAN_SERVER_INFO);
+    CreateInfoBtn(m_btnPortInfo, IDC_BTN_PORT_INFO);
+    CreateInfoBtn(m_btnTaxPercentInfo, IDC_BTN_TAX_PERCENT_INFO);
+    CreateInfoBtn(m_btnCommTypeInfo, IDC_BTN_COMM_TYPE_INFO);
+    CreateInfoBtn(m_btnCashReceiptInfo, IDC_BTN_CASH_RECEIPT_INFO);
+    CreateInfoBtn(m_btnCardTimeoutInfo, IDC_BTN_CARD_TIMEOUT_INFO);
+    CreateInfoBtn(m_btnInterlockInfo, IDC_BTN_INTERLOCK_INFO);
+    CreateInfoBtn(m_btnMultiVoiceInfo, IDC_BTN_MULTI_VOICE_INFO);
+    CreateInfoBtn(m_btnCardDetectInfo, IDC_BTN_CARD_DETECT_INFO);
+    CreateInfoBtn(m_btnScannerUseInfo, IDC_BTN_SCANNER_USE_INFO);
+    CreateInfoBtn(m_btnAutoResetInfo, IDC_BTN_AUTO_RESET_INFO);
+    CreateInfoBtn(m_btnAutoRebootInfo, IDC_BTN_AUTO_REBOOT_INFO);
+    CreateInfoBtn(m_btnAlarmGraphInfo, IDC_BTN_ALARM_GRAPH_INFO);
+    CreateInfoBtn(m_btnAlarmDualInfo, IDC_BTN_ALARM_DUAL_INFO);
+    CreateInfoBtn(m_btnSignPadUseInfo, IDC_BTN_SIGN_PAD_USE_INFO);
+    CreateInfoBtn(m_btnSignPadPortInfo, IDC_BTN_SIGN_PAD_PORT_INFO);
     CreateInfoBtn(m_btnSignPadSpeedInfo, IDC_BTN_SIGN_PAD_SPEED_INFO);
-    CreateInfoBtn(m_btnAlarmSizeInfo,    IDC_BTN_ALARM_SIZE_INFO);
-    m_tabCtrl.AddTab(_T("결제 설정"),       0);
-    m_tabCtrl.AddTab(_T("장치 정보"),       1);
-    m_tabCtrl.AddTab(_T("시스템 설정"),     2);
+    CreateInfoBtn(m_btnAlarmSizeInfo, IDC_BTN_ALARM_SIZE_INFO);
+    m_tabCtrl.AddTab(_T("결제 설정"), 0);
+    m_tabCtrl.AddTab(_T("장치 정보"), 1);
+    m_tabCtrl.AddTab(_T("시스템 설정"), 2);
     m_tabCtrl.AddTab(_T("가맹점 다운로드"), 3);
-
     InitializeControls();
     EnsureValidationStatics();
     LoadOptionsFromRegistry();
-
     // 다이얼로그 크기
     const int MARGIN_X = S(kTabPadLeft);
-    const int LABEL_W  = S(92);
-    const int FIELD_W  = S(120);
-    const int COL_GAP  = S(16);
-
+    const int LABEL_W = S(92);
+    const int FIELD_W = S(120);
+    const int COL_GAP = S(16);
     // [TUNE] 가맹점 다운로드 컬럼 폭 (합계가 kDialogMinW 이내여야 함)
-    const int sd_padX  = S(10);   // [TUNE] 좌우 여백
-    const int sd_gap   = S(8);    // [TUNE] 컬럼 간격
-    const int sd_tagW  = S(60);   // [TUNE] 가맹점N 태그 폭
+    const int sd_padX = S(10);   // [TUNE] 좌우 여백
+    const int sd_gap = S(8);    // [TUNE] 컬럼 간격
+    const int sd_tagW = S(60);   // [TUNE] 가맹점N 태그 폭
     const int sd_prodW = S(105);  // [TUNE] 단말기 제품번호
-    const int sd_bizW  = S(105);  // [TUNE] 사업자번호
-    const int sd_pwdW  = S(48);   // [TUNE] 비밀번호
-    const int sd_btnW  = S(82);   // [TUNE] 다운로드 버튼
-    const int sd_etcW  = S(80);   // [TUNE] 단말기별 가맹점
+    const int sd_bizW = S(105);  // [TUNE] 사업자번호
+    const int sd_pwdW = S(48);   // [TUNE] 비밀번호
+    const int sd_btnW = S(82);   // [TUNE] 다운로드 버튼
+    const int sd_etcW = S(80);   // [TUNE] 단말기별 가맹점
     const int sd_nameW = S(110);  // [TUNE] 대표 가맹점
-
-    int topContentW  = (LABEL_W + FIELD_W) * 3 + (COL_GAP * 2);
-    int topMinW      = (MARGIN_X * 2) + topContentW;
-    int shopInnerW   = (sd_padX*2) + sd_tagW + sd_prodW + sd_bizW
-                       + sd_pwdW + sd_btnW + sd_etcW + sd_nameW + (sd_gap*6);
-    int bottomMinW   = shopInnerW + 2 * MARGIN_X;
+    int topContentW = (LABEL_W + FIELD_W) * 3 + (COL_GAP * 2);
+    int topMinW = (MARGIN_X * 2) + topContentW;
+    int shopInnerW = (sd_padX * 2) + sd_tagW + sd_prodW + sd_bizW
+        + sd_pwdW + sd_btnW + sd_etcW + sd_nameW + (sd_gap * 6);
+    int bottomMinW = shopInnerW + 2 * MARGIN_X;
     const int kDialogMinW = 760;  // [TUNE] 다이얼로그 최소폭
-
-    int dialogWidth  = max(kDialogMinW, max(topMinW, bottomMinW));
+    int dialogWidth = max(kDialogMinW, max(topMinW, bottomMinW));
     int dialogHeight = CalculateRequiredHeight();
-
     SetWindowPos(NULL, 0, 0, dialogWidth, dialogHeight,
         SWP_NOMOVE | SWP_NOZORDER);
     CenterWindow();
-
     ApplyLayout();
-
     // 첫 번째 탭 표시
     m_tabCtrl.SetCurSel(0);
     ShowTab(0);
-
     m_bUiInitialized = TRUE;
     Invalidate();
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
-
     return TRUE;
 }
-
 // ============================================================================
 // CalculateRequiredHeight - 탭 UI 기준 높이
 // ============================================================================
@@ -613,67 +529,57 @@ int CShopSetupDlg::CalculateRequiredHeight()
      * 2) 하단 마진을 더해 '필요 전체 높이'를 반환한다.
      * 3) 현재 클라이언트 높이보다 크면 스크롤/클리핑 처리 기준으로 사용한다.
      */
-
     auto S = [&](int v) { return ScalePx(v); };
-
     // ── 카드 공통 파라미터 (ApplyLayout과 동일 값) ─────────────────
-    const int FIELD_H  = S(44);
-    const int cOutY    = S(12);   // 카드 외부 상단
-    const int cGapY    = S(12);   // 카드 간 간격
-    const int cPadY    = S(16);   // 카드 내부 상하
-    const int cHdrH    = S(44);   // 카드 헤더 높이
-    const int capH     = S(18);   // 라벨 높이
-    const int capG     = S(7);    // 라벨→컨트롤 간격
-    const int rG       = S(20);   // 행 간격
-    auto oneRow = [&](){ return capH + capG + FIELD_H; };
-    auto cardH  = [&](int rows, int extraChecks = 0) -> int {
+    const int FIELD_H = S(44);
+    const int cOutY = S(12);   // 카드 외부 상단
+    const int cGapY = S(12);   // 카드 간 간격
+    const int cPadY = S(16);   // 카드 내부 상하
+    const int cHdrH = S(44);   // 카드 헤더 높이
+    const int capH = S(18);   // 라벨 높이
+    const int capG = S(7);    // 라벨→컨트롤 간격
+    const int rG = S(20);   // 행 간격
+    auto oneRow = [&]() { return capH + capG + FIELD_H; };
+    auto cardH = [&](int rows, int extraChecks = 0) -> int {
         // rows: 라벨+컨트롤 행 수, extraChecks: 추가 체크박스 행 수
-        return cPadY + cHdrH + oneRow()*rows + rG*(rows-1) + FIELD_H*extraChecks + cPadY;
-    };
-
+        return cPadY + cHdrH + oneRow() * rows + rG * (rows - 1) + FIELD_H * extraChecks + cPadY;
+        };
     int maxTabH = 0;
-
     // Tab 0: 결제 설정 (서버카드 2행 + 결제카드 3행)
     {
         int h = cOutY + cardH(2) + cGapY + cardH(3) + 8;
         maxTabH = max(maxTabH, h);
     }
-
     // Tab 1: 장치 정보 (리더기 2행 + 서명패드 2행 + 기타 체크1행)
     {
         // 리더기: 1행, 서명패드: 2행, 기타: 헤더+체크1행
-        int card1 = cPadY + cHdrH + oneRow()*1 + cPadY;
-        int card2 = cPadY + cHdrH + oneRow()*2 + rG + cPadY;
+        int card1 = cPadY + cHdrH + oneRow() * 1 + cPadY;
+        int card2 = cPadY + cHdrH + oneRow() * 2 + rG + cPadY;
         int card3 = cPadY + cHdrH + oneRow() + rG + FIELD_H + cPadY;
         int h = cOutY + card1 + cGapY + card2 + cGapY + card3 + S(10);
         maxTabH = max(maxTabH, h);
     }
-
     // Tab 2: 시스템 설정 (알림창 2행+체크1행 + 시스템 체크1행 + 단축키 1행)
     {
-        int card1 = cPadY + cHdrH + oneRow()*2 + rG + FIELD_H + cPadY;  // 알림창
+        int card1 = cPadY + cHdrH + oneRow() * 2 + rG + FIELD_H + cPadY;  // 알림창
         int card2 = cPadY + cHdrH + FIELD_H + cPadY;                     // 시스템
         int card3 = cPadY + cHdrH + oneRow() + cPadY;                    // 단축키
         int h = cOutY + card1 + cGapY + card2 + cGapY + card3;
         maxTabH = max(maxTabH, h);
     }
-
     // Tab 3: 가맹점 다운로드
     {
         int h = S(224);
         maxTabH = max(maxTabH, h);
     }
-
-    const int TITLE_AREA   = S(kTabBarTop);
-    const int TAB_H        = S(kTabBarH);
-    const int PAD_TOP      = S(kTabPadTop);
-    const int PAD_BOTTOM   = S(18);
-    const int BUTTON_AREA  = S(76);   // [TUNE] 하단 버튼 영역 높이 (버튼H 36 + 상하여백)
-    const int CARD_PAD     = S(28);  // [NOTE] 실제로는 CARD_PAD/2만큼 활용
-
+    const int TITLE_AREA = S(kTabBarTop);
+    const int TAB_H = S(kTabBarH);
+    const int PAD_TOP = S(kTabPadTop);
+    const int PAD_BOTTOM = S(18);
+    const int BUTTON_AREA = S(76);   // [TUNE] 하단 버튼 영역 높이 (버튼H 36 + 상하여백)
+    const int CARD_PAD = S(28);  // [NOTE] 실제로는 CARD_PAD/2만큼 활용
     return CARD_PAD + TITLE_AREA + TAB_H + PAD_TOP + maxTabH + PAD_BOTTOM + BUTTON_AREA;
 }
-
 // ============================================================================
 // InitializeFonts
 // ============================================================================
@@ -688,43 +594,34 @@ void CShopSetupDlg::InitializeFonts()
      * [참고]
      * - 폰트 객체는 GDI 리소스라서 누수되면 장시간 사용 시 그리기 이상/크래시 원인이 된다.
      */
-
     LOGFONT lf = { 0 };
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     lstrcpy(lf.lfFaceName, _T("Malgun Gothic"));
-
     // Use base 96-DPI pixel sizes and scale at runtime (per-monitor DPI)
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 20);
     lf.lfWeight = FW_BOLD;
     m_fontTitle.DeleteObject();
     m_fontTitle.CreateFontIndirect(&lf);
-
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 11);
     lf.lfWeight = FW_NORMAL;
     m_fontSubtitle.DeleteObject();
     m_fontSubtitle.CreateFontIndirect(&lf);
-
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
     lf.lfWeight = FW_BOLD;
     m_fontSection.DeleteObject();
     m_fontSection.CreateFontIndirect(&lf);
-
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
     lf.lfWeight = FW_NORMAL;
     m_fontLabel.DeleteObject();
     m_fontLabel.CreateFontIndirect(&lf);
-
     lf.lfWeight = FW_BOLD;
     m_fontGroupTitle.DeleteObject();
     m_fontGroupTitle.CreateFontIndirect(&lf);
-
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
     lf.lfWeight = FW_BOLD;
     m_fontValidation.DeleteObject();
     m_fontValidation.CreateFontIndirect(&lf);
-
 }
-
 // ============================================================================
 // InitializeControls
 // ============================================================================
@@ -741,14 +638,13 @@ void CShopSetupDlg::InitializeControls()
      * - 컨트롤 생성은 OnInitDialog에서 1회만 수행(반복 생성 금지).
      * - 동적 생성 컨트롤은 자식 윈도우 핸들이 유효한지(IsWindow) 체크 후 접근.
      */
-
     auto RemoveEdges = [&](int id)
-    {
-        CWnd* w = GetDlgItem(id);
-        if (!w) return;
-        w->ModifyStyle(WS_BORDER, 0, SWP_FRAMECHANGED);
-        w->ModifyStyleEx(WS_EX_CLIENTEDGE, 0, SWP_FRAMECHANGED);
-    };
+        {
+            CWnd* w = GetDlgItem(id);
+            if (!w) return;
+            w->ModifyStyle(WS_BORDER, 0, SWP_FRAMECHANGED);
+            w->ModifyStyleEx(WS_EX_CLIENTEDGE, 0, SWP_FRAMECHANGED);
+        };
     RemoveEdges(IDC_COMBO_ALARM_POS);
     RemoveEdges(IDC_COMBO_ALARM_SIZE);
     RemoveEdges(IDC_COMBO_CANCEL_KEY);
@@ -766,18 +662,15 @@ void CShopSetupDlg::InitializeControls()
     RemoveEdges(IDC_EDIT_SCANNER_PORT);
     RemoveEdges(IDC_EDIT_SIGN_PAD_PORT);
     RemoveEdges(IDC_EDIT_TAX_PERCENT);
-
     COLORREF bgColor = RGB(250, 251, 253);
-
     m_btnOk.SubclassDlgItem(IDOK, this);
     m_btnCancel.SubclassDlgItem(IDCANCEL, this);
     m_btnOk.ModifyStyle(0, BS_OWNERDRAW);
     m_btnCancel.ModifyStyle(0, BS_OWNERDRAW);
-    m_btnOk.SetUnderlayColor(RGB(255,255,255));
-    m_btnCancel.SetUnderlayColor(RGB(255,255,255));
+    m_btnOk.SetUnderlayColor(RGB(255, 255, 255));
+    m_btnCancel.SetUnderlayColor(RGB(255, 255, 255));
     m_btnOk.SetButtonStyle(ButtonStyle::Primary);
     m_btnCancel.SetButtonStyle(ButtonStyle::Default);
-
     m_comboVanServer.SetUnderlayColor(bgColor);
     m_comboCashReceipt.SetUnderlayColor(bgColor);
     m_comboInterlock.SetUnderlayColor(bgColor);
@@ -795,41 +688,34 @@ void CShopSetupDlg::InitializeControls()
     m_editCardDetectParam.SetUnderlayColor(bgColor);
     m_editSignPadPort.SetUnderlayColor(bgColor);
     m_editScannerPort.SetUnderlayColor(bgColor);
-
     m_staticShopContainer.SubclassDlgItem(IDC_STATIC_RECT, this);
-    m_staticShopContainer.ModifyStyle(
-        SS_WHITERECT|SS_BLACKRECT|SS_GRAYRECT|SS_WHITEFRAME|SS_BLACKFRAME|SS_GRAYFRAME,
-        SS_NOTIFY);
-
+    m_staticShopContainer.ModifyStyle(0, WS_CLIPCHILDREN); // 컨테이너가 자식을 지우지 않게 함
     // 체크박스
     auto SetupTgl = [&](CModernToggleSwitch& sw, int id, LPCTSTR txt, BOOL bOn)
-    {
-        sw.SubclassDlgItem(id, this);
-        sw.SetFont(&m_fontLabel);
-        // 기존 체크박스 스타일 제거 + owner-draw 적용
-        sw.ModifyStyle(BS_AUTOCHECKBOX|BS_CHECKBOX|BS_3STATE|BS_AUTO3STATE|BS_AUTORADIOBUTTON|BS_RADIOBUTTON, BS_OWNERDRAW);
-        sw.ModifyStyle(WS_BORDER, 0);
-        sw.ModifyStyleEx(WS_EX_CLIENTEDGE|WS_EX_STATICEDGE, 0);
-
-        
-        sw.SetWindowPos(NULL, 0, 0, 0, 0,
-            SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
-        sw.RedrawWindow(NULL, NULL,
-            RDW_INVALIDATE|RDW_ERASE|RDW_FRAME|RDW_UPDATENOW);
-        sw.SetWindowText(txt);
-        sw.SetToggled(bOn);
-        sw.SetTextSizePx(13);  // fontLabel과 동일 (13px)
-        sw.SetNoWrapEllipsis(TRUE);
-        sw.SetUnderlayColor(bgColor);
-    };
-    SetupTgl(m_chkCardDetect,   IDC_CHECK_CARD_DETECT,   _T("카드 감지 우선 거래 사용"),  FALSE);
-    SetupTgl(m_chkMultiVoice,   IDC_CHECK_MULTI_VOICE,   _T("멀티패드 음성 출력"), FALSE);
-    SetupTgl(m_chkScannerUse,   IDC_CHECK_SCANNER_USE,   _T("스캐너 사용"),    FALSE);
-    SetupTgl(m_chkAlarmGraph,   IDC_CHECK_ALARM_GRAPH,   _T("알림창 그림"),    TRUE);
-    SetupTgl(m_chkAlarmDual,    IDC_CHECK_ALARM_DUAL,    _T("알림창 듀얼"),    FALSE);
-    SetupTgl(m_chkAutoReset,    IDC_CHECK_AUTO_RESET,    _T("자동 재실행"),    TRUE);
-    SetupTgl(m_chkAutoReboot,   IDC_CHECK_AUTO_REBOOT,   _T("자동 리부팅"),    TRUE);
-
+        {
+            sw.SubclassDlgItem(id, this);
+            sw.SetFont(&m_fontLabel);
+            // 기존 체크박스 스타일 제거 + owner-draw 적용
+            sw.ModifyStyle(BS_AUTOCHECKBOX | BS_CHECKBOX | BS_3STATE | BS_AUTO3STATE | BS_AUTORADIOBUTTON | BS_RADIOBUTTON, BS_OWNERDRAW);
+            sw.ModifyStyle(WS_BORDER, 0);
+            sw.ModifyStyleEx(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE, 0);
+            sw.SetWindowPos(NULL, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            sw.RedrawWindow(NULL, NULL,
+                RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_UPDATENOW);
+            sw.SetWindowText(txt);
+            sw.SetToggled(bOn);
+            sw.SetTextSizePx(13);  // fontLabel과 동일 (13px)
+            sw.SetNoWrapEllipsis(TRUE);
+            sw.SetUnderlayColor(bgColor);
+        };
+    SetupTgl(m_chkCardDetect, IDC_CHECK_CARD_DETECT, _T("카드 감지 우선 거래 사용"), FALSE);
+    SetupTgl(m_chkMultiVoice, IDC_CHECK_MULTI_VOICE, _T("멀티패드 음성 출력"), FALSE);
+    SetupTgl(m_chkScannerUse, IDC_CHECK_SCANNER_USE, _T("스캐너 사용"), FALSE);
+    SetupTgl(m_chkAlarmGraph, IDC_CHECK_ALARM_GRAPH, _T("알림창 그림"), TRUE);
+    SetupTgl(m_chkAlarmDual, IDC_CHECK_ALARM_DUAL, _T("알림창 듀얼"), FALSE);
+    SetupTgl(m_chkAutoReset, IDC_CHECK_AUTO_RESET, _T("자동 재실행"), TRUE);
+    SetupTgl(m_chkAutoReboot, IDC_CHECK_AUTO_REBOOT, _T("자동 리부팅"), TRUE);
     if (!::IsWindow(::GetDlgItem(m_hWnd, IDC_STATIC_CARD_DETECT_POSINFO)))
     {
         HWND hStatic = ::CreateWindowEx(
@@ -842,7 +728,6 @@ void CShopSetupDlg::InitializeControls()
             (HMENU)IDC_STATIC_CARD_DETECT_POSINFO,
             AfxGetInstanceHandle(),
             NULL);
-
         if (hStatic)
         {
             ::SendMessage(hStatic, WM_SETFONT, (WPARAM)(HFONT)m_fontLabel.GetSafeHandle(), TRUE);
@@ -860,7 +745,6 @@ void CShopSetupDlg::InitializeControls()
             (HMENU)IDC_STATIC_SCANNER_PORT_LABEL,
             AfxGetInstanceHandle(),
             NULL);
-
         if (hStatic)
         {
             ::SendMessage(hStatic, WM_SETFONT, (WPARAM)(HFONT)m_fontLabel.GetSafeHandle(), TRUE);
@@ -868,17 +752,16 @@ void CShopSetupDlg::InitializeControls()
     }
     // 콤보박스 초기화
     // 콤보박스 초기화 (Word 스펙 기준 목록)
-    FillCombo(m_comboVanServer,   kVanServers,   (int)(sizeof(kVanServers) / sizeof(kVanServers[0])));
-    FillCombo(m_comboCashReceipt, kCashReceipt,  (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])));
-    FillCombo(m_comboInterlock,   kInterlock,    (int)(sizeof(kInterlock) / sizeof(kInterlock[0])));
-    FillCombo(m_comboCommType,    kCommType,     (int)(sizeof(kCommType) / sizeof(kCommType[0])));
-    FillCombo(m_comboSignPadUse,  kSignPadUse,   (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])));
-    FillCombo(m_comboSignPadSpeed,kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])));
-    FillCombo(m_comboAlarmPos,    kAlarmPos,     (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])));
-    FillCombo(m_comboAlarmSize,   kAlarmSize,    (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])));
-    FillCombo(m_comboCancelKey,   kHotkeys,      (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])));
-    FillCombo(m_comboMSRKey,      kHotkeys,      (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])));
-
+    FillCombo(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])));
+    FillCombo(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])));
+    FillCombo(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])));
+    FillCombo(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])));
+    FillCombo(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])));
+    FillCombo(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])));
+    FillCombo(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])));
+    FillCombo(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])));
+    FillCombo(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])));
+    FillCombo(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])));
     // 라벨 폰트
     const int lblIds[] = {
         IDC_STATIC_VAN_SERVER, IDC_STATIC_PORT,
@@ -894,13 +777,11 @@ void CShopSetupDlg::InitializeControls()
         if (p) p->SetFont(&m_fontLabel);
     }
 }
-
 // --- ScalePx: DPI-aware scaling shorthand ---
 int CShopSetupDlg::ScalePx(int px) const
 {
     return ModernUIDpi::Scale(m_hWnd, px);
 }
-
 // --- MoveCtrl: move a dialog control; ComboBox gets standard drop height ---
 void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
 {
@@ -912,7 +793,6 @@ void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
      * [참고]
      * - MoveWindow는 내부적으로 WM_SIZE/WM_WINDOWPOSCHANGED를 유발할 수 있어, 레이아웃 중 재진입을 조심.
      */
-
     CWnd* p = GetDlgItem(nID);
     if (!p || !p->GetSafeHwnd()) return;
     TCHAR cls[64] = { 0 };
@@ -921,7 +801,7 @@ void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
     {
         p->MoveWindow(x, y, w, ScalePx(220));
         ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(h - 2));
-        ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(h - 2));
+        ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)(h - 2));
     }
     else
     {
@@ -943,22 +823,21 @@ void CShopSetupDlg::ApplyLayoutTab0()
      * 3) 콤보/에딧의 폭은 '라벨 폭 + 입력 폭' 규칙에 따라 정렬되도록 맞춘다.
      * 4) 그룹 간 간격을 적용하고 다음 그룹으로 y를 진행한다.
      */
-
-    auto S    = [&](int v)                              { return ScalePx(v); };
+    auto S = [&](int v) { return ScalePx(v); };
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
-    const int CTRL_H       = S(40);
-    const int FIELD_H      = CTRL_H;
+    const int CTRL_H = S(40);
+    const int FIELD_H = CTRL_H;
     CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
-        const int BtnSz  = S(18);
+        const int BtnSz = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
             CFont* pFont = pLbl->GetFont();
-            CFont* pOld  = pFont ? measureDC.SelectObject(pFont) : NULL;
+            CFont* pOld = pFont ? measureDC.SelectObject(pFont) : NULL;
             CString strLbl;
             pLbl->GetWindowText(strLbl);
             CSize sz = measureDC.GetTextExtent(strLbl);
@@ -966,121 +845,94 @@ void CShopSetupDlg::ApplyLayoutTab0()
             bx = lx + sz.cx + BtnGap;
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-    };
+        };
     int y = m_rcTabContent.top + S(kTabPadTop);
-
-        const int cardOuterPadX = 16;
-        const int cardOuterPadY = 12;
-        const int cardGapY      = 16;
-
-        const int cardPadX      = 22;
-        const int cardPadY      = 16;   // 상하
-        const int headerH       = 44;   // 불릿헤더
-        const int capH          = 18;   // [TUNE] 캡션(라벨) 높이
-        const int capGap        = 7;    // 캡션간격
-        const int rowGap        = 20;   // 행간격
-        const int colGap        = 20;
-
-        int cardLeft  = m_rcTabContent.left  + cardOuterPadX;
-        int cardRight = m_rcTabContent.right - cardOuterPadX;
-        int cardW     = cardRight - cardLeft;
-
-        int curY = y + cardOuterPadY;
-
-        // -------------------------
-        // 카드 1) 서버 설정
-        // -------------------------
-        int innerX = cardLeft + cardPadX;
-        int innerW = cardW - cardPadX * 2;
-
-        int y1 = curY + cardPadY + headerH;
-
-        // 금융결제원 서버 / 포트번호 (한 줄 2열)
-        int colW = (innerW - colGap) / 2;
-
-        // 좌: 금융결제원 서버
-        Move(IDC_STATIC_VAN_SERVER, innerX, y1, colW, capH);
-        Move(IDC_COMBO_VAN_SERVER,  innerX, y1 + capH + capGap, colW, FIELD_H);
-
-        PlaceInfoBtn(m_btnVanInfo, IDC_STATIC_VAN_SERVER, innerX, y1, capH);
-        // 우: 포트번호
-        Move(IDC_STATIC_PORT,       innerX + colW + colGap, y1, colW, capH);
-        PlaceInfoBtn(m_btnPortInfo, IDC_STATIC_PORT, innerX + colW + colGap, y1, capH);
-        Move(IDC_EDIT_PORT,         innerX + colW + colGap, y1 + capH + capGap, colW, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_PORT, innerX + colW + colGap + colW - S(88), y1, S(88), capH);
-
-        y1 += capH + capGap + FIELD_H;
-
-        int serverCardH = (y1 + cardPadY) - curY;
-        m_rcCardServer = CRect(cardLeft, curY, cardRight, curY + serverCardH);
-
-        curY = m_rcCardServer.bottom + cardGapY;
-
-        // -------------------------
-        // 카드 2) 결제 방식
-        // -------------------------
-        innerX = cardLeft + cardPadX;
-        innerW = cardW - cardPadX * 2;
-
-        int y2 = curY + cardPadY + headerH;
-
-        // 통신방식 / 현금영수증 거래 (2열)
-        colW = (innerW - colGap) / 2;
-        Move(IDC_STATIC_COMM_TYPE, innerX, y2, colW, capH);
-        PlaceInfoBtn(m_btnCommTypeInfo, IDC_STATIC_COMM_TYPE, innerX, y2, capH);
-        Move(IDC_COMBO_COMM_TYPE,  innerX, y2 + capH + capGap, colW, FIELD_H);
-
-        int rx = innerX + colW + colGap;
-        Move(IDC_STATIC_CASH_RECEIPT, rx, y2, colW, capH);
-        PlaceInfoBtn(m_btnCashReceiptInfo, IDC_STATIC_CASH_RECEIPT, rx, y2, capH);
-        Move(IDC_COMBO_CASH_RECEIPT,  rx, y2 + capH + capGap, colW, FIELD_H);
-
-        y2 += capH + capGap + FIELD_H + rowGap;
-
-        // 무서명 / 카드 감지 우선 거래 사용 (2열)
-        Move(IDC_STATIC_NO_SIGN_AMOUNT, innerX, y2, colW, capH);
-        Move(IDC_EDIT_NO_SIGN_AMOUNT,   innerX, y2 + capH + capGap, colW, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_NO_SIGN, innerX + colW - S(88), y2, S(88), capH);
-
+    const int cardOuterPadX = 16;
+    const int cardOuterPadY = 12;
+    const int cardGapY = 16;
+    const int cardPadX = 22;
+    const int cardPadY = 16;   // 상하
+    const int headerH = 44;   // 불릿헤더
+    const int capH = 18;   // [TUNE] 캡션(라벨) 높이
+    const int capGap = 7;    // 캡션간격
+    const int rowGap = 20;   // 행간격
+    const int colGap = 20;
+    int cardLeft = m_rcTabContent.left + cardOuterPadX;
+    int cardRight = m_rcTabContent.right - cardOuterPadX;
+    int cardW = cardRight - cardLeft;
+    int curY = y + cardOuterPadY;
+    // -------------------------
+    // 카드 1) 서버 설정
+    // -------------------------
+    int innerX = cardLeft + cardPadX;
+    int innerW = cardW - cardPadX * 2;
+    int y1 = curY + cardPadY + headerH;
+    // 금융결제원 서버 / 포트번호 (한 줄 2열)
+    int colW = (innerW - colGap) / 2;
+    // 좌: 금융결제원 서버
+    Move(IDC_STATIC_VAN_SERVER, innerX, y1, colW, capH);
+    Move(IDC_COMBO_VAN_SERVER, innerX, y1 + capH + capGap, colW, FIELD_H);
+    PlaceInfoBtn(m_btnVanInfo, IDC_STATIC_VAN_SERVER, innerX, y1, capH);
+    // 우: 포트번호
+    Move(IDC_STATIC_PORT, innerX + colW + colGap, y1, colW, capH);
+    PlaceInfoBtn(m_btnPortInfo, IDC_STATIC_PORT, innerX + colW + colGap, y1, capH);
+    Move(IDC_EDIT_PORT, innerX + colW + colGap, y1 + capH + capGap, colW, FIELD_H);
+    PositionValidationText(IDC_STATIC_ERR_PORT, innerX + colW + colGap + colW - S(88), y1, S(88), capH);
+    y1 += capH + capGap + FIELD_H;
+    int serverCardH = (y1 + cardPadY) - curY;
+    m_rcCardServer = CRect(cardLeft, curY, cardRight, curY + serverCardH);
+    curY = m_rcCardServer.bottom + cardGapY;
+    // -------------------------
+    // 카드 2) 결제 방식
+    // -------------------------
+    innerX = cardLeft + cardPadX;
+    innerW = cardW - cardPadX * 2;
+    int y2 = curY + cardPadY + headerH;
+    // 통신방식 / 현금영수증 거래 (2열)
+    colW = (innerW - colGap) / 2;
+    Move(IDC_STATIC_COMM_TYPE, innerX, y2, colW, capH);
+    PlaceInfoBtn(m_btnCommTypeInfo, IDC_STATIC_COMM_TYPE, innerX, y2, capH);
+    Move(IDC_COMBO_COMM_TYPE, innerX, y2 + capH + capGap, colW, FIELD_H);
+    int rx = innerX + colW + colGap;
+    Move(IDC_STATIC_CASH_RECEIPT, rx, y2, colW, capH);
+    PlaceInfoBtn(m_btnCashReceiptInfo, IDC_STATIC_CASH_RECEIPT, rx, y2, capH);
+    Move(IDC_COMBO_CASH_RECEIPT, rx, y2 + capH + capGap, colW, FIELD_H);
+    y2 += capH + capGap + FIELD_H + rowGap;
+    // 무서명 / 카드 감지 우선 거래 사용 (2열)
+    Move(IDC_STATIC_NO_SIGN_AMOUNT, innerX, y2, colW, capH);
+    Move(IDC_EDIT_NO_SIGN_AMOUNT, innerX, y2 + capH + capGap, colW, FIELD_H);
+    PositionValidationText(IDC_STATIC_ERR_NO_SIGN, innerX + colW - S(88), y2, S(88), capH);
+    {
+        const int BtnSz = S(18);
+        const int BtnGap = S(6);
+        const int toggleY = y2 + capH + capGap;
+        const int rightX = innerX + colW + colGap;
+        // 카드 감지 우선 거래 사용: 세금 자동 역산 자리(2행 오른쪽)로 이동
+        // 토글 오른쪽에 팝오버 아이콘 영역을 확보해서 겹치지 않게 배치
+        int toggleW = colW - (BtnSz + BtnGap);
+        if (toggleW < S(110))
+            toggleW = max(1, colW - (BtnSz + BtnGap));
+        Move(IDC_CHECK_CARD_DETECT, rightX, toggleY, toggleW, FIELD_H);
+        if (m_btnCardDetectInfo.GetSafeHwnd())
         {
-            const int BtnSz   = S(18);
-            const int BtnGap  = S(6);
-            const int toggleY = y2 + capH + capGap;
-            const int rightX  = innerX + colW + colGap;
-
-            // 카드 감지 우선 거래 사용: 세금 자동 역산 자리(2행 오른쪽)로 이동
-            // 토글 오른쪽에 팝오버 아이콘 영역을 확보해서 겹치지 않게 배치
-            int toggleW = colW - (BtnSz + BtnGap);
-            if (toggleW < S(110))
-                toggleW = max(1, colW - (BtnSz + BtnGap));
-
-            Move(IDC_CHECK_CARD_DETECT, rightX, toggleY, toggleW, FIELD_H);
-            if (m_btnCardDetectInfo.GetSafeHwnd())
-            {
-                int ibX = rightX + toggleW + BtnGap;
-                int ibY = toggleY + (FIELD_H - BtnSz) / 2;
-                m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-            }
+            int ibX = rightX + toggleW + BtnGap;
+            int ibY = toggleY + (FIELD_H - BtnSz) / 2;
+            m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
         }
-
-        y2 += capH + capGap + FIELD_H + rowGap;
-
-        // 세금 자동 역산 / 우선 거래 프로그램 (2열)
-        Move(IDC_STATIC_TAX_PERCENT, innerX, y2, colW, capH);
-        PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX, y2, capH);
-        Move(IDC_EDIT_TAX_PERCENT,   innerX, y2 + capH + capGap, colW, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_TAX, innerX + colW - S(88), y2, S(88), capH);
-
-        Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX + colW + colGap, y2, colW, capH);
-        Move(IDC_EDIT_CARD_DETECT_PARAM,     innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW + colGap + colW - S(88), y2, S(88), capH);
-
-        y2 += capH + capGap + FIELD_H;
-
-        int payCardH = (y2 + cardPadY) - curY;
-        m_rcCardPayMethod = CRect(cardLeft, curY, cardRight, curY + payCardH);
+    }
+    y2 += capH + capGap + FIELD_H + rowGap;
+    // 세금 자동 역산 / 우선 거래 프로그램 (2열)
+    Move(IDC_STATIC_TAX_PERCENT, innerX, y2, colW, capH);
+    PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX, y2, capH);
+    Move(IDC_EDIT_TAX_PERCENT, innerX, y2 + capH + capGap, colW, FIELD_H);
+    PositionValidationText(IDC_STATIC_ERR_TAX, innerX + colW - S(88), y2, S(88), capH);
+    Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX + colW + colGap, y2, colW, capH);
+    Move(IDC_EDIT_CARD_DETECT_PARAM, innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
+    PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW + colGap + colW - S(88), y2, S(88), capH);
+    y2 += capH + capGap + FIELD_H;
+    int payCardH = (y2 + cardPadY) - curY;
+    m_rcCardPayMethod = CRect(cardLeft, curY, cardRight, curY + payCardH);
 }
-
 // --- Tab 1+2: devices and system settings ---
 void CShopSetupDlg::ApplyLayoutTab1()
 {
@@ -1089,22 +941,21 @@ void CShopSetupDlg::ApplyLayoutTab1()
      * 2) 토글이 있는 행은 '라벨 + 토글 + 정보아이콘' 정렬 규칙을 적용한다.
      * 3) 서명패드 관련 입력은 종속 관계(사용 ON일 때만 활성화 등)가 있으면 EnableWindow로 제어한다.
      */
-
-    auto S    = [&](int v)                              { return ScalePx(v); };
+    auto S = [&](int v) { return ScalePx(v); };
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
-    const int CTRL_H       = S(40);
-    const int FIELD_H      = CTRL_H;
+    const int CTRL_H = S(40);
+    const int FIELD_H = CTRL_H;
     CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
-        const int BtnSz  = S(18);
+        const int BtnSz = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
             CFont* pFont = pLbl->GetFont();
-            CFont* pOld  = pFont ? measureDC.SelectObject(pFont) : NULL;
+            CFont* pOld = pFont ? measureDC.SelectObject(pFont) : NULL;
             CString strLbl;
             pLbl->GetWindowText(strLbl);
             CSize sz = measureDC.GetTextExtent(strLbl);
@@ -1112,232 +963,209 @@ void CShopSetupDlg::ApplyLayoutTab1()
             bx = lx + sz.cx + BtnGap;
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-    };
+        };
     int y = m_rcTabContent.top + S(kTabPadTop);
-
-        const int cOutX  = 16;   // [TUNE] 카드 외부 좌우 여백
-        const int cOutY  = 12;   // [TUNE] 카드 외부 상단 여백
-        const int cGapY  = 12;   // [TUNE] 카드 간 세로 간격
-        const int cPadX  = 22;   // [TUNE] 카드 내부 좌우 여백
-        const int cPadY  = 16;   // [TUNE] 카드 내부 상하 여백
-        const int cHdrH  = 44;   // [TUNE] 카드 헤더 높이
-        const int capH   = 18;   // [TUNE] 라벨 텍스트 높이
-        const int capG   = 7;    // [TUNE] 라벨→컨트롤 간격
-        const int rG     = 20;   // [TUNE] 카드 내 행 간격
-        const int cG     = 18;   // [TUNE] 열 간격
-        const int chkW   = 140;  // [TUNE] 체크박스 1개 폭 (3개/행 기준)
-
-        int cLeft  = m_rcTabContent.left  + cOutX;
-        int cRight = m_rcTabContent.right - cOutX;
-        int cW     = cRight - cLeft;
-        int curY   = y + cOutY;
-        int inX    = cLeft + cPadX;
-        int inW    = cW - cPadX * 2;
-        int col2W  = (inW - cG) / 2;  // 2열 분할 폭
-
+    const int cOutX = 16;   // [TUNE] 카드 외부 좌우 여백
+    const int cOutY = 12;   // [TUNE] 카드 외부 상단 여백
+    const int cGapY = 12;   // [TUNE] 카드 간 세로 간격
+    const int cPadX = 22;   // [TUNE] 카드 내부 좌우 여백
+    const int cPadY = 16;   // [TUNE] 카드 내부 상하 여백
+    const int cHdrH = 44;   // [TUNE] 카드 헤더 높이
+    const int capH = 18;   // [TUNE] 라벨 텍스트 높이
+    const int capG = 7;    // [TUNE] 라벨→컨트롤 간격
+    const int rG = 20;   // [TUNE] 카드 내 행 간격
+    const int cG = 18;   // [TUNE] 열 간격
+    const int chkW = 140;  // [TUNE] 체크박스 1개 폭 (3개/행 기준)
+    int cLeft = m_rcTabContent.left + cOutX;
+    int cRight = m_rcTabContent.right - cOutX;
+    int cW = cRight - cLeft;
+    int curY = y + cOutY;
+    int inX = cLeft + cPadX;
+    int inW = cW - cPadX * 2;
+    int col2W = (inW - cG) / 2;  // 2열 분할 폭
     // =================================================================
     // Tab 1: 장치 정보
     // =================================================================
-
         // ── 카드 1: 리더기 ──────────────────────────────
+    {
+        int fy = curY + cPadY + cHdrH;
+        // 행1: 카드 응답 타임아웃 / 연동 방식 (2열)
+        Move(IDC_STATIC_CARD_TIMEOUT, inX, fy, col2W, capH);
+        PlaceInfoBtn(m_btnCardTimeoutInfo, IDC_STATIC_CARD_TIMEOUT, inX, fy, capH);
+        Move(IDC_EDIT_CARD_TIMEOUT, inX, fy + capH + capG, col2W, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_TIMEOUT, inX + col2W - S(88), fy, S(88), capH);
+        Move(IDC_STATIC_INTERLOCK, inX + col2W + cG, fy, col2W, capH);
+        PlaceInfoBtn(m_btnInterlockInfo, IDC_STATIC_INTERLOCK, inX + col2W + cG, fy, capH);
+        Move(IDC_COMBO_INTERLOCK, inX + col2W + cG, fy + capH + capG, col2W, FIELD_H);
+        fy += capH + capG + FIELD_H + rG;
+        int cardH = (fy + cPadY) - curY;
+        m_rcGrpReader = CRect(cLeft, curY, cRight, curY + cardH);
+        curY = m_rcGrpReader.bottom + cGapY;
+    }
+    // ── 카드 2: 서명패드 ──────────────────────────────
+    {
+        int fy = curY + cPadY + cHdrH;
+        // 행1: 서명패드 사용 / 포트번호 (2열)
+        Move(IDC_STATIC_SIGN_PAD_USE, inX, fy, col2W, capH);
+        PlaceInfoBtn(m_btnSignPadUseInfo, IDC_STATIC_SIGN_PAD_USE, inX, fy, capH);
+        Move(IDC_COMBO_SIGN_PAD_USE, inX, fy + capH + capG, col2W, FIELD_H);
+        Move(IDC_STATIC_SIGN_PAD_PORT, inX + col2W + cG, fy, col2W, capH);
+        PlaceInfoBtn(m_btnSignPadPortInfo, IDC_STATIC_SIGN_PAD_PORT, inX + col2W + cG, fy, capH);
+        Move(IDC_EDIT_SIGN_PAD_PORT, inX + col2W + cG, fy + capH + capG, col2W, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, inX + col2W + cG + col2W - S(88), fy, S(88), capH);
+        fy += capH + capG + FIELD_H + rG;
+        // 행2: 통신속도 (1열, 반폭)
+        Move(IDC_STATIC_SIGN_PAD_SPEED, inX, fy, col2W, capH);
+        PlaceInfoBtn(m_btnSignPadSpeedInfo, IDC_STATIC_SIGN_PAD_SPEED, inX, fy, capH);
+        Move(IDC_COMBO_SIGN_PAD_SPEED, inX, fy + capH + capG, col2W, FIELD_H);
+        fy += capH + capG + FIELD_H;
+        int cardH = (fy + cPadY) - curY;
+        m_rcGrpSign = CRect(cLeft, curY, cRight, curY + cardH);
+        curY = m_rcGrpSign.bottom + cGapY;
+    }
+    // ── 카드 3: 기타 ────────────────────────────────
+    {
+        const int etcTopTight = S(4);   // [TUNE] 기타 카드 첫 줄을 조금 위로 당긴다.
+        const int etcRowGap = S(10);  // [TUNE] 토글 행과 포트번호 행 간격을 줄인다.
+        const int etcBottomPad = S(10);  // [TUNE] 카드 하단 여백을 줄여 버튼과 겹치지 않게 한다.
+        int fy = curY + cPadY + cHdrH - etcTopTight;
+        const int BtnSz = S(18);
+        const int BtnGap = S(6);
+        const int leftX = inX;
+        const int rightX = inX + col2W + cG;
+        const int toggleY = fy;
+        // 행1 좌측: 스캐너 사용 토글 + 팝오버
         {
-            int fy = curY + cPadY + cHdrH;
-            // 행1: 카드 응답 타임아웃 / 연동 방식 (2열)
-            Move(IDC_STATIC_CARD_TIMEOUT, inX,          fy, col2W, capH);
-            PlaceInfoBtn(m_btnCardTimeoutInfo, IDC_STATIC_CARD_TIMEOUT, inX, fy, capH);
-            Move(IDC_EDIT_CARD_TIMEOUT,   inX,          fy+capH+capG, col2W, FIELD_H);
-            PositionValidationText(IDC_STATIC_ERR_TIMEOUT, inX + col2W - S(88), fy, S(88), capH);
-            Move(IDC_STATIC_INTERLOCK,    inX+col2W+cG, fy, col2W, capH);
-            PlaceInfoBtn(m_btnInterlockInfo, IDC_STATIC_INTERLOCK, inX+col2W+cG, fy, capH);
-            Move(IDC_COMBO_INTERLOCK,     inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
-            fy += capH + capG + FIELD_H + rG;
-
-            int cardH = (fy + cPadY) - curY;
-            m_rcGrpReader = CRect(cLeft, curY, cRight, curY + cardH);
-            curY = m_rcGrpReader.bottom + cGapY;
-        }
-
-        // ── 카드 2: 서명패드 ──────────────────────────────
-        {
-            int fy = curY + cPadY + cHdrH;
-            // 행1: 서명패드 사용 / 포트번호 (2열)
-            Move(IDC_STATIC_SIGN_PAD_USE,  inX,          fy, col2W, capH);
-            PlaceInfoBtn(m_btnSignPadUseInfo, IDC_STATIC_SIGN_PAD_USE, inX, fy, capH);
-            Move(IDC_COMBO_SIGN_PAD_USE,   inX,          fy+capH+capG, col2W, FIELD_H);
-            Move(IDC_STATIC_SIGN_PAD_PORT, inX+col2W+cG, fy, col2W, capH);
-            PlaceInfoBtn(m_btnSignPadPortInfo, IDC_STATIC_SIGN_PAD_PORT, inX+col2W+cG, fy, capH);
-            Move(IDC_EDIT_SIGN_PAD_PORT,   inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
-            PositionValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, inX + col2W + cG + col2W - S(88), fy, S(88), capH);
-            fy += capH + capG + FIELD_H + rG;
-            // 행2: 통신속도 (1열, 반폭)
-            Move(IDC_STATIC_SIGN_PAD_SPEED, inX, fy, col2W, capH);
-            PlaceInfoBtn(m_btnSignPadSpeedInfo, IDC_STATIC_SIGN_PAD_SPEED, inX, fy, capH);
-            Move(IDC_COMBO_SIGN_PAD_SPEED,  inX, fy+capH+capG, col2W, FIELD_H);
-            fy += capH + capG + FIELD_H;
-
-            int cardH = (fy + cPadY) - curY;
-            m_rcGrpSign = CRect(cLeft, curY, cRight, curY + cardH);
-            curY = m_rcGrpSign.bottom + cGapY;
-        }
-
-        // ── 카드 3: 기타 ────────────────────────────────
-        {
-            const int etcTopTight  = S(4);   // [TUNE] 기타 카드 첫 줄을 조금 위로 당긴다.
-            const int etcRowGap    = S(10);  // [TUNE] 토글 행과 포트번호 행 간격을 줄인다.
-            const int etcBottomPad = S(10);  // [TUNE] 카드 하단 여백을 줄여 버튼과 겹치지 않게 한다.
-            int fy = curY + cPadY + cHdrH - etcTopTight;
-            const int BtnSz  = S(18);
-            const int BtnGap = S(6);
-            const int leftX  = inX;
-            const int rightX = inX + col2W + cG;
-            const int toggleY = fy;
-
-            // 행1 좌측: 스캐너 사용 토글 + 팝오버
+            int toggleW = col2W - (BtnSz + BtnGap);
+            if (toggleW < S(110))
+                toggleW = max(1, col2W - (BtnSz + BtnGap));
+            Move(IDC_CHECK_SCANNER_USE, leftX, toggleY, toggleW, FIELD_H);
+            if (m_btnScannerUseInfo.GetSafeHwnd())
             {
-                int toggleW = col2W - (BtnSz + BtnGap);
-                if (toggleW < S(110))
-                    toggleW = max(1, col2W - (BtnSz + BtnGap));
-
-                Move(IDC_CHECK_SCANNER_USE, leftX, toggleY, toggleW, FIELD_H);
-                if (m_btnScannerUseInfo.GetSafeHwnd())
-                {
-                    int ibX = leftX + toggleW + BtnGap;
-                    int ibY = toggleY + (FIELD_H - BtnSz) / 2;
-                    m_btnScannerUseInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-                }
+                int ibX = leftX + toggleW + BtnGap;
+                int ibY = toggleY + (FIELD_H - BtnSz) / 2;
+                m_btnScannerUseInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
-
-            // 행1 우측: 멀티패드 음성 출력 토글 + 팝오버
-            {
-                int mvW = col2W - (BtnSz + BtnGap);
-                if (mvW < S(110))
-                    mvW = max(1, col2W - (BtnSz + BtnGap));
-
-                Move(IDC_CHECK_MULTI_VOICE, rightX, toggleY, mvW, FIELD_H);
-                if (m_btnMultiVoiceInfo.GetSafeHwnd())
-                {
-                    int ibX = rightX + mvW + BtnGap;
-                    int ibY = toggleY + (FIELD_H - BtnSz) / 2;
-                    m_btnMultiVoiceInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-                }
-            }
-
-            fy = toggleY + FIELD_H + etcRowGap;
-
-            // 행2 좌측: 스캐너 포트번호 + EditText
-            Move(IDC_STATIC_SCANNER_PORT_LABEL, leftX, fy, col2W, capH);
-            Move(IDC_EDIT_SCANNER_PORT,         leftX, fy+capH+capG, col2W, FIELD_H);
-            PositionValidationText(IDC_STATIC_ERR_SCANNER_PORT, leftX + col2W - S(88), fy, S(88), capH);
-
-            int cardH = (fy + capH + capG + FIELD_H + etcBottomPad) - curY;
-            m_rcGrpEtc = CRect(cLeft, curY, cRight, curY + cardH);
-            // curY = m_rcGrpEtc.bottom + cGapY;  // Tab1 끝
         }
-
-// =================================================================
-    // Tab 2: 시스템 설정
+        // 행1 우측: 멀티패드 음성 출력 토글 + 팝오버
+        {
+            int mvW = col2W - (BtnSz + BtnGap);
+            if (mvW < S(110))
+                mvW = max(1, col2W - (BtnSz + BtnGap));
+            Move(IDC_CHECK_MULTI_VOICE, rightX, toggleY, mvW, FIELD_H);
+            if (m_btnMultiVoiceInfo.GetSafeHwnd())
+            {
+                int ibX = rightX + mvW + BtnGap;
+                int ibY = toggleY + (FIELD_H - BtnSz) / 2;
+                m_btnMultiVoiceInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
+        fy = toggleY + FIELD_H + etcRowGap;
+        // 행2 좌측: 스캐너 포트번호 + EditText
+        Move(IDC_STATIC_SCANNER_PORT_LABEL, leftX, fy, col2W, capH);
+        Move(IDC_EDIT_SCANNER_PORT, leftX, fy + capH + capG, col2W, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_SCANNER_PORT, leftX + col2W - S(88), fy, S(88), capH);
+        int cardH = (fy + capH + capG + FIELD_H + etcBottomPad) - curY;
+        m_rcGrpEtc = CRect(cLeft, curY, cRight, curY + cardH);
+        // curY = m_rcGrpEtc.bottom + cGapY;  // Tab1 끝
+    }
     // =================================================================
-        curY = y + cOutY;
-
-        // ── 카드 1: 알림창 설정 ─────────────────────────
+        // Tab 2: 시스템 설정
+        // =================================================================
+    curY = y + cOutY;
+    // ── 카드 1: 알림창 설정 ─────────────────────────
+    {
+        int fy = curY + cPadY + cHdrH;
+        // 행1: 알림창 크기 / 알림창 위치 (2열)
+        Move(IDC_STATIC_ALARM_SIZE, inX, fy, col2W, capH);
+        PlaceInfoBtn(m_btnAlarmSizeInfo, IDC_STATIC_ALARM_SIZE, inX, fy, capH);
+        Move(IDC_COMBO_ALARM_SIZE, inX, fy + capH + capG, col2W, FIELD_H);
+        Move(IDC_STATIC_ALARM_POS, inX + col2W + cG, fy, col2W, capH);
+        Move(IDC_COMBO_ALARM_POS, inX + col2W + cG, fy + capH + capG, col2W, FIELD_H);
+        fy += capH + capG + FIELD_H + rG;
+        // 행2: 체크박스 3개 (그래프/원상복구/듀얼모니터)
+        int chk2W = (inW - cG) / 2;
+        // 알림창 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
         {
-            int fy = curY + cPadY + cHdrH;
-            // 행1: 알림창 크기 / 알림창 위치 (2열)
-            Move(IDC_STATIC_ALARM_SIZE, inX,          fy, col2W, capH);
-            PlaceInfoBtn(m_btnAlarmSizeInfo, IDC_STATIC_ALARM_SIZE, inX, fy, capH);
-            Move(IDC_COMBO_ALARM_SIZE,  inX,          fy+capH+capG, col2W, FIELD_H);
-            Move(IDC_STATIC_ALARM_POS,  inX+col2W+cG, fy, col2W, capH);
-            Move(IDC_COMBO_ALARM_POS,   inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
-            fy += capH + capG + FIELD_H + rG;
-            // 행2: 체크박스 3개 (그래프/원상복구/듀얼모니터)
-                        int chk2W = (inW - cG) / 2;
-            // 알림창 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            const int BtnSz = S(18);
+            const int BtnGap = S(4);
+            int iconNeed = BtnSz + BtnGap;
+            int wL = chk2W;
+            int wR = chk2W;
+            if (wL > S(80) + iconNeed) wL -= iconNeed;
+            if (wR > S(80) + iconNeed) wR -= iconNeed;
+            int xL = inX;
+            int xR = inX + chk2W + cG;
+            Move(IDC_CHECK_ALARM_GRAPH, xL, fy, wL, FIELD_H);
+            if (m_btnAlarmGraphInfo.GetSafeHwnd())
             {
-                const int BtnSz  = S(18);
-                const int BtnGap = S(4);
-                int iconNeed = BtnSz + BtnGap;
-                int wL = chk2W;
-                int wR = chk2W;
-                if (wL > S(80) + iconNeed) wL -= iconNeed;
-                if (wR > S(80) + iconNeed) wR -= iconNeed;
-                int xL = inX;
-                int xR = inX + chk2W + cG;
-                Move(IDC_CHECK_ALARM_GRAPH, xL, fy, wL, FIELD_H);
-                if (m_btnAlarmGraphInfo.GetSafeHwnd())
-                {
-                    int ibX = xL + wL + BtnGap;
-                    int ibY = fy + (FIELD_H - BtnSz) / 2;
-                    m_btnAlarmGraphInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-                }
-                Move(IDC_CHECK_ALARM_DUAL,  xR, fy, wR, FIELD_H);
-                if (m_btnAlarmDualInfo.GetSafeHwnd())
-                {
-                    int ibX = xR + wR + BtnGap;
-                    int ibY = fy + (FIELD_H - BtnSz) / 2;
-                    m_btnAlarmDualInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-                }
+                int ibX = xL + wL + BtnGap;
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
+                m_btnAlarmGraphInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
-            fy += FIELD_H;
-
-            int cardH = (fy + cPadY) - curY;
-            m_rcGrpAlarm = CRect(cLeft, curY, cRight, curY + cardH);
-            curY = m_rcGrpAlarm.bottom + cGapY;
-        }
-
-        // ── 카드 2: 시스템 ──────────────────────────────
-        {
-            int fy = curY + cPadY + cHdrH;
-            // 체크박스 2개: 자동 리셋 / 자동 재부팅
-                        int chk2W = (inW - cG) / 2;
-            // 자동 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
+            Move(IDC_CHECK_ALARM_DUAL, xR, fy, wR, FIELD_H);
+            if (m_btnAlarmDualInfo.GetSafeHwnd())
             {
-                const int BtnSz  = S(18);
-                const int BtnGap = S(4);
-                int iconNeed = BtnSz + BtnGap;
-                int wL = chk2W;
-                int wR = chk2W;
-                if (wL > S(80) + iconNeed) wL -= iconNeed;
-                if (wR > S(80) + iconNeed) wR -= iconNeed;
-                int xL = inX;
-                int xR = inX + chk2W + cG;
-                Move(IDC_CHECK_AUTO_RESET,  xL, fy, wL, FIELD_H);
-                if (m_btnAutoResetInfo.GetSafeHwnd())
-                {
-                    int ibX = xL + wL + BtnGap;
-                    int ibY = fy + (FIELD_H - BtnSz) / 2;
-                    m_btnAutoResetInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-                }
-                Move(IDC_CHECK_AUTO_REBOOT, xR, fy, wR, FIELD_H);
-                if (m_btnAutoRebootInfo.GetSafeHwnd())
-                {
-                    int ibX = xR + wR + BtnGap;
-                    int ibY = fy + (FIELD_H - BtnSz) / 2;
-                    m_btnAutoRebootInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-                }
+                int ibX = xR + wR + BtnGap;
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
+                m_btnAlarmDualInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
-            fy += FIELD_H;
-
-            int cardH = (fy + cPadY) - curY;
-            m_rcGrpSystem = CRect(cLeft, curY, cRight, curY + cardH);
-            curY = m_rcGrpSystem.bottom + cGapY;
         }
-
-        // ── 카드 3: 단축키 ──────────────────────────────
+        fy += FIELD_H;
+        int cardH = (fy + cPadY) - curY;
+        m_rcGrpAlarm = CRect(cLeft, curY, cRight, curY + cardH);
+        curY = m_rcGrpAlarm.bottom + cGapY;
+    }
+    // ── 카드 2: 시스템 ──────────────────────────────
+    {
+        int fy = curY + cPadY + cHdrH;
+        // 체크박스 2개: 자동 리셋 / 자동 재부팅
+        int chk2W = (inW - cG) / 2;
+        // 자동 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
         {
-            int fy = curY + cPadY + cHdrH;
-            // 행1: 취소키 / MSR키 (2열)
-            Move(IDC_STATIC_CANCEL_KEY, inX,          fy, col2W, capH);
-            Move(IDC_COMBO_CANCEL_KEY,  inX,          fy+capH+capG, col2W, FIELD_H);
-            Move(IDC_STATIC_MSR_KEY,    inX+col2W+cG, fy, col2W, capH);
-            Move(IDC_COMBO_MSR_KEY,     inX+col2W+cG, fy+capH+capG, col2W, FIELD_H);
-            fy += capH + capG + FIELD_H;
-
-            int cardH = (fy + cPadY) - curY;
-            m_rcGrpHotkey = CRect(cLeft, curY, cRight, curY + cardH);
-            // curY = m_rcGrpHotkey.bottom + cGapY;  // Tab2 끝
+            const int BtnSz = S(18);
+            const int BtnGap = S(4);
+            int iconNeed = BtnSz + BtnGap;
+            int wL = chk2W;
+            int wR = chk2W;
+            if (wL > S(80) + iconNeed) wL -= iconNeed;
+            if (wR > S(80) + iconNeed) wR -= iconNeed;
+            int xL = inX;
+            int xR = inX + chk2W + cG;
+            Move(IDC_CHECK_AUTO_RESET, xL, fy, wL, FIELD_H);
+            if (m_btnAutoResetInfo.GetSafeHwnd())
+            {
+                int ibX = xL + wL + BtnGap;
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
+                m_btnAutoResetInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            Move(IDC_CHECK_AUTO_REBOOT, xR, fy, wR, FIELD_H);
+            if (m_btnAutoRebootInfo.GetSafeHwnd())
+            {
+                int ibX = xR + wR + BtnGap;
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
+                m_btnAutoRebootInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
         }
+        fy += FIELD_H;
+        int cardH = (fy + cPadY) - curY;
+        m_rcGrpSystem = CRect(cLeft, curY, cRight, curY + cardH);
+        curY = m_rcGrpSystem.bottom + cGapY;
+    }
+    // ── 카드 3: 단축키 ──────────────────────────────
+    {
+        int fy = curY + cPadY + cHdrH;
+        // 행1: 취소키 / MSR키 (2열)
+        Move(IDC_STATIC_CANCEL_KEY, inX, fy, col2W, capH);
+        Move(IDC_COMBO_CANCEL_KEY, inX, fy + capH + capG, col2W, FIELD_H);
+        Move(IDC_STATIC_MSR_KEY, inX + col2W + cG, fy, col2W, capH);
+        Move(IDC_COMBO_MSR_KEY, inX + col2W + cG, fy + capH + capG, col2W, FIELD_H);
+        fy += capH + capG + FIELD_H;
+        int cardH = (fy + cPadY) - curY;
+        m_rcGrpHotkey = CRect(cLeft, curY, cRight, curY + cardH);
+        // curY = m_rcGrpHotkey.bottom + cGapY;  // Tab2 끝
+    }
 }
-
 // --- Tab 3: merchant download ---
 void CShopSetupDlg::ApplyLayoutTab3()
 {
@@ -1345,52 +1173,43 @@ void CShopSetupDlg::ApplyLayoutTab3()
      * 1) 알림창 크기 등 시스템 관련 옵션 UI를 배치한다.
      * 2) 콤보/에딧 폭을 전체 레이아웃 폭에 맞추고, 우측 여백을 통일한다.
      */
-
     auto S = [&](int v) { return ScalePx(v); };
     CRect rc;
     GetClientRect(&rc);
     int y = m_rcTabContent.top + S(kTabPadTop);
-
-        // Tab1/2와 동일한 카드 외부/내부 파라미터를 사용해 정렬을 맞춘다.
-        const int cOutX  = 16;   // 카드 외부 좌우 여백
-        const int cOutY  = 12;   // 카드 외부 상단 여백
-        const int cPadX  = 22;   // 카드 내부 좌우 여백
-        const int cPadY  = 16;   // 카드 내부 상하 여백
-        const int cHdrH  = 44;   // 카드 헤더 높이(세로선/타이틀 영역)
-        const int hostGapBottom = 14;
-        const int cardBottomPad = 18;
-
-        const int BUTTON_H      = 36;
-        const int BUTTON_BOTTOM = 22;
-
-        // 하단 버튼 윗쪽까지를 카드 영역으로 사용
-        int btnY = rc.bottom - (cardBottomPad + BUTTON_BOTTOM + BUTTON_H);
-        int cardLeft  = m_rcTabContent.left  + ScalePx( cOutX);
-        int cardRight = m_rcTabContent.right - ScalePx( cOutX);
-        int cardTop   = y + ScalePx( cOutY);
-        int cardBot   = btnY - ScalePx( cardBottomPad);
-        if (cardBot < cardTop + ScalePx( 240))
-            cardBot = cardTop + ScalePx( 240);
-
-        m_rcCardShopDown = CRect(cardLeft, cardTop, cardRight, cardBot);
-
-        // Child(ShopDownDlg)는 카드 내부 컨텐츠 영역(헤더 아래)만 차지하도록 한다.
-        CRect rcHost(
-            cardLeft + ScalePx( cPadX),
-            cardTop  + ScalePx( cHdrH + cPadY),
-            cardRight - ScalePx( cPadX),
-            cardBot  - ScalePx( cPadY + hostGapBottom));
-
-        if (rcHost.Height() < ScalePx( 200))
-            rcHost.bottom = rcHost.top + ScalePx( 200);
-
-        if (m_staticShopContainer.GetSafeHwnd())
-        {
-            m_staticShopContainer.MoveWindow(rcHost);
-            m_staticShopContainer.ShowWindow(SW_HIDE); // ShowTab에서 처리
-        }
+    // Tab1/2와 동일한 카드 외부/내부 파라미터를 사용해 정렬을 맞춘다.
+    const int cOutX = 16;   // 카드 외부 좌우 여백
+    const int cOutY = 12;   // 카드 외부 상단 여백
+    const int cPadX = 22;   // 카드 내부 좌우 여백
+    const int cPadY = 16;   // 카드 내부 상하 여백
+    const int cHdrH = 44;   // 카드 헤더 높이(세로선/타이틀 영역)
+    const int hostGapBottom = 14;
+    const int cardBottomPad = 18;
+    const int BUTTON_H = 36;
+    const int BUTTON_BOTTOM = 22;
+    // 하단 버튼 윗쪽까지를 카드 영역으로 사용
+    int btnY = rc.bottom - (cardBottomPad + BUTTON_BOTTOM + BUTTON_H);
+    int cardLeft = m_rcTabContent.left + ScalePx(cOutX);
+    int cardRight = m_rcTabContent.right - ScalePx(cOutX);
+    int cardTop = y + ScalePx(cOutY);
+    int cardBot = btnY - ScalePx(cardBottomPad);
+    if (cardBot < cardTop + ScalePx(240))
+        cardBot = cardTop + ScalePx(240);
+    m_rcCardShopDown = CRect(cardLeft, cardTop, cardRight, cardBot);
+    // Child(ShopDownDlg)는 카드 내부 컨텐츠 영역(헤더 아래)만 차지하도록 한다.
+    CRect rcHost(
+        cardLeft + ScalePx(cPadX),
+        cardTop + ScalePx(cHdrH + cPadY),
+        cardRight - ScalePx(cPadX),
+        cardBot - ScalePx(cPadY + hostGapBottom));
+    if (rcHost.Height() < ScalePx(200))
+        rcHost.bottom = rcHost.top + ScalePx(200);
+    if (m_staticShopContainer.GetSafeHwnd())
+    {
+        m_staticShopContainer.MoveWindow(rcHost);
+        m_staticShopContainer.ShowWindow(SW_HIDE); // ShowTab에서 처리
+    }
 }
-
 // ============================================================================
 // ApplyLayout - 탭 컨트롤 배치 + 각 탭 컨텐츠 배치
 // ============================================================================
@@ -1407,24 +1226,21 @@ void CShopSetupDlg::ApplyLayout()
      * - 레이아웃 함수는 '값 계산'과 'MoveWindow/SetWindowPos'를 한 눈에 구분되게 두는 편이 유지보수에 좋다.
      * - 컨트롤이 많으니 배치 중 불필요한 Invalidate 반복을 피하고, 마지막에 1회 갱신하는 방식이 성능에 유리하다.
      */
-
     CRect rc;
     GetClientRect(&rc);
-
     auto S = [&](int v) { return ScalePx(v); };
-
     // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
     CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
-        const int BtnSz  = S(18);
+        const int BtnSz = S(18);
         const int BtnGap = S(4);
         int bx = lx + BtnGap;
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
             CFont* pFont = pLbl->GetFont();
-            CFont* pOld  = pFont ? measureDC.SelectObject(pFont) : NULL;
+            CFont* pOld = pFont ? measureDC.SelectObject(pFont) : NULL;
             CString strLbl;
             pLbl->GetWindowText(strLbl);
             CSize sz = measureDC.GetTextExtent(strLbl);
@@ -1432,109 +1248,93 @@ void CShopSetupDlg::ApplyLayout()
             bx = lx + sz.cx + BtnGap;
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-    };
-
-    const int MARGIN   = S(kTabPadLeft);
-    const int LABEL_W  = S(92);
-    const int FIELD_W  = S(120);
-    const int LF_GAP   = S(8);
+        };
+    const int MARGIN = S(kTabPadLeft);
+    const int LABEL_W = S(92);
+    const int FIELD_W = S(120);
+    const int LF_GAP = S(8);
     const int FIELD_W_IN = FIELD_W - LF_GAP;
-    const int CTRL_H   = S(40);   // [TUNE] 컨트롤 시각적 높이 (Edit/Combo 동일)
-    const int FIELD_H  = CTRL_H;  // 하위 호환용 alias
+    const int CTRL_H = S(40);   // [TUNE] 컨트롤 시각적 높이 (Edit/Combo 동일)
+    const int FIELD_H = CTRL_H;  // 하위 호환용 alias
     const int COMBO_DROP_H = S(220); // [TUNE] combo drop list height
-    const int ROW_GAP  = S(16);
-    const int COL_GAP  = S(16);
-    const int GROUP_H  = S(kGroupTitleH);
+    const int ROW_GAP = S(16);
+    const int COL_GAP = S(16);
+    const int GROUP_H = S(kGroupTitleH);
     const int GROUP_GAP = S(kGroupGapBelowTitle);
     const int NEXT_GRP = S(kGapToNextGroup);
-
     const int labelOffset = (FIELD_H - S(20)) / 2; // label vertical align
-
     // ---- 탭 컨트롤 위치 ----
     // 탭 바를 타이틀/서브타이틀 구분선 바로 아래 배치
     const int TAB_INSET = S(2); // keep tab visuals from touching outer card border
-    int tabLeft   = S(20) + TAB_INSET;
-    int tabRight  = rc.Width() - S(20) - TAB_INSET;
-    int tabTop    = S(kTabBarTop);
+    int tabLeft = S(20) + TAB_INSET;
+    int tabRight = rc.Width() - S(20) - TAB_INSET;
+    int tabTop = S(kTabBarTop);
     int tabBottom = tabTop + S(kTabBarH) + S(200); // 탭 컨트롤 전체 높이(내부 클라이언트 포함)
     int tabH = S(CModernTabCtrl::kBarH) + S(8); // 탭 바 높이 + 여백
     m_tabCtrl.MoveWindow(tabLeft, tabTop, tabRight - tabLeft, tabH);
-
     // 탭 컨텐츠 영역: 탭 바 바로 아래부터
     m_rcTabContent = CRect(tabLeft, tabTop + tabH, tabRight, rc.bottom - S(90));
-
     // ---- 컨텐츠 영역 기준 좌표 ----
     int contentLeft = m_rcTabContent.left + (MARGIN - tabLeft);
-    int x  = max(contentLeft, MARGIN);
+    int x = max(contentLeft, MARGIN);
     int x1 = x;
     int x2 = x1 + LABEL_W + FIELD_W + COL_GAP;
     int x3 = x2 + LABEL_W + FIELD_W + COL_GAP;
-
     // 모든 탭의 컨텐츠는 동일한 Y 기준에서 배치 (ShowTab이 show/hide)
     int y = m_rcTabContent.top + S(kTabPadTop);
-
     auto Move = [&](int id, int mx, int my, int mw, int mh)
-    {
-        CWnd* p = GetDlgItem(id);
-        if (!p || !p->GetSafeHwnd()) return;
-
-        // ComboBox: the height parameter also affects the drop-list height.
-        // Keep selection-field height via CB_SETITEMHEIGHT, but preserve a usable drop height.
-        TCHAR cls[64] = { 0 };
-        ::GetClassName(p->GetSafeHwnd(), cls, 63);
-
-        if (_tcsicmp(cls, _T("ComboBox")) == 0)
         {
-            p->MoveWindow(mx, my, mw, COMBO_DROP_H);
-
-            // -1: selection field, 0: list items → CTRL_H로 Edit와 동일하게 맞춤
-            ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(CTRL_H - 2));
-            ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(CTRL_H - 2));
-        }
-        else
-        {
-            p->MoveWindow(mx, my, mw, CTRL_H);
-        }
-
-        // ShowTab will show/hide per active tab
-        p->ShowWindow(SW_HIDE);
-    };
-
+            CWnd* p = GetDlgItem(id);
+            if (!p || !p->GetSafeHwnd()) return;
+            // ComboBox: the height parameter also affects the drop-list height.
+            // Keep selection-field height via CB_SETITEMHEIGHT, but preserve a usable drop height.
+            TCHAR cls[64] = { 0 };
+            ::GetClassName(p->GetSafeHwnd(), cls, 63);
+            if (_tcsicmp(cls, _T("ComboBox")) == 0)
+            {
+                p->MoveWindow(mx, my, mw, COMBO_DROP_H);
+                // -1: selection field, 0: list items → CTRL_H로 Edit와 동일하게 맞춤
+                ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(CTRL_H - 2));
+                ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)(CTRL_H - 2));
+            }
+            else
+            {
+                p->MoveWindow(mx, my, mw, CTRL_H);
+            }
+            // ShowTab will show/hide per active tab
+            p->ShowWindow(SW_HIDE);
+        };
     // =================================================================
     // Tab 0: 결제 설정 (카드형 레이아웃)
     //   - [서버 설정] : 금융결제원 서버 / 포트번호
     //   - [결제 방식] : 통신방식 / 우선 거래 설정 / 무서명 기준금액 / 세금 자동 역산 / 현금영수증
     // =================================================================
     ApplyLayoutTab0();
-
     // =================================================================
     // Tab 1/2 공통 카드 레이아웃 파라미터 [TUNE]
     // =================================================================
     ApplyLayoutTab1();
-
     // =================================================================
     // Tab 3: 가맹점 다운로드  (카드 헤더/세로선/배경은 ShopSetupDlg::OnPaint에서 DrawMinCard로 그림)
     // =================================================================
     ApplyLayoutTab3();
-
     // =================================================================
     // 하단 버튼 (탭과 무관하게 항상 표시)
     // =================================================================
     {
-        const int BUTTON_H      = 36;    // [TUNE] 버튼 높이
+        const int BUTTON_H = 36;    // [TUNE] 버튼 높이
         const int BUTTON_BOTTOM = 18;   // [TUNE] 버튼 하단 여백
-        const int BUTTON_GAP    = 8;    // [TUNE] 버튼 간격
-        const int BUTTON_W      = 110;  // [TUNE] 버튼 폭
+        const int BUTTON_GAP = 8;    // [TUNE] 버튼 간격
+        const int BUTTON_W = 110;  // [TUNE] 버튼 폭
         // btnY: 다이얼로그 하단에서 역산 (CARD_PAD=메인카드 하단 여백 포함)
         int btnY = rc.bottom - (22 + BUTTON_BOTTOM + BUTTON_H);
         int btnX = rc.Width() / 2;
-        m_btnOk.MoveWindow(btnX - BUTTON_W - BUTTON_GAP/2, btnY, BUTTON_W, BUTTON_H);
-        m_btnCancel.MoveWindow(btnX + BUTTON_GAP/2,         btnY, BUTTON_W, BUTTON_H);
+        m_btnOk.MoveWindow(btnX - BUTTON_W - BUTTON_GAP / 2, btnY, BUTTON_W, BUTTON_H);
+        m_btnCancel.MoveWindow(btnX + BUTTON_GAP / 2, btnY, BUTTON_W, BUTTON_H);
         m_btnOk.ShowWindow(SW_SHOW);
         m_btnCancel.ShowWindow(SW_SHOW);
     }
 }
-
 // --------------------------------------------------------------
 // 레지스트리 → UI
 //  - 저장된 값이 없으면 기본값을 사용
@@ -1565,9 +1365,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
      * [참고]
      * - 변환 실패 시(빈 문자열/비정상 값) 크래시 없이 기본값으로 폴백하는 것이 안정적이다.
      */
-
     CString s;
-
     // -------------------------
     // TCP
     // -------------------------
@@ -1575,17 +1373,14 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
         SelectComboByValue(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])), s, 0);
     else
         SelectComboByValue(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])), _T("www.kftcvan.or.kr"), 0); // 기본: 운영 서버
-
     if (GetRegisterData(SEC_TCP, VAN_SERVER_PORT_FIELD, s))
         m_intPort = _ttoi(s);
     else
         m_intPort = 8002; // 기본값
-
     if (GetRegisterData(SEC_TCP, TAX_SETTING_FIELD, s))
         m_intTaxPercent = _ttoi(s);
     else
         m_intTaxPercent = 10; // 기본값
-
     // -------------------------
     // SERIALPORT
     // -------------------------
@@ -1593,80 +1388,66 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
         m_intCardTimeout = _ttoi(s);
     else
         m_intCardTimeout = 100; // 기본값
-
     if (GetRegisterData(SEC_SERIALPORT, NOSIGN_AMT_FIELD, s))
         m_intNoSignAmount = _ttoi(s);
     else
         m_intNoSignAmount = 50000; // 기본값
-
     if (GetRegisterData(SEC_SERIALPORT, SIGNPAD_FIELD, s))
         m_intSignPadPort = _ttoi(s);
     else
         m_intSignPadPort = 0; // 기본값
-
     if (GetRegisterData(SEC_SERIALPORT, BARCODE_PORT_FIELD, s))
         m_intScannerPort = _ttoi(s);
     else
         m_intScannerPort = 0; // 기본값
-
     if (GetRegisterData(SEC_SERIALPORT, DETECT_PROGRAM_FIELD, s))
         m_strCardDetectParam = s;
     else
         m_strCardDetectParam = _T(""); // 기본값
-
     // Combo: 현금영수증 거래 (기본: PINPAD/KEYIN)
     if (GetRegisterData(SEC_SERIALPORT, CASH_FIRST_FIELD, s))
         SelectComboByValue(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])), s, 0);
     else
         SelectComboByValue(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])), _T("PINPAD/KEYIN"), 0);
-
     // Combo: 장치 연동 방식 (기본: NORMAL)
     if (GetRegisterData(SEC_SERIALPORT, INTERLOCK_FIELD, s))
         SelectComboByValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), s, 0);
     else
         SelectComboByValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"), 0);
-
     // Combo: 통신방식 (기본: CS 방식)
     if (GetRegisterData(SEC_SERIALPORT, SOCKET_TYPE_FIELD, s))
         SelectComboByValue(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])), s, 0);
     else
         SelectComboByValue(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])), _T("CS 방식"), 0);
-
     // Combo: 서명패드 사용 (기본: YES)
     if (GetRegisterData(SEC_SERIALPORT, SIGNPAD_USE_FIELD, s))
         SelectComboByValue(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), s, 0);
     else
         SelectComboByValue(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"), 0);
-
     // Combo: 서명패드 속도 (기본: 57600)
     if (GetRegisterData(SEC_SERIALPORT, SIGNPAD_SPEED_FIELD, s))
         SelectComboByValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), s, 0);
     else
         SelectComboByValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), _T("57600"), 0);
-
     // Combo: 알림창 표시 위치 (기본: mid)
     if (GetRegisterData(SEC_SERIALPORT, NOTIFY_POS_FIELD, s))
         SelectComboByValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), s, 1);
     else
         SelectComboByValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), _T("mid"), 1);
-
     // Combo: 알림창 크기 (기본: verysmall)
     if (GetRegisterData(SEC_SERIALPORT, NOTIFY_SIZE_FIELD, s))
         SelectComboByValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), s, 1);
     else
         SelectComboByValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), _T("verysmall"), 1);
-
     // Combo: 단축키 (요청취소/ MSR 전환) 기본: NORMAL
     if (GetRegisterData(SEC_SERIALPORT, CANCEL_HOTKEY_FIELD, s))
         SelectComboByValue(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), s, 0);
     else
         SelectComboByValue(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"), 0);
-
     if (GetRegisterData(SEC_SERIALPORT, MSR_HOTKEY_FIELD, s))
         SelectComboByValue(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), s, 0);
     else
         SelectComboByValue(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"), 0);
-
     // Toggle 기본값(밑줄) 반영:
     // - 우선 거래(CARD_DETECT): OFF(0)
     // - 멀티패드 음성 출력(MULTIPAD_SOUND): OFF(0)
@@ -1675,7 +1456,6 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     // - 알림창 듀얼(NOTIFY_DUAL_MONITOR): OFF(0)
     // - 자동 재실행(AUTO_RESTART): ON(0)
     // - 자동 리부팅(AUTO_REBOOT): ON(0)
-
     m_chkCardDetect.SetToggled(ReadToggle_DefaultOnWhenMissing(CARD_DETECT_FIELD, FALSE, _T("0"), _T("1")));
     m_chkMultiVoice.SetToggled(ReadToggle_DefaultOnWhenMissing(MULTIPAD_SOUND_FIELD, FALSE, _T("1"), _T("0")));
     // BARCODE_USE: OFF=0 / ON=1
@@ -1687,13 +1467,11 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     // AUTO_*: ON=0 / OFF=1
     m_chkAutoReset.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_RESTART_FIELD, TRUE, _T("0"), _T("1")));
     m_chkAutoReboot.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_REBOOT_FIELD, TRUE, _T("0"), _T("1")));
-
     // UI에 반영
     UpdateData(FALSE);
     UpdateToggleDependentEdits(FALSE);
     TakeSnapshot();
 }
-
 // ============================================================================
 // SaveOptionsToRegistry - OK 버튼에서 일괄 저장
 // ============================================================================
@@ -1710,243 +1488,148 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
 void CShopSetupDlg::SaveOptionsToRegistry()
 {
     UpdateData(TRUE);
-
     // TCP
     {
         CString v = GetSelectedComboValue(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])), _T("www.kftcvan.or.kr"));
         AfxGetApp()->WriteProfileString(SEC_TCP, VAN_SERVER_IP_FIELD, v);
-
         CString s; s.Format(_T("%d"), m_intPort);
         AfxGetApp()->WriteProfileString(SEC_TCP, VAN_SERVER_PORT_FIELD, s);
-
         CString t; t.Format(_T("%d"), m_intTaxPercent);
         AfxGetApp()->WriteProfileString(SEC_TCP, TAX_SETTING_FIELD, t);
     }
-
     // SERIALPORT - Edit
     {
         CString s;
         s.Format(_T("%d"), m_intCardTimeout);
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, TIMEOUT_FIELD, s);
-
         s.Format(_T("%d"), m_intNoSignAmount);
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOSIGN_AMT_FIELD, s);
-
         s.Format(_T("%d"), m_intSignPadPort);
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_FIELD, s);
-
         s.Format(_T("%d"), m_intScannerPort);
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, BARCODE_PORT_FIELD, s);
-
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, DETECT_PROGRAM_FIELD, m_strCardDetectParam);
     }
-
     // SERIALPORT - Combo
     {
         CString v;
-
         v = GetSelectedComboValue(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])), _T("PINPAD/KEYIN"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, CASH_FIRST_FIELD, v);
-
         v = GetSelectedComboValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, INTERLOCK_FIELD, v);
-
         v = GetSelectedComboValue(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])), _T("CS 방식"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SOCKET_TYPE_FIELD, v);
-
         v = GetSelectedComboValue(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_USE_FIELD, v);
-
         v = GetSelectedComboValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), _T("57600"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_SPEED_FIELD, v);
-
         v = GetSelectedComboValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), _T("mid"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_POS_FIELD, v);
-
         v = GetSelectedComboValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), _T("verysmall"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_SIZE_FIELD, v);
-
         v = GetSelectedComboValue(m_comboCancelKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, CANCEL_HOTKEY_FIELD, v);
-
         v = GetSelectedComboValue(m_comboMSRKey, kHotkeys, (int)(sizeof(kHotkeys) / sizeof(kHotkeys[0])), _T("NORMAL"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, MSR_HOTKEY_FIELD, v);
     }
-
     // SERIALPORT - Toggle
     WriteToggleValue(CARD_DETECT_FIELD, m_chkCardDetect.IsToggled(), _T("0"), _T("1")); // ON=0, OFF=1
     WriteToggleValue(MULTIPAD_SOUND_FIELD, m_chkMultiVoice.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
     WriteToggleValue(BARCODE_USE_FIELD, m_chkScannerUse.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
     WriteToggleValue(NOTIFY_DUAL_FIELD, m_chkAlarmDual.IsToggled(), _T("1"), _T("0")); // ON=1, OFF=0
-
     // NOTIFY_IMG: ON=0, OFF=1
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_IMG_FIELD, m_chkAlarmGraph.IsToggled() ? _T("0") : _T("1"));
     // AUTO_*: ON=0, OFF=1
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_RESTART_FIELD, m_chkAutoReset.IsToggled() ? _T("0") : _T("1"));
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_REBOOT_FIELD, m_chkAutoReboot.IsToggled() ? _T("0") : _T("1"));
 }
-
 // ============================================================================
 // ShowTab - 탭 전환 시 컨트롤 show/hide
 // ============================================================================
 void CShopSetupDlg::ShowTab(int nTab)
 {
-    if (m_bClosing || !GetSafeHwnd())
-        return;
-
+    if (m_bClosing || !GetSafeHwnd()) return;
     m_nActiveTab = nTab;
-
-    // Close popover on tab switch
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
-
-    // [1.7] 탭 전환 플리커 최소화: redraw 일시 중지
-    SetRedraw(FALSE);
-    if (m_tabCtrl.GetSafeHwnd()) m_tabCtrl.SetRedraw(FALSE);
-
-    // Tab 0: 결제 설정
-    //   [서버 설정] : 금융결제원 서버 / 포트번호
-    //   [결제 방식] : 통신방식 / 우선 거래 설정 / 무서명 기준금액 / 세금 자동 역산 / 현금영수증
+    // [1] 그리기 잠금: 수많은 컨트롤의 Show/Hide 시 발생하는 노이즈 차단
+    this->SendMessage(WM_SETREDRAW, FALSE);
+    // 각 탭별 컨트롤 ID 정의 (기존 리스트 유지)
     static const int s_tab0[] = {
-        // 서버 설정
-        IDC_STATIC_VAN_SERVER, IDC_COMBO_VAN_SERVER,
-        IDC_STATIC_PORT,       IDC_EDIT_PORT, IDC_STATIC_ERR_PORT,
-        // 결제 방식
-        IDC_STATIC_COMM_TYPE,  IDC_COMBO_COMM_TYPE,
-        IDC_STATIC_CASH_RECEIPT,   IDC_COMBO_CASH_RECEIPT,
+        IDC_STATIC_VAN_SERVER, IDC_COMBO_VAN_SERVER, IDC_STATIC_PORT, IDC_EDIT_PORT, IDC_STATIC_ERR_PORT,
+        IDC_STATIC_COMM_TYPE, IDC_COMBO_COMM_TYPE, IDC_STATIC_CASH_RECEIPT, IDC_COMBO_CASH_RECEIPT,
         IDC_CHECK_CARD_DETECT, IDC_STATIC_CARD_DETECT_POSINFO, IDC_EDIT_CARD_DETECT_PARAM, IDC_STATIC_ERR_CARD_DETECT_PROGRAM,
         IDC_STATIC_NO_SIGN_AMOUNT, IDC_EDIT_NO_SIGN_AMOUNT, IDC_STATIC_ERR_NO_SIGN,
-        IDC_STATIC_TAX_PERCENT,    IDC_EDIT_TAX_PERCENT, IDC_STATIC_ERR_TAX,
-        0
+        IDC_STATIC_TAX_PERCENT, IDC_EDIT_TAX_PERCENT, IDC_STATIC_ERR_TAX, 0
     };
-
-    // Tab 1: 장치 정보 (결제 방식 제외)
     static const int s_tab1[] = {
-        IDC_STATIC_CARD_TIMEOUT,   IDC_EDIT_CARD_TIMEOUT, IDC_STATIC_ERR_TIMEOUT,
-        IDC_STATIC_INTERLOCK,      IDC_COMBO_INTERLOCK,
-        IDC_STATIC_SIGN_PAD_USE,   IDC_COMBO_SIGN_PAD_USE,
-        IDC_STATIC_SIGN_PAD_PORT,  IDC_EDIT_SIGN_PAD_PORT, IDC_STATIC_ERR_SIGNPAD_PORT,
-        IDC_STATIC_SIGN_PAD_SPEED, IDC_COMBO_SIGN_PAD_SPEED,
-        IDC_CHECK_SCANNER_USE,     IDC_STATIC_SCANNER_PORT_LABEL, IDC_EDIT_SCANNER_PORT, IDC_STATIC_ERR_SCANNER_PORT,
-        IDC_CHECK_MULTI_VOICE,
-        0
+        IDC_STATIC_CARD_TIMEOUT, IDC_EDIT_CARD_TIMEOUT, IDC_STATIC_ERR_TIMEOUT, IDC_STATIC_INTERLOCK, IDC_COMBO_INTERLOCK,
+        IDC_STATIC_SIGN_PAD_USE, IDC_COMBO_SIGN_PAD_USE, IDC_STATIC_SIGN_PAD_PORT, IDC_EDIT_SIGN_PAD_PORT, IDC_STATIC_ERR_SIGNPAD_PORT,
+        IDC_STATIC_SIGN_PAD_SPEED, IDC_COMBO_SIGN_PAD_SPEED, IDC_CHECK_SCANNER_USE, IDC_STATIC_SCANNER_PORT_LABEL,
+        IDC_EDIT_SCANNER_PORT, IDC_STATIC_ERR_SCANNER_PORT, IDC_CHECK_MULTI_VOICE, 0
     };
-
-    // Tab 2: 시스템 설정
     static const int s_tab2[] = {
-        IDC_STATIC_ALARM_SIZE,  IDC_COMBO_ALARM_SIZE,
-        IDC_STATIC_ALARM_POS,   IDC_COMBO_ALARM_POS,
-        IDC_CHECK_ALARM_GRAPH, IDC_CHECK_ALARM_DUAL,
-        IDC_CHECK_AUTO_RESET,  IDC_CHECK_AUTO_REBOOT,
-        IDC_STATIC_CANCEL_KEY,  IDC_COMBO_CANCEL_KEY,
-        IDC_STATIC_MSR_KEY,     IDC_COMBO_MSR_KEY,
-        0
+        IDC_STATIC_ALARM_SIZE, IDC_COMBO_ALARM_SIZE, IDC_STATIC_ALARM_POS, IDC_COMBO_ALARM_POS,
+        IDC_CHECK_ALARM_GRAPH, IDC_CHECK_ALARM_DUAL, IDC_CHECK_AUTO_RESET, IDC_CHECK_AUTO_REBOOT,
+        IDC_STATIC_CANCEL_KEY, IDC_COMBO_CANCEL_KEY, IDC_STATIC_MSR_KEY, IDC_COMBO_MSR_KEY, 0
     };
-
     const int* tabs[3] = { s_tab0, s_tab1, s_tab2 };
-
-    // 모든 컨트롤 숨기기
-    for (int t = 0; t < 3; t++)
-    {
-        for (int i = 0; tabs[t][i]; i++)
-        {
+    // [2] 모든 탭 전용 컨트롤 일괄 숨기기
+    for (int t = 0; t < 3; t++) {
+        for (int i = 0; tabs[t][i]; i++) {
             CWnd* p = GetDlgItem(tabs[t][i]);
-            if (p) p->ShowWindow(SW_HIDE);
+            if (p && p->GetSafeHwnd()) p->ShowWindow(SW_HIDE);
         }
     }
-    if (m_staticShopContainer.GetSafeHwnd())
-        m_staticShopContainer.ShowWindow(SW_HIDE);
-
-    // 활성 탭 컨트롤만 표시
-    if (nTab >= 0 && nTab < 3)
-    {
-        for (int i = 0; tabs[nTab][i]; i++)
-        {
-            CWnd* p = GetDlgItem(tabs[nTab][i]);
-            if (p) p->ShowWindow(SW_SHOW);
-        }
-    }
-    else if (nTab == 3)
-    {
-        if (m_staticShopContainer.GetSafeHwnd())
+    // [3] 탭 3(가맹점 다운로드) 처리
+    if (nTab == 3) {
+        if (m_staticShopContainer.GetSafeHwnd()) {
+            // ★ 깜빡임 방지 핵심: 자식 영역을 그리기에서 제외
+            m_staticShopContainer.ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
             m_staticShopContainer.ShowWindow(SW_SHOW);
-
-        if (m_staticShopContainer.GetSafeHwnd() && !m_shopDownDlg.GetSafeHwnd())
-        {
-            m_staticShopContainer.SetRedraw(FALSE);
-
-            if (m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer))
-            {
-                CRect rcHost;
-                m_staticShopContainer.GetClientRect(&rcHost);
-                m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(),
-                    SWP_NOZORDER | SWP_NOACTIVATE);
-                m_shopDownDlg.ShowWindow(SW_SHOW);
+            if (!m_shopDownDlg.GetSafeHwnd()) {
+                m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer);
             }
-
-            m_staticShopContainer.SetRedraw(TRUE);
-            m_staticShopContainer.Invalidate(FALSE);
-            m_staticShopContainer.UpdateWindow();
-        }
-        else if (m_shopDownDlg.GetSafeHwnd())
-        {
             CRect rcHost;
             m_staticShopContainer.GetClientRect(&rcHost);
-            m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(),
-                SWP_NOZORDER | SWP_NOACTIVATE);
-            m_shopDownDlg.ShowWindow(SW_SHOW);
+            m_shopDownDlg.SetWindowPos(NULL, 0, 0, rcHost.Width(), rcHost.Height(), SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            // 자식 창의 레이아웃 재계산 강제 트리거
+            m_shopDownDlg.SendMessage(WM_SIZE, 0, MAKELPARAM(rcHost.Width(), rcHost.Height()));
         }
-
     }
-
-    // Info button visibility per tab
-    if (m_btnVanInfo.GetSafeHwnd())
-        m_btnVanInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
-    if (m_btnPortInfo.GetSafeHwnd())
-        m_btnPortInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
-    if (m_btnTaxPercentInfo.GetSafeHwnd())
-        m_btnTaxPercentInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
-    if (m_btnCommTypeInfo.GetSafeHwnd())
-        m_btnCommTypeInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
-    if (m_btnCashReceiptInfo.GetSafeHwnd())
-        m_btnCashReceiptInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
-    if (m_btnCardTimeoutInfo.GetSafeHwnd())
-        m_btnCardTimeoutInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnInterlockInfo.GetSafeHwnd())
-        m_btnInterlockInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnMultiVoiceInfo.GetSafeHwnd())
-        m_btnMultiVoiceInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnScannerUseInfo.GetSafeHwnd())
-        m_btnScannerUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnCardDetectInfo.GetSafeHwnd())
-        m_btnCardDetectInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
-    if (m_btnAlarmGraphInfo.GetSafeHwnd())
-        m_btnAlarmGraphInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
-    if (m_btnAlarmDualInfo.GetSafeHwnd())
-        m_btnAlarmDualInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
-    if (m_btnAutoResetInfo.GetSafeHwnd())
-        m_btnAutoResetInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
-    if (m_btnAutoRebootInfo.GetSafeHwnd())
-        m_btnAutoRebootInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
-    if (m_btnSignPadUseInfo.GetSafeHwnd())
-        m_btnSignPadUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnSignPadPortInfo.GetSafeHwnd())
-        m_btnSignPadPortInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnSignPadSpeedInfo.GetSafeHwnd())
-        m_btnSignPadSpeedInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
-    if (m_btnAlarmSizeInfo.GetSafeHwnd())
-        m_btnAlarmSizeInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
-
-    // [1.7] redraw 재개 후, 탭 영역(탭바+컨텐츠)만 갱신
-    if (m_tabCtrl.GetSafeHwnd()) m_tabCtrl.SetRedraw(TRUE);
-    SetRedraw(TRUE);
+    else {
+        if (m_staticShopContainer.GetSafeHwnd()) m_staticShopContainer.ShowWindow(SW_HIDE);
+        // 일반 탭 컨트롤 표시
+        if (nTab >= 0 && nTab < 3) {
+            for (int i = 0; tabs[nTab][i]; i++) {
+                CWnd* p = GetDlgItem(tabs[nTab][i]);
+                if (p && p->GetSafeHwnd()) p->ShowWindow(SW_SHOW);
+            }
+        }
+    }
+    // [4] 정보(i) 버튼들 탭에 맞춰 가시성 조정
+    m_btnVanInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnPortInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnTaxPercentInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnCommTypeInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnCashReceiptInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnCardDetectInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnCardTimeoutInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnInterlockInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnMultiVoiceInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnScannerUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnSignPadUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnSignPadPortInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnSignPadSpeedInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnAlarmSizeInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    m_btnAlarmGraphInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    m_btnAlarmDualInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    m_btnAutoResetInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    m_btnAutoRebootInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     RefreshValidationVisibilityByTab();
-
-    CRect rcRedraw;
-    GetClientRect(&rcRedraw);
-    rcRedraw.top = kTabBarTop - 2; // 탭바 포함(살짝 위로)
-    RedrawWindow(&rcRedraw, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    // [5] 잠금 해제 및 부모/자식 전체 부드럽게 갱신
+    this->SendMessage(WM_SETREDRAW, TRUE);
+    this->RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
-
 // ============================================================================
 // TCN_SELCHANGE 핸들러
 // ============================================================================
@@ -1957,13 +1640,11 @@ void CShopSetupDlg::OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult)
      * 2) ApplyLayout()를 호출해 탭별 컨트롤 배치를 다시 수행한다.
      * 3) 필요한 경우 탭별로 보이기/숨기기(ShowWindow) 처리 후 Invalidate()한다.
      */
-
     int nSel = m_tabCtrl.GetCurSel();
     if (nSel >= 0)
         ShowTab(nSel);
     *pResult = 0;
 }
-
 // ============================================================================
 // OnCommand (포커스/드롭다운 리페인트 최소화)
 // ============================================================================
@@ -1974,7 +1655,6 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
      * 2) 해당 컨트롤의 변경을 내부 변수/상태에 반영한다.
      * 3) 변경에 따라 종속 컨트롤 Enable/Disable 또는 재그림이 필요하면 Invalidate()한다.
      */
-
     const UINT code = HIWORD(wParam);
     switch (code)
     {
@@ -2000,7 +1680,6 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
     }
     return CDialog::OnCommand(wParam, lParam);
 }
-
 // ============================================================================
 // OnEraseBkgnd
 // ============================================================================
@@ -2010,10 +1689,8 @@ BOOL CShopSetupDlg::OnEraseBkgnd(CDC* pDC)
      * 1) 배경을 OnPaint에서 전부 그리는 구조면 여기서는 TRUE를 리턴해 기본 지우기를 막는다.
      * 2) 기본 지우기를 막을 때는 반드시 OnPaint에서 전체 배경을 빠짐없이 칠해야 잔상이 남지 않는다.
      */
-
     return TRUE;
 }
-
 // ============================================================================
 // OnLButtonDown
 // ============================================================================
@@ -2030,7 +1707,6 @@ void CShopSetupDlg::OnLButtonDown(UINT nFlags, CPoint point)
         _tcsicmp(cls, _T("SysTabControl32")) != 0)
         SetFocus();
 }
-
 // ============================================================================
 // OnPaint - 더블버퍼링, 타이틀 + 그룹 소제목 그리기
 // ============================================================================
@@ -2052,22 +1728,17 @@ void CShopSetupDlg::OnPaint()
      * - 배경을 직접 그리는 경우 OnEraseBkgnd에서 TRUE 리턴으로 깜빡임을 줄이는 패턴을 함께 쓴다.
      * - 컨트롤 자체가 그리는 영역과 겹치면(클리핑) 테두리 잔상 문제가 생길 수 있어 그리기 순서가 중요하다.
      */
-
     CPaintDC dc(this);
     CRect rc;
     GetClientRect(&rc);
-
     CDC memDC;
     memDC.CreateCompatibleDC(&dc);
     CBitmap bmp;
     bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
     CBitmap* pOldBmp = memDC.SelectObject(&bmp);
-
     // [추가] 여기서 배경을 먼저 한 번만 채웁니다.
     memDC.FillSolidRect(rc, RGB(249, 250, 252));
-
     DrawBackground(&memDC);
-
     // ── 헤더: 배지 아이콘 + 타이틀 + 서브타이틀 ───────────────────
     {
         HDC hdc2 = memDC.GetSafeHdc();
@@ -2075,46 +1746,43 @@ void CShopSetupDlg::OnPaint()
         Gdiplus::Graphics gh(hdc2);
         gh.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
         gh.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-
         // 배지 배경 (kHdrBadgeSz x kHdrBadgeSz, 파랑 그라디언트)
         const float bx = (float)kHdrBadgeX;
         const float by = (float)kHdrBadgeY;
         const float bsz = (float)kHdrBadgeSz;
         {
             auto MRR = [](Gdiplus::GraphicsPath& path, Gdiplus::RectF r, float rad)
-            {
-                const float d = rad * 2.0f;
-                Gdiplus::RectF a(r.X, r.Y, d, d);
-                path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
-                path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
-                path.AddArc(a,   0, 90); a.X = r.X;
-                path.AddArc(a,  90, 90); path.CloseFigure();
-            };
+                {
+                    const float d = rad * 2.0f;
+                    Gdiplus::RectF a(r.X, r.Y, d, d);
+                    path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
+                    path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
+                    path.AddArc(a, 0, 90); a.X = r.X;
+                    path.AddArc(a, 90, 90); path.CloseFigure();
+                };
             Gdiplus::GraphicsPath bp;
             MRR(bp, Gdiplus::RectF(bx, by, bsz, bsz), 9.0f);
             Gdiplus::LinearGradientBrush bg(
-                Gdiplus::PointF(bx, by), Gdiplus::PointF(bx, by+bsz),
+                Gdiplus::PointF(bx, by), Gdiplus::PointF(bx, by + bsz),
                 Gdiplus::Color(255, 60, 130, 245),
-                Gdiplus::Color(255, 28,  76, 210));
+                Gdiplus::Color(255, 28, 76, 210));
             gh.FillPath(&bg, &bp);
-
             // Modern store icon (Toss/Kakao/Naver style - white filled building silhouette)
-            const float cx=bx+bsz*0.5f, cy=by+bsz*0.5f;
-            Gdiplus::SolidBrush wBr(Gdiplus::Color(255,255,255,255));
-            const float iH=bsz*0.60f, iW=bsz*0.52f;
-            const float rH=iH*0.28f, bHh=iH-rH;
-            const float iX=cx-iW*0.5f, iY=cy-iH*0.5f+0.5f;
+            const float cx = bx + bsz * 0.5f, cy = by + bsz * 0.5f;
+            Gdiplus::SolidBrush wBr(Gdiplus::Color(255, 255, 255, 255));
+            const float iH = bsz * 0.60f, iW = bsz * 0.52f;
+            const float rH = iH * 0.28f, bHh = iH - rH;
+            const float iX = cx - iW * 0.5f, iY = cy - iH * 0.5f + 0.5f;
             Gdiplus::PointF rf[3];
-            rf[0]=Gdiplus::PointF(cx,iY);
-            rf[1]=Gdiplus::PointF(iX-iW*0.14f,iY+rH+1.5f);
-            rf[2]=Gdiplus::PointF(iX+iW*1.14f,iY+rH+1.5f);
-            gh.FillPolygon(&wBr,rf,3);
-            gh.FillRectangle(&wBr,Gdiplus::RectF(iX,iY+rH,iW,bHh));
-            Gdiplus::SolidBrush dBr(Gdiplus::Color(130,28,76,210));
-            const float dW=iW*0.26f, dH=bHh*0.44f;
-            gh.FillRectangle(&dBr,Gdiplus::RectF(cx-dW*0.5f,iY+rH+bHh-dH,dW,dH));
+            rf[0] = Gdiplus::PointF(cx, iY);
+            rf[1] = Gdiplus::PointF(iX - iW * 0.14f, iY + rH + 1.5f);
+            rf[2] = Gdiplus::PointF(iX + iW * 1.14f, iY + rH + 1.5f);
+            gh.FillPolygon(&wBr, rf, 3);
+            gh.FillRectangle(&wBr, Gdiplus::RectF(iX, iY + rH, iW, bHh));
+            Gdiplus::SolidBrush dBr(Gdiplus::Color(130, 28, 76, 210));
+            const float dW = iW * 0.26f, dH = bHh * 0.44f;
+            gh.FillRectangle(&dBr, Gdiplus::RectF(cx - dW * 0.5f, iY + rH + bHh - dH, dW, dH));
         }
-
         // 타이틀 (GDI+ ClearType)
         // Use cached member font objects (created once in OnInitDialog with DPI scaling)
         Gdiplus::SolidBrush bTitle(Gdiplus::Color(255, 18, 24, 40));
@@ -2122,37 +1790,30 @@ void CShopSetupDlg::OnPaint()
         Gdiplus::StringFormat sf;
         sf.SetAlignment(Gdiplus::StringAlignmentNear);
         sf.SetLineAlignment(Gdiplus::StringAlignmentNear);
-
         const float tx = bx + bsz + 12.0f;
         // 타이틀: 배지 세로 중앙 기준 위쪽 절반
         const float titleY = by + bsz * 0.5f - 22.0f;
         gh.DrawString(L"가맹점 설정", -1, m_pFontHdrTitle,
             Gdiplus::RectF(tx, titleY, 300.0f, 24.0f), &sf, &bTitle);
         gh.DrawString(L"가맹점 및 서버 연결 설정을 관리합니다", -1, m_pFontHdrSub,
-            Gdiplus::RectF(tx, titleY+26.0f, 360.0f, 16.0f), &sf, &bSub);
-
+            Gdiplus::RectF(tx, titleY + 26.0f, 360.0f, 16.0f), &sf, &bSub);
         // 구분선 (kHdrDividerY 기준)
         Gdiplus::Pen divPen(Gdiplus::Color(255, 228, 232, 240), 1.0f);
         gh.DrawLine(&divPen,
             Gdiplus::PointF((float)kHdrBadgeX, (float)kHdrDividerY),
-            Gdiplus::PointF((float)(rc.Width()-kHdrBadgeX), (float)kHdrDividerY));
+            Gdiplus::PointF((float)(rc.Width() - kHdrBadgeX), (float)kHdrDividerY));
     }
-
     CFont* pOldFont = memDC.SelectObject(&m_fontTitle);
     CPen linePen(PS_SOLID, 1, RGB(228, 232, 240));
     CPen* pOldPen = memDC.SelectObject(&linePen);
-
     // 그룹 소제목 (활성 탭에 따라)
     DrawGroupLabels(&memDC);
-
     memDC.SelectObject(pOldPen);
     memDC.SelectObject(pOldFont);
-
     // Save-success toast overlay
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
     memDC.SelectObject(pOldBmp);
 }
-
 // ============================================================================
 // DrawGroupLabels - 활성 탭의 그룹 소제목([결제 방식] 등) 그리기
 // ============================================================================
@@ -2163,30 +1824,27 @@ void CShopSetupDlg::DrawGroupLabels(CDC* pDC)
      * 2) 각 행 라벨은 동일한 X 기준으로 정렬해 UI 리듬을 만든다.
      * 3) 비활성 상태 컨트롤은 라벨 색을 약하게 처리할 수 있다.
      */
-
     CFont* pOld = m_fontGroupTitle.GetSafeHandle()
         ? pDC->SelectObject(&m_fontGroupTitle) : nullptr;
     pDC->SetBkMode(TRANSPARENT);
-
     auto DrawGrp = [&](const CRect& r, LPCTSTR t)
-    {
-        if (r.IsRectEmpty()) return;
-        ModernUIGfx::EnsureGdiplusStartup();
-        HDC hdc = pDC->GetSafeHdc();
-        Gdiplus::Graphics gfx(hdc);
-        gfx.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-        // 왼쪽 컬러 바 (BLUE_400, 3px 너비, 둥근 모서리)
-        Gdiplus::SolidBrush barBrush(Gdiplus::Color(255, 15, 124, 255));
-        Gdiplus::RectF barRf((Gdiplus::REAL)r.left, (Gdiplus::REAL)r.top + 3.0f,
-                              3.0f, (Gdiplus::REAL)(r.Height() - 6));
-        gfx.FillRectangle(&barBrush, barRf);
-        // 텍스트: BLUE_600 색
-        pDC->SetTextColor(RGB(0, 76, 168));  // BLUE_600
-        CRect rcTxt = r;
-        rcTxt.left += 9;
-        pDC->DrawText(t, (LPRECT)&rcTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    };
-
+        {
+            if (r.IsRectEmpty()) return;
+            ModernUIGfx::EnsureGdiplusStartup();
+            HDC hdc = pDC->GetSafeHdc();
+            Gdiplus::Graphics gfx(hdc);
+            gfx.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+            // 왼쪽 컬러 바 (BLUE_400, 3px 너비, 둥근 모서리)
+            Gdiplus::SolidBrush barBrush(Gdiplus::Color(255, 15, 124, 255));
+            Gdiplus::RectF barRf((Gdiplus::REAL)r.left, (Gdiplus::REAL)r.top + 3.0f,
+                3.0f, (Gdiplus::REAL)(r.Height() - 6));
+            gfx.FillRectangle(&barBrush, barRf);
+            // 텍스트: BLUE_600 색
+            pDC->SetTextColor(RGB(0, 76, 168));  // BLUE_600
+            CRect rcTxt = r;
+            rcTxt.left += 9;
+            pDC->DrawText(t, (LPRECT)&rcTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        };
     // Tab1/2 헤더는 DrawBackground의 DrawMinCard 람다에서 처리
     // (이중 렌더링 방지를 위해 여기서는 그리지 않음)
     switch (m_nActiveTab)
@@ -2195,10 +1853,8 @@ void CShopSetupDlg::DrawGroupLabels(CDC* pDC)
     case 2: break;
     default: break;
     }
-
     if (pOld) pDC->SelectObject(pOld);
 }
-
 // ============================================================================
 // DrawBackground
 // ============================================================================
@@ -2209,52 +1865,44 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
      * 2) 섹션/그룹 영역을 카드 형태(라운드, 그림자/보더)로 분리해 그린다.
      * 3) 선택 탭에 따라 표시할 영역만 강조/그리도록 분기할 수 있다.
      */
-
     CRect rc;
     GetClientRect(&rc);
     //pDC->FillSolidRect(rc, RGB(249, 250, 252));  // 밝은 회색 배경
-
     const int kCardMarginL = 20;
     const int kCardMarginT = 10;
     const int kCardMarginR = 20;
     const int kCardMarginB = 20;
     const float kRadius = 12.0f;
-
     CRect contentRect(kCardMarginL, kCardMarginT,
-                      rc.Width() - kCardMarginR, rc.bottom - kCardMarginB);
-
+        rc.Width() - kCardMarginR, rc.bottom - kCardMarginB);
     ModernUIGfx::EnsureGdiplusStartup();
     {
         HDC hdc = pDC->GetSafeHdc();
         Gdiplus::Graphics g(hdc);
         g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
         g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
-
         const Gdiplus::RectF rf(
             (Gdiplus::REAL)contentRect.left,
             (Gdiplus::REAL)contentRect.top,
             (Gdiplus::REAL)contentRect.Width(),
             (Gdiplus::REAL)contentRect.Height());
-
         auto AddRoundRectPath = [](Gdiplus::GraphicsPath& path,
-                                   const Gdiplus::RectF& r, float radius)
-        {
-            const float d = radius * 2.0f;
-            if (radius <= 0.0f) { path.AddRectangle(r); return; }
-            Gdiplus::RectF arc(r.X, r.Y, d, d);
-            path.AddArc(arc, 180, 90);
-            arc.X = r.X + r.Width - d;
-            path.AddArc(arc, 270, 90);
-            arc.Y = r.Y + r.Height - d;
-            path.AddArc(arc, 0, 90);
-            arc.X = r.X;
-            path.AddArc(arc, 90, 90);
-            path.CloseFigure();
-        };
-
+            const Gdiplus::RectF& r, float radius)
+            {
+                const float d = radius * 2.0f;
+                if (radius <= 0.0f) { path.AddRectangle(r); return; }
+                Gdiplus::RectF arc(r.X, r.Y, d, d);
+                path.AddArc(arc, 180, 90);
+                arc.X = r.X + r.Width - d;
+                path.AddArc(arc, 270, 90);
+                arc.Y = r.Y + r.Height - d;
+                path.AddArc(arc, 0, 90);
+                arc.X = r.X;
+                path.AddArc(arc, 90, 90);
+                path.CloseFigure();
+            };
         Gdiplus::GraphicsPath path;
         AddRoundRectPath(path, rf, kRadius);
-
         // 메인카드 그림자 3단계
         for (int sh = 3; sh >= 1; sh--)
         {
@@ -2265,121 +1913,103 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
             Gdiplus::SolidBrush shBrush(Gdiplus::Color(alpha, 10, 30, 70));
             g.FillPath(&shBrush, &shPath);
         }
-
         Gdiplus::SolidBrush fillBrush(Gdiplus::Color(255, 255, 255, 255));
         g.FillPath(&fillBrush, &path);
-
         Gdiplus::Pen borderPen(Gdiplus::Color(255, 220, 224, 234), 1.0f);
         borderPen.SetLineJoin(Gdiplus::LineJoinRound);
         g.DrawPath(&borderPen, &path);
-
         // ================================================================
         // 공용 헬퍼: RR + DrawMinCard (Tab 0/1/2 공통 사용)
         // ================================================================
         auto RR = [](Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, float rad)
-        {
-            const float d = rad * 2.0f;
-            if (rad <= 0.0f) { path.AddRectangle(r); return; }
-            Gdiplus::RectF a(r.X, r.Y, d, d);
-            path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
-            path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
-            path.AddArc(a,   0, 90); a.X = r.X;
-            path.AddArc(a,  90, 90); path.CloseFigure();
-        };
-
+            {
+                const float d = rad * 2.0f;
+                if (rad <= 0.0f) { path.AddRectangle(r); return; }
+                Gdiplus::RectF a(r.X, r.Y, d, d);
+                path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
+                path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
+                path.AddArc(a, 0, 90); a.X = r.X;
+                path.AddArc(a, 90, 90); path.CloseFigure();
+            };
         auto DrawMinCard = [&](const CRect& rcSec, const wchar_t* title)
-        {
-            if (rcSec.IsRectEmpty()) return;
-            const float crad = 12.0f;
-            const float hdrH = 44.0f;
-
-            Gdiplus::RectF cr(
-                (float)rcSec.left,  (float)rcSec.top,
-                (float)rcSec.Width(), (float)rcSec.Height());
-
-            // 그림자 2단계
-            for (int sh = 2; sh >= 1; sh--) {
-                Gdiplus::RectF sr(cr.X, cr.Y+(float)sh, cr.Width, cr.Height);
-                Gdiplus::GraphicsPath sp; RR(sp, sr, crad);
-                Gdiplus::SolidBrush sb(Gdiplus::Color((BYTE)(sh==2?8:16), 20,40,80));
-                g.FillPath(&sb, &sp);
-            }
-
-            // 카드 본체 흰색
-            Gdiplus::GraphicsPath cp; RR(cp, cr, crad);
-            Gdiplus::SolidBrush cf(Gdiplus::Color(255,250,251,253));  // 그룹 배경(#FAFBFD)
-            g.FillPath(&cf, &cp);
-            // 헤더 구분선
-            Gdiplus::Pen hl(Gdiplus::Color(255,238,241,247), 1.0f);
-            g.DrawLine(&hl,
-                Gdiplus::PointF(cr.X+16.0f, cr.Y+hdrH),
-                Gdiplus::PointF(cr.X+cr.Width-16.0f, cr.Y+hdrH));
-
-            // 불릿 + 타이틀
-            const float barX  = cr.X + 16.0f;       // 카드 좌측 내부 여백
-            const float barW  = 4.0f;               // 세로 바 폭
-            const float barH  = 16.0f;              // 세로 바 높이
-            const float barY  = cr.Y + (hdrH - barH) * 0.5f;  // 헤더 세로 중앙
-            const float barR  = 2.0f;               // 모서리 라운드 반경
-
-            // 세로 accent bar (라운드 사각형)
-            Gdiplus::GraphicsPath barPath;
-            const float bd = barR * 2.0f;
-            barPath.AddArc(barX,          barY,          bd, bd, 180, 90);
-            barPath.AddArc(barX+barW-bd,  barY,          bd, bd, 270, 90);
-            barPath.AddArc(barX+barW-bd,  barY+barH-bd,  bd, bd,   0, 90);
-            barPath.AddArc(barX,          barY+barH-bd,  bd, bd,  90, 90);
-            barPath.CloseFigure();
-            Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
-            g.FillPath(&barBr, &barPath);
-
-            // 타이틀 (세로 바 오른쪽에 10px 간격)
-            const float titleX = barX + barW + 10.0f;
-            // Use cached member font object (created once in OnInitDialog with DPI scaling)
-            Gdiplus::SolidBrush bT(Gdiplus::Color(255, 26, 32, 44));
-
-            // [중요 추가] 텍스트 렌더링 힌트를 ClearType으로 설정 (깨짐 방지 핵심)
-            g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-
-            Gdiplus::StringFormat sf2;
-            sf2.SetAlignment(Gdiplus::StringAlignmentNear);
-            sf2.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-
-            // [중요 추가] 텍스트가 영역 밖으로 나가거나 줄바꿈되어 깨지는 현상 방지
-            sf2.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
-
-            g.DrawString(title, -1, m_pFontCardTitle,
-                Gdiplus::RectF(titleX, cr.Y, cr.Width - (titleX - cr.X) - 16.0f, hdrH),
-                &sf2, &bT);
-        };
-
+            {
+                if (rcSec.IsRectEmpty()) return;
+                const float crad = 12.0f;
+                const float hdrH = 44.0f;
+                Gdiplus::RectF cr(
+                    (float)rcSec.left, (float)rcSec.top,
+                    (float)rcSec.Width(), (float)rcSec.Height());
+                // 그림자 2단계
+                for (int sh = 2; sh >= 1; sh--) {
+                    Gdiplus::RectF sr(cr.X, cr.Y + (float)sh, cr.Width, cr.Height);
+                    Gdiplus::GraphicsPath sp; RR(sp, sr, crad);
+                    Gdiplus::SolidBrush sb(Gdiplus::Color((BYTE)(sh == 2 ? 8 : 16), 20, 40, 80));
+                    g.FillPath(&sb, &sp);
+                }
+                // 카드 본체 흰색
+                Gdiplus::GraphicsPath cp; RR(cp, cr, crad);
+                Gdiplus::SolidBrush cf(Gdiplus::Color(255, 250, 251, 253));  // 그룹 배경(#FAFBFD)
+                g.FillPath(&cf, &cp);
+                // 헤더 구분선
+                Gdiplus::Pen hl(Gdiplus::Color(255, 238, 241, 247), 1.0f);
+                g.DrawLine(&hl,
+                    Gdiplus::PointF(cr.X + 16.0f, cr.Y + hdrH),
+                    Gdiplus::PointF(cr.X + cr.Width - 16.0f, cr.Y + hdrH));
+                // 불릿 + 타이틀
+                const float barX = cr.X + 16.0f;       // 카드 좌측 내부 여백
+                const float barW = 4.0f;               // 세로 바 폭
+                const float barH = 16.0f;              // 세로 바 높이
+                const float barY = cr.Y + (hdrH - barH) * 0.5f;  // 헤더 세로 중앙
+                const float barR = 2.0f;               // 모서리 라운드 반경
+                // 세로 accent bar (라운드 사각형)
+                Gdiplus::GraphicsPath barPath;
+                const float bd = barR * 2.0f;
+                barPath.AddArc(barX, barY, bd, bd, 180, 90);
+                barPath.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
+                barPath.AddArc(barX + barW - bd, barY + barH - bd, bd, bd, 0, 90);
+                barPath.AddArc(barX, barY + barH - bd, bd, bd, 90, 90);
+                barPath.CloseFigure();
+                Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
+                g.FillPath(&barBr, &barPath);
+                // 타이틀 (세로 바 오른쪽에 10px 간격)
+                const float titleX = barX + barW + 10.0f;
+                // Use cached member font object (created once in OnInitDialog with DPI scaling)
+                Gdiplus::SolidBrush bT(Gdiplus::Color(255, 26, 32, 44));
+                // [중요 추가] 텍스트 렌더링 힌트를 ClearType으로 설정 (깨짐 방지 핵심)
+                g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+                Gdiplus::StringFormat sf2;
+                sf2.SetAlignment(Gdiplus::StringAlignmentNear);
+                sf2.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+                // [중요 추가] 텍스트가 영역 밖으로 나가거나 줄바꿈되어 깨지는 현상 방지
+                sf2.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
+                g.DrawString(title, -1, m_pFontCardTitle,
+                    Gdiplus::RectF(titleX, cr.Y, cr.Width - (titleX - cr.X) - 16.0f, hdrH),
+                    &sf2, &bT);
+            };
         // ── 탭별 렌더링 ────────────────────────────────────────────────
         if (m_nActiveTab == 0)
         {
-            DrawMinCard(m_rcCardServer,    L"서버 설정");
+            DrawMinCard(m_rcCardServer, L"서버 설정");
             DrawMinCard(m_rcCardPayMethod, L"결제 방식");
         }
         else if (m_nActiveTab == 1)
         {
             DrawMinCard(m_rcGrpReader, L"리더기");
-            DrawMinCard(m_rcGrpSign,   L"서명패드");
-            DrawMinCard(m_rcGrpEtc,    L"기타");
+            DrawMinCard(m_rcGrpSign, L"서명패드");
+            DrawMinCard(m_rcGrpEtc, L"기타");
         }
         else if (m_nActiveTab == 2)
         {
-            DrawMinCard(m_rcGrpAlarm,  L"알림창 설정");
+            DrawMinCard(m_rcGrpAlarm, L"알림창 설정");
             DrawMinCard(m_rcGrpSystem, L"시스템");
             DrawMinCard(m_rcGrpHotkey, L"단축키");
         }
-
-    
         else if (m_nActiveTab == 3)
         {
             DrawMinCard(m_rcCardShopDown, L"가맹점 다운로드");
         }
+    }
 }
-}
-
 // ============================================================================
 // OnCtlColor
 // ============================================================================
@@ -2390,9 +2020,7 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
      * 2) 배경을 직접 그리는 경우 투명 배경(SetBkMode TRANSPARENT) 처리한다.
      * 3) 반환하는 브러시는 수명 관리(멤버 브러시 재사용)로 깜빡임과 누수를 방지한다.
      */
-
     HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
-
     const int errIds[] = {
         IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
         IDC_STATIC_ERR_CARD_DETECT_PROGRAM, IDC_STATIC_ERR_TIMEOUT,
@@ -2407,7 +2035,6 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
             return m_brushBg;
         }
     }
-
     if (nCtlColor == CTLCOLOR_STATIC && pWnd)
     {
         // SetBkMode(TRANSPARENT): \xc5\xd8\xbd\xba\xc6\xae \xbb\xe7\xc0\xcc \xb9\xe8\xb0\xe6 \xc5\xa9\xb8\xae\xbe\xee
@@ -2423,10 +2050,8 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     }
     if (nCtlColor == CTLCOLOR_DLG)
         return m_brushBg;
-
     return hbr;
 }
-
 // ============================================================================
 // OnDestroy
 // ============================================================================
@@ -2434,13 +2059,10 @@ void CShopSetupDlg::OnDestroy()
 {
     m_bClosing = TRUE;
     m_bUiInitialized = FALSE;
-
     if (m_popover.IsVisible()) m_popover.Hide();
-
     CWnd* pPosInfo = GetDlgItem(IDC_STATIC_CARD_DETECT_POSINFO);
     if (pPosInfo && pPosInfo->GetSafeHwnd())
         pPosInfo->DestroyWindow();
-
     const int destroyIds[] = {
         IDC_STATIC_SCANNER_PORT_LABEL,
         IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
@@ -2453,16 +2075,13 @@ void CShopSetupDlg::OnDestroy()
         if (p && p->GetSafeHwnd())
             p->DestroyWindow();
     }
-
     // Delete cached GDI+ font objects created in OnInitDialog
-    delete m_pFontCardTitle;    m_pFontCardTitle    = nullptr;
-    delete m_pFontHdrTitle;     m_pFontHdrTitle     = nullptr;
-    delete m_pFontHdrSub;       m_pFontHdrSub       = nullptr;
+    delete m_pFontCardTitle;    m_pFontCardTitle = nullptr;
+    delete m_pFontHdrTitle;     m_pFontHdrTitle = nullptr;
+    delete m_pFontHdrSub;       m_pFontHdrSub = nullptr;
     delete m_pFontFamilyMalgun; m_pFontFamilyMalgun = nullptr;
-
     CDialog::OnDestroy();
 }
-
 // ============================================================================
 // ============================================================================
 // Snapshot helpers
@@ -2470,32 +2089,31 @@ void CShopSetupDlg::OnDestroy()
 void CShopSetupDlg::TakeSnapshot()
 {
     UpdateData(TRUE);
-    m_snap.intPort          = m_intPort;
-    m_snap.intCardTimeout   = m_intCardTimeout;
-    m_snap.intNoSignAmount  = m_intNoSignAmount;
-    m_snap.intTaxPercent    = m_intTaxPercent;
-    m_snap.intSignPadPort   = m_intSignPadPort;
-    m_snap.intScannerPort   = m_intScannerPort;
+    m_snap.intPort = m_intPort;
+    m_snap.intCardTimeout = m_intCardTimeout;
+    m_snap.intNoSignAmount = m_intNoSignAmount;
+    m_snap.intTaxPercent = m_intTaxPercent;
+    m_snap.intSignPadPort = m_intSignPadPort;
+    m_snap.intScannerPort = m_intScannerPort;
     m_snap.strCardDetectParam = m_strCardDetectParam;
-    m_snap.cmbVanServer     = m_comboVanServer.GetCurSel();
-    m_snap.cmbCashReceipt   = m_comboCashReceipt.GetCurSel();
-    m_snap.cmbInterlock     = m_comboInterlock.GetCurSel();
-    m_snap.cmbCommType      = m_comboCommType.GetCurSel();
-    m_snap.cmbSignPadUse    = m_comboSignPadUse.GetCurSel();
-    m_snap.cmbSignPadSpeed  = m_comboSignPadSpeed.GetCurSel();
-    m_snap.cmbAlarmPos      = m_comboAlarmPos.GetCurSel();
-    m_snap.cmbAlarmSize     = m_comboAlarmSize.GetCurSel();
-    m_snap.cmbCancelKey     = m_comboCancelKey.GetCurSel();
-    m_snap.cmbMSRKey        = m_comboMSRKey.GetCurSel();
-    m_snap.tglCardDetect    = m_chkCardDetect.IsToggled();
-    m_snap.tglMultiVoice    = m_chkMultiVoice.IsToggled();
-    m_snap.tglScannerUse    = m_chkScannerUse.IsToggled();
-    m_snap.tglAlarmGraph    = m_chkAlarmGraph.IsToggled();
-    m_snap.tglAlarmDual     = m_chkAlarmDual.IsToggled();
-    m_snap.tglAutoReset     = m_chkAutoReset.IsToggled();
-    m_snap.tglAutoReboot    = m_chkAutoReboot.IsToggled();
+    m_snap.cmbVanServer = m_comboVanServer.GetCurSel();
+    m_snap.cmbCashReceipt = m_comboCashReceipt.GetCurSel();
+    m_snap.cmbInterlock = m_comboInterlock.GetCurSel();
+    m_snap.cmbCommType = m_comboCommType.GetCurSel();
+    m_snap.cmbSignPadUse = m_comboSignPadUse.GetCurSel();
+    m_snap.cmbSignPadSpeed = m_comboSignPadSpeed.GetCurSel();
+    m_snap.cmbAlarmPos = m_comboAlarmPos.GetCurSel();
+    m_snap.cmbAlarmSize = m_comboAlarmSize.GetCurSel();
+    m_snap.cmbCancelKey = m_comboCancelKey.GetCurSel();
+    m_snap.cmbMSRKey = m_comboMSRKey.GetCurSel();
+    m_snap.tglCardDetect = m_chkCardDetect.IsToggled();
+    m_snap.tglMultiVoice = m_chkMultiVoice.IsToggled();
+    m_snap.tglScannerUse = m_chkScannerUse.IsToggled();
+    m_snap.tglAlarmGraph = m_chkAlarmGraph.IsToggled();
+    m_snap.tglAlarmDual = m_chkAlarmDual.IsToggled();
+    m_snap.tglAutoReset = m_chkAutoReset.IsToggled();
+    m_snap.tglAutoReboot = m_chkAutoReboot.IsToggled();
 }
-
 BOOL CShopSetupDlg::HasChanges() const
 {
     // Read current edit values
@@ -2507,26 +2125,25 @@ BOOL CShopSetupDlg::HasChanges() const
     m_editSignPadPort.GetWindowText(s);    if (_ttoi(s) != m_snap.intSignPadPort)   return TRUE;
     m_editScannerPort.GetWindowText(s);    if (_ttoi(s) != m_snap.intScannerPort)   return TRUE;
     m_editCardDetectParam.GetWindowText(s);if (s != m_snap.strCardDetectParam)      return TRUE;
-    if (m_comboVanServer.GetCurSel()    != m_snap.cmbVanServer)    return TRUE;
-    if (m_comboCashReceipt.GetCurSel()  != m_snap.cmbCashReceipt)  return TRUE;
-    if (m_comboInterlock.GetCurSel()    != m_snap.cmbInterlock)    return TRUE;
-    if (m_comboCommType.GetCurSel()     != m_snap.cmbCommType)     return TRUE;
-    if (m_comboSignPadUse.GetCurSel()   != m_snap.cmbSignPadUse)   return TRUE;
+    if (m_comboVanServer.GetCurSel() != m_snap.cmbVanServer)    return TRUE;
+    if (m_comboCashReceipt.GetCurSel() != m_snap.cmbCashReceipt)  return TRUE;
+    if (m_comboInterlock.GetCurSel() != m_snap.cmbInterlock)    return TRUE;
+    if (m_comboCommType.GetCurSel() != m_snap.cmbCommType)     return TRUE;
+    if (m_comboSignPadUse.GetCurSel() != m_snap.cmbSignPadUse)   return TRUE;
     if (m_comboSignPadSpeed.GetCurSel() != m_snap.cmbSignPadSpeed) return TRUE;
-    if (m_comboAlarmPos.GetCurSel()     != m_snap.cmbAlarmPos)     return TRUE;
-    if (m_comboAlarmSize.GetCurSel()    != m_snap.cmbAlarmSize)    return TRUE;
-    if (m_comboCancelKey.GetCurSel()    != m_snap.cmbCancelKey)    return TRUE;
-    if (m_comboMSRKey.GetCurSel()       != m_snap.cmbMSRKey)       return TRUE;
-    if (m_chkCardDetect.IsToggled()  != m_snap.tglCardDetect)  return TRUE;
-    if (m_chkMultiVoice.IsToggled()  != m_snap.tglMultiVoice)  return TRUE;
-    if (m_chkScannerUse.IsToggled()  != m_snap.tglScannerUse)  return TRUE;
-    if (m_chkAlarmGraph.IsToggled()  != m_snap.tglAlarmGraph)  return TRUE;
-    if (m_chkAlarmDual.IsToggled()   != m_snap.tglAlarmDual)   return TRUE;
-    if (m_chkAutoReset.IsToggled()   != m_snap.tglAutoReset)   return TRUE;
-    if (m_chkAutoReboot.IsToggled()  != m_snap.tglAutoReboot)  return TRUE;
+    if (m_comboAlarmPos.GetCurSel() != m_snap.cmbAlarmPos)     return TRUE;
+    if (m_comboAlarmSize.GetCurSel() != m_snap.cmbAlarmSize)    return TRUE;
+    if (m_comboCancelKey.GetCurSel() != m_snap.cmbCancelKey)    return TRUE;
+    if (m_comboMSRKey.GetCurSel() != m_snap.cmbMSRKey)       return TRUE;
+    if (m_chkCardDetect.IsToggled() != m_snap.tglCardDetect)  return TRUE;
+    if (m_chkMultiVoice.IsToggled() != m_snap.tglMultiVoice)  return TRUE;
+    if (m_chkScannerUse.IsToggled() != m_snap.tglScannerUse)  return TRUE;
+    if (m_chkAlarmGraph.IsToggled() != m_snap.tglAlarmGraph)  return TRUE;
+    if (m_chkAlarmDual.IsToggled() != m_snap.tglAlarmDual)   return TRUE;
+    if (m_chkAutoReset.IsToggled() != m_snap.tglAutoReset)   return TRUE;
+    if (m_chkAutoReboot.IsToggled() != m_snap.tglAutoReboot)  return TRUE;
     return FALSE;
 }
-
 // OnOK / OnCancel
 // ============================================================================
 // --------------------------------------------------------------
@@ -2536,22 +2153,18 @@ BOOL CShopSetupDlg::HasChanges() const
 void CShopSetupDlg::OnOK()
 {
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
-
     int nFirstInvalidCtrlId = 0;
     if (!ValidateAllInputs(FALSE, &nFirstInvalidCtrlId))
     {
         MessageBox(_T("입력값을 확인해주세요."), _T("확인"), MB_OK | MB_ICONWARNING);
-
         const int nErrorTab = GetTabIndexForControl(nFirstInvalidCtrlId);
         if (nErrorTab >= 0 && nErrorTab <= 2 && nErrorTab != m_nActiveTab)
         {
             m_tabCtrl.SetCurSel(nErrorTab);
             ShowTab(nErrorTab);
         }
-
         ValidateAllInputs(TRUE, &nFirstInvalidCtrlId);
         RefreshValidationVisibilityByTab();
-
         CWnd* pFirst = GetDlgItem(nFirstInvalidCtrlId);
         if (pFirst && pFirst->GetSafeHwnd())
         {
@@ -2569,11 +2182,9 @@ void CShopSetupDlg::OnOK()
         }
         return;
     }
-
     SaveOptionsToRegistry();
     CDialog::OnOK();
 }
-
 void CShopSetupDlg::OnCancel()
 {
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
@@ -2584,7 +2195,6 @@ void CShopSetupDlg::OnCancel()
     }
     CDialog::OnCancel();
 }
-
 // ============================================================================
 // DrawInputBorders (하위 호환 stub)
 // ============================================================================
@@ -2595,7 +2205,6 @@ void CShopSetupDlg::DrawInputBorders() {
      * 3) DrawOneInputBorder()로 라운드 보더/포커스 링/hover 컬러를 적용한다.
      */
 }
-
 // ============================================================================
 // ShowInfoPopover - unified helper to toggle any info popover
 // ============================================================================
@@ -2606,7 +2215,6 @@ void CShopSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTS
     btn.GetWindowRect(&rc);
     m_popover.ShowAt(rc, szTitle, szBody, this);
 }
-
 // ============================================================================
 // OnBnClickedVanServerInfo - toggle popover
 // ============================================================================
@@ -2629,12 +2237,10 @@ void CShopSetupDlg::OnBnClickedCashReceiptInfo()
 {
     ShowInfoPopover(m_btnCashReceiptInfo, _T("현금영수증 거래"), _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력"));
 }
-
 void CShopSetupDlg::OnBnClickedTaxPercentInfo()
 {
     ShowInfoPopover(m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"));
 }
-
 // ============================================================================
 // 팝오버 아이콘 핸들러 - 탭1
 // ============================================================================
@@ -2678,12 +2284,10 @@ void CShopSetupDlg::OnBnClickedSignPadUseInfo()
 {
     ShowInfoPopover(m_btnSignPadUseInfo, _T("서명패드 사용"), _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력"));
 }
-
 void CShopSetupDlg::OnBnClickedSignPadPortInfo()
 {
     ShowInfoPopover(m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호"));
 }
-
 void CShopSetupDlg::OnBnClickedSignPadSpeedInfo()
 {
     ShowInfoPopover(m_btnSignPadSpeedInfo, _T("서명패드 속도"), _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시"));
@@ -2706,11 +2310,9 @@ const CShopSetupDlg::ValidationBinding* CShopSetupDlg::GetValidationBindings(int
         { IDC_EDIT_SIGN_PAD_PORT,     IDC_STATIC_ERR_SIGNPAD_PORT,        VF_SIGNPAD_PORT,         1 },
         { IDC_EDIT_SCANNER_PORT,      IDC_STATIC_ERR_SCANNER_PORT,        VF_SCANNER_PORT,         1 }
     };
-
     outCount = (int)(sizeof(kBindings) / sizeof(kBindings[0]));
     return kBindings;
 }
-
 const CShopSetupDlg::ValidationBinding* CShopSetupDlg::FindValidationBinding(int nCtrlId) const
 {
     int count = 0;
@@ -2722,7 +2324,6 @@ const CShopSetupDlg::ValidationBinding* CShopSetupDlg::FindValidationBinding(int
     }
     return NULL;
 }
-
 const CShopSetupDlg::ValidationBinding* CShopSetupDlg::FindValidationBindingByErrId(int nStaticId) const
 {
     int count = 0;
@@ -2734,12 +2335,10 @@ const CShopSetupDlg::ValidationBinding* CShopSetupDlg::FindValidationBindingByEr
     }
     return NULL;
 }
-
 BOOL CShopSetupDlg::IsDigitsOnly(const CString& text)
 {
     if (text.IsEmpty())
         return FALSE;
-
     for (int i = 0; i < text.GetLength(); ++i)
     {
         if (_istspace(text[i]))
@@ -2749,46 +2348,34 @@ BOOL CShopSetupDlg::IsDigitsOnly(const CString& text)
     }
     return TRUE;
 }
-
 BOOL CShopSetupDlg::IsPositiveNumberText(const CString& text)
 {
     if (!IsDigitsOnly(text))
         return FALSE;
-
     return (_ttoi(text) > 0);
 }
-
 void CShopSetupDlg::SetValidationText(int nStaticId, const CString& text)
 {
     if (m_bClosing || !GetSafeHwnd())
         return;
-
     CWnd* p = GetDlgItem(nStaticId);
     if (!p || !p->GetSafeHwnd())
         return;
-
     const ValidationBinding* binding = FindValidationBindingByErrId(nStaticId);
     const BOOL bShouldShow = (!text.IsEmpty() && binding && binding->tabIndex == m_nActiveTab);
     const BOOL bVisibleNow = (p->IsWindowVisible() != FALSE);
-
     CString oldText;
     p->GetWindowText(oldText);
-
     if (oldText == text && bVisibleNow == bShouldShow)
         return;
-
     p->SetRedraw(FALSE);
-
     if (oldText != text)
         p->SetWindowText(text);
-
     if (bVisibleNow != bShouldShow)
         p->ShowWindow(bShouldShow ? SW_SHOW : SW_HIDE);
-
     p->SetRedraw(TRUE);
     p->Invalidate(FALSE);
 }
-
 // --------------------------------------------------------------
 // 현재 활성 탭의 오류문구만 보이도록 정리
 //  - 다른 탭에 속한 오류 Static은 숨긴다.
@@ -2798,27 +2385,22 @@ void CShopSetupDlg::RefreshValidationVisibilityByTab()
 {
     if (m_bClosing || !GetSafeHwnd())
         return;
-
     int count = 0;
     const ValidationBinding* bindings = GetValidationBindings(count);
-
     for (int i = 0; i < count; ++i)
     {
         CWnd* pErr = GetDlgItem(bindings[i].errId);
         if (!pErr || !pErr->GetSafeHwnd())
             continue;
-
         CString text;
         pErr->GetWindowText(text);
         text.Trim();
-
         const BOOL bShouldShow = (!text.IsEmpty() && bindings[i].tabIndex == m_nActiveTab);
         const BOOL bVisibleNow = (pErr->IsWindowVisible() != FALSE);
         if (bVisibleNow != bShouldShow)
             pErr->ShowWindow(bShouldShow ? SW_SHOW : SW_HIDE);
     }
 }
-
 CSkinnedEdit* CShopSetupDlg::GetSkinnedEditByCtrlId(int nCtrlId)
 {
     switch (nCtrlId)
@@ -2833,56 +2415,44 @@ CSkinnedEdit* CShopSetupDlg::GetSkinnedEditByCtrlId(int nCtrlId)
     default:                         return NULL;
     }
 }
-
 void CShopSetupDlg::SetEditValidationErrorState(int nCtrlId, BOOL bHasError)
 {
     if (m_bClosing || !GetSafeHwnd())
         return;
-
     CSkinnedEdit* pEdit = GetSkinnedEditByCtrlId(nCtrlId);
     if (!pEdit || !pEdit->GetSafeHwnd())
         return;
-
     pEdit->SetValidationError(bHasError);
 }
-
 void CShopSetupDlg::PositionValidationText(int nStaticId, int x, int y, int w, int h, BOOL bShow)
 {
     if (m_bClosing || !GetSafeHwnd())
         return;
-
     CWnd* p = GetDlgItem(nStaticId);
     if (!p || !p->GetSafeHwnd())
         return;
-
     CRect rcNow;
     p->GetWindowRect(&rcNow);
     ScreenToClient(&rcNow);
-
     if (rcNow.left != x || rcNow.top != y || rcNow.Width() != w || rcNow.Height() != h)
         p->SetWindowPos(NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
-
     const BOOL bVisibleNow = (p->IsWindowVisible() != FALSE);
     if (bVisibleNow != bShow)
         p->ShowWindow(bShow ? SW_SHOW : SW_HIDE);
 }
-
 void CShopSetupDlg::EnsureValidationStatics()
 {
     if (!GetSafeHwnd() || m_bClosing)
         return;
-
     const int ids[] = {
         IDC_STATIC_ERR_PORT, IDC_STATIC_ERR_NO_SIGN, IDC_STATIC_ERR_TAX,
         IDC_STATIC_ERR_CARD_DETECT_PROGRAM, IDC_STATIC_ERR_TIMEOUT,
         IDC_STATIC_ERR_SIGNPAD_PORT, IDC_STATIC_ERR_SCANNER_PORT
     };
-
     for (int i = 0; i < (int)(sizeof(ids) / sizeof(ids[0])); ++i)
     {
         if (::IsWindow(::GetDlgItem(m_hWnd, ids[i])))
             continue;
-
         HWND hStatic = ::CreateWindowEx(0, _T("STATIC"), _T(""), WS_CHILD | SS_RIGHT,
             0, 0, 0, 0, m_hWnd, (HMENU)ids[i], AfxGetInstanceHandle(), NULL);
         if (hStatic)
@@ -2892,26 +2462,23 @@ void CShopSetupDlg::EnsureValidationStatics()
         }
     }
 }
-
 BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessage) const
 {
     outMessage.Empty();
-
     auto GetTrimmed = [&](int nCtrlId, CString& out) -> BOOL
-    {
-        CWnd* p = GetDlgItem(nCtrlId);
-        if (!p || !p->GetSafeHwnd())
-            return FALSE;
-        p->GetWindowText(out);
-        out.Trim();
-        return TRUE;
-    };
+        {
+            CWnd* p = GetDlgItem(nCtrlId);
+            if (!p || !p->GetSafeHwnd())
+                return FALSE;
+            p->GetWindowText(out);
+            out.Trim();
+            return TRUE;
+        };
     auto IsCtrlEnabled = [&](int nCtrlId) -> BOOL
-    {
-        CWnd* p = GetDlgItem(nCtrlId);
-        return (p && p->GetSafeHwnd() && p->IsWindowEnabled());
-    };
-
+        {
+            CWnd* p = GetDlgItem(nCtrlId);
+            return (p && p->GetSafeHwnd() && p->IsWindowEnabled());
+        };
     CString s;
     switch (field)
     {
@@ -2919,68 +2486,55 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
         if (!GetTrimmed(IDC_EDIT_PORT, s) || !IsDigitsOnly(s))
             outMessage = _T("포트번호 입력");
         break;
-
     case VF_NO_SIGN_AMOUNT:
         if (!GetTrimmed(IDC_EDIT_NO_SIGN_AMOUNT, s) || !IsDigitsOnly(s))
             outMessage = _T("금액 입력");
         break;
-
     case VF_TAX_PERCENT:
         if (!GetTrimmed(IDC_EDIT_TAX_PERCENT, s) || !IsDigitsOnly(s) || _ttoi(s) < 0 || _ttoi(s) > 100)
             outMessage = _T("0~100 입력");
         break;
-
     case VF_CARD_DETECT_PROGRAM:
         if (m_chkCardDetect.IsToggled())
         {
             if (!IsCtrlEnabled(IDC_EDIT_CARD_DETECT_PARAM))
                 break;
-
             if (!GetTrimmed(IDC_EDIT_CARD_DETECT_PARAM, s) || s.IsEmpty())
                 outMessage = _T("필수 입력");
         }
         break;
-
     case VF_CARD_TIMEOUT:
         if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || _ttoi(s) < 30)
             outMessage = _T("30 이상 입력");
         break;
-
     case VF_SIGNPAD_PORT:
         if (m_comboSignPadUse.GetCurSel() == 0)
         {
             if (!IsCtrlEnabled(IDC_EDIT_SIGN_PAD_PORT))
                 break;
-
             if (!GetTrimmed(IDC_EDIT_SIGN_PAD_PORT, s) || !IsPositiveNumberText(s))
                 outMessage = _T("포트번호 입력");
         }
         break;
-
     case VF_SCANNER_PORT:
         if (m_chkScannerUse.IsToggled())
         {
             if (!IsCtrlEnabled(IDC_EDIT_SCANNER_PORT))
                 break;
-
             if (!GetTrimmed(IDC_EDIT_SCANNER_PORT, s) || !IsPositiveNumberText(s))
                 outMessage = _T("포트번호 입력");
         }
         break;
-
     default:
         break;
     }
-
     return outMessage.IsEmpty();
 }
-
 int CShopSetupDlg::GetTabIndexForControl(int nCtrlId) const
 {
     const ValidationBinding* binding = FindValidationBinding(nCtrlId);
     return binding ? binding->tabIndex : -1;
 }
-
 // --------------------------------------------------------------
 // Edit 1개 실시간 검증 + UI 갱신
 //  - EN_CHANGE에서 호출된다.
@@ -2991,17 +2545,14 @@ void CShopSetupDlg::ValidateControlAndUpdateUI(int nCtrlId)
 {
     if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
         return;
-
     const ValidationBinding* binding = FindValidationBinding(nCtrlId);
     if (!binding)
         return;
-
     CString err;
     ValidateSingleField(binding->field, err);
     SetValidationText(binding->errId, err);
     SetEditValidationErrorState(binding->ctrlId, !err.IsEmpty());
 }
-
 // --------------------------------------------------------------
 // 전체 입력값 검증
 //  - 확인 버튼에서 사용한다.
@@ -3013,25 +2564,20 @@ BOOL CShopSetupDlg::ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId)
 {
     if (m_bClosing || !GetSafeHwnd())
         return TRUE;
-
     if (pFirstInvalidCtrlId)
         *pFirstInvalidCtrlId = 0;
-
     BOOL bAllValid = TRUE;
     int count = 0;
     const ValidationBinding* bindings = GetValidationBindings(count);
-
     for (int i = 0; i < count; ++i)
     {
         CString err;
         ValidateSingleField(bindings[i].field, err);
-
         if (bUpdateUI)
         {
             SetValidationText(bindings[i].errId, err);
             SetEditValidationErrorState(bindings[i].ctrlId, !err.IsEmpty());
         }
-
         if (!err.IsEmpty())
         {
             bAllValid = FALSE;
@@ -3039,26 +2585,20 @@ BOOL CShopSetupDlg::ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId)
                 *pFirstInvalidCtrlId = bindings[i].ctrlId;
         }
     }
-
     return bAllValid;
 }
-
 void CShopSetupDlg::OnEnChangeValidateInput()
 {
     if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
         return;
-
     CWnd* pFocus = GetFocus();
     if (!pFocus || !pFocus->GetSafeHwnd())
         return;
-
     const int nCtrlId = pFocus->GetDlgCtrlID();
     if (!FindValidationBinding(nCtrlId))
         return;
-
     ValidateControlAndUpdateUI(nCtrlId);
 }
-
 void CShopSetupDlg::DrawInputBorders(CDC* /*pDC*/) {}
 void CShopSetupDlg::DrawOneInputBorder(int /*ctrlId*/) {
     /* [UI-STEP] 단일 입력 보더 렌더링(포커스/hover/disabled 상태 반영)
@@ -3069,7 +2609,6 @@ void CShopSetupDlg::DrawOneInputBorder(int /*ctrlId*/) {
      */
 }
 void CShopSetupDlg::DrawOneInputBorder(CDC* /*pDC*/, int /*ctrlId*/) {}
-
 // ============================================================================
 // OnDrawItem / OnMeasureItem
 // owner-draw 컨트롤(CModernButton, CModernCheckBox 등)의 그리기 메시지를
@@ -3082,29 +2621,24 @@ void CShopSetupDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS)
      * 2) 상태(선택/포커스/비활성/pressed/hover)를 읽어 색/보더/텍스트를 결정한다.
      * 3) 커스텀 그리기 후 기본 그리기가 덮지 않도록 필요한 경우 기본 처리 호출을 막는다.
      */
-
-    // owner-draw 컨트롤이 반사된 WM_DRAWITEM을 직접 처리하므로
-    // 기본 구현(CDialog::OnDrawItem)을 호출합니다.
+     // owner-draw 컨트롤이 반사된 WM_DRAWITEM을 직접 처리하므로
+     // 기본 구현(CDialog::OnDrawItem)을 호출합니다.
     CDialog::OnDrawItem(nIDCtl, lpDIS);
 }
-
 void CShopSetupDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMIS)
 {
     /* [UI-STEP] Owner-draw 아이템 높이 계산(콤보 드랍리스트 등)
      * 1) 드랍리스트 항목 높이를 DPI/폰트에 맞게 산출한다.
      * 2) 너무 작으면 텍스트가 잘리므로 최소 높이를 보장한다.
      */
-
     CDialog::OnMeasureItem(nIDCtl, lpMIS);
 }
-
-
 // ============================================================================
 // DrawSectionIcon (하위 호환 stub - 탭 UI에서는 미사용)
 // ============================================================================
 void CShopSetupDlg::DrawSectionIcon(CDC* /*pDC*/, const CRect& /*rcIcon*/,
-                                    SECTION_ICON_TYPE /*iconType*/) {}
-
+    SECTION_ICON_TYPE /*iconType*/) {
+}
 // ============================================================================
 // Timer (입력 hover 추적 - 필요시 확장)
 // ============================================================================
@@ -3113,11 +2647,9 @@ void CShopSetupDlg::OnTimer(UINT_PTR nIDEvent)
     CDialog::OnTimer(nIDEvent);
 }
 void CShopSetupDlg::UpdateInputHoverByCursor() {}
-
 // ============================================================================
 // v10.1 - Toggle dependent edit enable/disable
 // ============================================================================
-
 // --------------------------------------------------------------
 // 토글/콤보 상태에 따른 종속 Edit Enable/Disable 처리
 //  - 우선 거래 프로그램 / 스캐너 포트번호 / 서명패드 포트번호가 대상
@@ -3128,19 +2660,15 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
 {
     if (!GetSafeHwnd() || m_bClosing)
         return;
-
     // Card detect (priority transaction)
     if (m_editCardDetectParam.GetSafeHwnd() && m_chkCardDetect.GetSafeHwnd())
     {
         const BOOL bEnable = m_chkCardDetect.IsToggled();
         const BOOL bPrevEnable = m_editCardDetectParam.IsWindowEnabled();
-
         if (bPrevEnable != bEnable)
             m_editCardDetectParam.EnableWindow(bEnable);
-
         if (!bEnable && ::GetFocus() == m_editCardDetectParam.GetSafeHwnd())
             m_tabCtrl.SetFocus();
-
         if (!bEnable)
         {
             SetValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, _T(""));
@@ -3150,23 +2678,18 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
         {
             ValidateControlAndUpdateUI(IDC_EDIT_CARD_DETECT_PARAM);
         }
-
         if (bForceRedraw && bPrevEnable != bEnable)
             m_editCardDetectParam.Invalidate(FALSE);
     }
-
     // Scanner use
     if (m_editScannerPort.GetSafeHwnd() && m_chkScannerUse.GetSafeHwnd())
     {
         const BOOL bEnable = m_chkScannerUse.IsToggled();
         const BOOL bPrevEnable = m_editScannerPort.IsWindowEnabled();
-
         if (bPrevEnable != bEnable)
             m_editScannerPort.EnableWindow(bEnable);
-
         if (!bEnable && ::GetFocus() == m_editScannerPort.GetSafeHwnd())
             m_tabCtrl.SetFocus();
-
         if (!bEnable)
         {
             SetValidationText(IDC_STATIC_ERR_SCANNER_PORT, _T(""));
@@ -3176,26 +2699,21 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
         {
             ValidateControlAndUpdateUI(IDC_EDIT_SCANNER_PORT);
         }
-
         if (bForceRedraw && bPrevEnable != bEnable)
             m_editScannerPort.Invalidate(FALSE);
     }
-
     // Sign pad port + speed (YES=index 0 only)
     if (m_comboSignPadUse.GetSafeHwnd() && m_editSignPadPort.GetSafeHwnd() && m_comboSignPadSpeed.GetSafeHwnd())
     {
         const BOOL bEnable = (m_comboSignPadUse.GetCurSel() == 0);
         const BOOL bPrevEditEnable = m_editSignPadPort.IsWindowEnabled();
         const BOOL bPrevComboEnable = m_comboSignPadSpeed.IsWindowEnabled();
-
         if (bPrevEditEnable != bEnable)
             m_editSignPadPort.EnableWindow(bEnable);
         if (bPrevComboEnable != bEnable)
             m_comboSignPadSpeed.EnableWindow(bEnable);
-
         if (!bEnable && ::GetFocus() == m_editSignPadPort.GetSafeHwnd())
             m_tabCtrl.SetFocus();
-
         if (!bEnable)
         {
             SetValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, _T(""));
@@ -3205,7 +2723,6 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
         {
             ValidateControlAndUpdateUI(IDC_EDIT_SIGN_PAD_PORT);
         }
-
         if (bForceRedraw)
         {
             if (bPrevEditEnable != bEnable)
@@ -3215,29 +2732,23 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
         }
     }
 }
-
 void CShopSetupDlg::OnCbnSelchangeSignPadUse()
 {
     if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
         return;
-
     UpdateToggleDependentEdits(TRUE);
 }
-
 void CShopSetupDlg::OnBnClickedCardDetectToggle()
 {
     if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
         return;
-
     UpdateToggleDependentEdits(TRUE);
     ValidateControlAndUpdateUI(IDC_EDIT_CARD_DETECT_PARAM);
 }
-
 void CShopSetupDlg::OnBnClickedScannerUseToggle()
 {
     if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
         return;
-
     UpdateToggleDependentEdits(TRUE);
     ValidateControlAndUpdateUI(IDC_EDIT_SCANNER_PORT);
 }

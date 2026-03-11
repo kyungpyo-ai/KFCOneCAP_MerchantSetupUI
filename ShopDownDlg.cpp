@@ -25,12 +25,13 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_PAINT()
     ON_WM_SIZE()
     ON_WM_DESTROY()
-    ON_WM_NCACTIVATE()    // [FIX] xxxSaveDlgFocus O(N^2) 차단
     ON_WM_LBUTTONDOWN()
     ON_WM_LBUTTONDBLCLK()
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
     ON_WM_MOUSELEAVE()
+    ON_WM_ACTIVATE()
+    ON_WM_NCACTIVATE()
     ON_WM_TIMER()
 END_MESSAGE_MAP()
 
@@ -148,6 +149,7 @@ BOOL CShopDownDlg::OnInitDialog()
     CDialog::OnInitDialog();
     ModernUIGfx::EnsureGdiplusStartup();
 
+    // +++ 수정: 자식 컨트롤 간섭 차단 및 시스템 더블 버퍼링 적용
     ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
     m_brushBg.CreateSolidBrush(KFTC_DLG_CONTENT_BG);
@@ -155,9 +157,8 @@ BOOL CShopDownDlg::OnInitDialog()
     m_brushCardDisabled.CreateSolidBrush(KFTC_CARD_DISABLED_BG);
 
     CreateControlsOnce();
-
-
     ApplyFonts();
+
     return TRUE;
 }
 
@@ -166,40 +167,36 @@ BOOL CShopDownDlg::OnInitDialog()
 // ============================================================================
 void CShopDownDlg::CreateControlsOnce()
 {
-    // Data-only init. Win32 controls created lazily via CreateRow(i) in LayoutControls.
+    // 데이터 초기화 부분은 기존과 동일
     struct { LPCTSTR prod; LPCTSTR biz; LPCTSTR name; } data[25] = {
         {_T("K074404214"), _T("1050844729"), _T("금융결제원 테스트")},
-
     };
 
     for (int i = 0; i < kRowCount; ++i)
     {
-        m_rowData[i].prdid       = (data[i].prod ? data[i].prod : _T(""));
-        m_rowData[i].regno       = (data[i].biz  ? data[i].biz  : _T(""));
+        m_rowData[i].prdid = (data[i].prod ? data[i].prod : _T(""));
+        m_rowData[i].regno = (data[i].biz ? data[i].biz : _T(""));
         m_rowData[i].retail_name = (data[i].name ? data[i].name : _T(""));
         m_rowData[i].second_name = _T("");
     }
 
-    // Create kRowsPerPage slot controls (reused across page navigation)
-    const DWORD edtBase  = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS
-                         | ES_AUTOHSCROLL | ES_CENTER;
+    const DWORD edtBase = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | ES_AUTOHSCROLL | ES_CENTER;
     const DWORD pwdStyle = edtBase | ES_PASSWORD;
+
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        m_editProd[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-            edtBase,  CRect(0,0,10,10), this, 62000+(slot*10)+1);
-        m_editBiz[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-            edtBase,  CRect(0,0,10,10), this, 62000+(slot*10)+2);
-        m_editPwd[slot].CreateEx(WS_EX_CLIENTEDGE, _T("EDIT"), _T(""),
-            pwdStyle, CRect(0,0,10,10), this, 62000+(slot*10)+3);
-        m_btnDownload[slot].Create(_T("다운로드"),
-            WS_CHILD|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-            CRect(0,0,10,10), this, kBtnBase+slot);
-        m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
-        m_btnDelete[slot].Create(_T("삭제"),
-            WS_CHILD|WS_TABSTOP|WS_CLIPSIBLINGS|BS_OWNERDRAW,
-            CRect(0,0,10,10), this, kDelBase+slot);
-        m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
+        // +++ 수정: WS_EX_CLIENTEDGE(3D테두리)를 0으로 변경하여 렌더링 오버헤드 제거
+        m_editProd[slot].CreateEx(0, _T("EDIT"), _T(""), edtBase, CRect(0, 0, 10, 10), this, 62000 + (slot * 10) + 1);
+        m_editBiz[slot].CreateEx(0, _T("EDIT"), _T(""), edtBase, CRect(0, 0, 10, 10), this, 62000 + (slot * 10) + 2);
+        m_editPwd[slot].CreateEx(0, _T("EDIT"), _T(""), pwdStyle, CRect(0, 0, 10, 10), this, 62000 + (slot * 10) + 3);
+
+        m_btnDownload[slot].Create(_T("다운로드"), WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | BS_OWNERDRAW,
+            CRect(0, 0, 10, 10), this, kBtnBase + slot);
+        m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255, 255, 255));
+
+        m_btnDelete[slot].Create(_T("삭제"), WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | BS_OWNERDRAW,
+            CRect(0, 0, 10, 10), this, kDelBase + slot);
+        m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40, 40, 40));
     }
 }
 
@@ -265,182 +262,93 @@ void CShopDownDlg::ApplyFonts()
     }
 }
 
-// ============================================================================
-// LayoutControls
-// Moves all controls via DeferWindowPos with SWP_NOREDRAW, then
-// redraws everything at once with RedrawWindow(RDW_ALLCHILDREN).
-// ============================================================================
-// ============================================================================
-// LayoutControls
-// Positions 2 cards for the current page, hides all others.
-// Navigation bar (Prev/Next) is placed below the cards.
-// ============================================================================
 void CShopDownDlg::LayoutControls()
 {
-    if (m_bInLayout) return;
+    if (m_bInLayout || !GetSafeHwnd()) return;
     m_bInLayout = TRUE;
 
     CRect rc;
     GetClientRect(&rc);
+    if (rc.IsRectEmpty()) { m_bInLayout = FALSE; return; }
 
-    const int rowGap = ModernUIDpi::Scale(m_hWnd, kRowGap);
-    const int ctrlH  = ModernUIDpi::Scale(m_hWnd, kCtrlH);
-    const int padY   = ModernUIDpi::Scale(m_hWnd, 8);
-    const int padX   = ModernUIDpi::Scale(m_hWnd, 8);
-    const int navH   = ModernUIDpi::Scale(m_hWnd, 44);
+    const int padX = ModernUIDpi::Scale(m_hWnd, 12);
+    const int padY = ModernUIDpi::Scale(m_hWnd, 8);
+    const int navH = ModernUIDpi::Scale(m_hWnd, 44);
+    const int rowGap = ModernUIDpi::Scale(m_hWnd, 12);
+    const int ctrlH = ModernUIDpi::Scale(m_hWnd, 38);
 
-    const int navGap = ModernUIDpi::Scale(m_hWnd, 6);
-    const int navY_bot = rc.Height() - padY - navH;  // nav bar pinned to bottom
-    const int availH = max(0, navY_bot - padY - navGap);  // usable space above nav bar
+    // [1] 네비게이션 좌표 계산
+    const int navY_bot = rc.Height() - padY - navH;
+    m_rcNavBar.SetRect(padX, navY_bot, rc.Width() - padX, navY_bot + navH);
+
+    const int navBtnS = ModernUIDpi::Scale(m_hWnd, 32);
+    const int navGap = ModernUIDpi::Scale(m_hWnd, 140);
+    const int navCX = m_rcNavBar.CenterPoint().x;
+    const int navCY = m_rcNavBar.CenterPoint().y;
+
+    m_rcPrevBtn.SetRect(navCX - navGap / 2 - navBtnS, navCY - navBtnS / 2, navCX - navGap / 2, navCY + navBtnS / 2);
+    m_rcNextBtn.SetRect(navCX + navGap / 2, navCY - navBtnS / 2, navCX + navGap / 2 + navBtnS, navCY + navBtnS / 2);
+
+    // [2] 행 높이 및 카드 배치
+    const int availH = max(0, navY_bot - padY - 6);
     int rowH = (availH - (kRowsPerPage - 1) * rowGap) / kRowsPerPage;
+    m_card.Compute(rc.Width() - padX * 2, m_hWnd);
 
-    // Compute layout width and card column widths
-    int layoutW = rc.Width() - padX * 2;
-    if (layoutW < ModernUIDpi::Scale(m_hWnd, 320)) layoutW = ModernUIDpi::Scale(m_hWnd, 320);
-    m_card.Compute(layoutW, m_hWnd);
-
-    // Clamp row height to keep controls readable across DPI
-    const int baseRowMin = ModernUIDpi::Scale(m_hWnd, 192);
-    const int yInfo1Off        = m_card.labelH + m_card.labelGap;
-    const int repValBottomOff  = yInfo1Off + m_card.infoLineH;
-    const int yTermLabelOff    = repValBottomOff + m_card.editGap;
-    const int yTermValOff      = yTermLabelOff + m_card.labelH + m_card.labelGap;
-    const int termValBottomOff = yTermValOff + m_card.infoLineH;
-    const int btnBottomOff     = termValBottomOff + m_card.editGap + ctrlH;
-    const int rowMinNeeded = btnBottomOff + m_card.cardPad * 2;
-    const int rowMin = max(baseRowMin, rowMinNeeded);
-    const int rowMax = ModernUIDpi::Scale(m_hWnd, 320);
-    if (rowH < rowMin) rowH = rowMin;
-    if (rowH > rowMax) rowH = rowMax;
-    // Hard cap: never let cards overflow into the nav bar area
-    { const int rowFit = (availH - (kRowsPerPage - 1) * rowGap) / kRowsPerPage; if (rowFit > 0 && rowH > rowFit) rowH = rowFit; }
-
-    const int pageStart = m_nCurrentPage * kRowsPerPage;
-
-    // prod/biz/pwd/download/delete (5 per row) + 2 nav buttons
     HDWP hdwp = ::BeginDeferWindowPos(kRowsPerPage * 5);
+    const int pageStart = m_nCurrentPage * kRowsPerPage;
 
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-
-        // On-page rows get real coords; off-page rows go off-screen
         const int rowIdx = pageStart + slot;
         const bool bValid = (rowIdx < kRowCount);
         const int y = padY + slot * (rowH + rowGap);
 
         m_rcRow[slot].SetRect(padX, y, rc.right - padX, y + rowH);
-
-        const int cardPad = m_card.cardPad;
         CRect inner = m_rcRow[slot];
-        inner.DeflateRect(cardPad, cardPad);
+        inner.DeflateRect(m_card.cardPad, m_card.cardPad);
 
-        // 2-column split
         const int xL = inner.left + m_card.idxW;
-        const int xR = xL + m_card.leftW + m_card.colGap;
-
         const int labelH = m_card.labelH;
         const int labelGap = m_card.labelGap;
         const int editGap = m_card.editGap;
 
-        // row1 (prod/biz)
         const int y1Edit = inner.top + labelH + labelGap;
-        const int halfW  = (m_card.leftW - editGap) / 2;
+        const int halfW = (m_card.leftW - editGap) / 2;
+        m_rcProd[slot].SetRect(xL, y1Edit, xL + halfW, y1Edit + ctrlH);
+        m_rcBiz[slot].SetRect(xL + halfW + editGap, y1Edit, xL + m_card.leftW, y1Edit + ctrlH);
 
-        m_rcProd[slot].SetRect(xL,                 y1Edit, xL + halfW,         y1Edit + ctrlH);
-        m_rcBiz[slot].SetRect (xL + halfW+editGap, y1Edit, xL + m_card.leftW,  y1Edit + ctrlH);
-
-        // row2 (pwd)
         const int y2Label = y1Edit + ctrlH + editGap;
-        const int y2Edit  = y2Label + labelH + labelGap;
+        const int y2Edit = y2Label + labelH + labelGap;
         m_rcPwd[slot].SetRect(xL, y2Edit, xL + m_card.leftW, y2Edit + ctrlH);
 
-        int termRight = xR + m_card.rightW;
+        const int btnW = ModernUIDpi::Scale(m_hWnd, 84);
+        const int btnGap = ModernUIDpi::Scale(m_hWnd, 8);
+        const int btnY = inner.bottom - ctrlH;
+        const int btnRight = inner.right - ModernUIDpi::Scale(m_hWnd, 4);
+        m_rcDel[slot].SetRect(btnRight - btnW, btnY, btnRight, btnY + ctrlH);
+        m_rcBtn[slot].SetRect(m_rcDel[slot].left - btnGap - btnW, btnY, m_rcDel[slot].left - btnGap, btnY + ctrlH);
 
-        // buttons row: Download/Delete
-        {
-            const int btnPadR = ModernUIDpi::Scale(m_hWnd, 16);
-            const int btnGap  = ModernUIDpi::Scale(m_hWnd, 8);
-            const int btnH    = ctrlH;
+        const int xR = xL + m_card.leftW + m_card.colGap;
+        m_rcInfoRep[slot].SetRect(xR, y1Edit, xR + m_card.rightW, y1Edit + m_card.infoLineH);
+        m_rcInfoTerm[slot].SetRect(xR, y2Label, xR + m_card.rightW, y2Label + m_card.labelH);
+        m_rcInfoTermVal[slot].SetRect(xR, y2Edit, xR + m_card.rightW, y2Edit + m_card.infoLineH);
 
-            int btnW = m_card.btnW;
-            const int maxFit = (m_card.rightW - btnPadR - btnGap) / 2;
-            if (maxFit > 0)
-                btnW = min(btnW, maxFit);
-            else
-                btnW = ModernUIDpi::Scale(m_hWnd, 40);
+        const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOCOPYBITS;
+        const UINT sw = bValid ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
 
-            const int yInfo1        = inner.top + labelH + labelGap;
-            const int repValBottom  = yInfo1 + m_card.infoLineH;
-            const int yTermLabel    = repValBottom + editGap;
-            const int yTermVal      = yTermLabel + labelH + labelGap;
-            const int termValBottom = yTermVal + m_card.infoLineH;
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[slot].m_hWnd, NULL, m_rcProd[slot].left, m_rcProd[slot].top, m_rcProd[slot].Width(), m_rcProd[slot].Height(), flags | sw);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[slot].m_hWnd, NULL, m_rcBiz[slot].left, m_rcBiz[slot].top, m_rcBiz[slot].Width(), m_rcBiz[slot].Height(), flags | sw);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[slot].m_hWnd, NULL, m_rcPwd[slot].left, m_rcPwd[slot].top, m_rcPwd[slot].Width(), m_rcPwd[slot].Height(), flags | sw);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[slot].m_hWnd, NULL, m_rcBtn[slot].left, m_rcBtn[slot].top, m_rcBtn[slot].Width(), m_rcBtn[slot].Height(), flags | sw);
+        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[slot].m_hWnd, NULL, m_rcDel[slot].left, m_rcDel[slot].top, m_rcDel[slot].Width(), m_rcDel[slot].Height(), flags | sw);
 
-            const int btnY  = termValBottom + editGap;
-            const int right = xR + m_card.rightW - btnPadR;
-
-            m_rcDel[slot].SetRect(right - btnW, btnY, right, btnY + btnH);
-            m_rcBtn[slot].SetRect(m_rcDel[slot].left - btnGap - btnW, btnY, m_rcDel[slot].left - btnGap, btnY + btnH);
-
-            termRight = xR + m_card.rightW;
-        }
-
-        // info text rectangles
-        const int yInfo1 = inner.top + labelH + labelGap;
-        m_rcInfoRep[slot].SetRect(xR, yInfo1, xR + m_card.rightW, yInfo1 + m_card.infoLineH);
-
-        const int repValBottom = yInfo1 + m_card.infoLineH;
-        const int yTermLabel   = repValBottom + editGap;
-        m_rcInfoTerm[slot].SetRect(xR, yTermLabel, termRight, yTermLabel + m_card.labelH);
-
-        const int yTermVal = yTermLabel + m_card.labelH + labelGap;
-        m_rcInfoTermVal[slot].SetRect(xR, yTermVal, termRight, yTermVal + m_card.infoLineH);
-
-
-        // Enabled/disabled visual states
-        {
-            ApplyRowUnderlay(slot, FALSE);
-            const BOOL enBtn = bValid && ::IsWindowEnabled(m_btnDownload[slot].m_hWnd);
-            if (enBtn)
-                m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255,255,255));
-            else
-                m_btnDownload[slot].SetColors(KFTC_BTN_DISABLED_BG, KFTC_BTN_DISABLED_BG, RGB(160,165,175));
-
-            const BOOL enDel = bValid && ::IsWindowEnabled(m_btnDelete[slot].m_hWnd);
-            if (enDel)
-                m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40,40,40));
-            else
-                m_btnDelete[slot].SetColors(KFTC_CARD_DISABLED_BG, KFTC_CARD_DISABLED_BG, RGB(160,160,160));
-        }
-
-        const UINT baseFlags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
-        const UINT showHide  = bValid ? SWP_SHOWWINDOW : SWP_HIDEWINDOW;
-
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editProd[slot].m_hWnd,    NULL, m_rcProd[slot].left, m_rcProd[slot].top, m_rcProd[slot].Width(), m_rcProd[slot].Height(), baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editBiz[slot].m_hWnd,     NULL, m_rcBiz[slot].left,  m_rcBiz[slot].top,  m_rcBiz[slot].Width(),  m_rcBiz[slot].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[slot].m_hWnd,     NULL, m_rcPwd[slot].left,  m_rcPwd[slot].top,  m_rcPwd[slot].Width(),  m_rcPwd[slot].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[slot].m_hWnd, NULL, m_rcBtn[slot].left,  m_rcBtn[slot].top,  m_rcBtn[slot].Width(),  m_rcBtn[slot].Height(),  baseFlags | showHide);
-        if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[slot].m_hWnd,   NULL, m_rcDel[slot].left,  m_rcDel[slot].top,  m_rcDel[slot].Width(),  m_rcDel[slot].Height(),  baseFlags | showHide);
+        ApplyRowUnderlay(slot, FALSE);
     }
-
-    // Navigation bar: pinned to dialog bottom (rowFit hard cap above prevents card overlap)
-    const int navY = navY_bot;
-    m_rcNavBar.SetRect(padX, navY, rc.right - padX, navY + navH);
-
-    // Custom nav buttons: calculate rects for OnPaint drawing and hit-test
-    const int navBtnSz = ModernUIDpi::Scale(m_hWnd, 28);
-    const int midX     = rc.Width() / 2;
-    const int half     = ModernUIDpi::Scale(m_hWnd, 60);
-    const int navBtnY  = navY + (navH - navBtnSz) / 2 + ModernUIDpi::Scale(m_hWnd, 4);
-    m_rcPrevBtn.SetRect(midX - half - navBtnSz, navBtnY, midX - half, navBtnY + navBtnSz);
-    m_rcNextBtn.SetRect(midX + half, navBtnY, midX + half + navBtnSz, navBtnY + navBtnSz);
-
     if (hdwp) ::EndDeferWindowPos(hdwp);
 
     RebindSlots();
-    UpdatePageButtons();
-    if (IsWindowVisible())
-        ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN);
     m_bInLayout = FALSE;
+    Invalidate(FALSE);
 }
 
 
@@ -503,9 +411,7 @@ void CShopDownDlg::OnDownloadClick(int slot, int rowIdx)
     if (m_btnDelete[slot].GetSafeHwnd()) m_btnDelete[slot].EnableWindow(TRUE);
 
     ApplyRowUnderlay(slot, FALSE);
-
-    RedrawWindow(&m_rcRow[slot], nullptr,
-        RDW_INVALIDATE | RDW_ALLCHILDREN);
+    InvalidateRect(&m_rcRow[slot], FALSE);
 }
 
 void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
@@ -534,9 +440,7 @@ void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
 
     // 화면/컨트롤 underlay 즉시 동기화 (빈 상태 → 연한 톤)
     ApplyRowUnderlay(slot, FALSE);
-
-    RedrawWindow(&m_rcRow[slot], nullptr,
-        RDW_INVALIDATE | RDW_ALLCHILDREN);
+    InvalidateRect(&m_rcRow[slot], FALSE);
 }
 
 
@@ -546,24 +450,26 @@ void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
 - 배경을 직접 그리는 구조라면 기본 처리(DefWindowProc)를 피하는 편이 좋습니다.
 */
 BOOL CShopDownDlg::OnEraseBkgnd(CDC*) {
-    /* [UI-STEP] 배경 지우기(깜빡임 감소)
-     * 1) OnPaint에서 배경을 전부 그리는 구조면 TRUE를 리턴하여 기본 지우기를 막는다.
-     * 2) 기본 지우기를 막을 때는 항상 전체 영역을 OnPaint에서 칠해야 잔상이 남지 않는다.
-     */
- return TRUE; }
+    /* * [중요] CDialog::OnEraseBkgnd(pDC)를 호출하면 안 됩니다!
+         * 부모 함수를 호출하면 윈도우 기본 배경색(회색)으로 화면을 한 번 밀어버리기 때문에
+         * 우리가 OnPaint에서 그린 내용과 충돌하여 '깜빡임'과 '주변 창 간섭'이 생깁니다.
+         */
+
+         // 배경을 지우지 않고 바로 OnPaint가 모든 영역을 그리도록 "TRUE"를 반환합니다.
+    return TRUE;
+}
 
 HBRUSH CShopDownDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     if (nCtlColor == CTLCOLOR_DLG)
     {
-        pDC->SetBkMode(TRANSPARENT);
         return (HBRUSH)m_brushBg.GetSafeHandle();
     }
     if (nCtlColor == CTLCOLOR_EDIT)
     {
-        const BOOL bEnabled = pWnd && ::IsWindowEnabled(pWnd->GetSafeHwnd());
+        const BOOL bEnabled = pWnd && pWnd->IsWindowEnabled();
         pDC->SetTextColor(bEnabled ? RGB(18, 24, 40) : RGB(120, 125, 135));
-        pDC->SetBkColor(bEnabled ? RGB(255, 255, 255) : RGB(245, 246, 248));
+        pDC->SetBkMode(TRANSPARENT); // 에딧 박스 글자 배경 투명화
         return (HBRUSH)(bEnabled ? m_brushCard.GetSafeHandle() : m_brushCardDisabled.GetSafeHandle());
     }
     return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
@@ -577,16 +483,16 @@ HBRUSH CShopDownDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 */
 void CShopDownDlg::OnSize(UINT nType, int cx, int cy)
 {
-    /* [UI-STEP] 창 크기 변경 처리(레이아웃 재배치 + 스크롤 갱신)
-     * 1) 최소 크기보다 작아지면 컨트롤이 겹치지 않게 마진/폭을 보정한다.
-     * 2) LayoutControls() 호출로 전체 재배치한다.
-     * 3) UpdateScrollBar()로 페이지 크기/범위를 다시 계산한다.
-     * 4) Invalidate()로 화면 갱신한다.
-     */
-
+    // [1] 기본 클래스 함수 호출
     CDialog::OnSize(nType, cx, cy);
-    if (cx <= 0 || cy <= 0) return;
-    if (m_editProd[0].GetSafeHwnd()) LayoutControls();
+
+    // [2] 창 크기가 유효하고, 컨트롤들이 생성된 상태인지 확인
+    if (cx > 0 && cy > 0 && m_editProd[0].GetSafeHwnd())
+    {
+        // 핵심: 창 크기가 변할 때(또는 처음 결정될 때) 
+        // 레이아웃을 다시 잡아 버튼 좌표(m_rcPrevBtn 등)를 생성합니다.
+        LayoutControls();
+    }
 }
 
 // ============================================================================
@@ -598,385 +504,139 @@ void CShopDownDlg::OnSize(UINT nType, int cx, int cy)
 // --------------------------------------------------------------
 void CShopDownDlg::OnPaint()
 {
-    /* [UI-STEP] 커스텀 렌더링(카드/행/호버/선택/언더레이)
-     * 1) CPaintDC로 DC를 얻고 필요 시 메모리 DC를 사용해 깜빡임을 줄인다.
-     * 2) 배경을 먼저 칠하고(전체 배경), 카드 영역을 순회하며 각 행/카드를 그린다.
-     * 3) 선택/호버 상태에 따라 카드 배경(GetRowCardBg)과 보더를 바꿔 그린다.
-     * 4) 텍스트/아이콘(있다면)을 마지막에 그려 시각적 우선순위를 맞춘다.
-     *
-     * [참고]
-     * - 스크롤 오프셋이 적용되는 화면이므로, '그릴 때 y - scrollY' 형태로 좌표를 변환한다.
-     */
-
     CPaintDC dc(this);
-
     CRect rc;
     GetClientRect(&rc);
+    if (rc.IsRectEmpty()) return;
 
-    if (!m_memDC.GetSafeHdc())
-        m_memDC.CreateCompatibleDC(&dc);
-    CSize sz(rc.Width(), rc.Height());
-    if (m_memBmpSize != sz)
+    // [1] 더블 버퍼링용 메모리 DC 세팅
+    if (!m_memDC.GetSafeHdc()) m_memDC.CreateCompatibleDC(&dc);
+    if (m_memBmpSize != rc.Size())
     {
         m_memBmp.DeleteObject();
-        m_memBmp.CreateCompatibleBitmap(&dc, sz.cx, sz.cy);
-        m_memBmpSize = sz;
+        m_memBmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+        m_memBmpSize = rc.Size();
     }
-    CDC& memDC = m_memDC;
     CBitmap* pOldBmp = m_memDC.SelectObject(&m_memBmp);
 
-    memDC.FillSolidRect(&rc, KFTC_DLG_CONTENT_BG);
+    // 메모장 깜빡임 방지: 배경을 메모리 DC에서 먼저 단색으로 채움
+    m_memDC.FillSolidRect(&rc, KFTC_DLG_CONTENT_BG);
 
-    Gdiplus::Graphics g(memDC.m_hDC);
+    Gdiplus::Graphics g(m_memDC.m_hDC);
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-    g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
+    if (m_pFontLbl == nullptr) ApplyFonts();
 
-    // ----------------------------------------------------------------
-    // Section header/card background is drawn by parent dialog (ShopSetupDlg)
-    // Here we only draw item cards and labels.
-    // ----------------------------------------------------------------
-
-    const float clipTop    = 0.f;
-    const float clipBottom = (float)rc.Height();
-
-    // ----------------------------------------------------------------
-    // Text helpers
-    // ----------------------------------------------------------------
-    const int curDpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
-    if (m_nCachedPaintDpi != curDpi || !m_pFontFamily)
-    {
-        delete m_pFontLbl;     m_pFontLbl     = nullptr;
-        delete m_pFontVal;     m_pFontVal     = nullptr;
-        delete m_pFontValBold; m_pFontValBold = nullptr;
-        delete m_pFontFamily;  m_pFontFamily  = nullptr;
-        const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 12);
-        const float valPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
-        m_pFontFamily  = new Gdiplus::FontFamily(L"Malgun Gothic");
-        m_pFontLbl     = new Gdiplus::Font(m_pFontFamily, lblPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-        m_pFontVal     = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-        m_pFontValBold = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
-        m_nCachedPaintDpi = curDpi;
-    }
-
-    // StringFormat is always the same - create once, share across all DrawEllips calls
     Gdiplus::StringFormat sfEllips;
     sfEllips.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
     sfEllips.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
     sfEllips.SetLineAlignment(Gdiplus::StringAlignmentCenter);
     sfEllips.SetAlignment(Gdiplus::StringAlignmentNear);
 
-    auto DrawEllips = [&](const CString& s, const Gdiplus::RectF& r, Gdiplus::Font* f, const Gdiplus::Color& c)
-    {
-        if (s.IsEmpty()) return;
-        Gdiplus::SolidBrush br(c);
-#ifdef UNICODE
-        g.DrawString(s, -1, f, r, &sfEllips, &br);
-#else
-        CStringW ws(s);
-        g.DrawString(ws, -1, f, r, &sfEllips, &br);
-#endif
-    };
-
     const Gdiplus::Color cLbl(255, 120, 128, 142);
     const Gdiplus::Color cVal(255, 24, 28, 35);
-    const Gdiplus::Color cPh (255, 160, 165, 175);
+    const Gdiplus::Color cPh(255, 160, 165, 175);
+    Gdiplus::SolidBrush brLbl(cLbl);
 
-    // ----------------------------------------------------------------
-    // 3) Item cards + labels + right-side info (drawn)
-    // ----------------------------------------------------------------
+    // [2] 카드형 행 데이터 렌더링
     const int pageStart = m_nCurrentPage * kRowsPerPage;
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
         const int rowIdx = pageStart + slot;
-        const CRect& r = m_rcRow[slot];
+        if (rowIdx >= kRowCount) continue;
 
-        // Data-driven card tone:
-        // - 대표 가맹점(다운로드 결과)이 있으면 정상 카드(white)
-        // - 없으면(미다운로드/조회 실패/미존재 등) 살짝 톤을 주어 구분
-        CString rep  = m_rowData[rowIdx].retail_name;
+        const CRect& r = m_rcRow[slot];
+        CString rep = m_rowData[rowIdx].retail_name;
+        CString term = m_rowData[rowIdx].second_name;
         const bool hasRep = !rep.IsEmpty();
 
-        // item card
+        // 카드 배경
         Gdiplus::RectF rf((float)r.left, (float)r.top, (float)r.Width(), (float)r.Height());
         Gdiplus::GraphicsPath rp;
         ModernUIGfx::AddRoundRect(rp, rf, 12.f);
-
-        // Normal: white, Pending/Empty: very light blue tint (quiet)
-        Gdiplus::SolidBrush brCard(hasRep
-            ? Gdiplus::Color(255, 255, 255, 255)
-            : Gdiplus::Color(255, 246, 248, 251));
+        Gdiplus::SolidBrush brCard(hasRep ? Gdiplus::Color(255, 255, 255, 255) : Gdiplus::Color(255, 246, 248, 251));
         g.FillPath(&brCard, &rp);
-        // Border removed for a cleaner modern look (background-only separation)
 
-        // left labels
-        {
-            // prod / biz labels (same row)
-            const float yLbl = (float)r.top + (float)m_card.cardPad;
-            const float hLbl = (float)m_card.labelH;
+        const float yLbl = (float)r.top + (float)m_card.cardPad;
+        const float hLbl = (float)m_card.labelH;
 
-            Gdiplus::RectF lp((float)m_rcProd[slot].left, yLbl, (float)m_rcProd[slot].Width(), hLbl);
-            Gdiplus::RectF lb((float)m_rcBiz[slot].left,  yLbl, (float)m_rcBiz[slot].Width(),  hLbl);
-            DrawEllips(_T("단말기 제품번호"), lp, m_pFontLbl, cLbl);
-            DrawEllips(_T("사업자번호"),     lb, m_pFontLbl, cLbl);
+        // 라벨 텍스트
+        g.DrawString(L"단말기 제품번호", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcProd[slot].left, yLbl, (float)m_rcProd[slot].Width(), hLbl), &sfEllips, &brLbl);
+        g.DrawString(L"사업자번호", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcBiz[slot].left, yLbl, (float)m_rcBiz[slot].Width(), hLbl), &sfEllips, &brLbl);
 
-            // pwd label
-            const float yPwdLbl = (float)m_rcPwd[slot].top - (float)m_card.labelGap - (float)m_card.labelH;
-            Gdiplus::RectF lpwd((float)m_rcPwd[slot].left, yPwdLbl, (float)m_rcPwd[slot].Width(), hLbl);
-            DrawEllips(_T("비밀번호"), lpwd, m_pFontLbl, cLbl);
-        }
+        const float yPwdLbl = (float)m_rcPwd[slot].top - (float)m_card.labelGap - (float)m_card.labelH;
+        g.DrawString(L"비밀번호", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcPwd[slot].left, yPwdLbl, (float)m_rcPwd[slot].Width(), hLbl), &sfEllips, &brLbl);
+        g.DrawString(L"대표 가맹점", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcInfoRep[slot].left, yLbl, (float)m_rcInfoRep[slot].Width(), hLbl), &sfEllips, &brLbl);
+        g.DrawString(L"단말기별 가맹점", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcInfoTerm[slot].left, (float)m_rcInfoTerm[slot].top, (float)m_rcInfoTerm[slot].Width(), (float)m_rcInfoTerm[slot].Height()), &sfEllips, &brLbl);
 
-        // right labels + values
-        {
-            const float yLbl = (float)r.top + (float)m_card.cardPad;
-            const float hLbl = (float)m_card.labelH;
+        // --- 데이터 텍스트 (삼항 연산자 오류 수정 완료) ---
+        Gdiplus::SolidBrush brVal(hasRep ? cVal : cPh);
 
-            // label rects align with value rects
-            Gdiplus::RectF l1((float)m_rcInfoRep[slot].left,  yLbl, (float)m_rcInfoRep[slot].Width(), hLbl);
-            DrawEllips(_T("대표 가맹점"), l1, m_pFontLbl, cLbl);
+        // 대표 가맹점 값 설정
+        CStringW strRepW;
+        if (hasRep) strRepW = rep;
+        else strRepW = L"다운로드 후 표시";
 
-            // '단말기별 가맹점'은 2줄(라벨/값) 유지:
-            //  - 라벨: 비밀번호 라벨 줄(y2Label)
-            //  - 값  : 비밀번호 Edit 줄(y2Edit), 버튼과 동일한 Y (좌측 공간에 표시)
-            Gdiplus::RectF l2((float)m_rcInfoTerm[slot].left,    (float)m_rcInfoTerm[slot].top,    (float)m_rcInfoTerm[slot].Width(),    (float)m_rcInfoTerm[slot].Height());
-            DrawEllips(_T("단말기별 가맹점"), l2, m_pFontLbl, cLbl);
+        g.DrawString(strRepW, -1, hasRep ? m_pFontValBold : m_pFontVal,
+            Gdiplus::RectF((float)m_rcInfoRep[slot].left, (float)m_rcInfoRep[slot].top, (float)m_rcInfoRep[slot].Width(), (float)m_rcInfoRep[slot].Height()), &sfEllips, &brVal);
 
-            CString rep  = m_rowData[rowIdx].retail_name;
-            CString term = m_rowData[rowIdx].second_name;
+        // 단말기별 가맹점 값 설정
+        CStringW strTermW;
+        if (!term.IsEmpty()) strTermW = term;
+        else if (hasRep) strTermW = L"-";
+        else strTermW = L"다운로드 후 표시";
 
-            // value rects
-            Gdiplus::RectF v1((float)m_rcInfoRep[slot].left,      (float)m_rcInfoRep[slot].top,      (float)m_rcInfoRep[slot].Width(),      (float)m_rcInfoRep[slot].Height());
-            Gdiplus::RectF v2((float)m_rcInfoTermVal[slot].left,  (float)m_rcInfoTermVal[slot].top,  (float)m_rcInfoTermVal[slot].Width(),  (float)m_rcInfoTermVal[slot].Height());
+        g.DrawString(strTermW, -1, (!term.IsEmpty()) ? m_pFontValBold : m_pFontVal,
+            Gdiplus::RectF((float)m_rcInfoTermVal[slot].left, (float)m_rcInfoTermVal[slot].top, (float)m_rcInfoTermVal[slot].Width(), (float)m_rcInfoTermVal[slot].Height()), &sfEllips, &brVal);
 
-            // Values: make it obvious these are filled by '다운로드'
-            if (rep.IsEmpty())
-                DrawEllips(_T("다운로드 후 표시"), v1, m_pFontVal, cPh);
-            else
-                DrawEllips(rep, v1, m_pFontValBold, cVal);
-
-            if (term.IsEmpty())
-            {
-                // 단말기별 가맹점은 다운로드 후에도 값이 비어 있을 수 있음.
-                // 대표 가맹점 값이 존재하면 '없음' 표시로 '-'를 보여준다.
-                if (!rep.IsEmpty())
-                    DrawEllips(_T("-"), v2, m_pFontValBold, cVal);
-                else
-                    DrawEllips(_T("다운로드 후 표시"), v2, m_pFontVal, cPh);
-            }
-            else
-            {
-                DrawEllips(term, v2, m_pFontValBold, cVal);
-            }
-}
-
-        // row number (fixed gutter, more legible, no overlap)
-        {
-            CString n; n.Format(_T("%d"), rowIdx + 1);
-            const float x = (float)r.left + 8.f;
-            const float y = (float)r.top + (float)m_card.cardPad - 1.f;
-            const float w = (float)m_card.idxW - 12.f;
-            Gdiplus::RectF nr(x, y, w, (float)m_card.labelH + 4.f);
-            Gdiplus::SolidBrush br(Gdiplus::Color(255, 92, 102, 120));
-            Gdiplus::StringFormat sf;
-            sf.SetTrimming(Gdiplus::StringTrimmingNone);
-            sf.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-            sf.SetAlignment(Gdiplus::StringAlignmentFar);
-            sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-#ifdef UNICODE
-            g.DrawString(n, -1, m_pFontValBold, nr, &sf, &br);
-#else
-            CStringW wn(n);
-            g.DrawString(wn, -1, m_pFontValBold, nr, &sf, &br);
-#endif
-        }
+        // 행 번호
+        CString strNum; strNum.Format(_T("%d"), rowIdx + 1);
+        CStringW strNumW(strNum);
+        Gdiplus::SolidBrush brBadge(Gdiplus::Color(255, 92, 102, 120));
+        Gdiplus::StringFormat sfBadge; sfBadge.SetAlignment(Gdiplus::StringAlignmentFar); sfBadge.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+        g.DrawString(strNumW, -1, m_pFontValBold,
+            Gdiplus::RectF((float)r.left + 8.f, (float)r.top + (float)m_card.cardPad - 1.f, (float)m_card.idxW - 12.f, (float)m_card.labelH + 4.f), &sfBadge, &brBadge);
     }
 
-    // Draw modern circular prev/next nav buttons + page indicator
+    // [3] 하단 네비게이션 버튼 렌더링 (사라짐 문제 해결)
     if (!m_rcNavBar.IsRectEmpty() && !m_rcPrevBtn.IsRectEmpty())
     {
+        const int totalP = (kRowCount + kRowsPerPage - 1) / kRowsPerPage;
         const bool bCanPrev = (m_nCurrentPage > 0);
-        const bool bCanNext = (m_nCurrentPage < kTotalPages - 1);
+        const bool bCanNext = (m_nCurrentPage < totalP - 1);
 
-        // bPressed: draw slightly shrunk circle + darker fill for tactile feedback
-        auto DrawNavCircleBtn = [&](const CRect& btnRc, bool bEnabled, bool bHover, bool bPressed, bool bLeft)
-        {
-            Gdiplus::RectF rf((float)btnRc.left, (float)btnRc.top,
-                              (float)btnRc.Width(), (float)btnRc.Height());
+        auto DrawNavBtn = [&](const CRect& btnRc, bool bEnabled, bool bHover, bool bPressed, bool bLeft) {
+            Gdiplus::RectF rf((float)btnRc.left, (float)btnRc.top, (float)btnRc.Width(), (float)btnRc.Height());
+            if (bPressed && bEnabled) rf.Inflate(-rf.Width * 0.1f, -rf.Height * 0.1f);
 
-            // Pressed: shrink circle 10% for visual feedback
-            if (bPressed && bEnabled)
-            {
-                float shrink = rf.Width * 0.10f;
-                rf.X      += shrink / 2.f;
-                rf.Y      += shrink / 2.f;
-                rf.Width  -= shrink;
-                rf.Height -= shrink;
-            }
+            Gdiplus::Color fillClr = bEnabled ? (bPressed ? Gdiplus::Color(255, 0, 76, 168) : (bHover ? Gdiplus::Color(255, 15, 124, 255) : Gdiplus::Color(255, 0, 100, 221)))
+                : Gdiplus::Color(255, 235, 237, 240);
+            Gdiplus::SolidBrush br(fillClr);
+            g.FillEllipse(&br, rf);
 
-            // Background circle  (BLUE_500 / BLUE_400 / BLUE_600 palette)
-            Gdiplus::Color fillClr;
-            if (!bEnabled)
-                fillClr = Gdiplus::Color(255, 235, 237, 240);   // KFTC_BTN_DISABLED_BG
-            else if (bPressed)
-                fillClr = Gdiplus::Color(255,   0,  76, 168);   // BLUE_600
-            else if (bHover)
-                fillClr = Gdiplus::Color(255,  15, 124, 255);   // BLUE_400 (KFTC_PRIMARY_HOVER)
-            else
-                fillClr = Gdiplus::Color(255,   0, 100, 221);   // BLUE_500 (KFTC_PRIMARY)
+            Gdiplus::Pen pen(bEnabled ? Gdiplus::Color::White : Gdiplus::Color(255, 148, 163, 184), rf.Width * 0.08f);
+            pen.SetStartCap(Gdiplus::LineCapRound); pen.SetEndCap(Gdiplus::LineCapRound);
+            float cx = rf.X + rf.Width / 2.f, cy = rf.Y + rf.Height / 2.f, aw = rf.Width * 0.15f, ah = rf.Height * 0.22f;
+            if (bLeft) { Gdiplus::PointF pts[3] = { {cx + aw, cy - ah}, {cx - aw, cy}, {cx + aw, cy + ah} }; g.DrawLines(&pen, pts, 3); }
+            else { Gdiplus::PointF pts[3] = { {cx - aw, cy - ah}, {cx + aw, cy}, {cx - aw, cy + ah} }; g.DrawLines(&pen, pts, 3); }
+            };
 
-            Gdiplus::SolidBrush brFill(fillClr);
-            g.FillEllipse(&brFill, rf);
+        DrawNavBtn(m_rcPrevBtn, bCanPrev, m_bHoverPrev, m_bPressedPrev, true);
+        DrawNavBtn(m_rcNextBtn, bCanNext, m_bHoverNext, m_bPressedNext, false);
 
-            // Chevron arrow
-            const float cx = rf.X + rf.Width / 2.f;
-            const float cy = rf.Y + rf.Height / 2.f;
-            const float aw = rf.Width  * 0.17f;
-            const float ah = rf.Height * 0.25f;
-
-            Gdiplus::Color arrowClr = bEnabled
-                ? Gdiplus::Color(255, 255, 255, 255)
-                : Gdiplus::Color(255, 148, 163, 184);   // GRAY_400 equivalent
-
-            Gdiplus::Pen pen(arrowClr, rf.Width * 0.085f);
-            pen.SetStartCap(Gdiplus::LineCapRound);
-            pen.SetEndCap(Gdiplus::LineCapRound);
-            pen.SetLineJoin(Gdiplus::LineJoinRound);
-
-            if (bLeft) {
-                Gdiplus::PointF pts[3] = {
-                    { cx + aw, cy - ah },
-                    { cx - aw, cy      },
-                    { cx + aw, cy + ah }
-                };
-                g.DrawLines(&pen, pts, 3);
-            } else {
-                Gdiplus::PointF pts[3] = {
-                    { cx - aw, cy - ah },
-                    { cx + aw, cy      },
-                    { cx - aw, cy + ah }
-                };
-                g.DrawLines(&pen, pts, 3);
-            }
-        };
-
-        DrawNavCircleBtn(m_rcPrevBtn, bCanPrev, m_bHoverPrev, m_bPressedPrev, true);
-        DrawNavCircleBtn(m_rcNextBtn, bCanNext, m_bHoverNext, m_bPressedNext, false);
-
-        // Modern animated dot-pill indicator + horizontal cross-fade page text
-        {
-            const float navCX = (float)(m_rcPrevBtn.right + m_rcNextBtn.left) / 2.f;
-            const float navCY = (float)(m_rcPrevBtn.top + m_rcPrevBtn.bottom) / 2.f;
-
-            // Cubic ease-out: t=0 at start, t=1 at end of animation
-            float progress = 1.f;
-            int fromPage = m_nCurrentPage;
-            if (m_nNavAnim > 0)
-            {
-                float t  = 1.f - (float)m_nNavAnim / 10.f;
-                float u  = 1.f - t;
-                progress = 1.f - u * u * u;  // cubic ease-out
-                fromPage = m_nAnimFromPage;
-            }
-
-            // Clip to nav bar area
-            Gdiplus::RectF clipRF((float)m_rcNavBar.left, (float)m_rcNavBar.top,
-                                  (float)m_rcNavBar.Width(), (float)m_rcNavBar.Height());
-            g.SetClip(clipRF);
-
-            // --- Dot-pill row (above nav buttons) ---
-            {
-                const float dotR   = (float)ModernUIDpi::Scale(m_hWnd, 3);
-                const float pillW  = (float)ModernUIDpi::Scale(m_hWnd, 16);
-                const float pillH  = dotR * 2.f + (float)ModernUIDpi::Scale(m_hWnd, 2);
-                const float dotGap = (float)ModernUIDpi::Scale(m_hWnd, 10);
-                const float spanW  = (kTotalPages - 1) * dotGap;
-                const float startX = navCX - spanW / 2.f;
-                const float dotCY  = navCY - (float)ModernUIDpi::Scale(m_hWnd, 19);
-
-                // All inactive dots drawn first (gray)
-                Gdiplus::SolidBrush brDot(Gdiplus::Color(130, 148, 163, 184));
-                for (int i = 0; i < kTotalPages; ++i)
-                {
-                    float cx = startX + i * dotGap;
-                    Gdiplus::RectF dotRF(cx - dotR, dotCY - dotR, dotR * 2.f, dotR * 2.f);
-                    g.FillEllipse(&brDot, dotRF);
-                }
-
-                // Active pill: start from captured visual position (handles rapid clicks)
-                float fromX  = startX + m_fPillFrom * dotGap;
-                float toX    = startX + (float)m_nCurrentPage * dotGap;
-                float pillCX = fromX + (toX - fromX) * progress;
-                Gdiplus::RectF pillRF(pillCX - pillW / 2.f, dotCY - pillH / 2.f, pillW, pillH);
-                Gdiplus::SolidBrush brPill(Gdiplus::Color(255, 0, 100, 221));
-                Gdiplus::GraphicsPath pillPath;
-                ModernUIGfx::AddRoundRect(pillPath, pillRF, pillH / 2.f);
-                g.FillPath(&brPill, &pillPath);
-            }
-
-            // --- Page text: horizontal cross-fade ---
-            {
-                const float pw    = (float)ModernUIDpi::Scale(m_hWnd, 70);
-                const float ph    = (float)ModernUIDpi::Scale(m_hWnd, 22);
-                const float textY = navCY - (float)ModernUIDpi::Scale(m_hWnd, 1);
-                Gdiplus::StringFormat sfNav;
-                sfNav.SetAlignment(Gdiplus::StringAlignmentCenter);
-                sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-
-                if (m_nNavAnim > 0)
-                {
-                    const float slideAmt = (float)ModernUIDpi::Scale(m_hWnd, 16);
-                    const int   dir      = m_bNavAnimNext ? -1 : 1;
-                    BYTE oldAlpha = (BYTE)(255.f * (1.f - progress));
-                    BYTE newAlpha = (BYTE)(255.f * progress);
-                    float oldXOff = dir * slideAmt * progress;
-                    float newXOff = -dir * slideAmt * (1.f - progress);
-
-                    CString oldStr;
-                    oldStr.Format(_T("%d / %d"), fromPage + 1, kTotalPages);
-                    Gdiplus::RectF oldRF(navCX - pw / 2.f + oldXOff, textY - ph / 2.f, pw, ph);
-                    Gdiplus::SolidBrush brOld(Gdiplus::Color(oldAlpha, 60, 70, 90));
-#ifdef UNICODE
-                    g.DrawString(oldStr, -1, m_pFontValBold, oldRF, &sfNav, &brOld);
-#else
-                    { CStringW w(oldStr); g.DrawString(w, -1, m_pFontValBold, oldRF, &sfNav, &brOld); }
-#endif
-
-                    CString newStr;
-                    newStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
-                    Gdiplus::RectF newRF(navCX - pw / 2.f + newXOff, textY - ph / 2.f, pw, ph);
-                    Gdiplus::SolidBrush brNew(Gdiplus::Color(newAlpha, 0, 100, 221));
-#ifdef UNICODE
-                    g.DrawString(newStr, -1, m_pFontValBold, newRF, &sfNav, &brNew);
-#else
-                    { CStringW w(newStr); g.DrawString(w, -1, m_pFontValBold, newRF, &sfNav, &brNew); }
-#endif
-                }
-                else
-                {
-                    CString pageStr;
-                    pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, kTotalPages);
-                    Gdiplus::RectF navRF(navCX - pw / 2.f, textY - ph / 2.f, pw, ph);
-                    Gdiplus::SolidBrush brNav(Gdiplus::Color(255, 60, 70, 90));
-#ifdef UNICODE
-                    g.DrawString(pageStr, -1, m_pFontValBold, navRF, &sfNav, &brNav);
-#else
-                    { CStringW w(pageStr); g.DrawString(w, -1, m_pFontValBold, navRF, &sfNav, &brNav); }
-#endif
-                }
-            }
-
-            g.ResetClip();
-        }
+        CString pageStr; pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, totalP);
+        CStringW pageStrW = pageStr;
+        Gdiplus::StringFormat sfNav; sfNav.SetAlignment(Gdiplus::StringAlignmentCenter); sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+        Gdiplus::SolidBrush brNav(Gdiplus::Color(255, 60, 70, 90));
+        g.DrawString(pageStrW, -1, m_pFontValBold, Gdiplus::RectF((float)m_rcNavBar.left, (float)m_rcNavBar.top, (float)m_rcNavBar.Width(), (float)m_rcNavBar.Height()), &sfNav, &brNav);
     }
 
-    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
-    memDC.SelectObject(pOldBmp);
+    // 최종 비트맵 전송
+    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &m_memDC, 0, 0, SRCCOPY);
+    m_memDC.SelectObject(pOldBmp);
 }
 
-// ============================================================================
-// RebindSlots - load current page's data into the 2 slot controls
-// ============================================================================
 void CShopDownDlg::RebindSlots()
 {
     const int pageStart = m_nCurrentPage * kRowsPerPage;
@@ -1048,14 +708,17 @@ void CShopDownDlg::ApplyAllRowUnderlays()
         ApplyRowUnderlay(slot, FALSE);
 }
 
+void CShopDownDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+    // +++ 수정: CDialog::OnActivate(nState, pWndOther, bMinimized); 를 호출하지 않습니다.
+    // 시스템 기본 메시지 처리기로 넘겨서 불필요한 자식 컨트롤 순회를 차단합니다.
+    ::DefWindowProc(m_hWnd, WM_ACTIVATE, nState, (LPARAM)(pWndOther ? pWndOther->m_hWnd : NULL));
+}
+
 BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
 {
-    // CShopDownDlg 는 버튼이 50개(다운로드 25 + 삭제 25) 있다.
-    // DefDlgProcA(WM_NCACTIVATE) -> xxxSaveDlgFocus -> 버튼 50개에
-    // BM_SETSTYLE SendMessage -> O(N^2) 동기 연쇄 -> "응답없음".
-    // DefWindowProc / DefDlgProc 를 일절 호출하지 않고 TRUE 만 반환해 차단.
-    UNREFERENCED_PARAMETER(bActive);
-    return TRUE;
+    // +++ 수정: 부모 클래스 호출 없이 바로 기본 윈도우 프로시저로 처리
+    return (BOOL)::DefWindowProc(m_hWnd, WM_NCACTIVATE, bActive, 0);
 }
 
 // ============================================================================
@@ -1064,9 +727,10 @@ BOOL CShopDownDlg::OnNcActivate(BOOL bActive)
 void CShopDownDlg::RefreshPage()
 {
     RebindSlots();
+    ApplyAllRowUnderlays(); // sync underlay colors after page data changes
     UpdatePageButtons();
     if (IsWindowVisible())
-        ::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_ALLCHILDREN);
+        Invalidate(FALSE);
 }
 
 void CShopDownDlg::OnPrevPageClick()

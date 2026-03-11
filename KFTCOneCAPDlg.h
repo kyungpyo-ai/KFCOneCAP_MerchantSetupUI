@@ -14,6 +14,7 @@ public:
     int GetHoverProgress() const { return m_nHoverProgress; }
     int GetPressProgress() const { return m_nPressProgress; }
     void ResetVisualState();
+    void ForceFadeOut();
 
 protected:
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -23,6 +24,7 @@ protected:
     afx_msg void OnCaptureChanged(CWnd* pWnd);
     afx_msg void OnCancelMode();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -36,6 +38,8 @@ private:
     BOOL m_bTracking;
     int  m_nHoverProgress;
     int  m_nPressProgress;
+    BOOL m_bIgnoreMouse;
+
 };
 
 class CKFTCOneCAPDlg : public CDialog
@@ -64,6 +68,8 @@ protected:
     afx_msg void OnMinimize();
     afx_msg void OnExit();
     afx_msg void OnClose();
+    afx_msg BOOL OnNcActivate(BOOL bActive);
+    afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -107,6 +113,12 @@ private:
     CFont m_fontCardTitle;
     CFont m_fontCardDesc;
     CFont m_fontFooter;
+
+
+    // [추가] GDI+ 전용 캐시 폰트 포인터
+    // 렌더링 시 매번 생성하지 않고 여기서 재사용하여 성능을 최적화합니다.
+    Gdiplus::Font* m_pGdiFontTitle;
+    Gdiplus::Font* m_pGdiFontDesc;
 
     enum EPendingOpen { PENDING_NONE = 0, PENDING_SHOP, PENDING_READER };
 
