@@ -484,9 +484,9 @@ void CReaderSetupDlg::LayoutControls()
 	const int rowComboY = SX(34);
 	const int rowBtnY = SX(76);
 	const int openLabelW = SX(56);
-	const int multiLabelW = SX(74);
+	const int multiLabelW = SX(92);
 	const int textGap = SX(8);
-	const int toggleBlockGap = SX(26);
+	const int toggleBlockGap = SX(44);
 
 	auto placeReaderCard = [&](const CRect& card,
 		CSkinnedComboBox& cb,
@@ -501,14 +501,14 @@ void CReaderSetupDlg::LayoutControls()
 
 			int xTogglePad = card.right - padR - toggleW - SX(22);
 			int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
-			int xToggleOpen = xTogglePadLabel - toggleBlockGap - toggleW;
-			if (xToggleOpen < x0 + comboW + SX(70))
-				xToggleOpen = x0 + comboW + SX(70);
-			tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo + (btnH - toggleH) / 2,
-				toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
+			int xToggleOpen = xTogglePadLabel - toggleBlockGap - (toggleW + textGap + openLabelW);
+			if (xToggleOpen < x0 + comboW + SX(16))
+				xToggleOpen = x0 + comboW + SX(16);
+			tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo,
+				toggleW + textGap + openLabelW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-			tgPad.SetWindowPos(NULL, xTogglePad, yCombo + (btnH - toggleH) / 2,
-				toggleW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
+			tgPad.SetWindowPos(NULL, xTogglePadLabel, yCombo,
+				toggleW + textGap + multiLabelW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 			int yBtn = card.top + rowBtnY;
 			int bx = x0;
@@ -951,6 +951,19 @@ void CReaderSetupDlg::InitToggleAndUnderlayColors()
 	m_togglePortOpen2.SetCheck(BST_UNCHECKED);
 	m_toggleMultipad1.SetCheck(BST_UNCHECKED);
 	m_toggleMultipad2.SetCheck(BST_UNCHECKED);
+	// Setup text labels inside toggle controls (ShopSetupDlg style)
+	m_togglePortOpen1.SetFont(&m_fontLabel);
+	m_togglePortOpen1.SetWindowText(_T("포트 열기"));
+	m_togglePortOpen1.SetTextSizePx(13);
+	m_togglePortOpen1.SetNoWrapEllipsis(TRUE);
+	m_toggleMultipad1.SetFont(&m_fontLabel);
+	m_toggleMultipad1.SetWindowText(_T("멀티패드 여부"));
+	m_toggleMultipad1.SetTextSizePx(13);
+	m_toggleMultipad1.SetNoWrapEllipsis(TRUE);
+	m_toggleMultipad2.SetFont(&m_fontLabel);
+	m_toggleMultipad2.SetWindowText(_T("멀티패드 여부"));
+	m_toggleMultipad2.SetTextSizePx(13);
+	m_toggleMultipad2.SetNoWrapEllipsis(TRUE);
 
 	m_togglePortOpen1.SetUnderlayColor(cardBgEnabled);
 	m_togglePortOpen2.SetUnderlayColor(cardBgDisabled);
@@ -1416,7 +1429,7 @@ const float titleY = (float)iconY + (float)iconSize * 0.5f - 20.0f;
 			const int padR = SX(22);
 			const int textGap = SX(8);
 			const int openLabelW = SX(56);
-			const int multiLabelW = SX(74);
+			const int multiLabelW = SX(92);
 			const int togglePadX = r.right - padR - toggleW - SX(22);
 			const int togglePadLabelX = togglePadX - textGap - multiLabelW;
 			int toggleOpenX = togglePadLabelX - SX(26) - toggleW;
