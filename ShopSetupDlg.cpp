@@ -385,11 +385,8 @@ static void NormalizeInputHeightsToCombo(CWnd* pDlg, int comboId,
     if (!pCombo || !::IsWindow(pCombo->GetSafeHwnd())) return;
     CRect rcCombo;
     pCombo->GetWindowRect(&rcCombo);
-    int h = 0;
-    // combo window height can include drop-list height; use selection-item height instead
-    LRESULT ih = ::SendMessage(pCombo->GetSafeHwnd(), CB_GETITEMHEIGHT, (WPARAM)-1, 0);
-    if (ih > 0) h = (int)ih + 14; // border/padding
-    if (h <= 0) h = rcCombo.Height();
+    // Use the combo's actual closed window height as the target height for edits
+    int h = rcCombo.Height();
     if (h < 22) h = 22;
     for (int i = 0; i < editCount; ++i)
     {
@@ -932,6 +929,11 @@ void CShopSetupDlg::ApplyLayoutTab0()
     y2 += capH + capGap + FIELD_H;
     int payCardH = (y2 + cardPadY) - curY;
     m_rcCardPayMethod = CRect(cardLeft, curY, cardRight, curY + payCardH);
+    // Sync edit heights to match combo closed height
+    {
+        const int editIdsTab0[] = { IDC_EDIT_PORT, IDC_EDIT_NO_SIGN_AMOUNT, IDC_EDIT_TAX_PERCENT, IDC_EDIT_CARD_DETECT_PARAM };
+        NormalizeInputHeightsToCombo(this, IDC_COMBO_VAN_SERVER, editIdsTab0, 4);
+    }
 }
 // --- Tab 1+2: devices and system settings ---
 void CShopSetupDlg::ApplyLayoutTab1()
@@ -1163,6 +1165,11 @@ void CShopSetupDlg::ApplyLayoutTab1()
         fy += capH + capG + FIELD_H;
         int cardH = (fy + cPadY) - curY;
         m_rcGrpHotkey = CRect(cLeft, curY, cRight, curY + cardH);
+    // Sync edit heights to match combo closed height
+    {
+        const int editIdsTab1[] = { IDC_EDIT_CARD_TIMEOUT, IDC_EDIT_SIGN_PAD_PORT, IDC_EDIT_SCANNER_PORT };
+        NormalizeInputHeightsToCombo(this, IDC_COMBO_INTERLOCK, editIdsTab1, 3);
+    }
         // curY = m_rcGrpHotkey.bottom + cGapY;  // Tab2 ³¡
     }
 }

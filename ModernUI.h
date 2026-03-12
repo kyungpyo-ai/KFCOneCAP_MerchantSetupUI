@@ -407,6 +407,7 @@ protected:
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnPaint();
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     afx_msg LRESULT OnPrintClientMsg(WPARAM wParam, LPARAM lParam);
     DECLARE_MESSAGE_MAP()
 
@@ -646,7 +647,8 @@ protected:
     virtual void DrawItem(LPDRAWITEMSTRUCT lpDIS);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
-        afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 DECLARE_MESSAGE_MAP()
 
 private:
