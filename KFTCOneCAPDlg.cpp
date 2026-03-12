@@ -41,6 +41,7 @@ BEGIN_MESSAGE_MAP(CHomeCardButton, CButton)
     ON_WM_CANCELMODE()
     ON_WM_TIMER()
     ON_WM_SETCURSOR()
+    ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 void CHomeCardButton::ResetVisualState()
@@ -65,6 +66,11 @@ BOOL CHomeCardButton::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
         return TRUE;
     }
     return CButton::OnSetCursor(pWnd, nHitTest, message);
+}
+
+BOOL CHomeCardButton::OnEraseBkgnd(CDC* pDC)
+{
+    return TRUE;
 }
 
 void CHomeCardButton::StartTrackMouseLeave()
@@ -1003,14 +1009,12 @@ HBRUSH CKFTCOneCAPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 
 BOOL CKFTCOneCAPDlg::OnNcActivate(BOOL bActive)
 {
-    // [중요] 기본 클래스 호출을 막아 OS가 타이틀바나 배경을 다시 그리는 것을 방지합니다.
-    return TRUE;
+    return CDialog::OnNcActivate(bActive);
 }
 
 void CKFTCOneCAPDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 {
-    // [중요] 기본 클래스 호출(CDialog::OnActivate)을 생략합니다.
-    // 이렇게 하면 모달창이 뜰 때 부모 창이 불필요하게 다시 그려지지 않습니다.
+    CDialog::OnActivate(nState, pWndOther, bMinimized);
 }
 
 void CKFTCOneCAPDlg::OnReaderSetup()
@@ -1038,9 +1042,7 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
             this->Invalidate(FALSE);
             this->UpdateWindow(); // 즉시 OnPaint 호출
 
-            this->EnableWindow(FALSE);
-
-            // [2] 모달 실행
+            // [2] 모달 실행 (DoModal이 안전하게 부모 창을 비활성화/활성화해 줍니다)
             if (ePending == PENDING_SHOP) {
                 CShopSetupDlg dlg(this);
                 dlg.DoModal();
@@ -1050,12 +1052,10 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
                 dlg.DoModal();
             }
 
-            this->EnableWindow(TRUE);
             if (pBtn) pBtn->ResetVisualState();
 
-            // [3] 돌아왔을 때 배경을 지우지 않고(RDW_NOERASE) 전체 자식 버튼까지 갱신
-            this->RedrawWindow(NULL, NULL,
-                RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_NOERASE);
+            // [3] 돌아왔을 때 부드럽게 갱신
+            this->Invalidate(FALSE);
         }
     }
     else

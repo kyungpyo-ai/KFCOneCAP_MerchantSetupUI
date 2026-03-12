@@ -25,6 +25,7 @@ protected:
     afx_msg void OnCancelMode();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
     DECLARE_MESSAGE_MAP()
 
 private:
