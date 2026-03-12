@@ -109,36 +109,25 @@ void CHomeCardButton::StepAnimation()
     const int nPressTarget = m_bPressed ? 100 : 0;
     BOOL bChanged = FALSE;
 
-    // [Hover] 사라질 때의 속도를 다시 부드럽게 (/4)
+    // [Hover 속도] /4 -> /3으로 변경 (더 즉각적으로 '툭' 떠오르는 느낌)
     if (m_nHoverProgress != nHoverTarget)
     {
         int diff = nHoverTarget - m_nHoverProgress;
-        int step = diff / 4;
+        int step = diff / 3; // 숫자가 작을수록 빨라집니다.
         if (step == 0) step = (diff > 0) ? 1 : -1;
         m_nHoverProgress += step;
         bChanged = TRUE;
     }
-
-    // [Press] 복귀 속도를 너무 빠르지 않게 쫀득한 수준으로 조정
+    // [Press 속도] 눌렀다 뗄 때의 쫀득함 유지
     if (m_nPressProgress != nPressTarget)
     {
         int diff = nPressTarget - m_nPressProgress;
         int step = 0;
-
-        if (diff > 0) // 누를 때
-        {
-            step = (diff + 3) / 4;
-        }
-        else // 뗄 때 (복귀)
-        {
-            // [수정] /2 대신 /3으로 조정하여 너무 '탁' 튀어 오르는 느낌을 줄였습니다.
-            step = diff / 3;
+        if (diff > 0) step = (diff + 2) / 3; // 누를 때 더 빠르게
+        else {
+            step = diff / 4; // 뗄 때 살짝 끈적하게 복귀 (고급스러움)
             if (step == 0) step = -1;
-
-            // 마지막 도착 지점에서만 확실히 붙여줍니다.
-            if (abs(diff) < 5) step = diff;
         }
-
         m_nPressProgress += step;
         bChanged = TRUE;
     }
@@ -885,18 +874,27 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     g.ScaleTransform(cardScale, cardScale);
     g.TranslateTransform(-cardCenter.X, -cardCenter.Y);
 
-    // --- 그림자 및 발광(Glow) ---
-    int blurSpread = 8 + (nHoverProgress * 6) / 100;
-    BYTE maxAlpha = (BYTE)(15 + (nHoverProgress * 18) / 100);
-    if (nPressProgress > 0) maxAlpha = (BYTE)(maxAlpha * (100 - nPressProgress) / 100);
+    int blurSpread = 8 + (nHoverProgress * 8) / 100; // 퍼짐 정도를 조금 더 키움 (6 -> 8)
+    BYTE maxAlpha = (BYTE)(12 + (nHoverProgress * 20) / 100); // 평소엔 연하게, 호버 시 진하게
+
+    // [수정] 눌렀을 때(Press) 그림자가 10% 정도는 남도록 (완전히 사라짐 방지)
+    if (nPressProgress > 0)
+        maxAlpha = (BYTE)(maxAlpha * (100 - (nPressProgress * 0.9f)) / 100);
     if (maxAlpha > 0) {
-        REAL glowOffsetY = (REAL)SX(12) + (REAL)MulDiv(SX(6), nHoverProgress, 100);
-        RectF baseGlowRect((REAL)rcPaint.left + (REAL)SX(4), (REAL)rcPaint.top + glowOffsetY, (REAL)rcPaint.Width() - (REAL)SX(8), (REAL)rcPaint.Height() - (REAL)SX(14));
+        // 그림자가 아래로 내려가는 거리 (호버 시 더 멀어짐)
+        REAL glowOffsetY = (REAL)SX(10) + (REAL)MulDiv(SX(8), nHoverProgress, 100);
+
+        RectF baseGlowRect((REAL)rcPaint.left + (REAL)SX(4), (REAL)rcPaint.top + glowOffsetY,
+            (REAL)rcPaint.Width() - (REAL)SX(8), (REAL)rcPaint.Height() - (REAL)SX(14));
+
         GraphicsPath glowPath;
         AddRoundRectPath(glowPath, baseGlowRect, (REAL)SX(22));
+
         for (int i = blurSpread; i >= 1; i -= 2) {
             BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 2) / (blurSpread * 2));
-            Pen glowPen(Color(currentAlpha, 0, 100, 221), (REAL)(i * 2));
+
+            // [색상 수정] 0, 100, 221(순수 파랑) 대신 20, 40, 100 정도의 짙은 네이비를 섞으면 훨씬 고급스럽습니다.
+            Pen glowPen(Color(currentAlpha, 20, 60, 160), (REAL)(i * 2));
             glowPen.SetLineJoin(LineJoinRound);
             g.DrawPath(&glowPen, &glowPath);
         }
