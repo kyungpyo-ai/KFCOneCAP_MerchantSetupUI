@@ -581,9 +581,35 @@ void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
 void CKFTCOneCAPDlg::OnPaint()
 {
     CPaintDC dc(this);
-    DrawBackground(dc);
-    DrawHeader(dc);
-    DrawFooterDivider(dc);
+    CRect rc;
+    GetClientRect(&rc);
+
+    if (rc.Width() <= 0 || rc.Height() <= 0) return;
+
+    // 1. 메모리 DC 및 비트맵 생성 (더블 버퍼링)
+    CDC memDC;
+    memDC.CreateCompatibleDC(&dc);
+    CBitmap bmp;
+    bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+    CBitmap* pOldBmp = memDC.SelectObject(&bmp);
+
+    // 2. [그리기 순서 1] 배경색 채우기 (화면이 아닌 memDC에!)
+    memDC.FillSolidRect(&rc, kHomeBg);
+
+    // 3. [그리기 순서 2] 헤더 (로고 + 글자) 그리기
+    // DrawHeader가 내부에서 Graphics g(dc.GetSafeHdc())를 쓰므로 memDC를 넘겨야 함
+    DrawHeader(memDC);
+
+    // 4. [그리기 순서 3] 푸터 구분선 그리기
+    DrawFooterDivider(memDC);
+
+    // 5. [최종 전송] 완성된 이미지를 화면에 한 번에 쏘기
+    // 이 순간에 글자와 배경이 동시에 나타나므로 절대 깜빡이지 않습니다.
+    dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+
+    memDC.SelectObject(pOldBmp);
+    bmp.DeleteObject();
+    memDC.DeleteDC();
 }
 
 BOOL CKFTCOneCAPDlg::OnEraseBkgnd(CDC* pDC)
@@ -979,18 +1005,14 @@ HBRUSH CKFTCOneCAPDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 
 BOOL CKFTCOneCAPDlg::OnNcActivate(BOOL bActive)
 {
-    // [FIX] Prevent DefDlgProc -> xxxSaveDlgFocus -> BM_SETSTYLE on card buttons.
-    // Same pattern as CShopSetupDlg::OnNcActivate / CShopDownDlg::OnNcActivate.
-    UNREFERENCED_PARAMETER(bActive);
+    // [중요] 기본 클래스 호출을 막아 OS가 타이틀바나 배경을 다시 그리는 것을 방지합니다.
     return TRUE;
 }
 
 void CKFTCOneCAPDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 {
-    // [FIX] Skip base class to avoid DefDlgProc -> xxxSaveDlgFocus chain.
-    UNREFERENCED_PARAMETER(nState);
-    UNREFERENCED_PARAMETER(pWndOther);
-    UNREFERENCED_PARAMETER(bMinimized);
+    // [중요] 기본 클래스 호출(CDialog::OnActivate)을 생략합니다.
+    // 이렇게 하면 모달창이 뜰 때 부모 창이 불필요하게 다시 그려지지 않습니다.
 }
 
 void CKFTCOneCAPDlg::OnReaderSetup()
@@ -1007,43 +1029,35 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
         CHomeCardButton* pBtn = (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
             (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard : NULL;
 
-        if (pBtn)
+        if (pBtn && pBtn->GetPressProgress() <= 12 && pBtn->GetHoverProgress() <= 12)
         {
-            // [수정] 임계값을 12로 설정했습니다 (88% 지점).
-            // 20보다는 조금 더 기다리지만, 5보다는 훨씬 빨리 창이 뜹니다.
-            if (pBtn->GetPressProgress() <= 12 && pBtn->GetHoverProgress() <= 12)
-            {
-                KillTimer(kTimerWaitRelease);
-                EPendingOpen ePending = m_ePendingOpen;
-                m_ePendingOpen = PENDING_NONE;
+            KillTimer(kTimerWaitRelease);
 
-                // [박제] 현재의 부드러운 상태를 화면에 고정합니다.
-                this->Invalidate(FALSE);
-                this->UpdateWindow();
+            EPendingOpen ePending = m_ePendingOpen;
+            m_ePendingOpen = PENDING_NONE;
 
-                this->SetRedraw(FALSE);
-                this->EnableWindow(FALSE);
+            // [1] 현재 상태를 메모리 DC 기반으로 깨끗하게 한 번 그립니다.
+            this->Invalidate(FALSE);
+            this->UpdateWindow(); // 즉시 OnPaint 호출
 
-                // 모달 실행
-                if (ePending == PENDING_SHOP)
-                {
-                    CShopSetupDlg dlg(this);
-                    dlg.DoModal();
-                }
-                else if (ePending == PENDING_READER)
-                {
-                    CReaderSetupDlg dlg(this);
-                    dlg.DoModal();
-                }
+            this->EnableWindow(FALSE);
 
-                // 모달 종료 후 복구
-                this->EnableWindow(TRUE);
-                this->SetRedraw(TRUE);
-
-                if (pBtn) pBtn->ResetVisualState();
-
-                this->RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+            // [2] 모달 실행
+            if (ePending == PENDING_SHOP) {
+                CShopSetupDlg dlg(this);
+                dlg.DoModal();
             }
+            else if (ePending == PENDING_READER) {
+                CReaderSetupDlg dlg(this);
+                dlg.DoModal();
+            }
+
+            this->EnableWindow(TRUE);
+            if (pBtn) pBtn->ResetVisualState();
+
+            // [3] 돌아왔을 때 배경을 지우지 않고(RDW_NOERASE) 전체 자식 버튼까지 갱신
+            this->RedrawWindow(NULL, NULL,
+                RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_NOERASE);
         }
     }
     else
