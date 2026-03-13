@@ -479,6 +479,12 @@ BOOL CShopSetupDlg::OnInitDialog()
     m_tabCtrl.AddTab(_T("시스템 설정"), 2);
     m_tabCtrl.AddTab(_T("가맹점 다운로드"), 3);
     InitializeControls();
+
+    // [UI 개선] 탭 전환 시 딜레이 방지를 위해 자식 다이얼로그를 미리 생성해 숨겨둡니다.
+    if (m_staticShopContainer.GetSafeHwnd() && !m_shopDownDlg.GetSafeHwnd()) {
+        m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer);
+        m_shopDownDlg.ShowWindow(SW_HIDE);
+    }
     EnsureValidationStatics();
     LoadOptionsFromRegistry();
     // 다이얼로그 크기
@@ -1592,12 +1598,6 @@ void CShopSetupDlg::ShowTab(int nTab)
         if (m_staticShopContainer.GetSafeHwnd()) {
             // ★ 깜빡임 방지 핵심: 자식 영역을 그리기에서 제외
             m_staticShopContainer.ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-            if (!m_shopDownDlg.GetSafeHwnd()) {
-                // [FIX] Create hidden: WS_VISIBLE in RC style would cause a DWM intermediate
-                // frame visible to other windows (e.g. Notepad). Hide immediately after Create.
-                m_shopDownDlg.Create(CShopDownDlg::IDD, &m_staticShopContainer);
-                m_shopDownDlg.ShowWindow(SW_HIDE);
-            }
             CRect rcHost;
             m_staticShopContainer.GetClientRect(&rcHost);
             // [FIX] Position only - no SWP_SHOWWINDOW here. Showing happens after

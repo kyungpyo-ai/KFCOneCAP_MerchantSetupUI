@@ -2008,6 +2008,19 @@ void CSkinnedComboBox::OnCbnSelendok()
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
 }
 
+void CSkinnedComboBox::SetUnderlayColor(COLORREF underlayBg)
+{
+	m_bUseUnderlayBg = TRUE;
+	m_clrUnderlayBg = underlayBg;
+	Invalidate(FALSE);
+}
+
+void CSkinnedComboBox::ClearUnderlayColor()
+{
+	m_bUseUnderlayBg = FALSE;
+	Invalidate(FALSE);
+}
+
 void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 {
     /* [UI-STEP] 스킨 콤보 Owner-draw 아이템 렌더링(드랍리스트 포함)
@@ -2126,6 +2139,7 @@ CSkinnedEdit::CSkinnedEdit()
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
 	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
+	m_bNcStylePrepared = FALSE;
 
 	m_bUseGlobalTheme = TRUE;
 	m_localTheme = ModernUITheme::GetInputTheme();
@@ -2174,10 +2188,19 @@ void CSkinnedEdit::EnsureMultilineForVCenter()
 	if (!::IsWindow(m_hWnd)) return;
 
 	DWORD style = (DWORD)GetStyle();
+	DWORD addStyle = 0;
+	DWORD removeStyle = 0;
+
 	if ((style & ES_MULTILINE) == 0)
+		addStyle |= (ES_MULTILINE | ES_AUTOVSCROLL);
+	if (style & (WS_VSCROLL | WS_HSCROLL))
+		removeStyle |= (WS_VSCROLL | WS_HSCROLL);
+
+	if (addStyle || removeStyle)
 	{
-		ModifyStyle(0, ES_MULTILINE | ES_AUTOVSCROLL, SWP_FRAMECHANGED);
-		ModifyStyle(WS_VSCROLL | WS_HSCROLL, 0, SWP_FRAMECHANGED);
+		// 동적 생성 시 SWP_FRAMECHANGED를 반복 호출하면 일부 환경에서
+		// 상위 창까지 다시 그려지는 부작용이 있어, 스타일 비트만 조정한다.
+		ModifyStyle(removeStyle, addStyle, 0);
 	}
 }
 
@@ -2192,8 +2215,9 @@ LRESULT CSkinnedEdit::OnSetFontMsg(WPARAM /*wParam*/, LPARAM /*lParam*/)
 LRESULT CSkinnedEdit::OnSetTextMsg(WPARAM /*wParam*/, LPARAM /*lParam*/)
 {
 	LRESULT r = Default();
-	EnsureMultilineForVCenter();
-	ApplyThemeAndMargins();
+	// 텍스트 변경마다 프레임/마진을 다시 건드리면 동적 생성/초기 바인딩 시
+	// 불필요한 재계산이 누적되므로, 화면만 가볍게 갱신한다.
+	Invalidate(FALSE);
 	return r;
 }
 
@@ -2221,13 +2245,25 @@ void CSkinnedEdit::ApplyThemeAndMargins()
      *
      * [참고]
      * - 여백을 잘못 주면 텍스트가 위아래로 치우치거나 잘리므로 DPI/폰트와 함께 튜닝한다.
+     * - 동적 생성된 Edit에 대해 SWP_FRAMECHANGED를 반복 호출하면 특정 환경에서
+     *   상위 창 전체가 다시 그려지는 현상이 있어, NC 스타일 보정은 1회만/무거운 플래그 없이 적용한다.
      */
 
 	if (!::IsWindow(m_hWnd)) return;
 
-	SetWindowTheme(m_hWnd, L"", L"");
-	ModifyStyleEx(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE, 0, SWP_FRAMECHANGED);
-	ModifyStyle(WS_BORDER, 0, SWP_FRAMECHANGED);
+	if (!m_bNcStylePrepared)
+	{
+		SetWindowTheme(m_hWnd, L"", L"");
+
+		DWORD exStyle = (DWORD)GetExStyle();
+		DWORD style   = (DWORD)GetStyle();
+		if (exStyle & (WS_EX_CLIENTEDGE | WS_EX_STATICEDGE))
+			ModifyStyleEx(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE, 0, 0);
+		if (style & WS_BORDER)
+			ModifyStyle(WS_BORDER, 0, 0);
+
+		m_bNcStylePrepared = TRUE;
+	}
 
 	const KFTCInputTheme& th = GetActiveInputTheme();
 
@@ -2565,19 +2601,6 @@ void CSkinnedEdit::OnMouseLeave()
 
 	m_bHover = FALSE;
 	m_bTracking = FALSE;
-	Invalidate(FALSE);
-}
-
-void CSkinnedComboBox::SetUnderlayColor(COLORREF underlayBg)
-{
-	m_bUseUnderlayBg = TRUE;
-	m_clrUnderlayBg = underlayBg;
-	Invalidate(FALSE);
-}
-
-void CSkinnedComboBox::ClearUnderlayColor()
-{
-	m_bUseUnderlayBg = FALSE;
 	Invalidate(FALSE);
 }
 

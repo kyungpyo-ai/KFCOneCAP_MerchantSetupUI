@@ -20,6 +20,7 @@ public:
     virtual ~CShopDownDlg();
 
 protected:
+    virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
 
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -94,6 +95,20 @@ private:
     static const int kTotalPages  = kRowCount / kRowsPerPage;  // 10
     static const int kBtnBase  = 61001;
     static const int kDelBase  = 61101;
+
+    enum
+    {
+        IDC_SHOPDOWN_BTN_DOWNLOAD_1 = 61001,
+        IDC_SHOPDOWN_BTN_DOWNLOAD_2 = 61002,
+        IDC_SHOPDOWN_BTN_DELETE_1   = 61101,
+        IDC_SHOPDOWN_BTN_DELETE_2   = 61102,
+        IDC_SHOPDOWN_EDIT_PROD_1    = 62201,
+        IDC_SHOPDOWN_EDIT_PROD_2    = 62202,
+        IDC_SHOPDOWN_EDIT_BIZ_1     = 62203,
+        IDC_SHOPDOWN_EDIT_BIZ_2     = 62204,
+        IDC_SHOPDOWN_EDIT_PWD_1     = 62205,
+        IDC_SHOPDOWN_EDIT_PWD_2     = 62206,
+    };
 
 private:
     // ---------- Brushes -------------------------------------------------------

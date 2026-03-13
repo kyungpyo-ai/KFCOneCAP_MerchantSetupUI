@@ -219,6 +219,7 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+    BOOL     m_bNcStylePrepared;
 };
 
 // ========================================
@@ -536,6 +537,7 @@ private:
     CBrush   m_brUnderlay; // for WM_CTLCOLOR (text background)
     COLORREF m_clrBrushBg;  // cached brush color
 
+    BOOL     m_bNcStylePrepared;
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;

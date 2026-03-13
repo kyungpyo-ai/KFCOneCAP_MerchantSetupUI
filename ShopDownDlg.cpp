@@ -19,6 +19,22 @@
 
 IMPLEMENT_DYNAMIC(CShopDownDlg, CDialog)
 
+void CShopDownDlg::DoDataExchange(CDataExchange* pDX)
+{
+    CDialog::DoDataExchange(pDX);
+
+    DDX_Control(pDX, IDC_SHOPDOWN_BTN_DOWNLOAD_1, m_btnDownload[0]);
+    DDX_Control(pDX, IDC_SHOPDOWN_BTN_DOWNLOAD_2, m_btnDownload[1]);
+    DDX_Control(pDX, IDC_SHOPDOWN_BTN_DELETE_1,   m_btnDelete[0]);
+    DDX_Control(pDX, IDC_SHOPDOWN_BTN_DELETE_2,   m_btnDelete[1]);
+    DDX_Control(pDX, IDC_SHOPDOWN_EDIT_PROD_1,    m_editProd[0]);
+    DDX_Control(pDX, IDC_SHOPDOWN_EDIT_PROD_2,    m_editProd[1]);
+    DDX_Control(pDX, IDC_SHOPDOWN_EDIT_BIZ_1,     m_editBiz[0]);
+    DDX_Control(pDX, IDC_SHOPDOWN_EDIT_BIZ_2,     m_editBiz[1]);
+    DDX_Control(pDX, IDC_SHOPDOWN_EDIT_PWD_1,     m_editPwd[0]);
+    DDX_Control(pDX, IDC_SHOPDOWN_EDIT_PWD_2,     m_editPwd[1]);
+}
+
 BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_ERASEBKGND()
     ON_WM_CTLCOLOR()
@@ -116,10 +132,13 @@ CShopDownDlg::~CShopDownDlg()
 
 void CShopDownDlg::OnDestroy()
 {
-    delete m_pFontLbl;     m_pFontLbl     = nullptr;
-    delete m_pFontVal;     m_pFontVal     = nullptr;
+    // 창 소멸 시 실행 중인 애니메이션 타이머가 있다면 안전하게 해제
+    KillTimer(42);
+
+    delete m_pFontLbl;     m_pFontLbl = nullptr;
+    delete m_pFontVal;     m_pFontVal = nullptr;
     delete m_pFontValBold; m_pFontValBold = nullptr;
-    delete m_pFontFamily;  m_pFontFamily  = nullptr;
+    delete m_pFontFamily;  m_pFontFamily = nullptr;
     m_memDC.DeleteDC();
     m_memBmp.DeleteObject();
     CDialog::OnDestroy();
@@ -156,8 +175,13 @@ BOOL CShopDownDlg::OnInitDialog()
     m_brushCard.CreateSolidBrush(RGB(255, 255, 255));
     m_brushCardDisabled.CreateSolidBrush(KFTC_CARD_DISABLED_BG);
 
+    SetRedraw(FALSE);
     CreateControlsOnce();
     ApplyFonts();
+    // 숨겨져 있던 컨트롤들의 좌표를 계산하고 SWP_SHOWWINDOW로 정렬하여 띄움
+    LayoutControls();
+
+    SetRedraw(TRUE);
 
     return TRUE;
 }
@@ -180,22 +204,12 @@ void CShopDownDlg::CreateControlsOnce()
         m_rowData[i].second_name = _T("");
     }
 
-    const DWORD edtBase = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | ES_AUTOHSCROLL | ES_CENTER;
-    const DWORD pwdStyle = edtBase | ES_PASSWORD;
+    // Edit/버튼 컨트롤은 리소스 기반 정적 컨트롤로 전환했으므로
+    // 여기서는 데이터만 초기화하고, 실제 스타일/색상은 컨트롤 인스턴스에 적용한다.
 
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        // +++ 수정: WS_EX_CLIENTEDGE(3D테두리)를 0으로 변경하여 렌더링 오버헤드 제거
-        m_editProd[slot].CreateEx(0, _T("EDIT"), _T(""), edtBase, CRect(0, 0, 10, 10), this, 62000 + (slot * 10) + 1);
-        m_editBiz[slot].CreateEx(0, _T("EDIT"), _T(""), edtBase, CRect(0, 0, 10, 10), this, 62000 + (slot * 10) + 2);
-        m_editPwd[slot].CreateEx(0, _T("EDIT"), _T(""), pwdStyle, CRect(0, 0, 10, 10), this, 62000 + (slot * 10) + 3);
-
-        m_btnDownload[slot].Create(_T("다운로드"), WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | BS_OWNERDRAW,
-            CRect(0, 0, 10, 10), this, kBtnBase + slot);
         m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255, 255, 255));
-
-        m_btnDelete[slot].Create(_T("삭제"), WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | BS_OWNERDRAW,
-            CRect(0, 0, 10, 10), this, kDelBase + slot);
         m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40, 40, 40));
     }
 }
@@ -236,10 +250,11 @@ void CShopDownDlg::ApplyFonts()
 
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
-        m_editProd[slot].SetFont(&m_fontCell);
-        m_editBiz[slot].SetFont(&m_fontCell);
-        m_editPwd[slot].SetFont(&m_fontCell);
-        m_btnDownload[slot].SetFont(&m_fontCell);
+        m_editProd[slot].SetFont(&m_fontCell, FALSE);
+        m_editBiz[slot].SetFont(&m_fontCell, FALSE);
+        m_editPwd[slot].SetFont(&m_fontCell, FALSE);
+        m_btnDownload[slot].SetFont(&m_fontCell, FALSE);
+        m_btnDelete[slot].SetFont(&m_fontCell, FALSE);
     }
 
     // Pre-create GDI+ paint fonts so first OnPaint does not block on font load
