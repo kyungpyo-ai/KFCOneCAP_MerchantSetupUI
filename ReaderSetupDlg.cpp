@@ -133,7 +133,7 @@ void CReaderSetupDlg::EnsureFonts()
 	// Title
 	lf.lfHeight = -SX(16);
 	lf.lfWeight = FW_BOLD;
-	lstrcpy(lf.lfFaceName, _T("¸¼Àº °íµñ"));
+	ModernUIFont::ApplyUIFontFace(lf);
 	m_fontTitle.CreateFontIndirect(&lf);
 
 	// Sub
@@ -163,7 +163,7 @@ void CReaderSetupDlg::EnsureFonts()
 
 	// GDI+ section title font (cached, matches ShopSetupDlg DrawMinCard style)
 	ModernUIGfx::EnsureGdiplusStartup();
-	m_pGdipSecFamily = new Gdiplus::FontFamily(L"Malgun Gothic");
+	m_pGdipSecFamily = ModernUIFont::CreateGdipFontFamily();
 	m_pGdipSecFont = new Gdiplus::Font(m_pGdipSecFamily,
 		ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	m_pGdipHdrTitleFont = new Gdiplus::Font(m_pGdipSecFamily,

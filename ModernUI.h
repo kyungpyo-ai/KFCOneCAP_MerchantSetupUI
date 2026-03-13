@@ -127,6 +127,16 @@ namespace ModernUIGfx
     void AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, float radius);
 }
 
+// Shared modern UI font loader/helper (Pretendard + fallback)
+namespace ModernUIFont
+{
+    bool EnsureFontsLoaded();
+    LPCTSTR GetUIFontFace();
+    void ApplyUIFontFace(LOGFONT& lf);
+    Gdiplus::FontFamily* CreateGdipFontFamily();
+    Gdiplus::Font* CreateGdipFontFromLogFont(const LOGFONT& lf);
+}
+
 // Windows 기본 제목표시줄을 최대한 밝은 흰색 톤으로 맞춘다.
 // - Windows 11에서는 캡션/글자/테두리 색 지정이 비교적 잘 반영된다.
 // - Windows 10 등 미지원 환경에서는 실패해도 조용히 무시한다.

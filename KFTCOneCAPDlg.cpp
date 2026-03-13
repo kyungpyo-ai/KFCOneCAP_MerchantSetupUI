@@ -373,7 +373,7 @@ void CKFTCOneCAPDlg::EnsureFonts()
 
     LOGFONT lf = ncm.lfMessageFont;
     lf.lfQuality = CLEARTYPE_QUALITY;       // 폰트 외곽선을 부드럽게 처리
-    _tcscpy(lf.lfFaceName, _T("맑은 고딕")); // 기본 폰트 설정
+    ModernUIFont::ApplyUIFontFace(lf); // ModernUI 공통 폰트 적용
 
     // 현재 창의 DPI 세팅을 가져옵니다.
     UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
@@ -415,12 +415,12 @@ void CKFTCOneCAPDlg::EnsureFonts()
         // 1. 카드 제목용 GDI+ 폰트 캐싱
         LOGFONT lfCardTitle;
         m_fontCardTitle.GetLogFont(&lfCardTitle);
-        m_pGdiFontTitle = new Gdiplus::Font(hDC, &lfCardTitle);
+        m_pGdiFontTitle = ModernUIFont::CreateGdipFontFromLogFont(lfCardTitle);
 
         // 2. 카드 설명용 GDI+ 폰트 캐싱
         LOGFONT lfCardDesc;
         m_fontCardDesc.GetLogFont(&lfCardDesc);
-        m_pGdiFontDesc = new Gdiplus::Font(hDC, &lfCardDesc);
+        m_pGdiFontDesc = ModernUIFont::CreateGdipFontFromLogFont(lfCardDesc);
 
         ::ReleaseDC(m_hWnd, hDC);
     }
@@ -550,15 +550,20 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     m_fontTitle.GetLogFont(&lfTitle);
     m_fontSubtitle.GetLogFont(&lfSub);
 
-    Font gdiFontTitle(dc.GetSafeHdc(), &lfTitle);
-    Font gdiFontSub(dc.GetSafeHdc(), &lfSub);
+    Font* pTitleFont = ModernUIFont::CreateGdipFontFromLogFont(lfTitle);
+    Font* pSubFont = ModernUIFont::CreateGdipFontFromLogFont(lfSub);
 
     SolidBrush titleBrush(Color(255, GetRValue(kTitleText), GetGValue(kTitleText), GetBValue(kTitleText)));
     SolidBrush subBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
 
     // 텍스트 출력
-    g.DrawString(L"KFTCOneCAP", -1, &gdiFontTitle, PointF((REAL)textLeft, (REAL)(top + SX(2))), &titleBrush);
-    g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, &gdiFontSub, PointF((REAL)textLeft, (REAL)(top + SX(40))), &subBrush);
+    if (pTitleFont != NULL)
+        g.DrawString(L"KFTCOneCAP", -1, pTitleFont, PointF((REAL)textLeft, (REAL)(top + SX(2))), &titleBrush);
+    if (pSubFont != NULL)
+        g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(40))), &subBrush);
+
+    delete pTitleFont;
+    delete pSubFont;
 }
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
 {

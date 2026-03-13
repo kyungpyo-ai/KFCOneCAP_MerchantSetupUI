@@ -24,6 +24,8 @@ BOOL CMerchantSetupApp::InitInstance()
     icc.dwICC = ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES | ICC_DATE_CLASSES;
     ::InitCommonControlsEx(&icc);
 
+    ModernUIFont::EnsureFontsLoaded();
+
     CKFTCOneCAPDlg startDlg;
     if (startDlg.DoModal() != IDOK)
         return FALSE;

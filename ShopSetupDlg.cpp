@@ -440,17 +440,23 @@ BOOL CShopSetupDlg::OnInitDialog()
     // valid so ScaleF can query the monitor DPI. Prevents per-OnPaint allocations
     // that risk transient GdipStatus != Ok errors causing corrupted DrawString output.
     ModernUIGfx::EnsureGdiplusStartup();
-    m_pFontFamilyMalgun = new Gdiplus::FontFamily(L"Malgun Gothic");
+    m_pFontFamilyMalgun = ModernUIFont::CreateGdipFontFamily();
     m_pFontCardTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
         ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
     m_pFontHdrTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
         ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
     m_pFontHdrSub = new Gdiplus::Font(m_pFontFamilyMalgun,
         ModernUIDpi::ScaleF(m_hWnd, 11.0f), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+
+
+
+
     // --------------------------------------------------------
     // 탭 컨트롤 생성 (다이얼로그 리소스에 없으므로 동적 생성)
     // --------------------------------------------------------
     m_tabCtrl.Create(this, IDC_TAB_MAIN, CRect(0, 0, 10, 10));
+
+    m_tabCtrl.SetFont(&m_fontLabel);
     // Info icon buttons
     auto CreateInfoBtn = [&](CInfoIconButton& btn, UINT id) {
         btn.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
@@ -599,7 +605,7 @@ void CShopSetupDlg::InitializeFonts()
      */
     LOGFONT lf = { 0 };
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
-    lstrcpy(lf.lfFaceName, _T("Malgun Gothic"));
+    ModernUIFont::ApplyUIFontFace(lf);
     // Use base 96-DPI pixel sizes and scale at runtime (per-monitor DPI)
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 20);
     lf.lfWeight = FW_BOLD;

@@ -5,8 +5,10 @@
 #include "ModernUI.h"
 #include <string>
 #include <vector>
+#include <memory>
 #include <cmath>
 #include <dwmapi.h>
+#include <vector>
 #pragma comment(lib, "dwmapi.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -156,6 +158,139 @@ namespace ModernUIGfx
 		path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
 		path.AddArc(a,   0, 90); a.X = r.X;
 		path.AddArc(a,  90, 90); path.CloseFigure();
+	}
+}
+
+namespace ModernUIFont
+{
+	static bool s_initTried = false;
+	static bool s_loaded = false;
+	static int  s_addedCount = 0;
+	static Gdiplus::PrivateFontCollection s_privateFonts;
+	static bool s_privateLoaded = false;
+
+	static CString BuildFontPath(LPCTSTR fileName)
+	{
+		TCHAR modulePath[MAX_PATH] = { 0, };
+		::GetModuleFileName(NULL, modulePath, MAX_PATH);
+		CString path(modulePath);
+		int pos = path.ReverseFind(_T('\\'));
+		if (pos >= 0)
+			path = path.Left(pos);
+		if (!path.IsEmpty() && path[path.GetLength() - 1] != _T('\\'))
+			path += _T('\\');
+		path += _T("fonts\\");
+		path += fileName;
+		return path;
+	}
+
+	bool EnsureFontsLoaded()
+	{
+		if (s_initTried)
+			return s_loaded;
+
+		s_initTried = true;
+		ModernUIGfx::EnsureGdiplusStartup();
+
+		const LPCTSTR files[] = {
+			_T("Pretendard-Regular.ttf"),
+			_T("Pretendard-Medium.ttf"),
+			_T("Pretendard-Bold.ttf")
+		};
+
+		for (int i = 0; i < (int)(sizeof(files) / sizeof(files[0])); ++i)
+		{
+			CString fullPath = BuildFontPath(files[i]);
+			if (::GetFileAttributes(fullPath) == INVALID_FILE_ATTRIBUTES)
+				continue;
+
+			if (::AddFontResourceEx(fullPath, FR_PRIVATE, 0) > 0)
+				++s_addedCount;
+
+			CStringW fullPathW(fullPath);
+			if (s_privateFonts.AddFontFile((LPCWSTR)fullPathW) == Gdiplus::Ok)
+				s_privateLoaded = true;
+		}
+
+		s_loaded = (s_addedCount > 0) || s_privateLoaded;
+		return s_loaded;
+	}
+
+	LPCTSTR GetUIFontFace()
+	{
+		EnsureFontsLoaded();
+		return s_loaded ? _T("Pretendard") : _T("Malgun Gothic");
+	}
+
+	void ApplyUIFontFace(LOGFONT& lf)
+	{
+		lf.lfQuality = CLEARTYPE_QUALITY;
+		_tcscpy_s(lf.lfFaceName, LF_FACESIZE, GetUIFontFace());
+	}
+
+	Gdiplus::FontFamily* CreateGdipFontFamily()
+	{
+		EnsureFontsLoaded();
+
+		if (s_privateLoaded)
+		{
+			const INT familyCount = s_privateFonts.GetFamilyCount();
+			if (familyCount > 0)
+			{
+				std::vector<Gdiplus::FontFamily> families((size_t)familyCount);
+				INT found = 0;
+				s_privateFonts.GetFamilies(familyCount, &families[0], &found);
+				for (INT i = 0; i < found; ++i)
+				{
+					if (families[(size_t)i].IsAvailable())
+					{
+						WCHAR szFamily[LF_FACESIZE] = { 0, };
+						families[(size_t)i].GetFamilyName(szFamily);
+						Gdiplus::FontFamily* pPrivateByEnum = new Gdiplus::FontFamily(szFamily, &s_privateFonts);
+						if (pPrivateByEnum->IsAvailable())
+							return pPrivateByEnum;
+						delete pPrivateByEnum;
+					}
+				}
+			}
+
+			Gdiplus::FontFamily* pPrivateByName = new Gdiplus::FontFamily(L"Pretendard", &s_privateFonts);
+			if (pPrivateByName->IsAvailable())
+				return pPrivateByName;
+			delete pPrivateByName;
+		}
+
+		Gdiplus::FontFamily* pFamily = new Gdiplus::FontFamily(L"Pretendard");
+		if (pFamily->IsAvailable())
+			return pFamily;
+		delete pFamily;
+
+		return new Gdiplus::FontFamily(L"Malgun Gothic");
+	}
+
+	Gdiplus::Font* CreateGdipFontFromLogFont(const LOGFONT& lf)
+	{
+		Gdiplus::FontFamily* pFamily = CreateGdipFontFamily();
+		if (pFamily == NULL)
+			return NULL;
+
+		INT style = (lf.lfWeight >= FW_BOLD) ? Gdiplus::FontStyleBold : Gdiplus::FontStyleRegular;
+		if (!pFamily->IsStyleAvailable(style))
+			style = Gdiplus::FontStyleRegular;
+
+		REAL sizePx = (REAL)((lf.lfHeight < 0) ? -lf.lfHeight : lf.lfHeight);
+		if (sizePx < 1.0f)
+			sizePx = 12.0f;
+
+		Gdiplus::Font* pFont = new Gdiplus::Font(pFamily, sizePx, style, Gdiplus::UnitPixel);
+		delete pFamily;
+
+		if (!pFont || pFont->GetLastStatus() != Gdiplus::Ok)
+		{
+			delete pFont;
+			return new Gdiplus::Font(L"Malgun Gothic", sizePx, style, Gdiplus::UnitPixel);
+		}
+		return pFont;
 	}
 }
 
@@ -673,10 +808,10 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 
 	Gdiplus::SolidBrush tb(txtColor);
-	Gdiplus::FontFamily ff(L"Malgun Gothic");
+	Gdiplus::FontFamily* pButtonFontFamily = ModernUIFont::CreateGdipFontFamily();
 	const Gdiplus::REAL footerFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
 	const Gdiplus::REAL normalFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
-	Gdiplus::Font font(&ff, isFooterAction ? footerFontSize : normalFontSize, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	Gdiplus::Font font(pButtonFontFamily, isFooterAction ? footerFontSize : normalFontSize, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	Gdiplus::StringFormat sf;
 	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
 	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
@@ -752,6 +887,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		sf.SetAlignment(Gdiplus::StringAlignmentNear);
 	}
 	g.DrawString(wt.c_str(), -1, &font, textRf, &sf, &tb);
+	delete pButtonFontFamily;
 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(pOldBmp);
@@ -1001,8 +1137,8 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		{
 			// Original GDI+ text rendering
 			Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 6, 52, 109));
-			Gdiplus::FontFamily fontFamily(L"Malgun Gothic");
-			Gdiplus::Font font(&fontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+			Gdiplus::FontFamily* pCheckFontFamily = ModernUIFont::CreateGdipFontFamily();
+			Gdiplus::Font font(pCheckFontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
 			Gdiplus::StringFormat format;
 			format.SetAlignment(Gdiplus::StringAlignmentNear);
@@ -1018,6 +1154,7 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 			std::wstring wText = kftc_to_wide(strText);
 			graphics.DrawString(wText.c_str(), -1, &font, textRect, &format, &textBrush);
+			delete pCheckFontFamily;
 		}
 	}
 }
@@ -1380,8 +1517,8 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		COLORREF tclr = disabled ? KFTC_DISABLED_TEXT : RGB(6,52,109);
 		Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, GetRValue(tclr), GetGValue(tclr), GetBValue(tclr)));
-		Gdiplus::FontFamily fontFamily(L"Malgun Gothic");
-		Gdiplus::Font font(&fontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+		Gdiplus::FontFamily* pToggleFontFamily = ModernUIFont::CreateGdipFontFamily();
+		Gdiplus::Font font(pToggleFontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
 		Gdiplus::StringFormat format;
 		format.SetAlignment(Gdiplus::StringAlignmentNear);
@@ -1397,6 +1534,7 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 		std::wstring wText = kftc_to_wide(strText);
 		graphics.DrawString(wText.c_str(), -1, &font, textRect, &format, &textBrush);
+		delete pToggleFontFamily;
 	}
 }
 
@@ -1750,8 +1888,8 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 					CFont* pFont = GetFont();
 					LOGFONT lf; ::ZeroMemory(&lf, sizeof(lf));
 					if (pFont && pFont->GetLogFont(&lf)) lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
-					else { lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx); _tcscpy_s(lf.lfFaceName, _T("Malgun Gothic")); }
-					lf.lfQuality = CLEARTYPE_QUALITY;
+					else lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
+					ModernUIFont::ApplyUIFontFace(lf);
 					m_hTextFontCache = ::CreateFontIndirect(&lf);
 				}
 
@@ -1812,12 +1950,7 @@ void CSkinnedComboBox::OnPaint()
      */
 
 	CPaintDC dc(this);
-	if (m_bInPaint)
-		return;
-
-	m_bInPaint = TRUE;
 	PaintComboToDC(dc);
-	m_bInPaint = FALSE;
 }
 
 LRESULT CSkinnedComboBox::OnPrintClientMsg(WPARAM wParam, LPARAM lParam)
@@ -2040,9 +2173,13 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 
 	if ((int)lpDIS->itemID < 0 || bEditArea)
 	{
-		dc.Detach();  // prevent ~CDC() from calling DeleteDC on Windows-owned DC
-		CClientDC clientDC(this);
-		PaintComboToDC(clientDC);
+		// Use CClientDC(this) so painting uses the combo's own DC (origin 0,0 = client top-left).
+		// lpDIS->hDC may have a viewport offset relative to the parent window coordinate space.
+		{
+			CClientDC clientDC(this);
+			PaintComboToDC(clientDC);
+		}
+		dc.Detach();
 		return;
 	}
 
@@ -2678,10 +2815,10 @@ BOOL CModernTabCtrl::Create(CWnd* pParent, UINT nID, const CRect& rect)
 
 	m_font.CreateFont(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, _T("Malgun Gothic"));
+		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
 	m_fontBold.CreateFont(13, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, 0,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, _T("Malgun Gothic"));
+		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
 
 	LPCTSTR cls = AfxRegisterWndClass(
 		CS_HREDRAW | CS_VREDRAW,
@@ -2829,7 +2966,7 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 
 	if (!m_pTabFontFamily)
 	{
-		m_pTabFontFamily = new Gdiplus::FontFamily(L"Malgun Gothic");
+		m_pTabFontFamily = ModernUIFont::CreateGdipFontFamily();
 		m_pTabFontN = new Gdiplus::Font(m_pTabFontFamily, 12.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 		m_pTabFontB = new Gdiplus::Font(m_pTabFontFamily, 12.5f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	}
@@ -3077,6 +3214,7 @@ void CInfoText::OnPaint()
 		LOGFONT lf{};
 		if (pFont && pFont->GetLogFont(&lf))
 		{
+			ModernUIFont::ApplyUIFontFace(lf);
 			lf.lfWeight = FW_SEMIBOLD; //  ет 
 			boldFont.CreateFontIndirect(&lf);
 			pOldFont = dc.SelectObject(&boldFont);
@@ -3217,14 +3355,15 @@ COLORREF fill = disabled ? KFTC_DISABLED_BG : (bHot ? KFTC_PRIMARY : RGB(232, 24
 		Gdiplus::Pen pen(Gdiplus::Color(90, 0, 0, 0), 1.0f);
 		g.DrawEllipse(&pen, rf);
 	}
-Gdiplus::FontFamily ff(L"Malgun Gothic");
-	Gdiplus::Font font(&ff, sz * 0.52f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	Gdiplus::FontFamily* pInfoFontFamily = ModernUIFont::CreateGdipFontFamily();
+	Gdiplus::Font font(pInfoFontFamily, sz * 0.52f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	Gdiplus::SolidBrush brText(Gdiplus::Color(255,
 		GetRValue(txt), GetGValue(txt), GetBValue(txt)));
 	Gdiplus::StringFormat sf;
 	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
 	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
 	g.DrawString(L"?", -1, &font, rf, &sf, &brText);
+	delete pInfoFontFamily;
 
 	// Blit to screen
 	::BitBlt(lpDIS->hDC, rect.left, rect.top, rect.Width(), rect.Height(),
@@ -3333,9 +3472,9 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 	Gdiplus::Graphics g(hdc);
 	g.SetPageUnit(Gdiplus::UnitPixel);
 
-	Gdiplus::FontFamily ff(L"Malgun Gothic");
-	Gdiplus::Font fTitle(&ff, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	Gdiplus::Font fBody(&ff, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 12), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+	Gdiplus::FontFamily* pPopoverCalcFamily = ModernUIFont::CreateGdipFontFamily();
+	Gdiplus::Font fTitle(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	Gdiplus::Font fBody(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 12), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
 	Gdiplus::StringFormat sfTitle;
 	sfTitle.SetAlignment(Gdiplus::StringAlignmentNear);
@@ -3382,6 +3521,7 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 	}
 
 	::ReleaseDC(hRef, hdc);
+	delete pPopoverCalcFamily;
 	return hTitle + hBody;
 }
 
@@ -3423,9 +3563,9 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			Gdiplus::Graphics gg(hdc);
 			gg.SetPageUnit(Gdiplus::UnitPixel);
 	
-			Gdiplus::FontFamily ff(L"Malgun Gothic");
-			Gdiplus::Font fTitle(&ff, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-			Gdiplus::Font fBody(&ff,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 12), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+			Gdiplus::FontFamily* pPopoverMeasureFamily = ModernUIFont::CreateGdipFontFamily();
+			Gdiplus::Font fTitle(pPopoverMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+			Gdiplus::Font fBody(pPopoverMeasureFamily,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 12), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 	
 			Gdiplus::StringFormat sfNoWrap;
 			sfNoWrap.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
@@ -3442,6 +3582,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	
 			idealTextW = max(MeasureOneLineW(m_strTitle, &fTitle), MeasureOneLineW(m_strBody, &fBody));
 			::ReleaseDC(hRef, hdc);
+			delete pPopoverMeasureFamily;
 		}
 	}
 	
@@ -3654,8 +3795,8 @@ void CModernPopover::RefreshLayered()
 		const float padBottom = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
 		const float gapTB = ModernUIDpi::ScaleF(m_hWnd, 8.0f);
 
-		Gdiplus::FontFamily ff(L"Malgun Gothic");
-		Gdiplus::Font fTitle(&ff, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 13),
+		Gdiplus::FontFamily* pPopoverPaintFamily = ModernUIFont::CreateGdipFontFamily();
+		Gdiplus::Font fTitle(pPopoverPaintFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 13),
 			Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 		Gdiplus::SolidBrush brTitle(Gdiplus::Color(255, 35, 45, 60));
 
@@ -3697,7 +3838,7 @@ void CModernPopover::RefreshLayered()
 		float bodyH = (cardY + cardH) - padBottom - bodyTop;
 		if (bodyH < 0) bodyH = 0;
 
-		Gdiplus::Font fBody(&ff, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 12),
+		Gdiplus::Font fBody(pPopoverPaintFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 12),
 			Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 		Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 92, 102, 118));
 		Gdiplus::StringFormat sfBody;
@@ -3755,6 +3896,8 @@ void CModernPopover::RefreshLayered()
 			if (y > bodyRc.Y + bodyRc.Height + 1.0f)
 				break;
 		}
+
+		delete pPopoverPaintFamily;
 	}
 
 	// Premultiply alpha (required for ULW_ALPHA / AC_SRC_ALPHA)
