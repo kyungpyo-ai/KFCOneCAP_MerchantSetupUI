@@ -245,6 +245,10 @@
 #define IDC_BTN_MULTIPAD2_INFO           5145
 #define IDC_MANAGE_LINK                  1592
 
+#define IDR_FONT_PRETENDARD_REGULAR      9001
+#define IDR_FONT_PRETENDARD_MEDIUM       9002
+#define IDR_FONT_PRETENDARD_BOLD         9003
+
 // Next default values for new objects
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS

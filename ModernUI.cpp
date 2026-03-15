@@ -2,6 +2,7 @@
 // CModernButton + CModernCheckBox + CPortToggleButton
 
 #include "stdafx.h"
+#include "resource.h"
 #include "ModernUI.h"
 #include <string>
 #include <vector>
@@ -170,21 +171,6 @@ namespace ModernUIFont
 	static bool s_privateLoaded = false;
 	static std::wstring s_cachedFamilyName;
 
-	static CString BuildFontPath(LPCTSTR fileName)
-	{
-		TCHAR modulePath[MAX_PATH] = { 0, };
-		::GetModuleFileName(NULL, modulePath, MAX_PATH);
-		CString path(modulePath);
-		int pos = path.ReverseFind(_T('\\'));
-		if (pos >= 0)
-			path = path.Left(pos);
-		if (!path.IsEmpty() && path[path.GetLength() - 1] != _T('\\'))
-			path += _T('\\');
-		path += _T("fonts\\");
-		path += fileName;
-		return path;
-	}
-
 	bool EnsureFontsLoaded()
 	{
 		if (s_initTried)
@@ -194,24 +180,33 @@ namespace ModernUIFont
 		ModernUIGfx::EnsureGdiplusStartup();
 		if (!s_pPrivateFonts) s_pPrivateFonts = new Gdiplus::PrivateFontCollection();
 
-		const LPCTSTR files[] = {
-			_T("Pretendard-Regular.ttf"),
-			_T("Pretendard-Medium.ttf"),
-			_T("Pretendard-Bold.ttf")
+		HINSTANCE hInst = AfxGetResourceHandle();
+		const int resIDs[] = {
+			IDR_FONT_PRETENDARD_REGULAR,
+			IDR_FONT_PRETENDARD_MEDIUM,
+			IDR_FONT_PRETENDARD_BOLD
 		};
 
-		for (int i = 0; i < (int)(sizeof(files) / sizeof(files[0])); ++i)
+		for (int i = 0; i < (int)(sizeof(resIDs) / sizeof(resIDs[0])); ++i)
 		{
-			CString fullPath = BuildFontPath(files[i]);
-			if (::GetFileAttributes(fullPath) == INVALID_FILE_ATTRIBUTES)
-				continue;
+			// RT_RCDATA (=10) must be used; FindResource does not accept string "RCDATA"
+			HRSRC hRes = ::FindResource(hInst, MAKEINTRESOURCE(resIDs[i]), RT_RCDATA);
+			if (!hRes) continue;
+			HGLOBAL hGlobal = ::LoadResource(hInst, hRes);
+			if (!hGlobal) continue;
+			const void* pData = ::LockResource(hGlobal);
+			DWORD dwSize = ::SizeofResource(hInst, hRes);
+			if (!pData || dwSize == 0) continue;
 
-			if (::AddFontResourceEx(fullPath, FR_PRIVATE, 0) > 0)
-				++s_addedCount;
-
-			CStringW fullPathW(fullPath);
-			if (s_pPrivateFonts->AddFontFile((LPCWSTR)fullPathW) == Gdiplus::Ok)
+			// GDI+: private font collection (used by CreateGdipFontFamily)
+			if (s_pPrivateFonts->AddMemoryFont(pData, (INT)dwSize) == Gdiplus::Ok)
 				s_privateLoaded = true;
+
+			// GDI: register for CreateFontIndirect by face name
+			DWORD nFonts = 0;
+			HANDLE hFont = ::AddFontMemResourceEx(const_cast<void*>(pData), dwSize, NULL, &nFonts);
+			if (hFont && nFonts > 0)
+				++s_addedCount;
 		}
 
 		s_loaded = (s_addedCount > 0) || s_privateLoaded;

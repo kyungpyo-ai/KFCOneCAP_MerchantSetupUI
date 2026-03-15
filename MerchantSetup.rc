@@ -201,4 +201,14 @@ END
 
 
 /////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Font resources (embedded TTF)
+//
+
+IDR_FONT_PRETENDARD_REGULAR  RCDATA  "fonts\Pretendard-Regular.ttf"
+IDR_FONT_PRETENDARD_MEDIUM   RCDATA  "fonts\Pretendard-Medium.ttf"
+IDR_FONT_PRETENDARD_BOLD     RCDATA  "fonts\Pretendard-Bold.ttf"
+
 #endif    // not APSTUDIO_INVOKED
