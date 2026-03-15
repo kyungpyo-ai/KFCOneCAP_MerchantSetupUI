@@ -381,22 +381,22 @@ void CKFTCOneCAPDlg::EnsureFonts()
     // --- (A) MFC CFont 객체 생성 섹션 ---
 
     // 1. 메인 타이틀 (KFTCOneCAP) - 18pt, Extra Bold(800)
-    lf.lfHeight = -MulDiv(18, dpi, 72);
+    lf.lfHeight = -MulDiv(19, dpi, 72);
     lf.lfWeight = FW_EXTRABOLD;
     m_fontTitle.CreateFontIndirect(&lf);
 
     // 2. 서브 타이틀 (버전 정보 등) - 11pt, Normal
-    lf.lfHeight = -MulDiv(11, dpi, 72);
+    lf.lfHeight = -MulDiv(13, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontSubtitle.CreateFontIndirect(&lf);
 
     // 3. 카드 제목 (리더기 설정 등) - 14pt, Bold
-    lf.lfHeight = -MulDiv(14, dpi, 72);
+    lf.lfHeight = -MulDiv(15, dpi, 72);
     lf.lfWeight = FW_BOLD;
     m_fontCardTitle.CreateFontIndirect(&lf);
 
     // 4. 카드 설명 (두 줄 설명) - 10pt, Normal
-    lf.lfHeight = -MulDiv(10, dpi, 72);
+    lf.lfHeight = -MulDiv(11, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontCardDesc.CreateFontIndirect(&lf);
 

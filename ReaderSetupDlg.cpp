@@ -147,12 +147,12 @@ void CReaderSetupDlg::EnsureFonts()
 	m_fontSection.CreateFontIndirect(&lf);
 
 	// Normal
-	lf.lfHeight = -SX(13);
+	lf.lfHeight = -SX(14);
 	lf.lfWeight = FW_NORMAL;
 	m_fontNormal.CreateFontIndirect(&lf);
 
 	// Label
-	lf.lfHeight = -SX(13);
+	lf.lfHeight = -SX(14);
 	lf.lfWeight = FW_NORMAL;
 	m_fontLabel.CreateFontIndirect(&lf);
 
@@ -469,12 +469,12 @@ void CReaderSetupDlg::LayoutControls()
 	const int padR = SX(22);
 	const int comboW = SX(178);
 	const int btnW = SX(kReaderActionButtonWidth);
-	const int btnH = SX(36);
+	const int btnH = SX(37);
 	const int gap = SX(8);
 	const int toggleW = SX(52);
 	const int toggleH = SX(28);
 	const int rowComboY = SX(34);
-	const int rowBtnY = SX(76);
+	const int rowBtnY = SX(84);
 	const int openLabelW = SX(56);
 	const int multiLabelW = SX(92);
 	const int textGap = SX(8);
@@ -490,16 +490,19 @@ void CReaderSetupDlg::LayoutControls()
 			int x0 = card.left + padL;
 			int yCombo = card.top + rowComboY;
 			cb.SetWindowPos(NULL, x0, yCombo, comboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
+		cb.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(SX(37) - 2));
+		cb.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(SX(37) - 2));
 
 			int xTogglePad = card.right - padR - toggleW - SX(22);
 			int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
 			int xToggleOpen = xTogglePadLabel - toggleBlockGap - (toggleW + textGap + openLabelW);
 			if (xToggleOpen < x0 + comboW + SX(16))
 				xToggleOpen = x0 + comboW + SX(16);
-			tgOpen.SetWindowPos(NULL, xToggleOpen, yCombo,
+			int yToggle = yCombo + (SX(37) - toggleH) / 2;
+			tgOpen.SetWindowPos(NULL, xToggleOpen, yToggle,
 				toggleW + textGap + openLabelW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
-			tgPad.SetWindowPos(NULL, xTogglePadLabel, yCombo,
+			tgPad.SetWindowPos(NULL, xTogglePadLabel, yToggle,
 				toggleW + textGap + multiLabelW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 			int yBtn = card.top + rowBtnY;
@@ -539,11 +542,11 @@ void CReaderSetupDlg::LayoutControls()
 	int qComboW = SX(120);
 	CRect rcSearchCombo;
 	m_search_date.GetWindowRect(&rcSearchCombo);
-	int qVisibleH = rcSearchCombo.Height();
-	if (qVisibleH <= 0)
-		qVisibleH = SX(28);
+	int qVisibleH = SX(37);
 	int qy = queryBox.top + (queryBox.Height() - qVisibleH) / 2 + SX(2);
 	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(SX(37) - 2));
+	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(SX(37) - 2));
 	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(78), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 커스텀 표는 OnPaint에서 직접 그리고, 실제 리스트는 데이터 저장용으로만 숨긴다.
@@ -854,9 +857,10 @@ void CReaderSetupDlg::ApplyDialogFonts()
 {
 	ApplyFontIfWindow(m_comport1, m_fontNormal);
 	
-	m_comport1.SetTextPx(13);
-	m_comport2.SetTextPx(13);
+	m_comport1.SetTextPx(14);
+	m_comport2.SetTextPx(14);
 	ApplyFontIfWindow(m_search_date, m_fontNormal);
+	m_search_date.SetTextPx(14);
 	ApplyFontIfWindow(m_reader_init1, m_fontNormal);
 	ApplyFontIfWindow(m_status_check1, m_fontNormal);
 	ApplyFontIfWindow(m_keydown1, m_fontNormal);
@@ -1275,7 +1279,7 @@ void CReaderSetupDlg::OnPaint()
 		}
 
 		// Card terminal icon: centered, all elements strictly inside body
-		const float tW = bsz * 0.56f, tH = bsz * 0.76f;
+		const float tW = bsz * 0.52f, tH = bsz * 0.60f;
 		const float tX = bx + (bsz - tW) * 0.5f;
 		const float tY = by + (bsz - tH) * 0.5f;
 		{
@@ -1339,7 +1343,7 @@ void CReaderSetupDlg::OnPaint()
 			// Accent bar: 4x16px rounded rect (matches ShopSetupDlg DrawMinCard)
 			const float barW = 4.0f, barH = 14.0f, barR = 2.0f, bd = barR * 2.0f;
 			const float barX = (float)(pt.x - SX(10));
-			const float barY = (float)pt.y + ((float)SX(20) - barH) * 0.5f;
+			const float barY = (float)pt.y + ((float)SX(28) - barH) * 0.5f;
 			Gdiplus::GraphicsPath bp;
 			bp.AddArc(barX, barY, bd, bd, 180, 90);
 			bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
@@ -1351,8 +1355,8 @@ void CReaderSetupDlg::OnPaint()
 			// Section title text: GDI DrawText
 			CFont* pOldSec = memDC.SelectObject(&m_fontSection);
 			memDC.SetTextColor(RGB(26, 32, 44));
-			CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(20));
-			memDC.DrawText(text, rcSec, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
+			CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(28));
+			memDC.DrawText(text, rcSec, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 			memDC.SelectObject(pOldSec);
 		};
 
@@ -1409,7 +1413,7 @@ void CReaderSetupDlg::OnPaint()
 			memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
 
 			const int comboW = SX(178);
-			const int btnH = SX(36);
+			const int btnH = SX(37);
 			const int x0 = r.left + SX(64);
 			const int yCombo = r.top + SX(34);
 			const int toggleW = SX(52);

@@ -3455,7 +3455,7 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 
 	Gdiplus::FontFamily* pPopoverCalcFamily = ModernUIFont::CreateGdipFontFamily();
 	Gdiplus::Font fTitle(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	Gdiplus::Font fBody(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 12), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+	Gdiplus::Font fBody(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
 	Gdiplus::StringFormat sfTitle;
 	sfTitle.SetAlignment(Gdiplus::StringAlignmentNear);
@@ -3546,7 +3546,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	
 			Gdiplus::FontFamily* pPopoverMeasureFamily = ModernUIFont::CreateGdipFontFamily();
 			Gdiplus::Font fTitle(pPopoverMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-			Gdiplus::Font fBody(pPopoverMeasureFamily,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 12), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+			Gdiplus::Font fBody(pPopoverMeasureFamily,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 	
 			Gdiplus::StringFormat sfNoWrap;
 			sfNoWrap.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
@@ -3717,6 +3717,7 @@ void CModernPopover::RefreshLayered()
 
 	ModernUIGfx::EnsureGdiplusStartup();
 
+	float cardX_ = 0, cardY_ = 0, cardW_ = 0, cardH_ = 0;  // saved for GDI text after scope
 	{
 		// GDI+ bitmap wraps the DIB (BGRA in memory == PixelFormat32bppARGB)
 		Gdiplus::Bitmap bmpGdi(W, H, W * 4, PixelFormat32bppARGB, pvBits);
@@ -3738,6 +3739,7 @@ void CModernPopover::RefreshLayered()
 		const float cardY = (float)(shadowPad + arrowH);
 		const float cardW = (float)(W - 2 * shadowPad);
 		const float cardH = (float)m_nCardH;
+		cardX_ = cardX; cardY_ = cardY; cardW_ = cardW; cardH_ = cardH;
 		Gdiplus::RectF cardRc(cardX, cardY, cardW, cardH);
 
 		// -- Build popover shape (card + arrow) for shadow/body --
@@ -3790,6 +3792,10 @@ void CModernPopover::RefreshLayered()
 		const float textW = cardW - padX * 2.0f;
 		float curY = cardY + padTop;
 
+		// Collect GDI text draw calls; execute after GDI+ scope to avoid pvBits conflict
+		struct PopTxt_ { RECT rc; std::wstring text; COLORREF clr; DWORD flags; BOOL bBold; };
+		std::vector<PopTxt_> popTxt_;
+
 		// Title (single line)
 		Gdiplus::RectF titleRc(cardX + padX, curY, textW, 0.0f);
 		if (!m_strTitle.IsEmpty())
@@ -3807,7 +3813,10 @@ void CModernPopover::RefreshLayered()
 
 			titleRc.X = SnapF(titleRc.X);
 			titleRc.Y = SnapF(titleRc.Y);
-			g.DrawString(wTitle.c_str(), -1, &fTitle, titleRc, &sfTitle, &brTitle);
+			{
+				RECT rcT = { (LONG)titleRc.X, (LONG)titleRc.Y, (LONG)(titleRc.X + titleRc.Width), (LONG)(titleRc.Y + titleRc.Height) };
+				popTxt_.push_back({rcT, wTitle, RGB(35, 45, 60), DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS, TRUE});
+			}
 			curY += titleRc.Height;
 
 			if (!m_strBody.IsEmpty())
@@ -3819,7 +3828,7 @@ void CModernPopover::RefreshLayered()
 		float bodyH = (cardY + cardH) - padBottom - bodyTop;
 		if (bodyH < 0) bodyH = 0;
 
-		Gdiplus::Font fBody(pPopoverPaintFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 12),
+		Gdiplus::Font fBody(pPopoverPaintFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 14),
 			Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 		Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 92, 102, 118));
 		Gdiplus::StringFormat sfBody;
@@ -3870,15 +3879,39 @@ void CModernPopover::RefreshLayered()
 			lineRc.X = SnapF(lineRc.X);
 			lineRc.Y = SnapF(lineRc.Y);
 
-			g.DrawString(wLine.c_str(), -1, &fBody, lineRc, &sfBodyLine, &brBodyText);
+			{
+				RECT rcL = { (LONG)lineRc.X, (LONG)lineRc.Y, (LONG)(lineRc.X + lineRc.Width), (LONG)(lineRc.Y + lineRc.Height) };
+				popTxt_.push_back({rcL, wLine, RGB(92, 102, 118), DT_LEFT | DT_TOP | DT_NOPREFIX | DT_WORDBREAK, FALSE});
+			}
 
-			y += hLine + extraLead;
+			y = SnapF(y + hLine + extraLead);
 
 			if (y > bodyRc.Y + bodyRc.Height + 1.0f)
 				break;
 		}
 
 		delete pPopoverPaintFamily;
+		// --- GDI text: draw after GDI+ scope closed (hdcMem writes directly to pvBits) ---
+		{
+			LOGFONT lfGT = {}; lfGT.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGT.lfWeight = FW_BOLD;   ModernUIFont::ApplyUIFontFace(lfGT);
+			LOGFONT lfGB = {}; lfGB.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGB.lfWeight = FW_NORMAL; ModernUIFont::ApplyUIFontFace(lfGB);
+			HFONT hFT = ::CreateFontIndirect(&lfGT);
+			HFONT hFB = ::CreateFontIndirect(&lfGB);
+			for (const auto& tc : popTxt_) {
+				HFONT hF = tc.bBold ? hFT : hFB;
+				HFONT hOld = (HFONT)::SelectObject(hdcMem, hF);
+				::SetTextColor(hdcMem, tc.clr);
+				::SetBkMode(hdcMem, TRANSPARENT);
+				RECT rcD = tc.rc; ::DrawTextW(hdcMem, tc.text.c_str(), -1, &rcD, tc.flags);
+				::SelectObject(hdcMem, hOld);
+			}
+			::DeleteObject(hFT); ::DeleteObject(hFB);
+			const int ax0=max(0,(int)cardX_), ay0=max(0,(int)cardY_);
+			const int ax1=min(W,(int)(cardX_+cardW_)), ay1=min(H,(int)(cardY_+cardH_));
+			for (int fy=ay0; fy<ay1; fy++) {
+				BYTE* row=pvBits+fy*W*4; for (int fx=ax0;fx<ax1;fx++) { if(row[fx*4+3]==0) row[fx*4+3]=255; }
+			}
+		}
 	}
 
 	// Premultiply alpha (required for ULW_ALPHA / AC_SRC_ALPHA)
