@@ -2803,6 +2803,7 @@ BEGIN_MESSAGE_MAP(CModernTabCtrl, CWnd)
 	ON_WM_LBUTTONDOWN()
 	ON_WM_MOUSEMOVE()
 	ON_WM_MOUSELEAVE()
+	ON_WM_SETCURSOR()
 	ON_MESSAGE(WM_MOUSEHOVER, OnMouseHover)
 END_MESSAGE_MAP()
 
@@ -3188,6 +3189,16 @@ void CModernTabCtrl::OnMouseLeave()
 LRESULT CModernTabCtrl::OnMouseHover(WPARAM /*wp*/, LPARAM /*lp*/)
 {
 	return 0;
+}
+
+BOOL CModernTabCtrl::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (nHitTest == HTCLIENT)
+	{
+		::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		return TRUE;
+	}
+	return CWnd::OnSetCursor(pWnd, nHitTest, message);
 }
 
 // ============================================================================

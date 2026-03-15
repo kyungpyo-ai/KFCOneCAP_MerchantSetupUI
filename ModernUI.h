@@ -638,6 +638,7 @@ protected:
     afx_msg void    OnMouseMove(UINT nFlags, CPoint pt);
     afx_msg void    OnMouseLeave();
     afx_msg LRESULT OnMouseHover(WPARAM wp, LPARAM lp);
+    afx_msg BOOL    OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     DECLARE_MESSAGE_MAP()
 
 private:
