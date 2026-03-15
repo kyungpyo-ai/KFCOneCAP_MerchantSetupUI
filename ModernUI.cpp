@@ -438,10 +438,13 @@ CModernButton::CModernButton()
 	m_style = ButtonStyle::Auto; // default: detect style from button text
 	m_nTextPx = 14;
 	m_bLoading = FALSE;
+	m_hCachedFont     = NULL;
+	m_nCachedFontHeight = 0;
 }
 
 CModernButton::~CModernButton()
 {
+	if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
 }
 
 
@@ -838,10 +841,16 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	const float footerFontSize = ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
 	const float normalFontSize = (m_nTextPx > 0) ? ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx) : ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
-	LOGFONT lfBtn = {}; lfBtn.lfHeight = -(int)(isFooterAction ? footerFontSize : normalFontSize); lfBtn.lfWeight = FW_BOLD; lfBtn.lfQuality = CLEARTYPE_QUALITY;
-	ModernUIFont::ApplyUIFontFace(lfBtn);
-	HFONT hBtnFont = ::CreateFontIndirect(&lfBtn);
-	HFONT hOldBtnFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), hBtnFont);
+	const int wantedFontH = -(int)(isFooterAction ? footerFontSize : normalFontSize);
+	if (!m_hCachedFont || m_nCachedFontHeight != wantedFontH)
+	{
+		if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
+		LOGFONT lfBtn = {}; lfBtn.lfHeight = wantedFontH; lfBtn.lfWeight = FW_BOLD; lfBtn.lfQuality = CLEARTYPE_QUALITY;
+		ModernUIFont::ApplyUIFontFace(lfBtn);
+		m_hCachedFont       = ::CreateFontIndirect(&lfBtn);
+		m_nCachedFontHeight = wantedFontH;
+	}
+	HFONT hOldBtnFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), m_hCachedFont);
 	::SetTextColor(memDC.GetSafeHdc(), RGB(txtColor.GetR(), txtColor.GetG(), txtColor.GetB()));
 	::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
 	UINT dtHAlign = DT_CENTER;
@@ -915,7 +924,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	RECT rcBtnTxt = { (LONG)textRf.X, (LONG)textRf.Y, (LONG)textRf.GetRight(), (LONG)textRf.GetBottom() };
 	::DrawTextW(memDC.GetSafeHdc(), wt.c_str(), -1, &rcBtnTxt, dtHAlign | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
 	::SelectObject(memDC.GetSafeHdc(), hOldBtnFont);
-	::DeleteObject(hBtnFont);
 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
 }
@@ -947,11 +955,14 @@ CModernCheckBox::CModernCheckBox()
 
 	m_bUseGdiText = FALSE;      // : (GDI+) 
 	m_nGdiTextYOffset = 0;      // GDI   
+	m_hCachedFont      = NULL;
+	m_nCachedFontHeight = 0;
 }
 
 
 CModernCheckBox::~CModernCheckBox()
 {
+	if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
 }
 
 void CModernCheckBox::SetUnderlayColor(COLORREF underlayBg)
@@ -1162,10 +1173,16 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		}
 		else
 		{
-			LOGFONT lfChk = {}; lfChk.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfChk.lfWeight = FW_NORMAL; lfChk.lfQuality = CLEARTYPE_QUALITY;
-			ModernUIFont::ApplyUIFontFace(lfChk);
-			HFONT hChkFont = ::CreateFontIndirect(&lfChk);
-			HFONT hOldChkFont = (HFONT)::SelectObject(pDC->GetSafeHdc(), hChkFont);
+			const int wantedChkH = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx);
+			if (!m_hCachedFont || m_nCachedFontHeight != wantedChkH)
+			{
+				if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
+				LOGFONT lfChk = {}; lfChk.lfHeight = wantedChkH; lfChk.lfWeight = FW_NORMAL; lfChk.lfQuality = CLEARTYPE_QUALITY;
+				ModernUIFont::ApplyUIFontFace(lfChk);
+				m_hCachedFont       = ::CreateFontIndirect(&lfChk);
+				m_nCachedFontHeight = wantedChkH;
+			}
+			HFONT hOldChkFont = (HFONT)::SelectObject(pDC->GetSafeHdc(), m_hCachedFont);
 			::SetTextColor(pDC->GetSafeHdc(), RGB(6, 52, 109));
 			::SetBkMode(pDC->GetSafeHdc(), TRANSPARENT);
 			UINT dtChk = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
@@ -1174,7 +1191,6 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			std::wstring wText = kftc_to_wide(strText);
 			::DrawTextW(pDC->GetSafeHdc(), wText.c_str(), -1, &rcChkTxt, dtChk);
 			::SelectObject(pDC->GetSafeHdc(), hOldChkFont);
-			::DeleteObject(hChkFont);
 		}
 	}
 }
@@ -2807,17 +2823,11 @@ END_MESSAGE_MAP()
 // -----------------------------------------------------------
 CModernTabCtrl::CModernTabCtrl()
 	: m_nSel(0), m_nHover(-1), m_bTrack(false)
-	, m_pTabFontFamily(nullptr)
-	, m_pTabFontN(nullptr)
-	, m_pTabFontB(nullptr)
 {
 }
 
 CModernTabCtrl::~CModernTabCtrl()
 {
-	delete m_pTabFontB;      m_pTabFontB      = nullptr;
-	delete m_pTabFontN;      m_pTabFontN      = nullptr;
-	delete m_pTabFontFamily; m_pTabFontFamily = nullptr;
 	if (m_font.GetSafeHandle())     m_font.DeleteObject();
 	if (m_fontBold.GetSafeHandle()) m_fontBold.DeleteObject();
 	if (m_brushBg.GetSafeHandle())  m_brushBg.DeleteObject();
@@ -3413,6 +3423,7 @@ CModernPopover* CModernPopover::s_pPopoverInst = NULL;
 CModernPopover::CModernPopover()
 	: m_nArrowX(0), m_nCardW(0), m_nCardH(0), m_bVisible(FALSE), m_nBlurPad(0)
 {
+	m_pFontFamily = nullptr;
 }
 
 
@@ -3483,7 +3494,7 @@ void CModernPopover::AddPopoverPath(Gdiplus::GraphicsPath& path, const Gdiplus::
 
 
 
-static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CString& body, int innerW)
+static int MeasurePopoverTextHeight(HWND hRef, Gdiplus::FontFamily* pMeasureFamily, const CString& title, const CString& body, int innerW)
 {
 	// Measure with the SAME font stack / sizes as the popover drawing (GDI+).
 	// This prevents "last line clipped" issues caused by mismatched measurement vs render fonts.
@@ -3496,9 +3507,9 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 	Gdiplus::Graphics g(hdc);
 	g.SetPageUnit(Gdiplus::UnitPixel);
 
-	Gdiplus::FontFamily* pPopoverCalcFamily = ModernUIFont::CreateGdipFontFamily();
-	Gdiplus::Font fTitle(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	Gdiplus::Font fBody(pPopoverCalcFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+
+	Gdiplus::Font fTitle(pMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	Gdiplus::Font fBody(pMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
 	Gdiplus::StringFormat sfTitle;
 	sfTitle.SetAlignment(Gdiplus::StringAlignmentNear);
@@ -3545,7 +3556,7 @@ static int MeasurePopoverTextHeight(HWND hRef, const CString& title, const CStri
 	}
 
 	::ReleaseDC(hRef, hdc);
-	delete pPopoverCalcFamily;
+
 	return hTitle + hBody;
 }
 
@@ -3554,6 +3565,10 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 {
 	m_strTitle = title;
 	m_strBody = body;
+
+	// Create FontFamily once; reused by measurement and RefreshLayered
+	delete m_pFontFamily;
+	m_pFontFamily = ModernUIFont::CreateGdipFontFamily();
 
 	RegisterPopoverClass();
 
@@ -3587,9 +3602,8 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			Gdiplus::Graphics gg(hdc);
 			gg.SetPageUnit(Gdiplus::UnitPixel);
 	
-			Gdiplus::FontFamily* pPopoverMeasureFamily = ModernUIFont::CreateGdipFontFamily();
-			Gdiplus::Font fTitle(pPopoverMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-			Gdiplus::Font fBody(pPopoverMeasureFamily,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+			Gdiplus::Font fTitle(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+			Gdiplus::Font fBody(m_pFontFamily,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 	
 			Gdiplus::StringFormat sfNoWrap;
 			sfNoWrap.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
@@ -3606,7 +3620,6 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	
 			idealTextW = max(MeasureOneLineW(m_strTitle, &fTitle), MeasureOneLineW(m_strBody, &fBody));
 			::ReleaseDC(hRef, hdc);
-			delete pPopoverMeasureFamily;
 		}
 	}
 	
@@ -3625,7 +3638,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 	const int gapTB = ModernUIDpi::Scale(hRef, 8);
 
 	int innerW = cardW - padL - padR;
-	int textH = MeasurePopoverTextHeight(hRef, m_strTitle, m_strBody, innerW);
+	int textH = MeasurePopoverTextHeight(hRef, m_pFontFamily, m_strTitle, m_strBody, innerW);
 
 	// Title/body are stacked with a small gap when both exist
 	if (!m_strTitle.IsEmpty() && !m_strBody.IsEmpty())
@@ -3821,8 +3834,7 @@ void CModernPopover::RefreshLayered()
 		const float padBottom = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
 		const float gapTB = ModernUIDpi::ScaleF(m_hWnd, 8.0f);
 
-		Gdiplus::FontFamily* pPopoverPaintFamily = ModernUIFont::CreateGdipFontFamily();
-		Gdiplus::Font fTitle(pPopoverPaintFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 13),
+		Gdiplus::Font fTitle(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 13),
 			Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 		Gdiplus::SolidBrush brTitle(Gdiplus::Color(255, 35, 45, 60));
 
@@ -3871,7 +3883,7 @@ void CModernPopover::RefreshLayered()
 		float bodyH = (cardY + cardH) - padBottom - bodyTop;
 		if (bodyH < 0) bodyH = 0;
 
-		Gdiplus::Font fBody(pPopoverPaintFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 14),
+		Gdiplus::Font fBody(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 14),
 			Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 		Gdiplus::SolidBrush brBodyText(Gdiplus::Color(255, 92, 102, 118));
 		Gdiplus::StringFormat sfBody;
@@ -3933,7 +3945,7 @@ void CModernPopover::RefreshLayered()
 				break;
 		}
 
-		delete pPopoverPaintFamily;
+
 		// --- GDI text: draw after GDI+ scope closed (hdcMem writes directly to pvBits) ---
 		{
 			LOGFONT lfGT = {}; lfGT.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGT.lfWeight = FW_BOLD;   ModernUIFont::ApplyUIFontFace(lfGT);

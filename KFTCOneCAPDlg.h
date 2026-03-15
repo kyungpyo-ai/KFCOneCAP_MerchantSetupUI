@@ -120,6 +120,8 @@ private:
     // 렌더링 시 매번 생성하지 않고 여기서 재사용하여 성능을 최적화합니다.
     Gdiplus::Font* m_pGdiFontTitle;
     Gdiplus::Font* m_pGdiFontDesc;
+    Gdiplus::Font* m_pGdiFontHeader;
+    Gdiplus::Font* m_pGdiFontSub;
 
     enum EPendingOpen { PENDING_NONE = 0, PENDING_SHOP, PENDING_READER };
 

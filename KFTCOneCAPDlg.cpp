@@ -255,6 +255,8 @@ CKFTCOneCAPDlg::CKFTCOneCAPDlg(CWnd* pParent /*=NULL*/)
     , m_nFooterDividerY(0)
     , m_pGdiFontTitle(NULL) // 추가: GDI+ 폰트 포인터 초기화
     , m_pGdiFontDesc(NULL)  // 추가: GDI+ 폰트 포인터 초기화
+    , m_pGdiFontHeader(NULL)
+    , m_pGdiFontSub(NULL)
 {
 }
 
@@ -267,6 +269,8 @@ CKFTCOneCAPDlg::~CKFTCOneCAPDlg()
     }
     if (m_pGdiFontDesc != NULL) {
         delete m_pGdiFontDesc;
+    if (m_pGdiFontHeader != NULL) { delete m_pGdiFontHeader; m_pGdiFontHeader = NULL; }
+    if (m_pGdiFontSub    != NULL) { delete m_pGdiFontSub;    m_pGdiFontSub    = NULL; }
         m_pGdiFontDesc = NULL;
     }
 
@@ -409,20 +413,22 @@ void CKFTCOneCAPDlg::EnsureFonts()
     // --- (B) GDI+ 캐시 폰트 생성 섹션 (성능 최적화 핵심) ---
 
     // 현재 다이얼로그의 DC를 잠시 빌려 폰트 생성의 기준점(Resolution)으로 삼습니다.
-    HDC hDC = ::GetDC(m_hWnd);
-    if (hDC != NULL)
     {
-        // 1. 카드 제목용 GDI+ 폰트 캐싱
         LOGFONT lfCardTitle;
         m_fontCardTitle.GetLogFont(&lfCardTitle);
-        m_pGdiFontTitle = ModernUIFont::CreateGdipFontFromLogFont(lfCardTitle);
+        m_pGdiFontTitle  = ModernUIFont::CreateGdipFontFromLogFont(lfCardTitle);
 
-        // 2. 카드 설명용 GDI+ 폰트 캐싱
         LOGFONT lfCardDesc;
         m_fontCardDesc.GetLogFont(&lfCardDesc);
-        m_pGdiFontDesc = ModernUIFont::CreateGdipFontFromLogFont(lfCardDesc);
+        m_pGdiFontDesc   = ModernUIFont::CreateGdipFontFromLogFont(lfCardDesc);
 
-        ::ReleaseDC(m_hWnd, hDC);
+        LOGFONT lfHdr;
+        m_fontTitle.GetLogFont(&lfHdr);
+        m_pGdiFontHeader = ModernUIFont::CreateGdipFontFromLogFont(lfHdr);
+
+        LOGFONT lfSub;
+        m_fontSubtitle.GetLogFont(&lfSub);
+        m_pGdiFontSub    = ModernUIFont::CreateGdipFontFromLogFont(lfSub);
     }
 
     // [3] 모든 폰트 준비 완료 플래그 설정
@@ -546,12 +552,8 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     }
 
     // --- 타이틀/서브타이틀 그리기 (GDI+ 방식으로 교체) ---
-    LOGFONT lfTitle, lfSub;
-    m_fontTitle.GetLogFont(&lfTitle);
-    m_fontSubtitle.GetLogFont(&lfSub);
-
-    Font* pTitleFont = ModernUIFont::CreateGdipFontFromLogFont(lfTitle);
-    Font* pSubFont = ModernUIFont::CreateGdipFontFromLogFont(lfSub);
+    Gdiplus::Font* pTitleFont = m_pGdiFontHeader;
+    Gdiplus::Font* pSubFont   = m_pGdiFontSub;
 
     SolidBrush titleBrush(Color(255, GetRValue(kTitleText), GetGValue(kTitleText), GetBValue(kTitleText)));
     SolidBrush subBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
@@ -562,8 +564,6 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     if (pSubFont != NULL)
         g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(40))), &subBrush);
 
-    delete pTitleFont;
-    delete pSubFont;
 }
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
 {

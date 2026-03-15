@@ -230,6 +230,10 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+
+    // Cached font handle (avoids CreateFontIndirect on every paint call)
+    HFONT    m_hCachedFont;
+    int      m_nCachedFontHeight;
     BOOL     m_bNcStylePrepared;
 
     // Cached back-buffer (reused across DrawItem calls)
@@ -298,6 +302,10 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+
+    // Cached font handle (avoids CreateFontIndirect on every paint call)
+    HFONT    m_hCachedFont;
+    int      m_nCachedFontHeight;
 };
 
 // ========================================
@@ -627,8 +635,6 @@ public:
     int  GetCurSel() const { return m_nSel; }
     void SetCurSel(int n);
     int  GetCount()  const { return (int)m_items.size(); }
-
-    //    (px) - еш   ЕZ 
     static const int kBarH = 44;
 
 protected:
@@ -650,9 +656,6 @@ private:
     CFont  m_font;
     CFont  m_fontBold;
     CBrush m_brushBg;
-    Gdiplus::FontFamily* m_pTabFontFamily;
-    Gdiplus::Font*       m_pTabFontN;
-    Gdiplus::Font*       m_pTabFontB;
 
     RectF GetTabRect(int idx) const;
     void DrawTab(Graphics& g, int idx, const RectF& rc);
@@ -694,7 +697,7 @@ class CModernPopover : public CWnd
 {
 public:
     CModernPopover();
-    virtual ~CModernPopover() { if (s_hMouseHook && s_pPopoverInst == this) { ::UnhookWindowsHookEx(s_hMouseHook); s_hMouseHook = NULL; s_pPopoverInst = NULL; } }
+    virtual ~CModernPopover() { if (s_hMouseHook && s_pPopoverInst == this) { ::UnhookWindowsHookEx(s_hMouseHook); s_hMouseHook = NULL; s_pPopoverInst = NULL; } delete m_pFontFamily; m_pFontFamily = nullptr; }
 
     void ShowAt(const CRect& anchorScreenRect, LPCTSTR title, LPCTSTR body, CWnd* pParent);
     void Hide();
@@ -719,6 +722,7 @@ void RefreshLayered();
     int     m_nCardH;   // DPI-scaled card height (auto-sized from text)
     int     m_nBlurPad; // extra pad for shadow blur (prevents clipping)
     BOOL    m_bVisible;
+    Gdiplus::FontFamily* m_pFontFamily;  // cached once per ShowAt, reused for paint/measure
     CRect   m_rcVisibleCard; // screen rect of visible card+arrow (excludes shadow padding)
     static HHOOK           s_hMouseHook;
     static CModernPopover* s_pPopoverInst;
