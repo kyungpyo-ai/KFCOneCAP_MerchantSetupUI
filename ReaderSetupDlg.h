@@ -40,12 +40,13 @@ protected:
 	CRect CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const;
 
 	virtual void DoDataExchange(CDataExchange* pDX);
-	BOOL m_bUIReady;
+	BOOL m_bUiInitialized;
 
 	// === 추가: UI 상태/폰트/레이아웃 ===
 	BOOL  m_bReader1Enabled;
 	BOOL  m_bReader2Enabled;
 
+	CBrush m_brushBg;    // dialog background RGB(249,250,252)
 	CFont m_fontTitle;
 	CFont m_fontSub;
 	CFont m_fontSection;
@@ -66,6 +67,7 @@ protected:
 	CModernPopover  m_popover;
 
 	int   SX(int v) const; // scale x/y 공용
+	void  DrawSectionTitle(CDC& dc, CPoint pt, LPCTSTR text);
 	void  EnsureFonts();
 	void  LayoutControls();
 
@@ -113,6 +115,7 @@ protected:
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 
+	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	//}}AFX_MSG
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 	

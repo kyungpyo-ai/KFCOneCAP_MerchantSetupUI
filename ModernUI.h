@@ -231,6 +231,11 @@ private:
     CString  m_strBaseText;
     CString  m_strLoadingText;
     BOOL     m_bNcStylePrepared;
+
+    // Cached back-buffer (reused across DrawItem calls)
+    CDC      m_memDC;
+    CBitmap  m_memBmp;
+    CSize    m_memBmpSize;
 };
 
 // ========================================
@@ -477,6 +482,11 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+
+    // Cached back-buffer (reused across PaintComboToDC calls)
+    CDC      m_memDC;
+    CBitmap  m_memBmp;
+    CSize    m_memBmpSize;
 };
 
 // ========================================
@@ -552,6 +562,11 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+
+    // Cached back-buffer (reused across OnPaint calls)
+    CDC      m_memDC;
+    CBitmap  m_memBmp;
+    CSize    m_memBmpSize;
 };
 
 // ============================================================

@@ -358,12 +358,12 @@ private:
     CRect m_rcCardPayMethod;
     // Tab3 카드 영역
     CRect m_rcCardShopDown;
-    void InitializeFonts();
+    void EnsureFonts();
     void InitializeControls();
     void ApplyLayout();
 
     // --- Layout helpers (called from ApplyLayout) ---
-    int  ScalePx(int px) const;
+    int  SX(int px) const;
     void MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow = FALSE);
     void ApplyLayoutTab0();  // Tab 0: card reader settings
     void ApplyLayoutTab1();  // Tab 1+2: devices and system settings

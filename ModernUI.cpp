@@ -168,6 +168,7 @@ namespace ModernUIFont
 	static int  s_addedCount = 0;
 	static Gdiplus::PrivateFontCollection* s_pPrivateFonts = nullptr;
 	static bool s_privateLoaded = false;
+	static std::wstring s_cachedFamilyName;
 
 	static CString BuildFontPath(LPCTSTR fileName)
 	{
@@ -233,6 +234,21 @@ namespace ModernUIFont
 	{
 		EnsureFontsLoaded();
 
+		// Fast path: cached family name (avoids full enum every render call)
+		if (!s_cachedFamilyName.empty())
+		{
+			if (s_privateLoaded)
+			{
+				Gdiplus::FontFamily* pF = new Gdiplus::FontFamily(s_cachedFamilyName.c_str(), s_pPrivateFonts);
+				if (pF->IsAvailable()) return pF;
+				delete pF;
+			}
+			Gdiplus::FontFamily* pF = new Gdiplus::FontFamily(s_cachedFamilyName.c_str());
+			if (pF->IsAvailable()) return pF;
+			delete pF;
+			s_cachedFamilyName.clear();  // invalidate; fall through to full search
+		}
+
 		if (s_privateLoaded)
 		{
 			const INT familyCount = s_pPrivateFonts->GetFamilyCount();
@@ -249,7 +265,10 @@ namespace ModernUIFont
 						families[(size_t)i].GetFamilyName(szFamily);
 						Gdiplus::FontFamily* pPrivateByEnum = new Gdiplus::FontFamily(szFamily, s_pPrivateFonts);
 						if (pPrivateByEnum->IsAvailable())
+						{
+							s_cachedFamilyName = szFamily;
 							return pPrivateByEnum;
+						}
 						delete pPrivateByEnum;
 					}
 				}
@@ -257,15 +276,22 @@ namespace ModernUIFont
 
 			Gdiplus::FontFamily* pPrivateByName = new Gdiplus::FontFamily(L"Pretendard", s_pPrivateFonts);
 			if (pPrivateByName->IsAvailable())
+			{
+				s_cachedFamilyName = L"Pretendard";
 				return pPrivateByName;
+			}
 			delete pPrivateByName;
 		}
 
 		Gdiplus::FontFamily* pFamily = new Gdiplus::FontFamily(L"Pretendard");
 		if (pFamily->IsAvailable())
+		{
+			s_cachedFamilyName = L"Pretendard";
 			return pFamily;
+		}
 		delete pFamily;
 
+		s_cachedFamilyName = L"Malgun Gothic";
 		return new Gdiplus::FontFamily(L"Malgun Gothic");
 	}
 
@@ -657,11 +683,15 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	const bool pressed = (!disabled) && ((m_bPressed != FALSE) || ((lpDrawItemStruct->itemState & ODS_SELECTED) != 0));
 	const bool hover = (!disabled) && (m_bHover != FALSE);
 
-	CDC memDC;
-	memDC.CreateCompatibleDC(pDC);
-	CBitmap memBmp;
-	memBmp.CreateCompatibleBitmap(pDC, rect.Width(), rect.Height());
-	CBitmap* pOldBmp = memDC.SelectObject(&memBmp);
+	if (!m_memDC.GetSafeHdc()) m_memDC.CreateCompatibleDC(pDC);
+	const CSize newBmpSz(rect.Width(), rect.Height());
+	if (m_memBmpSize != newBmpSz) {
+		if (m_memBmp.GetSafeHandle()) m_memBmp.DeleteObject();
+		m_memBmp.CreateCompatibleBitmap(pDC, newBmpSz.cx, newBmpSz.cy);
+		m_memBmpSize = newBmpSz;
+		m_memDC.SelectObject(&m_memBmp);
+	}
+	CDC& memDC = m_memDC;
 
 	CRect rc(0, 0, rect.Width(), rect.Height());
 
@@ -891,7 +921,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	::DeleteObject(hBtnFont);
 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
-	memDC.SelectObject(pOldBmp);
 }
 
 // ========================================
@@ -1815,11 +1844,15 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	const BOOL enabled = (::IsWindowEnabled(m_hWnd) != FALSE);
 
 	// 1. 더블 버퍼링 설정
-	CDC memDC;
-	memDC.CreateCompatibleDC(&dc);
-	CBitmap bmp;
-	bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
-	CBitmap* pOldBmp = memDC.SelectObject(&bmp);
+	if (!m_memDC.GetSafeHdc()) m_memDC.CreateCompatibleDC(&dc);
+	const CSize newBmpSz(rc.Width(), rc.Height());
+	if (m_memBmpSize != newBmpSz) {
+		if (m_memBmp.GetSafeHandle()) m_memBmp.DeleteObject();
+		m_memBmp.CreateCompatibleBitmap(&dc, newBmpSz.cx, newBmpSz.cy);
+		m_memBmpSize = newBmpSz;
+		m_memDC.SelectObject(&m_memBmp);
+	}
+	CDC& memDC = m_memDC;
 
 	Gdiplus::Graphics g(memDC.m_hDC);
 	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
@@ -1915,7 +1948,6 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 	}
 
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
-	memDC.SelectObject(pOldBmp);
 }
 /*
 [커스텀 페인팅]
@@ -2571,11 +2603,15 @@ void CSkinnedEdit::OnPaint()
 		return;
 	}
 
-	CDC memDC;
-	memDC.CreateCompatibleDC(&dc);
-	CBitmap bmp;
-	bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
-	CBitmap* pOldBmp = memDC.SelectObject(&bmp);
+	if (!m_memDC.GetSafeHdc()) m_memDC.CreateCompatibleDC(&dc);
+	const CSize newBmpSz(rc.Width(), rc.Height());
+	if (m_memBmpSize != newBmpSz) {
+		if (m_memBmp.GetSafeHandle()) m_memBmp.DeleteObject();
+		m_memBmp.CreateCompatibleBitmap(&dc, newBmpSz.cx, newBmpSz.cy);
+		m_memBmpSize = newBmpSz;
+		m_memDC.SelectObject(&m_memBmp);
+	}
+	CDC& memDC = m_memDC;
 
 	if (m_bUseUnderlayBg)
 		memDC.FillSolidRect(&rc, m_clrUnderlayBg);
@@ -2657,7 +2693,6 @@ void CSkinnedEdit::OnPaint()
 	}
 
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
-	memDC.SelectObject(pOldBmp);
 	m_bInPaint = FALSE;
 }
 

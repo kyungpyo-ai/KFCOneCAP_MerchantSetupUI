@@ -97,7 +97,7 @@ void CHomeCardButton::ForceFadeOut()
 void CHomeCardButton::StartAnimTimer()
 {
     if (::IsWindow(m_hWnd))
-        SetTimer(kCardAnimTimerId, 10, NULL);
+        SetTimer(kCardAnimTimerId, 16, NULL);
 }
 
 void CHomeCardButton::StopAnimTimerIfIdle()

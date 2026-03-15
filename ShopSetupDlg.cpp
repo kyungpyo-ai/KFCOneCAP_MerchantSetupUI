@@ -409,7 +409,7 @@ BOOL CShopSetupDlg::OnInitDialog()
 {
     /* [UI-STEP] 초기 UI 구성(컨트롤 생성/폰트/레이아웃/값 로드) 흐름
      * 1) 다이얼로그 기본 초기화(베이스 클래스 처리) 후, 커스텀 컨트롤/리소스를 준비한다.
-     * 2) InitializeFonts()로 라벨/본문/캡션 폰트를 생성하고 컨트롤에 적용한다.
+     * 2) EnsureFonts()로 라벨/본문/캡션 폰트를 생성하고 컨트롤에 적용한다.
      * 3) InitializeControls()에서 탭/입력/토글/버튼/정보아이콘(i) 등 실제 컨트롤을 생성/연결한다.
      * 4) ApplyLayout()로 현재 DPI와 창 크기에 맞춰 좌표를 계산하고 컨트롤을 재배치한다.
      * 5) LoadOptionsFromRegistry()로 레지스트리 값을 읽어 UI(콤보 선택/에딧 텍스트/토글 상태)에 반영한다.
@@ -430,11 +430,11 @@ BOOL CShopSetupDlg::OnInitDialog()
     //  - 선택 창은 모달로 띄워서, CShopSetupDlg가 화면에 표시되기 전에
     //    사용자가 먼저 선택할 수 있도록 한다.
     // --------------------------------------------------------
-    auto S = [&](int v) { return ScalePx(v); };
+
     m_brushBg.CreateSolidBrush(RGB(249, 250, 252));  // 밝은 회색 배경
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
     m_brushTabContent.CreateSolidBrush(RGB(255, 255, 255));  // card white
-    InitializeFonts();
+    EnsureFonts();
     ModernUIGfx::EnsureGdiplusStartup();
     {
         LOGFONT lf = {};
@@ -462,7 +462,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     // Info icon buttons
     auto CreateInfoBtn = [&](CInfoIconButton& btn, UINT id) {
         btn.Create(_T(""), WS_CHILD | BS_OWNERDRAW,
-            CRect(0, 0, S(22), S(22)), this, id);
+            CRect(0, 0, SX(22), SX(22)), this, id);
         };
     CreateInfoBtn(m_btnVanInfo, IDC_BTN_VAN_SERVER_INFO);
     CreateInfoBtn(m_btnPortInfo, IDC_BTN_PORT_INFO);
@@ -496,20 +496,20 @@ BOOL CShopSetupDlg::OnInitDialog()
     EnsureValidationStatics();
     LoadOptionsFromRegistry();
     // 다이얼로그 크기
-    const int MARGIN_X = S(kTabPadLeft);
-    const int LABEL_W = S(92);
-    const int FIELD_W = S(120);
-    const int COL_GAP = S(16);
+    const int MARGIN_X = SX(kTabPadLeft);
+    const int LABEL_W = SX(92);
+    const int FIELD_W = SX(120);
+    const int COL_GAP = SX(16);
     // [TUNE] 가맹점 다운로드 컬럼 폭 (합계가 kDialogMinW 이내여야 함)
-    const int sd_padX = S(10);   // [TUNE] 좌우 여백
-    const int sd_gap = S(8);    // [TUNE] 컬럼 간격
-    const int sd_tagW = S(60);   // [TUNE] 가맹점N 태그 폭
-    const int sd_prodW = S(105);  // [TUNE] 단말기 제품번호
-    const int sd_bizW = S(105);  // [TUNE] 사업자번호
-    const int sd_pwdW = S(48);   // [TUNE] 비밀번호
-    const int sd_btnW = S(82);   // [TUNE] 다운로드 버튼
-    const int sd_etcW = S(80);   // [TUNE] 단말기별 가맹점
-    const int sd_nameW = S(110);  // [TUNE] 대표 가맹점
+    const int sd_padX = SX(10);   // [TUNE] 좌우 여백
+    const int sd_gap = SX(8);    // [TUNE] 컬럼 간격
+    const int sd_tagW = SX(60);   // [TUNE] 가맹점N 태그 폭
+    const int sd_prodW = SX(105);  // [TUNE] 단말기 제품번호
+    const int sd_bizW = SX(105);  // [TUNE] 사업자번호
+    const int sd_pwdW = SX(48);   // [TUNE] 비밀번호
+    const int sd_btnW = SX(82);   // [TUNE] 다운로드 버튼
+    const int sd_etcW = SX(80);   // [TUNE] 단말기별 가맹점
+    const int sd_nameW = SX(110);  // [TUNE] 대표 가맹점
     int topContentW = (LABEL_W + FIELD_W) * 3 + (COL_GAP * 2);
     int topMinW = (MARGIN_X * 2) + topContentW;
     int shopInnerW = (sd_padX * 2) + sd_tagW + sd_prodW + sd_bizW
@@ -540,16 +540,16 @@ int CShopSetupDlg::CalculateRequiredHeight()
      * 2) 하단 마진을 더해 '필요 전체 높이'를 반환한다.
      * 3) 현재 클라이언트 높이보다 크면 스크롤/클리핑 처리 기준으로 사용한다.
      */
-    auto S = [&](int v) { return ScalePx(v); };
+
     // ── 카드 공통 파라미터 (ApplyLayout과 동일 값) ─────────────────
-    const int FIELD_H = S(44);
-    const int cOutY = S(12);   // 카드 외부 상단
-    const int cGapY = S(12);   // 카드 간 간격
-    const int cPadY = S(16);   // 카드 내부 상하
-    const int cHdrH = S(44);   // 카드 헤더 높이
-    const int capH = S(18);   // 라벨 높이
-    const int capG = S(7);    // 라벨→컨트롤 간격
-    const int rG = S(20);   // 행 간격
+    const int FIELD_H = SX(44);
+    const int cOutY = SX(12);   // 카드 외부 상단
+    const int cGapY = SX(12);   // 카드 간 간격
+    const int cPadY = SX(16);   // 카드 내부 상하
+    const int cHdrH = SX(44);   // 카드 헤더 높이
+    const int capH = SX(18);   // 라벨 높이
+    const int capG = SX(7);    // 라벨→컨트롤 간격
+    const int rG = SX(20);   // 행 간격
     auto oneRow = [&]() { return capH + capG + FIELD_H; };
     auto cardH = [&](int rows, int extraChecks = 0) -> int {
         // rows: 라벨+컨트롤 행 수, extraChecks: 추가 체크박스 행 수
@@ -567,7 +567,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
         int card1 = cPadY + cHdrH + oneRow() * 1 + cPadY;
         int card2 = cPadY + cHdrH + oneRow() * 2 + rG + cPadY;
         int card3 = cPadY + cHdrH + oneRow() + rG + FIELD_H + cPadY;
-        int h = cOutY + card1 + cGapY + card2 + cGapY + card3 + S(10);
+        int h = cOutY + card1 + cGapY + card2 + cGapY + card3 + SX(10);
         maxTabH = max(maxTabH, h);
     }
     // Tab 2: 시스템 설정 (알림창 2행+체크1행 + 시스템 체크1행 + 단축키 1행)
@@ -580,21 +580,21 @@ int CShopSetupDlg::CalculateRequiredHeight()
     }
     // Tab 3: 가맹점 다운로드
     {
-        int h = S(224);
+        int h = SX(224);
         maxTabH = max(maxTabH, h);
     }
-    const int TITLE_AREA = S(kTabBarTop);
-    const int TAB_H = S(kTabBarH);
-    const int PAD_TOP = S(kTabPadTop);
-    const int PAD_BOTTOM = S(18);
-    const int BUTTON_AREA = S(76);   // [TUNE] 하단 버튼 영역 높이 (버튼H 36 + 상하여백)
-    const int CARD_PAD = S(28);  // [NOTE] 실제로는 CARD_PAD/2만큼 활용
+    const int TITLE_AREA = SX(kTabBarTop);
+    const int TAB_H = SX(kTabBarH);
+    const int PAD_TOP = SX(kTabPadTop);
+    const int PAD_BOTTOM = SX(18);
+    const int BUTTON_AREA = SX(76);   // [TUNE] 하단 버튼 영역 높이 (버튼H 36 + 상하여백)
+    const int CARD_PAD = SX(28);  // [NOTE] 실제로는 CARD_PAD/2만큼 활용
     return CARD_PAD + TITLE_AREA + TAB_H + PAD_TOP + maxTabH + PAD_BOTTOM + BUTTON_AREA;
 }
 // ============================================================================
-// InitializeFonts
+// EnsureFonts
 // ============================================================================
-void CShopSetupDlg::InitializeFonts()
+void CShopSetupDlg::EnsureFonts()
 {
     /* [UI-STEP] UI 폰트 초기화(가독성/위계 유지)
      * 1) DPI 스케일을 반영해 제목/본문/설명 텍스트용 폰트 크기를 산출한다.
@@ -605,6 +605,7 @@ void CShopSetupDlg::InitializeFonts()
      * [참고]
      * - 폰트 객체는 GDI 리소스라서 누수되면 장시간 사용 시 그리기 이상/크래시 원인이 된다.
      */
+    if (m_fontTitle.GetSafeHandle()) return;
     LOGFONT lf = { 0 };
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     ModernUIFont::ApplyUIFontFace(lf);
@@ -801,8 +802,8 @@ void CShopSetupDlg::InitializeControls()
     for (CSkinnedComboBox* cb : { &m_comboVanServer, &m_comboCashReceipt, &m_comboInterlock, &m_comboCommType, &m_comboSignPadUse, &m_comboSignPadSpeed, &m_comboAlarmPos, &m_comboAlarmSize, &m_comboCancelKey, &m_comboMSRKey })
         cb->SetTextPx(14);
 }
-// --- ScalePx: DPI-aware scaling shorthand ---
-int CShopSetupDlg::ScalePx(int px) const
+// --- SX: DPI-aware scaling shorthand ---
+int CShopSetupDlg::SX(int px) const
 {
     return ModernUIDpi::Scale(m_hWnd, px);
 }
@@ -823,7 +824,7 @@ void CShopSetupDlg::MoveCtrl(int nID, int x, int y, int w, int h, BOOL bShow)
     ::GetClassName(p->GetSafeHwnd(), cls, 63);
     if (_tcsicmp(cls, _T("ComboBox")) == 0)
     {
-        p->MoveWindow(x, y, w, ScalePx(220));
+        p->MoveWindow(x, y, w, SX(220));
         ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(h - 2));
         ::SendMessage(p->GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)0, (LPARAM)(h - 2));
     }
@@ -847,15 +848,15 @@ void CShopSetupDlg::ApplyLayoutTab0()
      * 3) 콤보/에딧의 폭은 '라벨 폭 + 입력 폭' 규칙에 따라 정렬되도록 맞춘다.
      * 4) 그룹 간 간격을 적용하고 다음 그룹으로 y를 진행한다.
      */
-    auto S = [&](int v) { return ScalePx(v); };
+
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
-    const int CTRL_H = S(40);
+    const int CTRL_H = SX(40);
     const int FIELD_H = CTRL_H;
     CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
-        const int BtnSz = S(18);
-        const int BtnGap = S(4);
+        const int BtnSz = SX(18);
+        const int BtnGap = SX(4);
         int bx = lx + BtnGap;
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
@@ -870,7 +871,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
         };
-    int y = m_rcTabContent.top + S(kTabPadTop);
+    int y = m_rcTabContent.top + SX(kTabPadTop);
     const int cardOuterPadX = 16;
     const int cardOuterPadY = 12;
     const int cardGapY = 16;
@@ -901,7 +902,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
     Move(IDC_STATIC_PORT, innerX + colW + colGap, y1, colW, capH);
     PlaceInfoBtn(m_btnPortInfo, IDC_STATIC_PORT, innerX + colW + colGap, y1, capH);
     Move(IDC_EDIT_PORT, innerX + colW + colGap, y1 + capH + capGap, colW, FIELD_H);
-    PositionValidationText(IDC_STATIC_ERR_PORT, innerX + colW + colGap + colW - S(88), y1, S(88), capH);
+    PositionValidationText(IDC_STATIC_ERR_PORT, innerX + colW + colGap + colW - SX(88), y1, SX(88), capH);
     y1 += capH + capGap + FIELD_H;
     int serverCardH = (y1 + cardPadY) - curY;
     m_rcCardServer = CRect(cardLeft, curY, cardRight, curY + serverCardH);
@@ -925,16 +926,16 @@ void CShopSetupDlg::ApplyLayoutTab0()
     // 무서명 / 카드 감지 우선 거래 사용 (2열)
     Move(IDC_STATIC_NO_SIGN_AMOUNT, innerX, y2, colW, capH);
     Move(IDC_EDIT_NO_SIGN_AMOUNT, innerX, y2 + capH + capGap, colW, FIELD_H);
-    PositionValidationText(IDC_STATIC_ERR_NO_SIGN, innerX + colW - S(88), y2, S(88), capH);
+    PositionValidationText(IDC_STATIC_ERR_NO_SIGN, innerX + colW - SX(88), y2, SX(88), capH);
     {
-        const int BtnSz = S(18);
-        const int BtnGap = S(6);
+        const int BtnSz = SX(18);
+        const int BtnGap = SX(6);
         const int toggleY = y2 + capH + capGap;
         const int rightX = innerX + colW + colGap;
         // 카드 감지 우선 거래 사용: 세금 자동 역산 자리(2행 오른쪽)로 이동
         // 토글 오른쪽에 팝오버 아이콘 영역을 확보해서 겹치지 않게 배치
         int toggleW = colW - (BtnSz + BtnGap);
-        if (toggleW < S(110))
+        if (toggleW < SX(110))
             toggleW = max(1, colW - (BtnSz + BtnGap));
         Move(IDC_CHECK_CARD_DETECT, rightX, toggleY, toggleW, FIELD_H);
         if (m_btnCardDetectInfo.GetSafeHwnd())
@@ -949,10 +950,10 @@ void CShopSetupDlg::ApplyLayoutTab0()
     Move(IDC_STATIC_TAX_PERCENT, innerX, y2, colW, capH);
     PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX, y2, capH);
     Move(IDC_EDIT_TAX_PERCENT, innerX, y2 + capH + capGap, colW, FIELD_H);
-    PositionValidationText(IDC_STATIC_ERR_TAX, innerX + colW - S(88), y2, S(88), capH);
+    PositionValidationText(IDC_STATIC_ERR_TAX, innerX + colW - SX(88), y2, SX(88), capH);
     Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX + colW + colGap, y2, colW, capH);
     Move(IDC_EDIT_CARD_DETECT_PARAM, innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
-    PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW + colGap + colW - S(88), y2, S(88), capH);
+    PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW + colGap + colW - SX(88), y2, SX(88), capH);
     y2 += capH + capGap + FIELD_H;
     int payCardH = (y2 + cardPadY) - curY;
     m_rcCardPayMethod = CRect(cardLeft, curY, cardRight, curY + payCardH);
@@ -970,15 +971,15 @@ void CShopSetupDlg::ApplyLayoutTab1()
      * 2) 토글이 있는 행은 '라벨 + 토글 + 정보아이콘' 정렬 규칙을 적용한다.
      * 3) 서명패드 관련 입력은 종속 관계(사용 ON일 때만 활성화 등)가 있으면 EnableWindow로 제어한다.
      */
-    auto S = [&](int v) { return ScalePx(v); };
+
     auto Move = [&](int id, int x, int y, int w, int h) { MoveCtrl(id, x, y, w, h); };
-    const int CTRL_H = S(40);
+    const int CTRL_H = SX(40);
     const int FIELD_H = CTRL_H;
     CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
-        const int BtnSz = S(18);
-        const int BtnGap = S(4);
+        const int BtnSz = SX(18);
+        const int BtnGap = SX(4);
         int bx = lx + BtnGap;
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
@@ -993,7 +994,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
         };
-    int y = m_rcTabContent.top + S(kTabPadTop);
+    int y = m_rcTabContent.top + SX(kTabPadTop);
     const int cOutX = 16;   // [TUNE] 카드 외부 좌우 여백
     const int cOutY = 12;   // [TUNE] 카드 외부 상단 여백
     const int cGapY = 12;   // [TUNE] 카드 간 세로 간격
@@ -1022,7 +1023,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
         Move(IDC_STATIC_CARD_TIMEOUT, inX, fy, col2W, capH);
         PlaceInfoBtn(m_btnCardTimeoutInfo, IDC_STATIC_CARD_TIMEOUT, inX, fy, capH);
         Move(IDC_EDIT_CARD_TIMEOUT, inX, fy + capH + capG, col2W, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_TIMEOUT, inX + col2W - S(88), fy, S(88), capH);
+        PositionValidationText(IDC_STATIC_ERR_TIMEOUT, inX + col2W - SX(88), fy, SX(88), capH);
         Move(IDC_STATIC_INTERLOCK, inX + col2W + cG, fy, col2W, capH);
         PlaceInfoBtn(m_btnInterlockInfo, IDC_STATIC_INTERLOCK, inX + col2W + cG, fy, capH);
         Move(IDC_COMBO_INTERLOCK, inX + col2W + cG, fy + capH + capG, col2W, FIELD_H);
@@ -1041,7 +1042,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
         Move(IDC_STATIC_SIGN_PAD_PORT, inX + col2W + cG, fy, col2W, capH);
         PlaceInfoBtn(m_btnSignPadPortInfo, IDC_STATIC_SIGN_PAD_PORT, inX + col2W + cG, fy, capH);
         Move(IDC_EDIT_SIGN_PAD_PORT, inX + col2W + cG, fy + capH + capG, col2W, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, inX + col2W + cG + col2W - S(88), fy, S(88), capH);
+        PositionValidationText(IDC_STATIC_ERR_SIGNPAD_PORT, inX + col2W + cG + col2W - SX(88), fy, SX(88), capH);
         fy += capH + capG + FIELD_H + rG;
         // 행2: 통신속도 (1열, 반폭)
         Move(IDC_STATIC_SIGN_PAD_SPEED, inX, fy, col2W, capH);
@@ -1054,19 +1055,19 @@ void CShopSetupDlg::ApplyLayoutTab1()
     }
     // ── 카드 3: 기타 ────────────────────────────────
     {
-        const int etcTopTight = S(4);   // [TUNE] 기타 카드 첫 줄을 조금 위로 당긴다.
-        const int etcRowGap = S(10);  // [TUNE] 토글 행과 포트번호 행 간격을 줄인다.
-        const int etcBottomPad = S(10);  // [TUNE] 카드 하단 여백을 줄여 버튼과 겹치지 않게 한다.
+        const int etcTopTight = SX(4);   // [TUNE] 기타 카드 첫 줄을 조금 위로 당긴다.
+        const int etcRowGap = SX(10);  // [TUNE] 토글 행과 포트번호 행 간격을 줄인다.
+        const int etcBottomPad = SX(10);  // [TUNE] 카드 하단 여백을 줄여 버튼과 겹치지 않게 한다.
         int fy = curY + cPadY + cHdrH - etcTopTight;
-        const int BtnSz = S(18);
-        const int BtnGap = S(6);
+        const int BtnSz = SX(18);
+        const int BtnGap = SX(6);
         const int leftX = inX;
         const int rightX = inX + col2W + cG;
         const int toggleY = fy;
         // 행1 좌측: 스캐너 사용 토글 + 팝오버
         {
             int toggleW = col2W - (BtnSz + BtnGap);
-            if (toggleW < S(110))
+            if (toggleW < SX(110))
                 toggleW = max(1, col2W - (BtnSz + BtnGap));
             Move(IDC_CHECK_SCANNER_USE, leftX, toggleY, toggleW, FIELD_H);
             if (m_btnScannerUseInfo.GetSafeHwnd())
@@ -1079,7 +1080,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
         // 행1 우측: 멀티패드 음성 출력 토글 + 팝오버
         {
             int mvW = col2W - (BtnSz + BtnGap);
-            if (mvW < S(110))
+            if (mvW < SX(110))
                 mvW = max(1, col2W - (BtnSz + BtnGap));
             Move(IDC_CHECK_MULTI_VOICE, rightX, toggleY, mvW, FIELD_H);
             if (m_btnMultiVoiceInfo.GetSafeHwnd())
@@ -1093,7 +1094,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
         // 행2 좌측: 스캐너 포트번호 + EditText
         Move(IDC_STATIC_SCANNER_PORT_LABEL, leftX, fy, col2W, capH);
         Move(IDC_EDIT_SCANNER_PORT, leftX, fy + capH + capG, col2W, FIELD_H);
-        PositionValidationText(IDC_STATIC_ERR_SCANNER_PORT, leftX + col2W - S(88), fy, S(88), capH);
+        PositionValidationText(IDC_STATIC_ERR_SCANNER_PORT, leftX + col2W - SX(88), fy, SX(88), capH);
         int cardH = (fy + capH + capG + FIELD_H + etcBottomPad) - curY;
         m_rcGrpEtc = CRect(cLeft, curY, cRight, curY + cardH);
         // curY = m_rcGrpEtc.bottom + cGapY;  // Tab1 끝
@@ -1116,13 +1117,13 @@ void CShopSetupDlg::ApplyLayoutTab1()
         int chk2W = (inW - cG) / 2;
         // 알림창 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
         {
-            const int BtnSz = S(18);
-            const int BtnGap = S(4);
+            const int BtnSz = SX(18);
+            const int BtnGap = SX(4);
             int iconNeed = BtnSz + BtnGap;
             int wL = chk2W;
             int wR = chk2W;
-            if (wL > S(80) + iconNeed) wL -= iconNeed;
-            if (wR > S(80) + iconNeed) wR -= iconNeed;
+            if (wL > SX(80) + iconNeed) wL -= iconNeed;
+            if (wR > SX(80) + iconNeed) wR -= iconNeed;
             int xL = inX;
             int xR = inX + chk2W + cG;
             Move(IDC_CHECK_ALARM_GRAPH, xL, fy, wL, FIELD_H);
@@ -1152,13 +1153,13 @@ void CShopSetupDlg::ApplyLayoutTab1()
         int chk2W = (inW - cG) / 2;
         // 자동 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
         {
-            const int BtnSz = S(18);
-            const int BtnGap = S(4);
+            const int BtnSz = SX(18);
+            const int BtnGap = SX(4);
             int iconNeed = BtnSz + BtnGap;
             int wL = chk2W;
             int wR = chk2W;
-            if (wL > S(80) + iconNeed) wL -= iconNeed;
-            if (wR > S(80) + iconNeed) wR -= iconNeed;
+            if (wL > SX(80) + iconNeed) wL -= iconNeed;
+            if (wR > SX(80) + iconNeed) wR -= iconNeed;
             int xL = inX;
             int xR = inX + chk2W + cG;
             Move(IDC_CHECK_AUTO_RESET, xL, fy, wL, FIELD_H);
@@ -1207,10 +1208,10 @@ void CShopSetupDlg::ApplyLayoutTab3()
      * 1) 알림창 크기 등 시스템 관련 옵션 UI를 배치한다.
      * 2) 콤보/에딧 폭을 전체 레이아웃 폭에 맞추고, 우측 여백을 통일한다.
      */
-    auto S = [&](int v) { return ScalePx(v); };
+
     CRect rc;
     GetClientRect(&rc);
-    int y = m_rcTabContent.top + S(kTabPadTop);
+    int y = m_rcTabContent.top + SX(kTabPadTop);
     // Tab1/2와 동일한 카드 외부/내부 파라미터를 사용해 정렬을 맞춘다.
     const int cOutX = 16;   // 카드 외부 좌우 여백
     const int cOutY = 12;   // 카드 외부 상단 여백
@@ -1223,21 +1224,21 @@ void CShopSetupDlg::ApplyLayoutTab3()
     const int BUTTON_BOTTOM = 22;
     // 하단 버튼 윗쪽까지를 카드 영역으로 사용
     int btnY = rc.bottom - (cardBottomPad + BUTTON_BOTTOM + BUTTON_H);
-    int cardLeft = m_rcTabContent.left + ScalePx(cOutX);
-    int cardRight = m_rcTabContent.right - ScalePx(cOutX);
-    int cardTop = y + ScalePx(cOutY);
-    int cardBot = btnY - ScalePx(cardBottomPad);
-    if (cardBot < cardTop + ScalePx(240))
-        cardBot = cardTop + ScalePx(240);
+    int cardLeft = m_rcTabContent.left + SX(cOutX);
+    int cardRight = m_rcTabContent.right - SX(cOutX);
+    int cardTop = y + SX(cOutY);
+    int cardBot = btnY - SX(cardBottomPad);
+    if (cardBot < cardTop + SX(240))
+        cardBot = cardTop + SX(240);
     m_rcCardShopDown = CRect(cardLeft, cardTop, cardRight, cardBot);
     // Child(ShopDownDlg)는 카드 내부 컨텐츠 영역(헤더 아래)만 차지하도록 한다.
     CRect rcHost(
-        cardLeft + ScalePx(cPadX),
-        cardTop + ScalePx(cHdrH + cPadY),
-        cardRight - ScalePx(cPadX),
-        cardBot - ScalePx(cPadY + hostGapBottom));
-    if (rcHost.Height() < ScalePx(200))
-        rcHost.bottom = rcHost.top + ScalePx(200);
+        cardLeft + SX(cPadX),
+        cardTop + SX(cHdrH + cPadY),
+        cardRight - SX(cPadX),
+        cardBot - SX(cPadY + hostGapBottom));
+    if (rcHost.Height() < SX(200))
+        rcHost.bottom = rcHost.top + SX(200);
     if (m_staticShopContainer.GetSafeHwnd())
     {
         m_staticShopContainer.MoveWindow(rcHost);
@@ -1262,13 +1263,13 @@ void CShopSetupDlg::ApplyLayout()
      */
     CRect rc;
     GetClientRect(&rc);
-    auto S = [&](int v) { return ScalePx(v); };
+
     // 헬퍼: 라벨 텍스트 오른쪽에 인포 아이콘 버튼 배치
     CClientDC measureDC(this);
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int labelId, int lx, int ly, int lcapH) {
         if (!btn.GetSafeHwnd()) return;
-        const int BtnSz = S(18);
-        const int BtnGap = S(4);
+        const int BtnSz = SX(18);
+        const int BtnGap = SX(4);
         int bx = lx + BtnGap;
         int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
@@ -1283,31 +1284,31 @@ void CShopSetupDlg::ApplyLayout()
         }
         btn.SetWindowPos(NULL, bx, by, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
         };
-    const int MARGIN = S(kTabPadLeft);
-    const int LABEL_W = S(92);
-    const int FIELD_W = S(120);
-    const int LF_GAP = S(8);
+    const int MARGIN = SX(kTabPadLeft);
+    const int LABEL_W = SX(92);
+    const int FIELD_W = SX(120);
+    const int LF_GAP = SX(8);
     const int FIELD_W_IN = FIELD_W - LF_GAP;
-    const int CTRL_H = S(40);   // [TUNE] 컨트롤 시각적 높이 (Edit/Combo 동일)
+    const int CTRL_H = SX(40);   // [TUNE] 컨트롤 시각적 높이 (Edit/Combo 동일)
     const int FIELD_H = CTRL_H;  // 하위 호환용 alias
-    const int COMBO_DROP_H = S(220); // [TUNE] combo drop list height
-    const int ROW_GAP = S(16);
-    const int COL_GAP = S(16);
-    const int GROUP_H = S(kGroupTitleH);
-    const int GROUP_GAP = S(kGroupGapBelowTitle);
-    const int NEXT_GRP = S(kGapToNextGroup);
-    const int labelOffset = (FIELD_H - S(20)) / 2; // label vertical align
+    const int COMBO_DROP_H = SX(220); // [TUNE] combo drop list height
+    const int ROW_GAP = SX(16);
+    const int COL_GAP = SX(16);
+    const int GROUP_H = SX(kGroupTitleH);
+    const int GROUP_GAP = SX(kGroupGapBelowTitle);
+    const int NEXT_GRP = SX(kGapToNextGroup);
+    const int labelOffset = (FIELD_H - SX(20)) / 2; // label vertical align
     // ---- 탭 컨트롤 위치 ----
     // 탭 바를 타이틀/서브타이틀 구분선 바로 아래 배치
-    const int TAB_INSET = S(2); // keep tab visuals from touching outer card border
-    int tabLeft = S(20) + TAB_INSET;
-    int tabRight = rc.Width() - S(20) - TAB_INSET;
-    int tabTop = S(kTabBarTop);
-    int tabBottom = tabTop + S(kTabBarH) + S(200); // 탭 컨트롤 전체 높이(내부 클라이언트 포함)
-    int tabH = S(CModernTabCtrl::kBarH) + S(8); // 탭 바 높이 + 여백
+    const int TAB_INSET = SX(2); // keep tab visuals from touching outer card border
+    int tabLeft = SX(20) + TAB_INSET;
+    int tabRight = rc.Width() - SX(20) - TAB_INSET;
+    int tabTop = SX(kTabBarTop);
+    int tabBottom = tabTop + SX(kTabBarH) + SX(200); // 탭 컨트롤 전체 높이(내부 클라이언트 포함)
+    int tabH = SX(CModernTabCtrl::kBarH) + SX(8); // 탭 바 높이 + 여백
     m_tabCtrl.MoveWindow(tabLeft, tabTop, tabRight - tabLeft, tabH);
     // 탭 컨텐츠 영역: 탭 바 바로 아래부터
-    m_rcTabContent = CRect(tabLeft, tabTop + tabH, tabRight, rc.bottom - S(90));
+    m_rcTabContent = CRect(tabLeft, tabTop + tabH, tabRight, rc.bottom - SX(90));
     // ---- 컨텐츠 영역 기준 좌표 ----
     int contentLeft = m_rcTabContent.left + (MARGIN - tabLeft);
     int x = max(contentLeft, MARGIN);
@@ -1315,7 +1316,7 @@ void CShopSetupDlg::ApplyLayout()
     int x2 = x1 + LABEL_W + FIELD_W + COL_GAP;
     int x3 = x2 + LABEL_W + FIELD_W + COL_GAP;
     // 모든 탭의 컨텐츠는 동일한 Y 기준에서 배치 (ShowTab이 show/hide)
-    int y = m_rcTabContent.top + S(kTabPadTop);
+    int y = m_rcTabContent.top + SX(kTabPadTop);
     auto Move = [&](int id, int mx, int my, int mw, int mh)
         {
             CWnd* p = GetDlgItem(id);

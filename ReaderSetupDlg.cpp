@@ -280,7 +280,7 @@ CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRec
 // 실제 화면은 OnPaint가 그리더라도, 데이터 접근 시 컬럼 정의가 일관돼야 유지보수가 쉽다.
 void CReaderSetupDlg::RecalcIntegrityColumns()
 {
-	if (!m_bUIReady || !::IsWindow(m_integrity_list.GetSafeHwnd()))
+	if (!m_bUiInitialized || !::IsWindow(m_integrity_list.GetSafeHwnd()))
 		return;
 
 	CRect rcList;
@@ -454,7 +454,7 @@ void CReaderSetupDlg::UpdateReaderEnableState(int readerIndex)
 // 카드/조회 영역/하단 버튼을 현재 DPI와 창 크기에 맞춰 다시 배치한다.
 void CReaderSetupDlg::LayoutControls()
 {
-	if (!m_bUIReady) return;
+	if (!m_bUiInitialized) return;
 
 	if (!::IsWindow(m_comport1.GetSafeHwnd()) ||
 		!::IsWindow(m_reader_init1.GetSafeHwnd()) ||
@@ -525,7 +525,7 @@ void CReaderSetupDlg::LayoutControls()
 		m_togglePortOpen2.ShowWindow(SW_HIDE);
 
 	// Place info icon buttons to the right of each toggle
-	if (m_bUIReady) {
+	if (m_bUiInitialized) {
 		auto PlaceInfoAfterToggle = [&](CModernToggleSwitch& tg, CInfoIconButton& btn, BOOL bShow) {
 			if (!tg.GetSafeHwnd() || !btn.GetSafeHwnd()) return;
 			CRect tgRc; tg.GetWindowRect(&tgRc); ScreenToClient(&tgRc);
@@ -564,7 +564,7 @@ void CReaderSetupDlg::LayoutControls()
 CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CReaderSetupDlg::IDD, pParent)
 {
-	m_bUIReady = FALSE;
+	m_bUiInitialized = FALSE;
 	m_bFitDone = FALSE;
 	m_bReader1Enabled = FALSE;
 	m_bReader2Enabled = FALSE;
@@ -618,6 +618,7 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_CBN_SELCHANGE(IDC_COMPORT2, OnSelchangeComport2)
 	//}}AFX_MSG_MAP
 	ON_WM_PAINT()
+	ON_WM_CTLCOLOR()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
 	ON_WM_DRAWITEM()
@@ -1078,6 +1079,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 	// --- 2) DPI/폰트/숨길 레거시 Static 초기화 ---
 	EnsureFonts();
+	m_brushBg.CreateSolidBrush(RGB(249, 250, 252));
 	HideLegacyStatics();
 
 	// --- 3) 입력 컨트롤 데이터 초기화 ---
@@ -1107,7 +1109,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	}
 
 	// 레이아웃 계산 전에 UI 준비 상태를 TRUE로 올려야 LayoutControls가 정상 동작한다.
-	m_bUIReady = TRUE;
+	m_bUiInitialized = TRUE;
 
 	// --- 5) 창 크기/컨트롤 배치 적용 ---
 	FitWindowToLayout();
@@ -1183,7 +1185,7 @@ void CReaderSetupDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialog::OnSize(nType, cx, cy);
 
-	if (!m_bUIReady)
+	if (!m_bUiInitialized)
 		return;
 
 	if (GetSafeHwnd())
@@ -1206,6 +1208,7 @@ void CReaderSetupDlg::OnPaint()
 {
 	CPaintDC dc(this);
 	EnsureFonts();
+	m_brushBg.CreateSolidBrush(RGB(249, 250, 252));
 
 	CRect rc; GetClientRect(&rc);
 
@@ -1335,30 +1338,7 @@ void CReaderSetupDlg::OnPaint()
 	CRect portSection = CalcPortSectionBox(card1, card2);
 	CRect integritySection = CalcIntegritySectionBox(queryBox, listRc);
 
-	auto drawSectionTitle = [&](const CPoint& pt, LPCTSTR text)
-		{
-			Gdiplus::Graphics gSec(memDC.GetSafeHdc());
-			gSec.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-			gSec.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-			// Accent bar: 4x16px rounded rect (matches ShopSetupDlg DrawMinCard)
-			const float barW = 4.0f, barH = 14.0f, barR = 2.0f, bd = barR * 2.0f;
-			const float barX = (float)(pt.x - SX(10));
-			const float barY = (float)pt.y + ((float)SX(28) - barH) * 0.5f;
-			Gdiplus::GraphicsPath bp;
-			bp.AddArc(barX, barY, bd, bd, 180, 90);
-			bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
-			bp.AddArc(barX + barW - bd, barY + barH - bd, bd, bd, 0, 90);
-			bp.AddArc(barX, barY + barH - bd, bd, bd, 90, 90);
-			bp.CloseFigure();
-			Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
-			gSec.FillPath(&barBr, &bp);
-			// Section title text: GDI DrawText
-			CFont* pOldSec = memDC.SelectObject(&m_fontSection);
-			memDC.SetTextColor(RGB(26, 32, 44));
-			CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(28));
-			memDC.DrawText(text, rcSec, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-			memDC.SelectObject(pOldSec);
-		};
+
 
 	{
 		Gdiplus::Graphics gSecShad(memDC.GetSafeHdc());
@@ -1389,8 +1369,8 @@ void CReaderSetupDlg::OnPaint()
 	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + SX(43), portSection.Width() - SX(32), 1, RGB(242, 244, 247));
 	// 모든 내부 구분선을 연한 회색(RGB 242, 244, 247)으로 통일
 	memDC.FillSolidRect(integritySection.left + SX(16), integritySection.top + SX(43), integritySection.Width() - SX(32), 1, RGB(242, 244, 247));
-	drawSectionTitle(sec1Pt, _T("포트 설정"));
-	drawSectionTitle(sec2Pt, _T("무결성 체크 정보"));
+	DrawSectionTitle(memDC, sec1Pt, _T("포트 설정"));
+	DrawSectionTitle(memDC, sec2Pt, _T("무결성 체크 정보"));
 
 	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
 		{
@@ -1468,7 +1448,7 @@ void CReaderSetupDlg::OnPaint()
 		FillTopRoundRect(gPaint, headerRc, SX(8), headerBg);
 		memDC.FillSolidRect(headerRc.left + SX(10), headerRc.bottom - 1, headerRc.Width() - SX(20), 1, RGB(238, 241, 247));
 
-		const int itemCount = (m_bUIReady && m_integrity_list.GetSafeHwnd()) ? m_integrity_list.GetItemCount() : 0;
+		const int itemCount = (m_bUiInitialized && m_integrity_list.GetSafeHwnd()) ? m_integrity_list.GetItemCount() : 0;
 		const BOOL bNeedScroll = (itemCount > visibleRows);
 		const int scrollW = bNeedScroll ? SX(10) : 0;
 		const int scrollRightPad = bNeedScroll ? SX(2) : 0;
@@ -1694,9 +1674,51 @@ void CReaderSetupDlg::OnTimer(UINT_PTR nIDEvent)
 	CDialog::OnTimer(nIDEvent);
 }
 
+// ============================================================================
+// OnCtlColor - label/static transparent bg, dialog background brush
+// ============================================================================
+HBRUSH CReaderSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
+	if (nCtlColor == CTLCOLOR_STATIC && pWnd)
+	{
+		pDC->SetBkMode(TRANSPARENT);
+		pDC->SetTextColor(RGB(100, 112, 132));
+		return m_brushBg;
+	}
+	if (nCtlColor == CTLCOLOR_DLG)
+		return m_brushBg;
+	return hbr;
+}
+// ============================================================================
+// DrawSectionTitle - section accent bar + title text (matches ShopSetupDlg DrawGroupLabels)
+// ============================================================================
+void CReaderSetupDlg::DrawSectionTitle(CDC& dc, CPoint pt, LPCTSTR text)
+{
+	Gdiplus::Graphics gSec(dc.GetSafeHdc());
+	gSec.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+	gSec.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+	const float barW = 4.0f, barH = 14.0f, barR = 2.0f, bd = barR * 2.0f;
+	const float barX = (float)(pt.x - SX(10));
+	const float barY = (float)pt.y + ((float)SX(28) - barH) * 0.5f;
+	Gdiplus::GraphicsPath bp;
+	bp.AddArc(barX, barY, bd, bd, 180, 90);
+	bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
+	bp.AddArc(barX + barW - bd, barY + barH - bd, bd, bd, 0, 90);
+	bp.AddArc(barX, barY + barH - bd, bd, bd, 90, 90);
+	bp.CloseFigure();
+	Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
+	gSec.FillPath(&barBr, &bp);
+	CFont* pOldSec = dc.SelectObject(&m_fontSection);
+	dc.SetTextColor(RGB(26, 32, 44));
+	CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(28));
+	dc.DrawText(text, rcSec, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	dc.SelectObject(pOldSec);
+}
 BOOL CReaderSetupDlg::DestroyWindow()
 {
 	FinishLoadingOperation(FALSE);
+	if (m_brushBg.GetSafeHandle()) m_brushBg.DeleteObject();
 	if (m_popover.GetSafeHwnd()) m_popover.Hide();
 	delete m_pGdipSecFont;   m_pGdipSecFont = nullptr;
 	delete m_pGdipSecFamily; m_pGdipSecFamily = nullptr;
