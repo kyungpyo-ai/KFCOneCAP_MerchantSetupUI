@@ -46,6 +46,7 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
     ON_WM_MOUSELEAVE()
+    ON_WM_SETCURSOR()
     ON_WM_ACTIVATE()
     ON_WM_NCACTIVATE()
     ON_WM_TIMER()
@@ -208,7 +209,9 @@ void CShopDownDlg::CreateControlsOnce()
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
         m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255, 255, 255));
+        m_btnDownload[slot].SetTextPx(14);
         m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40, 40, 40));
+        m_btnDelete[slot].SetTextPx(14);
     }
 }
 
@@ -226,22 +229,22 @@ void CShopDownDlg::ApplyFonts()
 
     LOGFONT lf = {};
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
-    lstrcpy(lf.lfFaceName, _T("Malgun Gothic"));
+    ModernUIFont::ApplyUIFontFace(lf);
 
     // Field labels: match other tabs (13px)
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
     lf.lfWeight = FW_NORMAL;
     m_fontHeader.DeleteObject();
     m_fontHeader.CreateFontIndirect(&lf);
 
     // Cell text (edit, button): match other tabs (13px)
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
     lf.lfWeight = FW_NORMAL;
     m_fontCell.DeleteObject();
     m_fontCell.CreateFontIndirect(&lf);
 
     // Row number badge: semi-bold 13px
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
     lf.lfWeight = FW_SEMIBOLD;
     m_fontBadge.DeleteObject();
     m_fontBadge.CreateFontIndirect(&lf);
@@ -263,8 +266,8 @@ void CShopDownDlg::ApplyFonts()
             if (m_hFontLbl)     { ::DeleteObject(m_hFontLbl);     m_hFontLbl     = nullptr; }
             if (m_hFontVal)     { ::DeleteObject(m_hFontVal);     m_hFontVal     = nullptr; }
             if (m_hFontValBold) { ::DeleteObject(m_hFontValBold); m_hFontValBold = nullptr; }
-            const int lblPx = ModernUIDpi::Scale(m_hWnd, 12);
-            const int valPx = ModernUIDpi::Scale(m_hWnd, 13);
+            const int lblPx = ModernUIDpi::Scale(m_hWnd, 14);
+            const int valPx = ModernUIDpi::Scale(m_hWnd, 14);
             LOGFONT lf = {};
             lf.lfCharSet = DEFAULT_CHARSET;
             ModernUIFont::ApplyUIFontFace(lf);
@@ -855,6 +858,27 @@ void CShopDownDlg::OnMouseMove(UINT nFlags, CPoint point)
         InvalidateRect(&m_rcNavBar, FALSE);
     }
     CDialog::OnMouseMove(nFlags, point);
+}
+
+
+// ============================================================================
+// OnSetCursor - hand cursor over prev/next nav buttons
+// ============================================================================
+BOOL CShopDownDlg::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+    if (nHitTest == HTCLIENT)
+    {
+        CPoint pt;
+        ::GetCursorPos(&pt);
+        ScreenToClient(&pt);
+        if ((!m_rcPrevBtn.IsRectEmpty() && m_rcPrevBtn.PtInRect(pt)) ||
+            (!m_rcNextBtn.IsRectEmpty() && m_rcNextBtn.PtInRect(pt)))
+        {
+            ::SetCursor(::LoadCursor(NULL, IDC_HAND));
+            return TRUE;
+        }
+    }
+    return CDialog::OnSetCursor(pWnd, nHitTest, message);
 }
 
 

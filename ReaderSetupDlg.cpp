@@ -1337,9 +1337,9 @@ void CReaderSetupDlg::OnPaint()
 			gSec.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 			gSec.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 			// Accent bar: 4x16px rounded rect (matches ShopSetupDlg DrawMinCard)
-			const float barX = (float)(pt.x - SX(10));
-			const float barY = (float)pt.y;
 			const float barW = 4.0f, barH = 14.0f, barR = 2.0f, bd = barR * 2.0f;
+			const float barX = (float)(pt.x - SX(10));
+			const float barY = (float)pt.y + ((float)SX(20) - barH) * 0.5f;
 			Gdiplus::GraphicsPath bp;
 			bp.AddArc(barX, barY, bd, bd, 180, 90);
 			bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);

@@ -33,6 +33,7 @@ protected:
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     afx_msg void OnTimer(UINT_PTR nIDEvent);  // [FIX] xxxSaveDlgFocus O(N^2) Â÷´Ü
     afx_msg BOOL OnNcActivate(BOOL bActive);
     afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);

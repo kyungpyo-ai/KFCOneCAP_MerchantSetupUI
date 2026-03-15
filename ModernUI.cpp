@@ -415,6 +415,7 @@ CModernButton::CModernButton()
 	m_clrUnderlayBg = RGB(255, 255, 255);
 	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
 	m_style = ButtonStyle::Auto; // default: detect style from button text
+	m_nTextPx = 14;
 	m_bLoading = FALSE;
 }
 
@@ -809,7 +810,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 
 	const float footerFontSize = ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
-	const float normalFontSize = ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
+	const float normalFontSize = (m_nTextPx > 0) ? ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx) : ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
 	LOGFONT lfBtn = {}; lfBtn.lfHeight = -(int)(isFooterAction ? footerFontSize : normalFontSize); lfBtn.lfWeight = FW_BOLD; lfBtn.lfQuality = CLEARTYPE_QUALITY;
 	ModernUIFont::ApplyUIFontFace(lfBtn);
 	HFONT hBtnFont = ::CreateFontIndirect(&lfBtn);

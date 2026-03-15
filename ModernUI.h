@@ -186,6 +186,7 @@ public:
     void SetButtonStyle(ButtonStyle style);
     void SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText = NULL);
     BOOL IsLoading() const { return m_bLoading; }
+    void SetTextPx(int px) { m_nTextPx = px; Invalidate(FALSE); }
     CString GetBaseText() const { return m_strBaseText; } // 버튼 스타일 명시 설정
 
 protected:
