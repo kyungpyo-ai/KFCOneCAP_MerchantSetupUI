@@ -69,18 +69,16 @@ static void FillRoundRect(Gdiplus::Graphics& g, const CRect& rc, int radius, COL
 	float w = (float)rc.Width(), h = (float)rc.Height();
 	float r = (float)radius;
 
-	{
-		Gdiplus::GraphicsPath path;
-		GdipAddRoundRect(path, x, y, w, h, r);
-		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(fill), GetGValue(fill), GetBValue(fill)));
-		g.FillPath(&br, &path);
-	}
+	Gdiplus::GraphicsPath path;
+	GdipAddRoundRect(path, x, y, w, h, r);
+
+	Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(fill), GetGValue(fill), GetBValue(fill)));
+	g.FillPath(&br, &path);
+
 	if (borderW > 0)
 	{
-		Gdiplus::GraphicsPath path;
-		float bw = (float)borderW;
-		GdipAddRoundRect(path, x + bw * 0.5f, y + bw * 0.5f, w - bw, h - bw, r);
-		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), bw);
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), (float)borderW);
+		pen.SetAlignment(Gdiplus::PenAlignmentInset);
 		g.DrawPath(&pen, &path);
 	}
 }
@@ -384,48 +382,29 @@ void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
 	const COLORREF cardBgDisabled = RGB(251, 252, 253);
 	const COLORREF cardBg = bEnable ? cardBgEnabled : cardBgDisabled;
 
-	if (readerIndex == 1)
-	{
-		m_reader_init1.EnableWindow(bEnable);
-		m_status_check1.EnableWindow(bEnable);
-		m_keydown1.EnableWindow(bEnable);
-		m_integrity_check1.EnableWindow(bEnable);
-		m_update1.EnableWindow(bEnable);
-		m_togglePortOpen1.EnableWindow(bEnable);
-		m_toggleMultipad1.EnableWindow(bEnable);
-		m_bReader1Enabled = bEnable;
+	const bool r1 = (readerIndex == 1);
 
-		m_reader_init1.SetUnderlayColor(cardBg);
-		m_status_check1.SetUnderlayColor(cardBg);
-		m_keydown1.SetUnderlayColor(cardBg);
-		m_integrity_check1.SetUnderlayColor(cardBg);
-		m_update1.SetUnderlayColor(cardBg);
-		m_togglePortOpen1.SetUnderlayColor(cardBg);
-		m_toggleMultipad1.SetUnderlayColor(cardBg);
-		m_comport1.SetUnderlayColor(cardBg);
-		m_comport1.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_FRAME);
-	}
-	else
-	{
-		m_reader_init2.EnableWindow(bEnable);
-		m_status_check2.EnableWindow(bEnable);
-		m_keydown2.EnableWindow(bEnable);
-		m_integrity_check2.EnableWindow(bEnable);
-		m_update2.EnableWindow(bEnable);
-		m_togglePortOpen2.EnableWindow(bEnable);
-		m_toggleMultipad2.EnableWindow(bEnable);
-		m_bReader2Enabled = bEnable;
+	CModernButton* btns[] = {
+		r1 ? &m_reader_init1     : &m_reader_init2,
+		r1 ? &m_status_check1    : &m_status_check2,
+		r1 ? &m_keydown1         : &m_keydown2,
+		r1 ? &m_integrity_check1 : &m_integrity_check2,
+		r1 ? &m_update1          : &m_update2,
+	};
+	for (auto* p : btns) { p->EnableWindow(bEnable); p->SetUnderlayColor(cardBg); }
 
-		m_reader_init2.SetUnderlayColor(cardBg);
-		m_status_check2.SetUnderlayColor(cardBg);
-		m_keydown2.SetUnderlayColor(cardBg);
-		m_integrity_check2.SetUnderlayColor(cardBg);
-		m_update2.SetUnderlayColor(cardBg);
-		m_togglePortOpen2.SetUnderlayColor(cardBg);
-		m_toggleMultipad2.SetUnderlayColor(cardBg);
-		m_comport2.SetUnderlayColor(cardBg);
-		m_comport2.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_FRAME);
-	}
+	CModernToggleSwitch* toggles[] = {
+		r1 ? &m_togglePortOpen1 : &m_togglePortOpen2,
+		r1 ? &m_toggleMultipad1 : &m_toggleMultipad2,
+	};
+	for (auto* p : toggles) { p->EnableWindow(bEnable); p->SetUnderlayColor(cardBg); }
+
+	CSkinnedComboBox& comport = r1 ? m_comport1 : m_comport2;
+	comport.SetUnderlayColor(cardBg);
+	comport.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_FRAME);
+
+	if (r1) m_bReader1Enabled = bEnable;
+	else    m_bReader2Enabled = bEnable;
 }
 
 void CReaderSetupDlg::UpdateReaderEnableState(int readerIndex)

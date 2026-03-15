@@ -737,15 +737,17 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	CRect rcSafe = rc;
 	rcSafe.DeflateRect(0, 0, 1, 1);
 
-	const float rad = kBtnCornerRadius;
-	float centerW = (float)rcSafe.Width() - kBtnDrawShrink;
-	float centerH = (float)rcSafe.Height() - kBtnDrawShrink;
+	const float rad        = ModernUIDpi::ScaleF(m_hWnd, kBtnCornerRadius);
+	const float drawInset  = ModernUIDpi::ScaleF(m_hWnd, kBtnDrawInset);
+	const float drawShrink = ModernUIDpi::ScaleF(m_hWnd, kBtnDrawShrink);
+	float centerW = (float)rcSafe.Width() - drawShrink;
+	float centerH = (float)rcSafe.Height() - drawShrink;
 	float newW = centerW * scale;
 	float newH = centerH * scale;
 
 	Gdiplus::RectF rf(
-		(float)rcSafe.left + kBtnDrawInset + (centerW - newW) / 2.0f,
-		(float)rcSafe.top + kBtnDrawInset + (centerH - newH) / 2.0f + pressYOffset,
+		(float)rcSafe.left + drawInset + (centerW - newW) / 2.0f,
+		(float)rcSafe.top + drawInset + (centerH - newH) / 2.0f + pressYOffset,
 		newW, newH);
 	// --- [Sinking 피드백 추가 끝] ---
 

@@ -2,6 +2,13 @@
 #include "ShopDownDlg.h"
 #include <string>
 
+// Info panel text colors (card layout)
+static const COLORREF kClrInfoLabel   = RGB(120, 128, 142); // secondary label text
+static const COLORREF kClrInfoValue   = RGB( 24,  28,  35); // primary value text
+static const COLORREF kClrInfoEmpty   = RGB(160, 165, 175); // empty / placeholder text
+static const COLORREF kClrEditText    = RGB( 18,  24,  40); // edit control text (enabled)
+static const COLORREF kClrEditTextDis = RGB(120, 125, 135); // edit control text (disabled)
+
 // ==============================================================
 // [ShopDownDlg.cpp]
 //  - 가맹점 다운로드 다이얼로그 구현부
@@ -489,7 +496,7 @@ HBRUSH CShopDownDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     if (nCtlColor == CTLCOLOR_EDIT)
     {
         const BOOL bEnabled = pWnd && pWnd->IsWindowEnabled();
-        pDC->SetTextColor(bEnabled ? RGB(18, 24, 40) : RGB(120, 125, 135));
+        pDC->SetTextColor(bEnabled ? kClrEditText : kClrEditTextDis);
         pDC->SetBkMode(TRANSPARENT); // 에딧 박스 글자 배경 투명화
         return (HBRUSH)(bEnabled ? m_brushCard.GetSafeHandle() : m_brushCardDisabled.GetSafeHandle());
     }
@@ -549,9 +556,9 @@ void CShopDownDlg::OnPaint()
 
     if (m_hFontLbl == nullptr) ApplyFonts();
 
-    const COLORREF clrLbl = RGB(120, 128, 142);
-    const COLORREF clrVal = RGB(24, 28, 35);
-    const COLORREF clrPh  = RGB(160, 165, 175);
+    const COLORREF clrLbl = kClrInfoLabel;
+    const COLORREF clrVal = kClrInfoValue;
+    const COLORREF clrPh  = kClrInfoEmpty;
 
     // [2] 카드형 행 데이터 렌더링
     const int pageStart = m_nCurrentPage * kRowsPerPage;
