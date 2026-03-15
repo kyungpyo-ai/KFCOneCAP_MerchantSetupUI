@@ -131,18 +131,18 @@ void CReaderSetupDlg::EnsureFonts()
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0);
 
 	// Title
-	lf.lfHeight = -SX(16);
+	lf.lfHeight = -SX(18);
 	lf.lfWeight = FW_BOLD;
 	ModernUIFont::ApplyUIFontFace(lf);
 	m_fontTitle.CreateFontIndirect(&lf);
 
 	// Sub
-	lf.lfHeight = -SX(11);
+	lf.lfHeight = -SX(13);
 	lf.lfWeight = FW_NORMAL;
 	m_fontSub.CreateFontIndirect(&lf);
 
 	// Section title
-	lf.lfHeight = -SX(14);
+	lf.lfHeight = -SX(15);
 	lf.lfWeight = FW_BOLD;
 	m_fontSection.CreateFontIndirect(&lf);
 
@@ -853,7 +853,9 @@ void CReaderSetupDlg::InitIntegrityListColumns()
 void CReaderSetupDlg::ApplyDialogFonts()
 {
 	ApplyFontIfWindow(m_comport1, m_fontNormal);
-	ApplyFontIfWindow(m_comport2, m_fontNormal);
+	
+	m_comport1.SetTextPx(13);
+	m_comport2.SetTextPx(13);
 	ApplyFontIfWindow(m_search_date, m_fontNormal);
 	ApplyFontIfWindow(m_reader_init1, m_fontNormal);
 	ApplyFontIfWindow(m_status_check1, m_fontNormal);
@@ -1303,20 +1305,20 @@ void CReaderSetupDlg::OnPaint()
 
 	{
 // ShopSetup의 kHdrTitleGap(13)과 시각적 균형을 위해 SX(14)로 통일
-		const int tx = rcIcon.right + SX(14);
+		const int tx = rcIcon.right + SX(12);
 // -22.0f에서 -20.0f로 수정하여 텍스트의 수직 중앙 정렬을 보정
-		const int titleY = iconY + iconSize / 2 - SX(20);
+		const int titleY = iconY + iconSize / 2 - SX(22);
 		wchar_t wTitle[128] = {}, wSub[256] = {};
 		MultiByteToWideChar(CP_ACP, 0, _T("리더기 설정"), -1, wTitle, 128);
 		MultiByteToWideChar(CP_ACP, 0, _T("리더기 연결 및 제어 설정을 관리합니다"), -1, wSub, 256);
 		CFont* pOldF = memDC.SelectObject(&m_fontTitle);
 		memDC.SetTextColor(RGB(18, 24, 40));
-		CRect rcHdrTitle(tx, titleY, tx + SX(300), titleY + SX(24));
-		::DrawTextW(memDC.GetSafeHdc(), wTitle, -1, (LPRECT)&rcHdrTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+		CRect rcHdrTitle(tx, titleY, tx + SX(300), titleY + SX(28));
+		::DrawTextW(memDC.GetSafeHdc(), wTitle, -1, (LPRECT)&rcHdrTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
 		memDC.SelectObject(&m_fontSub);
 		memDC.SetTextColor(RGB(130, 142, 162));
-		CRect rcHdrSub(tx, titleY + SX(26), tx + SX(360), titleY + SX(42));
-		::DrawTextW(memDC.GetSafeHdc(), wSub, -1, (LPRECT)&rcHdrSub, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+		CRect rcHdrSub(tx, titleY + SX(26), tx + SX(360), titleY + SX(46));
+		::DrawTextW(memDC.GetSafeHdc(), wSub, -1, (LPRECT)&rcHdrSub, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
 		memDC.SelectObject(pOldF);
 	}
 	// 시작점을 mainCard.left + SX(6)으로 변경하여 절대좌표 26px(아이콘 시작점)에 맞춤
@@ -1336,8 +1338,8 @@ void CReaderSetupDlg::OnPaint()
 			gSec.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 			// Accent bar: 4x16px rounded rect (matches ShopSetupDlg DrawMinCard)
 			const float barX = (float)(pt.x - SX(10));
-			const float barY = (float)(pt.y + SX(2));
-			const float barW = 4.0f, barH = 16.0f, barR = 2.0f, bd = barR * 2.0f;
+			const float barY = (float)pt.y;
+			const float barW = 4.0f, barH = 14.0f, barR = 2.0f, bd = barR * 2.0f;
 			Gdiplus::GraphicsPath bp;
 			bp.AddArc(barX, barY, bd, bd, 180, 90);
 			bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
@@ -1350,7 +1352,7 @@ void CReaderSetupDlg::OnPaint()
 			CFont* pOldSec = memDC.SelectObject(&m_fontSection);
 			memDC.SetTextColor(RGB(26, 32, 44));
 			CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(20));
-			memDC.DrawText(text, rcSec, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+			memDC.DrawText(text, rcSec, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
 			memDC.SelectObject(pOldSec);
 		};
 

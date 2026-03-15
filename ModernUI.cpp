@@ -2944,7 +2944,7 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 	const float kIconSz = 16.0f;
 	const float kIconGap = 6.0f;
 
-	LOGFONT lfTab = {}; lfTab.lfHeight = bActive ? -13 : -12; lfTab.lfWeight = bActive ? FW_BOLD : FW_NORMAL; lfTab.lfQuality = CLEARTYPE_QUALITY;
+	LOGFONT lfTab = {}; lfTab.lfHeight = bActive ? -16 : -14; lfTab.lfWeight = bActive ? FW_BOLD : FW_NORMAL; lfTab.lfQuality = CLEARTYPE_QUALITY;
 	ModernUIFont::ApplyUIFontFace(lfTab);
 	HFONT hTabFont = ::CreateFontIndirect(&lfTab);
 	HDC hdcTab = g.GetHDC();

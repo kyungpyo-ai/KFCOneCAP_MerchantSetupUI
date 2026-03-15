@@ -440,12 +440,12 @@ BOOL CShopSetupDlg::OnInitDialog()
         LOGFONT lf = {};
         lf.lfCharSet = DEFAULT_CHARSET;
         ModernUIFont::ApplyUIFontFace(lf);
-        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 15);
         lf.lfWeight = FW_BOLD;
         m_hFontCardTitle = ::CreateFontIndirect(&lf);
-        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 16);
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 18);
         m_hFontHdrTitle = ::CreateFontIndirect(&lf);
-        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 11);
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
         lf.lfWeight = FW_NORMAL;
         m_hFontHdrSub = ::CreateFontIndirect(&lf);
     }
@@ -621,7 +621,7 @@ void CShopSetupDlg::InitializeFonts()
     lf.lfWeight = FW_BOLD;
     m_fontSection.DeleteObject();
     m_fontSection.CreateFontIndirect(&lf);
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
     lf.lfWeight = FW_NORMAL;
     m_fontLabel.DeleteObject();
     m_fontLabel.CreateFontIndirect(&lf);
@@ -706,6 +706,7 @@ void CShopSetupDlg::InitializeControls()
         {
             sw.SubclassDlgItem(id, this);
             sw.SetFont(&m_fontLabel);
+            LOGFONT lfTmp_ = {}; m_fontLabel.GetLogFont(&lfTmp_); int labelPx_ = abs(lfTmp_.lfHeight);
             // 기존 체크박스 스타일 제거 + owner-draw 적용
             sw.ModifyStyle(BS_AUTOCHECKBOX | BS_CHECKBOX | BS_3STATE | BS_AUTO3STATE | BS_AUTORADIOBUTTON | BS_RADIOBUTTON, BS_OWNERDRAW);
             sw.ModifyStyle(WS_BORDER, 0);
@@ -716,7 +717,7 @@ void CShopSetupDlg::InitializeControls()
                 RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_UPDATENOW);
             sw.SetWindowText(txt);
             sw.SetToggled(bOn);
-            sw.SetTextSizePx(13);  // fontLabel과 동일 (13px)
+            sw.SetTextSizePx(labelPx_);  // fontLabel과 동일 (13px)
             sw.SetNoWrapEllipsis(TRUE);
             sw.SetUnderlayColor(bgColor);
         };
@@ -797,6 +798,8 @@ void CShopSetupDlg::InitializeControls()
     };
     for (CWnd* w : inputControls)
         w->SetFont(&m_fontLabel);
+    for (CSkinnedComboBox* cb : { &m_comboVanServer, &m_comboCashReceipt, &m_comboInterlock, &m_comboCommType, &m_comboSignPadUse, &m_comboSignPadSpeed, &m_comboAlarmPos, &m_comboAlarmSize, &m_comboCancelKey, &m_comboMSRKey })
+        cb->SetTextPx(14);
 }
 // --- ScalePx: DPI-aware scaling shorthand ---
 int CShopSetupDlg::ScalePx(int px) const
@@ -1831,11 +1834,11 @@ void CShopSetupDlg::OnPaint()
             ::SetBkMode(hdcHdr, TRANSPARENT);
             HFONT hOldHdr = (HFONT)::SelectObject(hdcHdr, m_hFontHdrTitle);
             ::SetTextColor(hdcHdr, RGB(18, 24, 40));
-            RECT rcHdrTitle = { (LONG)(tx), (LONG)titleY, (LONG)(tx + 300.0f), (LONG)(titleY + 24.0f) };
+            RECT rcHdrTitle = { (LONG)(tx), (LONG)titleY, (LONG)(tx + 300.0f), (LONG)(titleY + 28.0f) };
             ::DrawTextW(hdcHdr, L"가맹점 설정", -1, &rcHdrTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             ::SelectObject(hdcHdr, m_hFontHdrSub);
             ::SetTextColor(hdcHdr, RGB(130, 142, 162));
-            RECT rcHdrSub = { (LONG)(tx), (LONG)(titleY + 26.0f), (LONG)(tx + 360.0f), (LONG)(titleY + 42.0f) };
+            RECT rcHdrSub = { (LONG)(tx), (LONG)(titleY + 26.0f), (LONG)(tx + 360.0f), (LONG)(titleY + 46.0f) };
             ::DrawTextW(hdcHdr, L"가맹점 및 서버 연결 설정을 관리합니다", -1, &rcHdrSub, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
             ::SelectObject(hdcHdr, hOldHdr);
             gh.ReleaseHDC(hdcHdr);
@@ -2002,7 +2005,7 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
                 // 불릿 + 타이틀
                 const float barX = cr.X + 16.0f;       // 카드 좌측 내부 여백
                 const float barW = 4.0f;               // 세로 바 폭
-                const float barH = 16.0f;              // 세로 바 높이
+                const float barH = 14.0f;              // 세로 바 높이
                 const float barY = cr.Y + (hdrH - barH) * 0.5f;  // 헤더 세로 중앙
                 const float barR = 2.0f;               // 모서리 라운드 반경
                 // 세로 accent bar (라운드 사각형)
@@ -2016,7 +2019,7 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
                 Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
                 g.FillPath(&barBr, &barPath);
                 // 타이틀 (세로 바 오른쪽에 10px 간격)
-                const float titleX = barX + barW + 10.0f;
+                const float titleX = barX + barW + 6.0f;
                 // Use cached member font object (created once in OnInitDialog with DPI scaling)
                 {
                     HDC hdcCard = g.GetHDC();
