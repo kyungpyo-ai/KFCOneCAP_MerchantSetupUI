@@ -166,7 +166,7 @@ namespace ModernUIFont
 	static bool s_initTried = false;
 	static bool s_loaded = false;
 	static int  s_addedCount = 0;
-	static Gdiplus::PrivateFontCollection s_privateFonts;
+	static Gdiplus::PrivateFontCollection* s_pPrivateFonts = nullptr;
 	static bool s_privateLoaded = false;
 
 	static CString BuildFontPath(LPCTSTR fileName)
@@ -191,6 +191,7 @@ namespace ModernUIFont
 
 		s_initTried = true;
 		ModernUIGfx::EnsureGdiplusStartup();
+		if (!s_pPrivateFonts) s_pPrivateFonts = new Gdiplus::PrivateFontCollection();
 
 		const LPCTSTR files[] = {
 			_T("Pretendard-Regular.ttf"),
@@ -208,7 +209,7 @@ namespace ModernUIFont
 				++s_addedCount;
 
 			CStringW fullPathW(fullPath);
-			if (s_privateFonts.AddFontFile((LPCWSTR)fullPathW) == Gdiplus::Ok)
+			if (s_pPrivateFonts->AddFontFile((LPCWSTR)fullPathW) == Gdiplus::Ok)
 				s_privateLoaded = true;
 		}
 
@@ -234,19 +235,19 @@ namespace ModernUIFont
 
 		if (s_privateLoaded)
 		{
-			const INT familyCount = s_privateFonts.GetFamilyCount();
+			const INT familyCount = s_pPrivateFonts->GetFamilyCount();
 			if (familyCount > 0)
 			{
 				std::vector<Gdiplus::FontFamily> families((size_t)familyCount);
 				INT found = 0;
-				s_privateFonts.GetFamilies(familyCount, &families[0], &found);
+				s_pPrivateFonts->GetFamilies(familyCount, &families[0], &found);
 				for (INT i = 0; i < found; ++i)
 				{
 					if (families[(size_t)i].IsAvailable())
 					{
 						WCHAR szFamily[LF_FACESIZE] = { 0, };
 						families[(size_t)i].GetFamilyName(szFamily);
-						Gdiplus::FontFamily* pPrivateByEnum = new Gdiplus::FontFamily(szFamily, &s_privateFonts);
+						Gdiplus::FontFamily* pPrivateByEnum = new Gdiplus::FontFamily(szFamily, s_pPrivateFonts);
 						if (pPrivateByEnum->IsAvailable())
 							return pPrivateByEnum;
 						delete pPrivateByEnum;
@@ -254,7 +255,7 @@ namespace ModernUIFont
 				}
 			}
 
-			Gdiplus::FontFamily* pPrivateByName = new Gdiplus::FontFamily(L"Pretendard", &s_privateFonts);
+			Gdiplus::FontFamily* pPrivateByName = new Gdiplus::FontFamily(L"Pretendard", s_pPrivateFonts);
 			if (pPrivateByName->IsAvailable())
 				return pPrivateByName;
 			delete pPrivateByName;
@@ -807,16 +808,15 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 					: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText)))));
 
 
-	Gdiplus::SolidBrush tb(txtColor);
-	Gdiplus::FontFamily* pButtonFontFamily = ModernUIFont::CreateGdipFontFamily();
-	const Gdiplus::REAL footerFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
-	const Gdiplus::REAL normalFontSize = (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
-	Gdiplus::Font font(pButtonFontFamily, isFooterAction ? footerFontSize : normalFontSize, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	Gdiplus::StringFormat sf;
-	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
-	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-	sf.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-	sf.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+	const float footerFontSize = ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
+	const float normalFontSize = ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
+	LOGFONT lfBtn = {}; lfBtn.lfHeight = -(int)(isFooterAction ? footerFontSize : normalFontSize); lfBtn.lfWeight = FW_BOLD; lfBtn.lfQuality = CLEARTYPE_QUALITY;
+	ModernUIFont::ApplyUIFontFace(lfBtn);
+	HFONT hBtnFont = ::CreateFontIndirect(&lfBtn);
+	HFONT hOldBtnFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), hBtnFont);
+	::SetTextColor(memDC.GetSafeHdc(), RGB(txtColor.GetR(), txtColor.GetG(), txtColor.GetB()));
+	::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
+	UINT dtHAlign = DT_CENTER;
 
 	// 텍스트 좌표(textRf)를 이미 축소/이동이 반영된 rf로 설정
 	Gdiplus::RectF textRf = rf;
@@ -825,11 +825,10 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		const float spinnerSize = ModernUIDpi::ScaleF(m_hWnd, 12.0f);
 		const float spinnerGap = ModernUIDpi::ScaleF(m_hWnd, 5.0f);
-		Gdiplus::RectF measureRf(0, 0, rf.Width, rf.Height);
 		std::wstring wtMeasure = kftc_to_wide(strText);
-		Gdiplus::RectF bound;
-		g.MeasureString(wtMeasure.c_str(), -1, &font, measureRf, &sf, &bound);
-		float totalW = spinnerSize + spinnerGap + bound.Width;
+		RECT rcMeasureBtn = { 0, 0, (LONG)rf.Width, (LONG)rf.Height };
+		::DrawTextW(memDC.GetSafeHdc(), wtMeasure.c_str(), -1, &rcMeasureBtn, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+		float totalW = spinnerSize + spinnerGap + (float)(rcMeasureBtn.right - rcMeasureBtn.left);
 		float startX = rf.X + max(0.0f, (rf.Width - totalW) * 0.5f);
 		float cy = rf.Y + rf.Height * 0.5f;
 		Gdiplus::RectF spRc(startX, cy - spinnerSize * 0.5f, spinnerSize, spinnerSize);
@@ -845,7 +844,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		g.DrawArc(&actPen, spRc, start, 132.0f);
 		textRf.X = startX + spinnerSize + spinnerGap;
 		textRf.Width = rf.GetRight() - textRf.X;
-		sf.SetAlignment(Gdiplus::StringAlignmentNear);
+		dtHAlign = DT_LEFT;
 	}
 
 	std::wstring wt = kftc_to_wide(strText);
@@ -853,10 +852,9 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		const Gdiplus::REAL iconGap = ModernUIDpi::ScaleF(m_hWnd, 9.5f);
 		const Gdiplus::REAL iconSize = ModernUIDpi::ScaleF(m_hWnd, isProgramExit ? 18.0f : 16.5f);
-		Gdiplus::RectF measureRf(0, 0, rf.Width, rf.Height);
-		Gdiplus::RectF bound;
-		g.MeasureString(wt.c_str(), -1, &font, measureRf, &sf, &bound);
-		const Gdiplus::REAL totalW = iconSize + iconGap + bound.Width;
+		RECT rcMeasureFtr = { 0, 0, (LONG)rf.Width, (LONG)rf.Height };
+		::DrawTextW(memDC.GetSafeHdc(), wt.c_str(), -1, &rcMeasureFtr, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+		const float totalW = iconSize + iconGap + (float)(rcMeasureFtr.right - rcMeasureFtr.left);
 		const Gdiplus::REAL startX = rf.X + max((Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, 14.0f), (rf.Width - totalW) * 0.5f);
 		const Gdiplus::REAL centerY = rf.Y + rf.Height * 0.5f;
 		const Gdiplus::REAL iconY = centerY - iconSize * 0.5f;
@@ -884,10 +882,12 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 		textRf.X = startX + iconSize + iconGap;
 		textRf.Width = rf.GetRight() - textRf.X - ModernUIDpi::ScaleF(m_hWnd, 12.0f);
-		sf.SetAlignment(Gdiplus::StringAlignmentNear);
+		dtHAlign = DT_LEFT;
 	}
-	g.DrawString(wt.c_str(), -1, &font, textRf, &sf, &tb);
-	delete pButtonFontFamily;
+	RECT rcBtnTxt = { (LONG)textRf.X, (LONG)textRf.Y, (LONG)textRf.GetRight(), (LONG)textRf.GetBottom() };
+	::DrawTextW(memDC.GetSafeHdc(), wt.c_str(), -1, &rcBtnTxt, dtHAlign | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+	::SelectObject(memDC.GetSafeHdc(), hOldBtnFont);
+	::DeleteObject(hBtnFont);
 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
 	memDC.SelectObject(pOldBmp);
@@ -1135,26 +1135,19 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		}
 		else
 		{
-			// Original GDI+ text rendering
-			Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 6, 52, 109));
-			Gdiplus::FontFamily* pCheckFontFamily = ModernUIFont::CreateGdipFontFamily();
-			Gdiplus::Font font(pCheckFontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-
-			Gdiplus::StringFormat format;
-			format.SetAlignment(Gdiplus::StringAlignmentNear);
-			format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-
-			if (m_bNoWrapEllipsis)
-			{
-				format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-				format.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-			}
-
-			Gdiplus::RectF textRect(boxX + boxSize + ModernUIDpi::ScaleF(m_hWnd, 8.0f), 0, rect.Width() - boxSize - ModernUIDpi::ScaleF(m_hWnd, 8.0f), (REAL)rect.Height());
-
+			LOGFONT lfChk = {}; lfChk.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfChk.lfWeight = FW_NORMAL; lfChk.lfQuality = CLEARTYPE_QUALITY;
+			ModernUIFont::ApplyUIFontFace(lfChk);
+			HFONT hChkFont = ::CreateFontIndirect(&lfChk);
+			HFONT hOldChkFont = (HFONT)::SelectObject(pDC->GetSafeHdc(), hChkFont);
+			::SetTextColor(pDC->GetSafeHdc(), RGB(6, 52, 109));
+			::SetBkMode(pDC->GetSafeHdc(), TRANSPARENT);
+			UINT dtChk = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
+			if (m_bNoWrapEllipsis) dtChk |= DT_END_ELLIPSIS;
+			RECT rcChkTxt = { (LONG)(boxX + boxSize + ModernUIDpi::ScaleF(m_hWnd, 8.0f)), 0, rect.Width(), rect.Height() };
 			std::wstring wText = kftc_to_wide(strText);
-			graphics.DrawString(wText.c_str(), -1, &font, textRect, &format, &textBrush);
-			delete pCheckFontFamily;
+			::DrawTextW(pDC->GetSafeHdc(), wText.c_str(), -1, &rcChkTxt, dtChk);
+			::SelectObject(pDC->GetSafeHdc(), hOldChkFont);
+			::DeleteObject(hChkFont);
 		}
 	}
 }
@@ -1516,25 +1509,19 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	if (!strText.IsEmpty())
 	{
 		COLORREF tclr = disabled ? KFTC_DISABLED_TEXT : RGB(6,52,109);
-		Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, GetRValue(tclr), GetGValue(tclr), GetBValue(tclr)));
-		Gdiplus::FontFamily* pToggleFontFamily = ModernUIFont::CreateGdipFontFamily();
-		Gdiplus::Font font(pToggleFontFamily, (Gdiplus::REAL)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-
-		Gdiplus::StringFormat format;
-		format.SetAlignment(Gdiplus::StringAlignmentNear);
-		format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-
-		if (m_bNoWrapEllipsis)
-		{
-			format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-			format.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-		}
-
-		Gdiplus::RectF textRect(switchX + switchW + ModernUIDpi::ScaleF(m_hWnd, 10.0f), 0, rect.Width() - switchW - ModernUIDpi::ScaleF(m_hWnd, 10.0f), (REAL)rect.Height());
-
+		LOGFONT lfTgl = {}; lfTgl.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfTgl.lfWeight = FW_NORMAL; lfTgl.lfQuality = CLEARTYPE_QUALITY;
+		ModernUIFont::ApplyUIFontFace(lfTgl);
+		HFONT hTglFont = ::CreateFontIndirect(&lfTgl);
+		HFONT hOldTglFont = (HFONT)::SelectObject(pDC->GetSafeHdc(), hTglFont);
+		::SetTextColor(pDC->GetSafeHdc(), tclr);
+		::SetBkMode(pDC->GetSafeHdc(), TRANSPARENT);
+		UINT dtTgl = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
+		if (m_bNoWrapEllipsis) dtTgl |= DT_END_ELLIPSIS;
+		RECT rcTglTxt = { (LONG)(switchX + switchW + ModernUIDpi::ScaleF(m_hWnd, 10.0f)), 0, rect.Width(), rect.Height() };
 		std::wstring wText = kftc_to_wide(strText);
-		graphics.DrawString(wText.c_str(), -1, &font, textRect, &format, &textBrush);
-		delete pToggleFontFamily;
+		::DrawTextW(pDC->GetSafeHdc(), wText.c_str(), -1, &rcTglTxt, dtTgl);
+		::SelectObject(pDC->GetSafeHdc(), hOldTglFont);
+		::DeleteObject(hTglFont);
 	}
 }
 
@@ -1884,25 +1871,18 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 
 			if (rfText.Width > 0) {
 				// 폰트 캐시 체크
-				if (!m_hTextFontCache) {
-					CFont* pFont = GetFont();
-					LOGFONT lf; ::ZeroMemory(&lf, sizeof(lf));
-					if (pFont && pFont->GetLogFont(&lf)) lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
-					else lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, m_nTextPx);
-					ModernUIFont::ApplyUIFontFace(lf);
-					m_hTextFontCache = ::CreateFontIndirect(&lf);
-				}
-
-				Gdiplus::Font gdiFont(memDC.m_hDC, m_hTextFontCache);
-				Gdiplus::SolidBrush brText(Gdiplus::Color(255, 35, 45, 60));
-				if (!enabled) brText.SetColor(Gdiplus::Color(255, GetRValue(KFTC_DISABLED_TEXT), GetGValue(KFTC_DISABLED_TEXT), GetBValue(KFTC_DISABLED_TEXT)));
-
-				Gdiplus::StringFormat fmt;
-				fmt.SetAlignment(Gdiplus::StringAlignmentNear);
-				fmt.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-				fmt.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-
-				g.DrawString(kftc_to_wide(text).c_str(), -1, &gdiFont, rfText, &fmt, &brText);
+				LOGFONT lfCmb = {}; lfCmb.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfCmb.lfWeight = FW_NORMAL; lfCmb.lfQuality = CLEARTYPE_QUALITY;
+				ModernUIFont::ApplyUIFontFace(lfCmb);
+				HFONT hCmbFont = ::CreateFontIndirect(&lfCmb);
+				HFONT hOldCmbFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), hCmbFont);
+				COLORREF cmbTxtClr = enabled ? RGB(35, 45, 60) : KFTC_DISABLED_TEXT;
+				::SetTextColor(memDC.GetSafeHdc(), cmbTxtClr);
+				::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
+				RECT rcCmbTxt = { (LONG)rfText.X, (LONG)rfText.Y, (LONG)rfText.GetRight(), (LONG)rfText.GetBottom() };
+				std::wstring wCmbTxt = kftc_to_wide(text);
+				::DrawTextW(memDC.GetSafeHdc(), wCmbTxt.c_str(), -1, &rcCmbTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+				::SelectObject(memDC.GetSafeHdc(), hOldCmbFont);
+				::DeleteObject(hCmbFont);
 			}
 		}
 
@@ -2964,39 +2944,38 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 	const float kIconSz = 16.0f;
 	const float kIconGap = 6.0f;
 
-	if (!m_pTabFontFamily)
-	{
-		m_pTabFontFamily = ModernUIFont::CreateGdipFontFamily();
-		m_pTabFontN = new Gdiplus::Font(m_pTabFontFamily, 12.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-		m_pTabFontB = new Gdiplus::Font(m_pTabFontFamily, 12.5f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	}
-	Gdiplus::Font* pFont = bActive ? m_pTabFontB : m_pTabFontN;
+	LOGFONT lfTab = {}; lfTab.lfHeight = bActive ? -13 : -12; lfTab.lfWeight = bActive ? FW_BOLD : FW_NORMAL; lfTab.lfQuality = CLEARTYPE_QUALITY;
+	ModernUIFont::ApplyUIFontFace(lfTab);
+	HFONT hTabFont = ::CreateFontIndirect(&lfTab);
+	HDC hdcTab = g.GetHDC();
+	HFONT hOldTab = (HFONT)::SelectObject(hdcTab, hTabFont);
+	SIZE tabTextSz = {};
+	::GetTextExtentPoint32W(hdcTab, m_items[idx].text.GetString(), m_items[idx].text.GetLength(), &tabTextSz);
+	::SelectObject(hdcTab, hOldTab);
+	g.ReleaseHDC(hdcTab);
 
-	Gdiplus::RectF measRc(0.0f, 0.0f, 0.0f, 0.0f);
-	g.MeasureString(m_items[idx].text.GetString(), -1,
-		pFont, Gdiplus::PointF(0.0f, 0.0f), &measRc);
-
-	float totalW = kIconSz + kIconGap + measRc.Width;
+	float totalW = kIconSz + kIconGap + (float)tabTextSz.cx;
 	float startX = rc.X + (rc.Width - totalW) * 0.5f;
 	float midY = rc.Y + rc.Height * 0.5f;
 
 	DrawIcon(g, m_items[idx].iconType,
 		startX + kIconSz * 0.5f, midY, kIconSz, bActive);
 
-	Gdiplus::Color txtColor;
-	if (bActive)      txtColor = Gdiplus::Color(255, 0, 76, 200);
-	else if (bHover)  txtColor = Gdiplus::Color(255, 60, 72, 96);
-	else              txtColor = Gdiplus::Color(255, 128, 138, 160);
+	COLORREF tabTxtClr;
+	if (bActive)      tabTxtClr = RGB(0, 76, 200);
+	else if (bHover)  tabTxtClr = RGB(60, 72, 96);
+	else              tabTxtClr = RGB(128, 138, 160);
 
-	Gdiplus::SolidBrush txtBrush(txtColor);
-	Gdiplus::RectF txtRc(startX + kIconSz + kIconGap,
-		midY - measRc.Height * 0.5f,
-		measRc.Width + 2.0f, measRc.Height);
-	Gdiplus::StringFormat sf;
-	sf.SetAlignment(Gdiplus::StringAlignmentNear);
-	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-	g.DrawString(m_items[idx].text.GetString(), -1,
-		pFont, txtRc, &sf, &txtBrush);
+	int tabTxtLeft = (int)(startX + kIconSz + kIconGap);
+	int tabTxtTop  = (int)(midY - tabTextSz.cy * 0.5f);
+	RECT rcTabTxt  = { tabTxtLeft, tabTxtTop, tabTxtLeft + tabTextSz.cx + 2, tabTxtTop + tabTextSz.cy };
+	hdcTab = g.GetHDC();
+	::SelectObject(hdcTab, hTabFont);
+	::SetTextColor(hdcTab, tabTxtClr);
+	::SetBkMode(hdcTab, TRANSPARENT);
+	::DrawTextW(hdcTab, m_items[idx].text.GetString(), -1, &rcTabTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	g.ReleaseHDC(hdcTab);
+	::DeleteObject(hTabFont);
 }
 
 void CModernTabCtrl::DrawIcon(Graphics& g, int iconType,
@@ -3355,15 +3334,16 @@ COLORREF fill = disabled ? KFTC_DISABLED_BG : (bHot ? KFTC_PRIMARY : RGB(232, 24
 		Gdiplus::Pen pen(Gdiplus::Color(90, 0, 0, 0), 1.0f);
 		g.DrawEllipse(&pen, rf);
 	}
-	Gdiplus::FontFamily* pInfoFontFamily = ModernUIFont::CreateGdipFontFamily();
-	Gdiplus::Font font(pInfoFontFamily, sz * 0.52f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	Gdiplus::SolidBrush brText(Gdiplus::Color(255,
-		GetRValue(txt), GetGValue(txt), GetBValue(txt)));
-	Gdiplus::StringFormat sf;
-	sf.SetAlignment(Gdiplus::StringAlignmentCenter);
-	sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-	g.DrawString(L"?", -1, &font, rf, &sf, &brText);
-	delete pInfoFontFamily;
+	LOGFONT lfInfo = {}; lfInfo.lfHeight = -(int)(sz * 0.52f); lfInfo.lfWeight = FW_BOLD; lfInfo.lfQuality = CLEARTYPE_QUALITY;
+	ModernUIFont::ApplyUIFontFace(lfInfo);
+	HFONT hInfoFont = ::CreateFontIndirect(&lfInfo);
+	HFONT hOldInfoFont = (HFONT)::SelectObject(dcMem.GetSafeHdc(), hInfoFont);
+	::SetTextColor(dcMem.GetSafeHdc(), txt);
+	::SetBkMode(dcMem.GetSafeHdc(), TRANSPARENT);
+	RECT rcInfoTxt = { (LONG)rf.X, (LONG)rf.Y, (LONG)rf.GetRight(), (LONG)rf.GetBottom() };
+	::DrawTextW(dcMem.GetSafeHdc(), L"?", -1, &rcInfoTxt, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	::SelectObject(dcMem.GetSafeHdc(), hOldInfoFont);
+	::DeleteObject(hInfoFont);
 
 	// Blit to screen
 	::BitBlt(lpDIS->hDC, rect.left, rect.top, rect.Width(), rect.Height(),

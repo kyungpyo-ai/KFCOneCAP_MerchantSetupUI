@@ -1,4 +1,5 @@
-﻿msbuild 踰꾩쟾 17.13.19+0d9f5a35a(.NET Framework??
+﻿.NET Framework용 Microsoft (R) Build Engine 버전 17.2.1+52cd2da31
+Copyright (C) Microsoft Corporation. All rights reserved.
 
   KFTCOneCAPDlg.cpp
   MerchantSetupApp.cpp
@@ -8,7 +9,5 @@
   ShopSetupDlg.cpp
   stdafx.cpp
   ModernUI.cpp
-  肄붾뱶瑜??앹꽦?섍퀬 ?덉뒿?덈떎...
-  MerchantSetup.vcxproj -> C:\Users\kftc\Downloads\MerchantSetup_OnPaintIcons_Clean_CP949\Release\MerchantSetup.exe
-  'pwsh.exe'?(?? ?대? ?먮뒗 ?몃? 紐낅졊, ?ㅽ뻾?????덈뒗 ?꾨줈洹몃옩, ?먮뒗
-  諛곗튂 ?뚯씪???꾨떃?덈떎.
+  코드를 생성하고 있습니다...
+  MerchantSetup.vcxproj -> C:\Users\user\KFCOneCAP_MerchantSetupUI\Release\MerchantSetup.exe

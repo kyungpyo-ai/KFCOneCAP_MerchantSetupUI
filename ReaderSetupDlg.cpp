@@ -161,15 +161,7 @@ void CReaderSetupDlg::EnsureFonts()
 	lf.lfWeight = FW_NORMAL;
 	m_fontSmall.CreateFontIndirect(&lf);
 
-	// GDI+ section title font (cached, matches ShopSetupDlg DrawMinCard style)
 	ModernUIGfx::EnsureGdiplusStartup();
-	m_pGdipSecFamily = ModernUIFont::CreateGdipFontFamily();
-	m_pGdipSecFont = new Gdiplus::Font(m_pGdipSecFamily,
-		ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	m_pGdipHdrTitleFont = new Gdiplus::Font(m_pGdipSecFamily,
-		ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-	m_pGdipHdrSubFont = new Gdiplus::Font(m_pGdipSecFamily,
-		ModernUIDpi::ScaleF(m_hWnd, 11.0f), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 }
 
 void CReaderSetupDlg::HideLegacyStatics()
@@ -1310,25 +1302,22 @@ void CReaderSetupDlg::OnPaint()
 	}
 
 	{
-		Gdiplus::Graphics gHdr(memDC.GetSafeHdc());
-		gHdr.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-		gHdr.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 // ShopSetup의 kHdrTitleGap(13)과 시각적 균형을 위해 SX(14)로 통일
-const float tx = (float)(rcIcon.right + SX(14)); 
+		const int tx = rcIcon.right + SX(14);
 // -22.0f에서 -20.0f로 수정하여 텍스트의 수직 중앙 정렬을 보정
-const float titleY = (float)iconY + (float)iconSize * 0.5f - 20.0f;
-		Gdiplus::SolidBrush bTitle(Gdiplus::Color(255, 18, 24, 40));
-		Gdiplus::SolidBrush bSub(Gdiplus::Color(255, 130, 142, 162));
-		Gdiplus::StringFormat sf;
-		sf.SetAlignment(Gdiplus::StringAlignmentNear);
-		sf.SetLineAlignment(Gdiplus::StringAlignmentNear);
+		const int titleY = iconY + iconSize / 2 - SX(20);
 		wchar_t wTitle[128] = {}, wSub[256] = {};
 		MultiByteToWideChar(CP_ACP, 0, _T("리더기 설정"), -1, wTitle, 128);
 		MultiByteToWideChar(CP_ACP, 0, _T("리더기 연결 및 제어 설정을 관리합니다"), -1, wSub, 256);
-		gHdr.DrawString(wTitle, -1, m_pGdipHdrTitleFont,
-			Gdiplus::RectF(tx, titleY, 300.0f, 24.0f), &sf, &bTitle);
-		gHdr.DrawString(wSub, -1, m_pGdipHdrSubFont,
-			Gdiplus::RectF(tx, titleY + 26.0f, 360.0f, 16.0f), &sf, &bSub);
+		CFont* pOldF = memDC.SelectObject(&m_fontTitle);
+		memDC.SetTextColor(RGB(18, 24, 40));
+		CRect rcHdrTitle(tx, titleY, tx + SX(300), titleY + SX(24));
+		::DrawTextW(memDC.GetSafeHdc(), wTitle, -1, (LPRECT)&rcHdrTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+		memDC.SelectObject(&m_fontSub);
+		memDC.SetTextColor(RGB(130, 142, 162));
+		CRect rcHdrSub(tx, titleY + SX(26), tx + SX(360), titleY + SX(42));
+		::DrawTextW(memDC.GetSafeHdc(), wSub, -1, (LPRECT)&rcHdrSub, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+		memDC.SelectObject(pOldF);
 	}
 	// 시작점을 mainCard.left + SX(6)으로 변경하여 절대좌표 26px(아이콘 시작점)에 맞춤
 	// 길이를 mainCard.Width() - SX(12)로 변경하여 우측 여백도 26px로 대칭을 맞춤
@@ -1357,16 +1346,12 @@ const float titleY = (float)iconY + (float)iconSize * 0.5f - 20.0f;
 			bp.CloseFigure();
 			Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
 			gSec.FillPath(&barBr, &bp);
-			// Section title text: GDI+ ClearType with cached member font
-			wchar_t wbuf[128] = {};
-			MultiByteToWideChar(CP_ACP, 0, text, -1, wbuf, 128);
-			Gdiplus::SolidBrush textBr(Gdiplus::Color(255, 26, 32, 44));
-			Gdiplus::StringFormat sf;
-			sf.SetAlignment(Gdiplus::StringAlignmentNear);
-			sf.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-			gSec.DrawString(wbuf, -1, m_pGdipSecFont,
-				Gdiplus::RectF((float)pt.x, (float)pt.y, 300.0f, (float)SX(20)),
-				&sf, &textBr);
+			// Section title text: GDI DrawText
+			CFont* pOldSec = memDC.SelectObject(&m_fontSection);
+			memDC.SetTextColor(RGB(26, 32, 44));
+			CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(20));
+			memDC.DrawText(text, rcSec, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+			memDC.SelectObject(pOldSec);
 		};
 
 	{
