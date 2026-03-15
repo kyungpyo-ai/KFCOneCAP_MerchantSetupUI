@@ -123,10 +123,9 @@ private:
 
     // Cached GDI+ paint fonts (recreated on DPI change)
     int                  m_nCachedPaintDpi;
-    Gdiplus::Font*       m_pFontLbl;
-    Gdiplus::Font*       m_pFontVal;
-    Gdiplus::Font*       m_pFontValBold;
-    Gdiplus::FontFamily* m_pFontFamily;
+    HFONT m_hFontLbl;
+    HFONT m_hFontVal;
+    HFONT m_hFontValBold;
 
     // ---------- Data strings --------------------------------------------------
     // ---------- Per-row data (all 20 rows) ------------------------------------

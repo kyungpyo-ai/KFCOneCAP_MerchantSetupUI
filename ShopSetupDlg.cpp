@@ -325,10 +325,9 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     m_strCardDetectParam = _T("KFTCOneCAP TEST");
     m_intSignPadPort = 56;
     m_intScannerPort = 0;
-    m_pFontFamilyMalgun = nullptr;
-    m_pFontCardTitle = nullptr;
-    m_pFontHdrTitle = nullptr;
-    m_pFontHdrSub = nullptr;
+    m_hFontCardTitle = nullptr;
+    m_hFontHdrTitle = nullptr;
+    m_hFontHdrSub = nullptr;
 }
 CShopSetupDlg::~CShopSetupDlg()
 {
@@ -436,17 +435,20 @@ BOOL CShopSetupDlg::OnInitDialog()
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
     m_brushTabContent.CreateSolidBrush(RGB(255, 255, 255));  // card white
     InitializeFonts();
-    // Create GDI+ font objects once (DPI-scaled). Must be called after the HWND is
-    // valid so ScaleF can query the monitor DPI. Prevents per-OnPaint allocations
-    // that risk transient GdipStatus != Ok errors causing corrupted DrawString output.
     ModernUIGfx::EnsureGdiplusStartup();
-    m_pFontFamilyMalgun = ModernUIFont::CreateGdipFontFamily();
-    m_pFontCardTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
-        ModernUIDpi::ScaleF(m_hWnd, 13.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-    m_pFontHdrTitle = new Gdiplus::Font(m_pFontFamilyMalgun,
-        ModernUIDpi::ScaleF(m_hWnd, 16.0f), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-    m_pFontHdrSub = new Gdiplus::Font(m_pFontFamilyMalgun,
-        ModernUIDpi::ScaleF(m_hWnd, 11.0f), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    {
+        LOGFONT lf = {};
+        lf.lfCharSet = DEFAULT_CHARSET;
+        ModernUIFont::ApplyUIFontFace(lf);
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 13);
+        lf.lfWeight = FW_BOLD;
+        m_hFontCardTitle = ::CreateFontIndirect(&lf);
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 16);
+        m_hFontHdrTitle = ::CreateFontIndirect(&lf);
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 11);
+        lf.lfWeight = FW_NORMAL;
+        m_hFontHdrSub = ::CreateFontIndirect(&lf);
+    }
 
 
 
@@ -785,6 +787,16 @@ void CShopSetupDlg::InitializeControls()
         CWnd* p = GetDlgItem(id);
         if (p) p->SetFont(&m_fontLabel);
     }
+    // Apply Pretendard font to edit controls (input text) and combo boxes (dropdown list)
+    CWnd* inputControls[] = {
+        &m_editPort, &m_editNoSignAmount, &m_editTaxPercent, &m_editCardTimeout,
+        &m_editCardDetectParam, &m_editSignPadPort, &m_editScannerPort,
+        &m_comboVanServer, &m_comboCashReceipt, &m_comboInterlock, &m_comboCommType,
+        &m_comboSignPadUse, &m_comboSignPadSpeed, &m_comboAlarmPos, &m_comboAlarmSize,
+        &m_comboCancelKey, &m_comboMSRKey
+    };
+    for (CWnd* w : inputControls)
+        w->SetFont(&m_fontLabel);
 }
 // --- ScalePx: DPI-aware scaling shorthand ---
 int CShopSetupDlg::ScalePx(int px) const
@@ -1812,18 +1824,22 @@ void CShopSetupDlg::OnPaint()
         }
         // 타이틀 (GDI+ ClearType)
         // Use cached member font objects (created once in OnInitDialog with DPI scaling)
-        Gdiplus::SolidBrush bTitle(Gdiplus::Color(255, 18, 24, 40));
-        Gdiplus::SolidBrush bSub(Gdiplus::Color(255, 130, 142, 162));
-        Gdiplus::StringFormat sf;
-        sf.SetAlignment(Gdiplus::StringAlignmentNear);
-        sf.SetLineAlignment(Gdiplus::StringAlignmentNear);
         const float tx = bx + bsz + 12.0f;
-        // 타이틀: 배지 세로 중앙 기준 위쪽 절반
         const float titleY = by + bsz * 0.5f - 22.0f;
-        gh.DrawString(L"가맹점 설정", -1, m_pFontHdrTitle,
-            Gdiplus::RectF(tx, titleY, 300.0f, 24.0f), &sf, &bTitle);
-        gh.DrawString(L"가맹점 및 서버 연결 설정을 관리합니다", -1, m_pFontHdrSub,
-            Gdiplus::RectF(tx, titleY + 26.0f, 360.0f, 16.0f), &sf, &bSub);
+        {
+            HDC hdcHdr = gh.GetHDC();
+            ::SetBkMode(hdcHdr, TRANSPARENT);
+            HFONT hOldHdr = (HFONT)::SelectObject(hdcHdr, m_hFontHdrTitle);
+            ::SetTextColor(hdcHdr, RGB(18, 24, 40));
+            RECT rcHdrTitle = { (LONG)(tx), (LONG)titleY, (LONG)(tx + 300.0f), (LONG)(titleY + 24.0f) };
+            ::DrawTextW(hdcHdr, L"가맹점 설정", -1, &rcHdrTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
+            ::SelectObject(hdcHdr, m_hFontHdrSub);
+            ::SetTextColor(hdcHdr, RGB(130, 142, 162));
+            RECT rcHdrSub = { (LONG)(tx), (LONG)(titleY + 26.0f), (LONG)(tx + 360.0f), (LONG)(titleY + 42.0f) };
+            ::DrawTextW(hdcHdr, L"가맹점 및 서버 연결 설정을 관리합니다", -1, &rcHdrSub, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
+            ::SelectObject(hdcHdr, hOldHdr);
+            gh.ReleaseHDC(hdcHdr);
+        }
         // 구분선 (kHdrDividerY 기준)
         Gdiplus::Pen divPen(Gdiplus::Color(255, 228, 232, 240), 1.0f);
         gh.DrawLine(&divPen,
@@ -2002,17 +2018,16 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
                 // 타이틀 (세로 바 오른쪽에 10px 간격)
                 const float titleX = barX + barW + 10.0f;
                 // Use cached member font object (created once in OnInitDialog with DPI scaling)
-                Gdiplus::SolidBrush bT(Gdiplus::Color(255, 26, 32, 44));
-                // [중요 추가] 텍스트 렌더링 힌트를 ClearType으로 설정 (깨짐 방지 핵심)
-                g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-                Gdiplus::StringFormat sf2;
-                sf2.SetAlignment(Gdiplus::StringAlignmentNear);
-                sf2.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-                // [중요 추가] 텍스트가 영역 밖으로 나가거나 줄바꿈되어 깨지는 현상 방지
-                sf2.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsNoClip);
-                g.DrawString(title, -1, m_pFontCardTitle,
-                    Gdiplus::RectF(titleX, cr.Y, cr.Width - (titleX - cr.X) - 16.0f, hdrH),
-                    &sf2, &bT);
+                {
+                    HDC hdcCard = g.GetHDC();
+                    ::SetBkMode(hdcCard, TRANSPARENT);
+                    HFONT hOldCard = (HFONT)::SelectObject(hdcCard, m_hFontCardTitle);
+                    ::SetTextColor(hdcCard, RGB(26, 32, 44));
+                    RECT rcCard = { (LONG)titleX, (LONG)cr.Y, (LONG)(cr.X + cr.Width - 16.0f), (LONG)(cr.Y + hdrH) };
+                    ::DrawTextW(hdcCard, title, -1, &rcCard, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+                    ::SelectObject(hdcCard, hOldCard);
+                    g.ReleaseHDC(hdcCard);
+                }
             };
         // ── 탭별 렌더링 ────────────────────────────────────────────────
         if (m_nActiveTab == 0)
@@ -2103,11 +2118,9 @@ void CShopSetupDlg::OnDestroy()
         if (p && p->GetSafeHwnd())
             p->DestroyWindow();
     }
-    // Delete cached GDI+ font objects created in OnInitDialog
-    delete m_pFontCardTitle;    m_pFontCardTitle = nullptr;
-    delete m_pFontHdrTitle;     m_pFontHdrTitle = nullptr;
-    delete m_pFontHdrSub;       m_pFontHdrSub = nullptr;
-    delete m_pFontFamilyMalgun; m_pFontFamilyMalgun = nullptr;
+    if (m_hFontCardTitle) { ::DeleteObject(m_hFontCardTitle); m_hFontCardTitle = nullptr; }
+    if (m_hFontHdrTitle)  { ::DeleteObject(m_hFontHdrTitle);  m_hFontHdrTitle  = nullptr; }
+    if (m_hFontHdrSub)    { ::DeleteObject(m_hFontHdrSub);    m_hFontHdrSub    = nullptr; }
     CDialog::OnDestroy();
 }
 // ============================================================================

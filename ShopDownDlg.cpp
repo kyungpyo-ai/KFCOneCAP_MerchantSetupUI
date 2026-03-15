@@ -106,10 +106,9 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_nCurrentPage(0)
     , m_bInLayout(FALSE)
     , m_nCachedPaintDpi(0)
-    , m_pFontLbl(nullptr)
-    , m_pFontVal(nullptr)
-    , m_pFontValBold(nullptr)
-    , m_pFontFamily(nullptr)
+    , m_hFontLbl(nullptr)
+    , m_hFontVal(nullptr)
+    , m_hFontValBold(nullptr)
     , m_bHoverPrev(false)
     , m_bHoverNext(false)
     , m_bPressedPrev(false)
@@ -135,10 +134,9 @@ void CShopDownDlg::OnDestroy()
     // 창 소멸 시 실행 중인 애니메이션 타이머가 있다면 안전하게 해제
     KillTimer(42);
 
-    delete m_pFontLbl;     m_pFontLbl = nullptr;
-    delete m_pFontVal;     m_pFontVal = nullptr;
-    delete m_pFontValBold; m_pFontValBold = nullptr;
-    delete m_pFontFamily;  m_pFontFamily = nullptr;
+    if (m_hFontLbl)     { ::DeleteObject(m_hFontLbl);     m_hFontLbl     = nullptr; }
+    if (m_hFontVal)     { ::DeleteObject(m_hFontVal);     m_hFontVal     = nullptr; }
+    if (m_hFontValBold) { ::DeleteObject(m_hFontValBold); m_hFontValBold = nullptr; }
     m_memDC.DeleteDC();
     m_memBmp.DeleteObject();
     CDialog::OnDestroy();
@@ -257,21 +255,26 @@ void CShopDownDlg::ApplyFonts()
         m_btnDelete[slot].SetFont(&m_fontCell, FALSE);
     }
 
-    // Pre-create GDI+ paint fonts so first OnPaint does not block on font load
+    // Pre-create GDI paint fonts so first OnPaint does not block on font load
     {
         const int dpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
-        if (m_nCachedPaintDpi != dpi || !m_pFontFamily)
+        if (m_nCachedPaintDpi != dpi || !m_hFontLbl)
         {
-            delete m_pFontLbl;     m_pFontLbl     = nullptr;
-            delete m_pFontVal;     m_pFontVal     = nullptr;
-            delete m_pFontValBold; m_pFontValBold = nullptr;
-            delete m_pFontFamily;  m_pFontFamily  = nullptr;
-            const float lblPx = (float)ModernUIDpi::Scale(m_hWnd, 12);
-            const float valPx = (float)ModernUIDpi::Scale(m_hWnd, 13);
-            m_pFontFamily  = new Gdiplus::FontFamily(L"Malgun Gothic");
-            m_pFontLbl     = new Gdiplus::Font(m_pFontFamily, lblPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-            m_pFontVal     = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-            m_pFontValBold = new Gdiplus::Font(m_pFontFamily, valPx, Gdiplus::FontStyleBold,    Gdiplus::UnitPixel);
+            if (m_hFontLbl)     { ::DeleteObject(m_hFontLbl);     m_hFontLbl     = nullptr; }
+            if (m_hFontVal)     { ::DeleteObject(m_hFontVal);     m_hFontVal     = nullptr; }
+            if (m_hFontValBold) { ::DeleteObject(m_hFontValBold); m_hFontValBold = nullptr; }
+            const int lblPx = ModernUIDpi::Scale(m_hWnd, 12);
+            const int valPx = ModernUIDpi::Scale(m_hWnd, 13);
+            LOGFONT lf = {};
+            lf.lfCharSet = DEFAULT_CHARSET;
+            ModernUIFont::ApplyUIFontFace(lf);
+            lf.lfHeight = -lblPx;
+            lf.lfWeight = FW_NORMAL;
+            m_hFontLbl = ::CreateFontIndirect(&lf);
+            lf.lfHeight = -valPx;
+            m_hFontVal = ::CreateFontIndirect(&lf);
+            lf.lfWeight = FW_BOLD;
+            m_hFontValBold = ::CreateFontIndirect(&lf);
             m_nCachedPaintDpi = dpi;
         }
     }
@@ -541,18 +544,11 @@ void CShopDownDlg::OnPaint()
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-    if (m_pFontLbl == nullptr) ApplyFonts();
+    if (m_hFontLbl == nullptr) ApplyFonts();
 
-    Gdiplus::StringFormat sfEllips;
-    sfEllips.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-    sfEllips.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-    sfEllips.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-    sfEllips.SetAlignment(Gdiplus::StringAlignmentNear);
-
-    const Gdiplus::Color cLbl(255, 120, 128, 142);
-    const Gdiplus::Color cVal(255, 24, 28, 35);
-    const Gdiplus::Color cPh(255, 160, 165, 175);
-    Gdiplus::SolidBrush brLbl(cLbl);
+    const COLORREF clrLbl = RGB(120, 128, 142);
+    const COLORREF clrVal = RGB(24, 28, 35);
+    const COLORREF clrPh  = RGB(160, 165, 175);
 
     // [2] 카드형 행 데이터 렌더링
     const int pageStart = m_nCurrentPage * kRowsPerPage;
@@ -576,42 +572,65 @@ void CShopDownDlg::OnPaint()
         const float yLbl = (float)r.top + (float)m_card.cardPad;
         const float hLbl = (float)m_card.labelH;
 
-        // 라벨 텍스트
-        g.DrawString(L"단말기 제품번호", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcProd[slot].left, yLbl, (float)m_rcProd[slot].Width(), hLbl), &sfEllips, &brLbl);
-        g.DrawString(L"사업자번호", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcBiz[slot].left, yLbl, (float)m_rcBiz[slot].Width(), hLbl), &sfEllips, &brLbl);
+        {
+            HDC hdcLbl = g.GetHDC();
+            ::SetBkMode(hdcLbl, TRANSPARENT);
+            HFONT hOldLbl = (HFONT)::SelectObject(hdcLbl, m_hFontLbl);
+            ::SetTextColor(hdcLbl, clrLbl);
+            RECT rcL1 = { m_rcProd[slot].left, (LONG)yLbl, m_rcProd[slot].right, (LONG)(yLbl + hLbl) };
+            ::DrawTextW(hdcLbl, L"단말기 제품번호", -1, &rcL1, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            RECT rcL2 = { m_rcBiz[slot].left, (LONG)yLbl, m_rcBiz[slot].right, (LONG)(yLbl + hLbl) };
+            ::DrawTextW(hdcLbl, L"사업자번호", -1, &rcL2, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            const float yPwdLbl = (float)m_rcPwd[slot].top - (float)m_card.labelGap - (float)m_card.labelH;
+            RECT rcL3 = { m_rcPwd[slot].left, (LONG)yPwdLbl, m_rcPwd[slot].right, (LONG)(yPwdLbl + hLbl) };
+            ::DrawTextW(hdcLbl, L"비밀번호", -1, &rcL3, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            RECT rcL4 = { m_rcInfoRep[slot].left, (LONG)yLbl, m_rcInfoRep[slot].right, (LONG)(yLbl + hLbl) };
+            ::DrawTextW(hdcLbl, L"대표 상호명", -1, &rcL4, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            RECT rcL5 = { m_rcInfoTerm[slot].left, m_rcInfoTerm[slot].top, m_rcInfoTerm[slot].right, m_rcInfoTerm[slot].bottom };
+            ::DrawTextW(hdcLbl, L"단말기별 상호명", -1, &rcL5, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            ::SelectObject(hdcLbl, hOldLbl);
+            g.ReleaseHDC(hdcLbl);
+        }
 
-        const float yPwdLbl = (float)m_rcPwd[slot].top - (float)m_card.labelGap - (float)m_card.labelH;
-        g.DrawString(L"비밀번호", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcPwd[slot].left, yPwdLbl, (float)m_rcPwd[slot].Width(), hLbl), &sfEllips, &brLbl);
-        g.DrawString(L"대표 가맹점", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcInfoRep[slot].left, yLbl, (float)m_rcInfoRep[slot].Width(), hLbl), &sfEllips, &brLbl);
-        g.DrawString(L"단말기별 가맹점", -1, m_pFontLbl, Gdiplus::RectF((float)m_rcInfoTerm[slot].left, (float)m_rcInfoTerm[slot].top, (float)m_rcInfoTerm[slot].Width(), (float)m_rcInfoTerm[slot].Height()), &sfEllips, &brLbl);
-
-        // --- 데이터 텍스트 (삼항 연산자 오류 수정 완료) ---
-        Gdiplus::SolidBrush brVal(hasRep ? cVal : cPh);
-
-        // 대표 가맹점 값 설정
+        // 대표 상호명 값 표시
         CStringW strRepW;
         if (hasRep) strRepW = rep;
         else strRepW = L"다운로드 후 표시";
 
-        g.DrawString(strRepW, -1, hasRep ? m_pFontValBold : m_pFontVal,
-            Gdiplus::RectF((float)m_rcInfoRep[slot].left, (float)m_rcInfoRep[slot].top, (float)m_rcInfoRep[slot].Width(), (float)m_rcInfoRep[slot].Height()), &sfEllips, &brVal);
-
-        // 단말기별 가맹점 값 설정
+        // 단말기별 상호명 값 표시
         CStringW strTermW;
         if (!term.IsEmpty()) strTermW = term;
         else if (hasRep) strTermW = L"-";
         else strTermW = L"다운로드 후 표시";
 
-        g.DrawString(strTermW, -1, (!term.IsEmpty()) ? m_pFontValBold : m_pFontVal,
-            Gdiplus::RectF((float)m_rcInfoTermVal[slot].left, (float)m_rcInfoTermVal[slot].top, (float)m_rcInfoTermVal[slot].Width(), (float)m_rcInfoTermVal[slot].Height()), &sfEllips, &brVal);
+        {
+            HDC hdcVal = g.GetHDC();
+            ::SetBkMode(hdcVal, TRANSPARENT);
+            HFONT hOldVal = (HFONT)::SelectObject(hdcVal, hasRep ? m_hFontValBold : m_hFontVal);
+            ::SetTextColor(hdcVal, hasRep ? clrVal : clrPh);
+            RECT rcV1 = { m_rcInfoRep[slot].left, m_rcInfoRep[slot].top, m_rcInfoRep[slot].right, m_rcInfoRep[slot].bottom };
+            ::DrawTextW(hdcVal, strRepW, -1, &rcV1, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            ::SelectObject(hdcVal, (!term.IsEmpty()) ? m_hFontValBold : m_hFontVal);
+            ::SetTextColor(hdcVal, (!term.IsEmpty() || hasRep) ? clrVal : clrPh);
+            RECT rcV2 = { m_rcInfoTermVal[slot].left, m_rcInfoTermVal[slot].top, m_rcInfoTermVal[slot].right, m_rcInfoTermVal[slot].bottom };
+            ::DrawTextW(hdcVal, strTermW, -1, &rcV2, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+            ::SelectObject(hdcVal, hOldVal);
+            g.ReleaseHDC(hdcVal);
+        }
 
         // 행 번호
         CString strNum; strNum.Format(_T("%d"), rowIdx + 1);
         CStringW strNumW(strNum);
-        Gdiplus::SolidBrush brBadge(Gdiplus::Color(255, 92, 102, 120));
-        Gdiplus::StringFormat sfBadge; sfBadge.SetAlignment(Gdiplus::StringAlignmentFar); sfBadge.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        g.DrawString(strNumW, -1, m_pFontValBold,
-            Gdiplus::RectF((float)r.left + 8.f, (float)r.top + (float)m_card.cardPad - 1.f, (float)m_card.idxW - 12.f, (float)m_card.labelH + 4.f), &sfBadge, &brBadge);
+        {
+            HDC hdcBadge = g.GetHDC();
+            ::SetBkMode(hdcBadge, TRANSPARENT);
+            HFONT hOldBadge = (HFONT)::SelectObject(hdcBadge, m_hFontValBold);
+            ::SetTextColor(hdcBadge, RGB(92, 102, 120));
+            RECT rcBadge = { (LONG)(r.left + 8), (LONG)(r.top + m_card.cardPad - 1), (LONG)(r.left + 8 + m_card.idxW - 12), (LONG)(r.top + m_card.cardPad - 1 + m_card.labelH + 4) };
+            ::DrawTextW(hdcBadge, strNumW, -1, &rcBadge, DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            ::SelectObject(hdcBadge, hOldBadge);
+            g.ReleaseHDC(hdcBadge);
+        }
     }
 
     // [3] 하단 네비게이션 버튼 렌더링 (사라짐 문제 해결)
@@ -642,9 +661,16 @@ void CShopDownDlg::OnPaint()
 
         CString pageStr; pageStr.Format(_T("%d / %d"), m_nCurrentPage + 1, totalP);
         CStringW pageStrW = pageStr;
-        Gdiplus::StringFormat sfNav; sfNav.SetAlignment(Gdiplus::StringAlignmentCenter); sfNav.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        Gdiplus::SolidBrush brNav(Gdiplus::Color(255, 60, 70, 90));
-        g.DrawString(pageStrW, -1, m_pFontValBold, Gdiplus::RectF((float)m_rcNavBar.left, (float)m_rcNavBar.top, (float)m_rcNavBar.Width(), (float)m_rcNavBar.Height()), &sfNav, &brNav);
+        {
+            HDC hdcNav = g.GetHDC();
+            ::SetBkMode(hdcNav, TRANSPARENT);
+            HFONT hOldNav = (HFONT)::SelectObject(hdcNav, m_hFontValBold);
+            ::SetTextColor(hdcNav, RGB(60, 70, 90));
+            RECT rcNav = { m_rcNavBar.left, m_rcNavBar.top, m_rcNavBar.right, m_rcNavBar.bottom };
+            ::DrawTextW(hdcNav, pageStrW, -1, &rcNav, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+            ::SelectObject(hdcNav, hOldNav);
+            g.ReleaseHDC(hdcNav);
+        }
     }
 
     // 최종 비트맵 전송
