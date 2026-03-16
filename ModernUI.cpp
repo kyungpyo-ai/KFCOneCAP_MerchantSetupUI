@@ -2099,31 +2099,6 @@ LRESULT CALLBACK CSkinnedComboBox::ListBoxProc(HWND hWnd, UINT msg, WPARAM wp, L
 	}
 
 	// 3. WM_PAINT / WM_NCPAINT 후처리 (테두리 등)
-	if (msg == WM_PAINT || msg == WM_NCPAINT)
-	{
-		HDC hdc = ::GetWindowDC(hWnd); //      
-		if (hdc)
-		{
-			RECT rc;
-			::GetWindowRect(hWnd, &rc);
-			::OffsetRect(&rc, -rc.left, -rc.top); // (0,0)  
-
-			//   м    ( UI)
-			COLORREF borderClr = RGB(228, 232, 240);
-			HPEN hPen = ::CreatePen(PS_SOLID, 1, borderClr);
-			HGDIOBJ hOldPen = ::SelectObject(hdc, hPen);
-
-			// , ,  1   (     )
-			::MoveToEx(hdc, 0, 0, NULL);
-			::LineTo(hdc, 0, rc.bottom - 1);
-			::LineTo(hdc, rc.right - 1, rc.bottom - 1);
-			::LineTo(hdc, rc.right - 1, -1);
-
-			::SelectObject(hdc, hOldPen);
-			::DeleteObject(hPen);
-			::ReleaseDC(hWnd, hdc);
-		}
-	}
 
 	return lRes;
 }
@@ -2137,7 +2112,7 @@ void CSkinnedComboBox::HookListBox(HWND hList)
 
 	m_hList = hList;
 
-	// 1.    θ      (Win32 API )
+	// 1. 테두리(Border) 속성을 완전히 제거하여 그림자만 깔끔하게 남깁니다.
 	LONG_PTR style = ::GetWindowLongPtr(m_hList, GWL_STYLE);
 	style &= ~WS_BORDER;
 	::SetWindowLongPtr(m_hList, GWL_STYLE, style);
@@ -2146,15 +2121,25 @@ void CSkinnedComboBox::HookListBox(HWND hList)
 	exStyle &= ~(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 	::SetWindowLongPtr(m_hList, GWL_EXSTYLE, exStyle);
 
-	//      
+	// 프레임 재계산
 	::SetWindowPos(m_hList, NULL, 0, 0, 0, 0,
 		SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
-	// 2. /佺         
+	// ==========================================================
+	// [수정된 부분] 2. 그림자(DropShadow) 복구 및 렉 원천 차단
+	// ==========================================================
 #ifndef CS_DROPSHADOW
 #define CS_DROPSHADOW 0x00020000
 #endif
-	::SetClassLongPtr(m_hList, GCL_STYLE, ::GetClassLongPtr(m_hList, GCL_STYLE) | CS_DROPSHADOW);
+
+	LONG_PTR clsStyle = ::GetClassLongPtr(m_hList, GCL_STYLE);
+
+	// [핵심] 현재 윈도우 클래스에 그림자 속성이 '없을 때만' 최초 1회 부여합니다.
+	// 이 조건문 하나 덕분에 드롭다운을 열 때마다 발생하던 프레임 드랍(렉)이 완벽히 사라집니다.
+	if ((clsStyle & CS_DROPSHADOW) == 0)
+	{
+		::SetClassLongPtr(m_hList, GCL_STYLE, clsStyle | CS_DROPSHADOW);
+	}
 
 	m_oldListProc = (WNDPROC)::GetWindowLongPtr(m_hList, GWLP_WNDPROC);
 	::SetProp(m_hList, _T("SKCBX_PTR"), (HANDLE)this);
