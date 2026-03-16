@@ -496,9 +496,13 @@ HBRUSH CShopDownDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     if (nCtlColor == CTLCOLOR_EDIT)
     {
         const BOOL bEnabled = pWnd && pWnd->IsWindowEnabled();
+        // Trigger MFC reflection so CSkinnedEdit::CtlColor runs:
+        // it sets BkMode(OPAQUE) + BkColor + rounded clip region on the DC.
+        // Without this, the native edit renders text/caret directly via GetDC
+        // without the clip, causing white bg to overwrite rounded border pixels (flicker).
+        HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
         pDC->SetTextColor(bEnabled ? kClrEditText : kClrEditTextDis);
-        pDC->SetBkMode(TRANSPARENT); // 에딧 박스 글자 배경 투명화
-        return (HBRUSH)(bEnabled ? m_brushCard.GetSafeHandle() : m_brushCardDisabled.GetSafeHandle());
+        return hbr;
     }
     return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 }
