@@ -232,9 +232,9 @@ namespace
 // [TUNE] kHdrBadgeY    : 배지 아이콘 상단 Y (다이얼로그 좌상단 기준)
 static const int kHdrBadgeY = 28;   // [TUNE] 배지 상단 위치 (기본 20)
 // [TUNE] kHdrBadgeSz   : 배지 크기(정사각형)
-static const int kHdrBadgeSz = 38;   // [TUNE] 배지 크기 px (기본 38)
+static const int kHdrBadgeSz = 44;   // [TUNE] 배지 크기 px (기본 38)
 // [TUNE] kHdrBadgeX    : 배지 좌측 여백
-static const int kHdrBadgeX = 26;   // [TUNE] 배지 좌측 여백 (기본 26)
+static const int kHdrBadgeX = 34;   // [TUNE] 배지 좌측 여백 (기본 26)
 // [TUNE] kHdrTitleGap  : 배지-텍스트 간격
 static const int kHdrTitleGap = 13;   // [TUNE] 배지→텍스트 간격 (기본 13)
 // [TUNE] kHdrDividerY  : 헤더 하단 구분선 Y 위치
@@ -341,6 +341,9 @@ CShopSetupDlg::~CShopSetupDlg()
     if (m_brushWhite.GetSafeHandle())     m_brushWhite.DeleteObject();
     if (m_brushTabContent.GetSafeHandle()) m_brushTabContent.DeleteObject();
     if (m_brushSection.GetSafeHandle())   m_brushSection.DeleteObject();
+    if (m_hFontCardTitle) { ::DeleteObject(m_hFontCardTitle); m_hFontCardTitle = nullptr; }
+    if (m_hFontHdrTitle)  { ::DeleteObject(m_hFontHdrTitle);  m_hFontHdrTitle  = nullptr; }
+    if (m_hFontHdrSub)    { ::DeleteObject(m_hFontHdrSub);    m_hFontHdrSub    = nullptr; }
 }
 // ============================================================================
 // Amount field helpers: parse comma-formatted text, format int with commas
@@ -1815,71 +1818,12 @@ void CShopSetupDlg::OnPaint()
     DrawBackground(&memDC);
     // ── 헤더: 배지 아이콘 + 타이틀 + 서브타이틀 ───────────────────
     {
-        HDC hdc2 = memDC.GetSafeHdc();
-        ModernUIGfx::EnsureGdiplusStartup();
-        Gdiplus::Graphics gh(hdc2);
-        gh.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-        gh.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-        // 배지 배경 (kHdrBadgeSz x kHdrBadgeSz, 파랑 그라디언트)
-        const float bx = (float)kHdrBadgeX;
-        const float by = (float)kHdrBadgeY;
-        const float bsz = (float)kHdrBadgeSz;
-        {
-            auto MRR = [](Gdiplus::GraphicsPath& path, Gdiplus::RectF r, float rad)
-                {
-                    const float d = rad * 2.0f;
-                    Gdiplus::RectF a(r.X, r.Y, d, d);
-                    path.AddArc(a, 180, 90); a.X = r.X + r.Width - d;
-                    path.AddArc(a, 270, 90); a.Y = r.Y + r.Height - d;
-                    path.AddArc(a, 0, 90); a.X = r.X;
-                    path.AddArc(a, 90, 90); path.CloseFigure();
-                };
-            Gdiplus::GraphicsPath bp;
-            MRR(bp, Gdiplus::RectF(bx, by, bsz, bsz), 9.0f);
-            Gdiplus::LinearGradientBrush bg(
-                Gdiplus::PointF(bx, by), Gdiplus::PointF(bx, by + bsz),
-                Gdiplus::Color(255, 60, 130, 245),
-                Gdiplus::Color(255, 28, 76, 210));
-            gh.FillPath(&bg, &bp);
-            // Modern store icon (Toss/Kakao/Naver style - white filled building silhouette)
-            const float cx = bx + bsz * 0.5f, cy = by + bsz * 0.5f;
-            Gdiplus::SolidBrush wBr(Gdiplus::Color(255, 255, 255, 255));
-            const float iH = bsz * 0.60f, iW = bsz * 0.52f;
-            const float rH = iH * 0.28f, bHh = iH - rH;
-            const float iX = cx - iW * 0.5f, iY = cy - iH * 0.5f + 0.5f;
-            Gdiplus::PointF rf[3];
-            rf[0] = Gdiplus::PointF(cx, iY);
-            rf[1] = Gdiplus::PointF(iX - iW * 0.14f, iY + rH + 1.5f);
-            rf[2] = Gdiplus::PointF(iX + iW * 1.14f, iY + rH + 1.5f);
-            gh.FillPolygon(&wBr, rf, 3);
-            gh.FillRectangle(&wBr, Gdiplus::RectF(iX, iY + rH, iW, bHh));
-            Gdiplus::SolidBrush dBr(Gdiplus::Color(130, 28, 76, 210));
-            const float dW = iW * 0.26f, dH = bHh * 0.44f;
-            gh.FillRectangle(&dBr, Gdiplus::RectF(cx - dW * 0.5f, iY + rH + bHh - dH, dW, dH));
-        }
-        // 타이틀 (GDI+ ClearType)
-        // Use cached member font objects (created once in OnInitDialog with DPI scaling)
-        const float tx = bx + bsz + 12.0f;
-        const float titleY = by + bsz * 0.5f - 22.0f;
-        {
-            HDC hdcHdr = gh.GetHDC();
-            ::SetBkMode(hdcHdr, TRANSPARENT);
-            HFONT hOldHdr = (HFONT)::SelectObject(hdcHdr, m_hFontHdrTitle);
-            ::SetTextColor(hdcHdr, RGB(18, 24, 40));
-            RECT rcHdrTitle = { (LONG)(tx), (LONG)titleY, (LONG)(tx + 300.0f), (LONG)(titleY + 28.0f) };
-            ::DrawTextW(hdcHdr, L"가맹점 설정", -1, &rcHdrTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
-            ::SelectObject(hdcHdr, m_hFontHdrSub);
-            ::SetTextColor(hdcHdr, RGB(130, 142, 162));
-            RECT rcHdrSub = { (LONG)(tx), (LONG)(titleY + 26.0f), (LONG)(tx + 360.0f), (LONG)(titleY + 46.0f) };
-            ::DrawTextW(hdcHdr, L"가맹점 및 서버 연결 설정을 관리합니다", -1, &rcHdrSub, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
-            ::SelectObject(hdcHdr, hOldHdr);
-            gh.ReleaseHDC(hdcHdr);
-        }
-        // 구분선 (kHdrDividerY 기준)
-        Gdiplus::Pen divPen(Gdiplus::Color(255, 228, 232, 240), 1.0f);
-        gh.DrawLine(&divPen,
-            Gdiplus::PointF((float)kHdrBadgeX, (float)kHdrDividerY),
-            Gdiplus::PointF((float)(rc.Width() - kHdrBadgeX), (float)kHdrDividerY));
+        ModernUIHeader::Draw(memDC.GetSafeHdc(),
+            (float)(m_rcOuterCard.left + SX(14)), (float)(m_rcOuterCard.top + SX(16)), (float)SX(kHdrBadgeSz),
+            ModernUIHeader::IconType::Store,
+            L"가맹점 설정", L"가맹점 및 서버 연결 설정을 관리합니다",
+            m_hFontHdrTitle, m_hFontHdrSub,
+            m_rcOuterCard.left + SX(14), m_rcOuterCard.top + SX(74), rc.Width() - (m_rcOuterCard.left + SX(14)));
     }
     CFont* pOldFont = memDC.SelectObject(&m_fontTitle);
     CPen linePen(PS_SOLID, 1, RGB(228, 232, 240));
@@ -1953,6 +1897,7 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
     const float kRadius = 12.0f;
     CRect contentRect(kCardMarginL, kCardMarginT,
         rc.Width() - kCardMarginR, rc.bottom - kCardMarginB);
+    m_rcOuterCard = contentRect;
     ModernUIGfx::EnsureGdiplusStartup();
     {
         HDC hdc = pDC->GetSafeHdc();

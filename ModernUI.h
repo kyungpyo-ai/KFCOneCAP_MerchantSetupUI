@@ -131,6 +131,7 @@ namespace ModernUIGfx
 namespace ModernUIFont
 {
     bool EnsureFontsLoaded();
+    void ShutdownFonts();
     LPCTSTR GetUIFontFace();
     void ApplyUIFontFace(LOGFONT& lf);
     Gdiplus::FontFamily* CreateGdipFontFamily();
@@ -143,6 +144,21 @@ namespace ModernUIFont
 namespace ModernUIWindow
 {
     void ApplyWhiteTitleBar(HWND hwnd);
+}
+
+// Standard dialog header drawing helper (icon + title/subtitle + divider)
+// Both CShopSetupDlg and CReaderSetupDlg use this to keep header rendering identical.
+namespace ModernUIHeader
+{
+    enum class IconType { CardTerminal, Store };
+    // bx, by, bsz : icon rect (already DPI-scaled pixels)
+    // hFontTitle/hFontSub : GDI HFONT handles (may be NULL to skip)
+    // divX1, divY, divX2 : divider line coords (pass divY=0 to skip)
+    void Draw(HDC hdc,
+              float bx, float by, float bsz, IconType iconType,
+              LPCWSTR wTitle, LPCWSTR wSub,
+              HFONT hFontTitle, HFONT hFontSub,
+              int divX1, int divY, int divX2);
 }
 
 // DPI scaling helpers (per-monitor DPI aware)

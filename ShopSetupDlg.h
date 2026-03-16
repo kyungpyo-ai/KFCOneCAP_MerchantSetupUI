@@ -351,6 +351,7 @@ private:
 
     // 탭 내부 컨텐츠 영역 (탭 컨트롤 아래 부분)
     CRect m_rcTabContent;
+    CRect m_rcOuterCard;
 
 
     // Tab0 카드 영역

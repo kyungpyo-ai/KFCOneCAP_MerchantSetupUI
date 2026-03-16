@@ -35,6 +35,7 @@ BOOL CMerchantSetupApp::InitInstance()
 
 int CMerchantSetupApp::ExitInstance()
 {
+    ModernUIFont::ShutdownFonts();
     ModernUIGfx::ShutdownGdiplus();
     return CWinApp::ExitInstance();
 }

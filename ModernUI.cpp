@@ -290,6 +290,17 @@ namespace ModernUIFont
 		return new Gdiplus::FontFamily(L"Malgun Gothic");
 	}
 
+
+	void ShutdownFonts()
+	{
+		delete s_pPrivateFonts;
+		s_pPrivateFonts = nullptr;
+		s_privateLoaded = false;
+		s_initTried     = false;
+		s_loaded        = false;
+		s_addedCount    = 0;
+		s_cachedFamilyName.clear();
+	}
 	Gdiplus::Font* CreateGdipFontFromLogFont(const LOGFONT& lf)
 	{
 		Gdiplus::FontFamily* pFamily = CreateGdipFontFamily();
@@ -4193,3 +4204,120 @@ void CModernPopover::RefreshLayered()
 	}
 	return ::CallNextHookEx(hSave, nCode, wParam, lParam);
 }
+
+
+// ============================================================================
+// ModernUIHeader::Draw  -- shared header renderer (icon + title + divider)
+// ============================================================================
+namespace ModernUIHeader {
+
+static void MRR(Gdiplus::GraphicsPath& path,
+    float x, float y, float w, float h, float r)
+{
+    float d = r * 2.0f;
+    path.AddArc(x, y, d, d, 180.0f, 90.0f);
+    path.AddArc(x + w - d, y, d, d, 270.0f, 90.0f);
+    path.AddArc(x + w - d, y + h - d, d, d, 0.0f, 90.0f);
+    path.AddArc(x, y + h - d, d, d, 90.0f, 90.0f);
+    path.CloseFigure();
+}
+
+void Draw(HDC hdc,
+    float bx, float by, float bsz, IconType iconType,
+    LPCWSTR wTitle, LPCWSTR wSub,
+    HFONT hFontTitle, HFONT hFontSub,
+    int divX1, int divY, int divX2)
+{
+    ModernUIGfx::EnsureGdiplusStartup();
+    Gdiplus::Graphics g(hdc);
+    g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+
+    // --- Badge gradient background ---
+    {
+        Gdiplus::GraphicsPath bgPath;
+        MRR(bgPath, bx, by, bsz, bsz, bsz * 0.22f);
+        Gdiplus::LinearGradientBrush grad(
+            Gdiplus::PointF(bx, by),
+            Gdiplus::PointF(bx + bsz, by + bsz),
+            Gdiplus::Color(255,  0,  90, 220),
+            Gdiplus::Color(255, 30, 130, 255));
+        g.FillPath(&grad, &bgPath);
+    }
+
+    // --- Icon: CardTerminal ---
+    if (iconType == IconType::CardTerminal) {
+        const float tW = bsz * 0.52f, tH = bsz * 0.60f;
+        const float tX = bx + (bsz - tW) * 0.5f, tY = by + (bsz - tH) * 0.5f;
+        {
+            Gdiplus::GraphicsPath iconPath(Gdiplus::FillModeAlternate);
+            MRR(iconPath, tX, tY, tW, tH, bsz * 0.09f);
+            const float si = tW * 0.12f;
+            iconPath.AddRectangle(Gdiplus::RectF(tX+si, tY+tH*0.08f, tW-si*2.0f, tH*0.26f));
+            const float slot = (tW - tW*0.22f) / 3.0f;
+            const float bW = slot * 0.64f, bH = tH * 0.09f;
+            const float kX0 = tX + tW*0.11f + (slot - bW)*0.5f;
+            const float kY0 = tY + tH*0.08f + tH*0.26f + tH*0.15f;
+            for (int ki = 0; ki < 3; ki++)
+                for (int kj = 0; kj < 2; kj++)
+                    MRR(iconPath, kX0+ki*slot, kY0+kj*tH*0.18f, bW, bH, 0.8f);
+            Gdiplus::SolidBrush wb(Gdiplus::Color(255, 255, 255, 255));
+            g.FillPath(&wb, &iconPath);
+        }
+        Gdiplus::Pen slotPen(Gdiplus::Color(255, 255, 255, 255), 1.5f);
+        slotPen.SetStartCap(Gdiplus::LineCapRound);
+        slotPen.SetEndCap(Gdiplus::LineCapRound);
+        g.DrawLine(&slotPen,
+            Gdiplus::PointF(tX + tW*0.18f, tY + tH*0.91f),
+            Gdiplus::PointF(tX + tW*0.82f, tY + tH*0.91f));
+    }
+    else if (iconType == IconType::Store) {
+        const float cx = bx + bsz * 0.5f, cy = by + bsz * 0.5f;
+        Gdiplus::SolidBrush wBr(Gdiplus::Color(255, 255, 255, 255));
+        const float iH = bsz * 0.60f, iW = bsz * 0.52f;
+        const float rH = iH * 0.28f, bHh = iH - rH;
+        const float iX = cx - iW * 0.5f, iY = cy - iH * 0.5f + 0.5f;
+        Gdiplus::PointF rf[3] = {
+            Gdiplus::PointF(cx, iY),
+            Gdiplus::PointF(iX - iW * 0.14f, iY + rH + 1.5f),
+            Gdiplus::PointF(iX + iW * 1.14f, iY + rH + 1.5f) };
+        g.FillPolygon(&wBr, rf, 3);
+        g.FillRectangle(&wBr, Gdiplus::RectF(iX, iY + rH, iW, bHh));
+        Gdiplus::SolidBrush dBr(Gdiplus::Color(130, 28, 76, 210));
+        const float dW = iW * 0.26f, dH = bHh * 0.44f;
+        g.FillRectangle(&dBr, Gdiplus::RectF(cx - dW * 0.5f, iY + rH + bHh - dH, dW, dH));
+    }
+
+    // --- Title + Subtitle ---
+    const float tx     = bx + bsz + 12.0f;
+    const float titleY = by + bsz * 0.5f - 22.0f;
+    {
+        HDC hdcT = g.GetHDC();
+        ::SetBkMode(hdcT, TRANSPARENT);
+        if (hFontTitle && wTitle) {
+            HFONT hOld = (HFONT)::SelectObject(hdcT, hFontTitle);
+            ::SetTextColor(hdcT, RGB(18, 24, 40));
+            RECT rc = { (LONG)tx, (LONG)titleY, (LONG)(tx+300.f), (LONG)(titleY+28.f) };
+            ::DrawTextW(hdcT, wTitle, -1, &rc, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
+            ::SelectObject(hdcT, hOld);
+        }
+        if (hFontSub && wSub) {
+            HFONT hOld = (HFONT)::SelectObject(hdcT, hFontSub);
+            ::SetTextColor(hdcT, RGB(130, 142, 162));
+            RECT rc = { (LONG)tx, (LONG)(titleY+26.f), (LONG)(tx+360.f), (LONG)(titleY+46.f) };
+            ::DrawTextW(hdcT, wSub, -1, &rc, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
+            ::SelectObject(hdcT, hOld);
+        }
+        g.ReleaseHDC(hdcT);
+    }
+
+    // --- Divider ---
+    if (divY > 0) {
+        Gdiplus::Pen divPen(Gdiplus::Color(255, 228, 232, 240), 1.0f);
+        g.DrawLine(&divPen,
+            Gdiplus::PointF((float)divX1, (float)divY),
+            Gdiplus::PointF((float)divX2, (float)divY));
+    }
+}
+
+} // namespace ModernUIHeader

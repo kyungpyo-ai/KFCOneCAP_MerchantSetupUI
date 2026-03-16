@@ -1259,89 +1259,22 @@ void CReaderSetupDlg::OnPaint()
 	// 본체: 곡률 16px 적용 및 테두리 색상을 더 연하게(RGB 232, 235, 242) 변경
 	FillRoundRect(gPaint, mainCard, SX(16), RGB(255, 255, 255), RGB(232, 235, 242), 1);
 
-	const int iconSize = SX(38);
-	const int iconX = mainCard.left + SX(6);
-	const int iconY = mainCard.top + SX(18);
-	CRect rcIcon(iconX, iconY, iconX + iconSize, iconY + iconSize);
-	// GDI+ anti-aliased icon: card terminal (reader device - screen, keypad, card slot)
-	{
-		HDC hIco = memDC.GetSafeHdc();
-		Gdiplus::Graphics gIco(hIco);
-		gIco.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-
-		const float bx = (float)iconX, by = (float)iconY, bsz = (float)iconSize;
-
-		auto MRR = [](Gdiplus::GraphicsPath& p,
-			float x, float y, float w, float h, float r) {
-				float d = r * 2.f;
-				Gdiplus::RectF a(x, y, d, d);
-				p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
-				p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
-				p.AddArc(a, 0.f, 90.f); a.X = x;
-				p.AddArc(a, 90.f, 90.f); p.CloseFigure();
-			};
-
-		// gradient blue background
-		{
-			Gdiplus::GraphicsPath bp;
-			MRR(bp, bx, by, bsz, bsz, 8.f);
-			Gdiplus::LinearGradientBrush grad(
-				Gdiplus::PointF(bx, by), Gdiplus::PointF(bx, by + bsz),
-				Gdiplus::Color(255, 60, 130, 245),
-				Gdiplus::Color(255, 28, 76, 210));
-			gIco.FillPath(&grad, &bp);
-		}
-
-		// Card terminal icon: centered, all elements strictly inside body
-		const float tW = bsz * 0.52f, tH = bsz * 0.60f;
-		const float tX = bx + (bsz - tW) * 0.5f;
-		const float tY = by + (bsz - tH) * 0.5f;
-		{
-			Gdiplus::GraphicsPath iconPath(Gdiplus::FillModeAlternate);
-			MRR(iconPath, tX, tY, tW, tH, bsz * 0.09f);
-			const float si = tW * 0.12f;
-			iconPath.AddRectangle(Gdiplus::RectF(tX+si, tY+tH*0.08f, tW-si*2.0f, tH*0.26f));
-			const float slot = (tW - tW*0.22f) / 3.0f;
-			const float bW = slot * 0.64f, bH = tH * 0.09f;
-			const float kX0 = tX + tW*0.11f + (slot - bW)*0.5f;
-			const float kY0 = tY + tH*0.08f + tH*0.26f + tH*0.10f;
-			for (int ki = 0; ki < 3; ki++)
-				for (int kj = 0; kj < 2; kj++)
-					MRR(iconPath, kX0+ki*slot, kY0+kj*tH*0.14f, bW, bH, 0.8f);
-			Gdiplus::SolidBrush wb(Gdiplus::Color(255, 255, 255, 255));
-			gIco.FillPath(&wb, &iconPath);
-		}
-		{
-			Gdiplus::Pen slotPen(Gdiplus::Color(255, 255, 255, 255), 1.5f);
-			slotPen.SetStartCap(Gdiplus::LineCapRound);
-			slotPen.SetEndCap(Gdiplus::LineCapRound);
-			gIco.DrawLine(&slotPen,
-				Gdiplus::PointF(tX + tW*0.18f, tY + tH*0.91f),
-				Gdiplus::PointF(tX + tW*0.82f, tY + tH*0.91f));
-		}
-	}
+	const int iconSize = SX(44);
+	const int iconX    = mainCard.left + SX(14);
+	const int iconY    = mainCard.top  + SX(16);
 
 	{
-// ShopSetup의 kHdrTitleGap(13)과 시각적 균형을 위해 SX(14)로 통일
-		const int tx = rcIcon.right + SX(12);
-// -22.0f에서 -20.0f로 수정하여 텍스트의 수직 중앙 정렬을 보정
-		const int titleY = iconY + iconSize / 2 - SX(22);
 		wchar_t wTitle[128] = {}, wSub[256] = {};
 		MultiByteToWideChar(CP_ACP, 0, _T("리더기 설정"), -1, wTitle, 128);
 		MultiByteToWideChar(CP_ACP, 0, _T("리더기 연결 및 제어 설정을 관리합니다"), -1, wSub, 256);
-		CFont* pOldF = memDC.SelectObject(&m_fontTitle);
-		memDC.SetTextColor(RGB(18, 24, 40));
-		CRect rcHdrTitle(tx, titleY, tx + SX(300), titleY + SX(28));
-		::DrawTextW(memDC.GetSafeHdc(), wTitle, -1, (LPRECT)&rcHdrTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
-		memDC.SelectObject(&m_fontSub);
-		memDC.SetTextColor(RGB(130, 142, 162));
-		CRect rcHdrSub(tx, titleY + SX(26), tx + SX(360), titleY + SX(46));
-		::DrawTextW(memDC.GetSafeHdc(), wSub, -1, (LPRECT)&rcHdrSub, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX);
-		memDC.SelectObject(pOldF);
+		ModernUIHeader::Draw(memDC.GetSafeHdc(),
+			(float)iconX, (float)iconY, (float)iconSize,
+			ModernUIHeader::IconType::CardTerminal,
+			wTitle, wSub,
+			(HFONT)m_fontTitle.GetSafeHandle(),
+			(HFONT)m_fontSub.GetSafeHandle(),
+			mainCard.left + SX(6), mainCard.top + SX(74), mainCard.right - SX(6));
 	}
-	// 시작점을 mainCard.left + SX(6)으로 변경하여 절대좌표 26px(아이콘 시작점)에 맞춤
-	// 길이를 mainCard.Width() - SX(12)로 변경하여 우측 여백도 26px로 대칭을 맞춤
-	memDC.FillSolidRect(mainCard.left + SX(6), mainCard.top + SX(74), mainCard.Width() - SX(12), 1, RGB(242, 244, 247));
 
 	CRect inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc;
 	CPoint sec1Pt, sec2Pt;
