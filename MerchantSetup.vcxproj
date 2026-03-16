@@ -51,7 +51,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="KFTCOneCAPDlg.cpp" />
-    <ClCompile Include="MerchantSetupApp.cpp" />
     <ClCompile Include="ReaderSetupDlg.cpp" />
     <ClCompile Include="RegistryUtil.cpp" />
     <ClCompile Include="ShopDownDlg.cpp" />
@@ -61,7 +60,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="KFTCOneCAPDlg.h" />
-    <ClInclude Include="MerchantSetupApp.h" />
     <ClInclude Include="ReaderSetupDlg.h" />
     <ClInclude Include="RegistryUtil.h" />
     <ClInclude Include="ShopDownDlg.h" />

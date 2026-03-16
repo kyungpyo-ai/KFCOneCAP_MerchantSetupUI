@@ -1100,3 +1100,38 @@ void CKFTCOneCAPDlg::OnClose()
 {
     EndDialog(IDCANCEL);
 }
+
+// ============================================================
+// Application entry point
+// ============================================================
+
+class CKFTCOneCAPApp : public CWinApp
+{
+public:
+    CKFTCOneCAPApp() { m_pszAppName = _tcsdup(_T("KFTCOneCAP")); }
+
+    virtual BOOL InitInstance()
+    {
+        CWinApp::InitInstance();
+        SetRegistryKey(_T("KFTC_VAN"));
+
+        INITCOMMONCONTROLSEX icc = { sizeof(INITCOMMONCONTROLSEX) };
+        icc.dwICC = ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES | ICC_DATE_CLASSES;
+        ::InitCommonControlsEx(&icc);
+
+        ModernUIFont::EnsureFontsLoaded();
+
+        CKFTCOneCAPDlg dlg;
+        dlg.DoModal();
+        return FALSE;
+    }
+
+    virtual int ExitInstance()
+    {
+        ModernUIFont::ShutdownFonts();
+        ModernUIGfx::ShutdownGdiplus();
+        return CWinApp::ExitInstance();
+    }
+};
+
+CKFTCOneCAPApp theApp;
