@@ -3352,7 +3352,23 @@ BOOL CModernTabCtrl::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 {
 	if (nHitTest == HTCLIENT)
 	{
-		::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		// Show hand cursor only over actual tab cells, arrow elsewhere
+		CPoint pt;
+		::GetCursorPos(&pt);
+		ScreenToClient(&pt);
+
+		BOOL bOverTab = FALSE;
+		for (int i = 0; i < (int)m_items.size(); i++)
+		{
+			Gdiplus::RectF r = GetTabRect(i);
+			Gdiplus::RectF hit(r.X - 4.0f, r.Y - 2.0f, r.Width + 8.0f, r.Height + 4.0f);
+			if (hit.Contains((Gdiplus::REAL)pt.x, (Gdiplus::REAL)pt.y))
+			{
+				bOverTab = TRUE;
+				break;
+			}
+		}
+		::SetCursor(::LoadCursor(NULL, bOverTab ? IDC_HAND : IDC_ARROW));
 		return TRUE;
 	}
 	return CWnd::OnSetCursor(pWnd, nHitTest, message);
@@ -3426,6 +3442,7 @@ BEGIN_MESSAGE_MAP(CInfoIconButton, CButton)
 	ON_WM_MOUSEMOVE()
 	ON_WM_MOUSELEAVE()
 	ON_WM_ERASEBKGND()
+	ON_WM_SETCURSOR()
 END_MESSAGE_MAP()
 
 CInfoIconButton::CInfoIconButton()
@@ -3444,15 +3461,21 @@ void CInfoIconButton::OnMouseMove(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) { CButton::OnMouseMove(nFlags, point); return; }
 
-	// 시스템 공유 커서를 사용하므로 부하가 거의 없습니다.
-	::SetCursor(::LoadCursor(NULL, IDC_HAND));
-
 	kftc_track_mouse(m_hWnd, m_bTracking);
 	if (!m_bHover) { m_bHover = TRUE; Invalidate(FALSE); }
 	CButton::OnMouseMove(nFlags, point);
 }
 
 
+BOOL CInfoIconButton::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (::IsWindowEnabled(m_hWnd))
+	{
+		::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		return TRUE;
+	}
+	return CButton::OnSetCursor(pWnd, nHitTest, message);
+}
 void CInfoIconButton::OnMouseLeave()
 {
 	m_bTracking = FALSE;
