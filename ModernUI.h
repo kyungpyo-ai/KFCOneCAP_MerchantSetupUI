@@ -436,6 +436,7 @@ protected:
     afx_msg void OnPaint();
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     afx_msg LRESULT OnPrintClientMsg(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnNcPaint();
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -518,6 +519,7 @@ public:
     CString GetBaseText() const { return m_strBaseText; } // 버튼 스타일 명시 설정
     void SetValidationError(BOOL bError);
     BOOL HasValidationError() const { return m_bValidationError; }
+    void SetUnitText(LPCTSTR szUnit, int rightPx = 30);
 
 protected:
     virtual void PreSubclassWindow();
@@ -532,6 +534,8 @@ protected:
     afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 
     afx_msg void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags);
+    afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+    afx_msg LRESULT OnImeComposition(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSetFontMsg(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSetTextMsg(WPARAM wParam, LPARAM lParam);
 
@@ -572,6 +576,8 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+    CString  m_strUnitText;
+    int      m_nUnitRightPx;
 
     // Cached back-buffer (reused across OnPaint calls)
     CDC      m_memDC;

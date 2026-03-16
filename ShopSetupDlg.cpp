@@ -697,6 +697,7 @@ void CShopSetupDlg::InitializeControls()
     m_editNoSignAmount.SetUnderlayColor(bgColor);
     m_editTaxPercent.SetUnderlayColor(bgColor);
     m_editCardTimeout.SetUnderlayColor(bgColor);
+    m_editCardTimeout.SetUnitText(_T("√ "), 30);
     m_editCardDetectParam.SetUnderlayColor(bgColor);
     m_editSignPadPort.SetUnderlayColor(bgColor);
     m_editScannerPort.SetUnderlayColor(bgColor);

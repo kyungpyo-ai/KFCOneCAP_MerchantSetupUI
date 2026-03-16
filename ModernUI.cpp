@@ -1594,6 +1594,7 @@ BEGIN_MESSAGE_MAP(CSkinnedComboBox, CComboBox)
 	ON_CONTROL_REFLECT(CBN_CLOSEUP, OnCbnCloseup)
 	ON_CONTROL_REFLECT(CBN_SELCHANGE, OnCbnSelchange)
 	ON_CONTROL_REFLECT(CBN_SELENDOK, OnCbnSelendok)
+	ON_WM_NCPAINT()
 END_MESSAGE_MAP()
 
 CSkinnedComboBox::CSkinnedComboBox()
@@ -1648,6 +1649,12 @@ CSkinnedComboBox::~CSkinnedComboBox()
 BOOL CSkinnedComboBox::OnEraseBkgnd(CDC* /*pDC*/)
 {
 	return TRUE; // everything is owner-drawn
+}
+
+void CSkinnedComboBox::OnNcPaint()
+{
+	// Suppress system NC painting to prevent themed focus border flicker.
+	// All border rendering is done inside the client area in PaintComboToDC.
 }
 
 BOOL CSkinnedComboBox::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
@@ -1780,7 +1787,7 @@ void CSkinnedComboBox::OnSetFocus(CWnd* pOldWnd)
 {
 	m_bFocus = TRUE;
 	CComboBox::OnSetFocus(pOldWnd);
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
 }
 
 void CSkinnedComboBox::OnKillFocus(CWnd* pNewWnd)
@@ -1795,7 +1802,7 @@ void CSkinnedComboBox::OnKillFocus(CWnd* pNewWnd)
 	}
 	CComboBox::OnKillFocus(pNewWnd);
 
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
 }
 
 /*
@@ -2136,7 +2143,7 @@ void CSkinnedComboBox::OnCbnDropdown()
 		HookListBox(cbi.hwndList);
 	}
 
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
 }
 
 void CSkinnedComboBox::OnCbnCloseup()
@@ -2147,7 +2154,11 @@ void CSkinnedComboBox::OnCbnCloseup()
 	if (!m_bSelCommitted)
 	{
 		if (m_nSelOnDrop >= 0)
+		{
+			m_bInPaint = TRUE;
 			SetCurSel(m_nSelOnDrop);
+			m_bInPaint = FALSE;
+		}
 	}
 
 	POINT pt;
@@ -2162,19 +2173,19 @@ void CSkinnedComboBox::OnCbnCloseup()
 		m_bTracking = FALSE;
 	}
 
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_NOERASE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
 }
 
 void CSkinnedComboBox::OnCbnSelchange()
 {
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
 }
 
 void CSkinnedComboBox::OnCbnSelendok()
 {
 	m_bSelCommitted = TRUE;
 	m_nSelOnDrop = GetCurSel();
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
 }
 
 void CSkinnedComboBox::SetUnderlayColor(COLORREF underlayBg)
@@ -2211,9 +2222,10 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 	{
 		// Use CClientDC(this) so painting uses the combo's own DC (origin 0,0 = client top-left).
 		// lpDIS->hDC may have a viewport offset relative to the parent window coordinate space.
-		{
+		if (!m_bInPaint) {
 			CClientDC clientDC(this);
 			PaintComboToDC(clientDC);
+			ValidateRect(NULL);
 		}
 		dc.Detach();
 		return;
@@ -2294,6 +2306,8 @@ BEGIN_MESSAGE_MAP(CSkinnedEdit, CEdit)
 	ON_WM_SIZE()
 	ON_WM_CREATE()
 	ON_WM_CHAR()
+	ON_WM_KEYDOWN()
+	ON_MESSAGE(WM_IME_COMPOSITION, OnImeComposition)
 	ON_MESSAGE(WM_SETFONT, OnSetFontMsg)
 	ON_MESSAGE(WM_SETTEXT, OnSetTextMsg)
 	ON_MESSAGE(WM_PRINTCLIENT, OnPrintClientMsg)
@@ -2318,6 +2332,8 @@ CSkinnedEdit::CSkinnedEdit()
 	m_localTheme = ModernUITheme::GetInputTheme();
 	m_nRadius = ModernUITheme::GetInputTheme().radius;
 	m_nTextPx = 11;
+	m_strUnitText = _T("");
+	m_nUnitRightPx = 0;
 }
 
 CSkinnedEdit::~CSkinnedEdit()
@@ -2394,18 +2410,57 @@ LRESULT CSkinnedEdit::OnSetTextMsg(WPARAM /*wParam*/, LPARAM /*lParam*/)
 	return r;
 }
 
+void CSkinnedEdit::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// LockWindowUpdate는 IME 조합 윈도우와 충돌하므로 부드러운 SetRedraw로 교체합니다.
+	if (!m_strUnitText.IsEmpty() && (nChar == VK_DELETE || nChar == VK_BACK)) {
+		SetRedraw(FALSE);
+		CEdit::OnKeyDown(nChar, nRepCnt, nFlags);
+		SetRedraw(TRUE);
+
+		// 배경을 하얗게 지우지 않고(RDW_NOERASE) 즉시 덮어씌우듯 그리도록 강제합니다.
+		RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE | RDW_ALLCHILDREN);
+	}
+	else {
+		CEdit::OnKeyDown(nChar, nRepCnt, nFlags);
+	}
+}
+
+LRESULT CSkinnedEdit::OnImeComposition(WPARAM wParam, LPARAM lParam)
+{
+	// 한글(IME) 조합/삭제 중 CEdit의 직접 그리기를 막고, OnPaint(더블버퍼링)를 유도합니다.
+	SetRedraw(FALSE);
+	LRESULT res = DefWindowProc(WM_IME_COMPOSITION, wParam, lParam);
+	SetRedraw(TRUE);
+
+	// 여기서 UpdateWindow()를 쓰면 화면이 하얗게 튀므로 RDW_NOERASE를 사용합니다.
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE | RDW_ALLCHILDREN);
+
+	return res;
+}
+
 void CSkinnedEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	if (nChar == VK_RETURN || nChar == 0x0A)
 		return;
 
-	// Flicker fix: suppress intermediate WM_PAINTs during typing.
-	// Without this, the native Edit triggers its own WM_PAINT mid-keystroke,
-	// briefly showing a plain white background before our OnPaint runs.
 	SetRedraw(FALSE);
 	CEdit::OnChar(nChar, nRepCnt, nFlags);
 	SetRedraw(TRUE);
+
+	// OnChar는 연속 타이핑 시 매우 빠르게 호출되므로, 
+	// 즉시 강제 렌더링(UpdateWindow)보다 무효화(Invalidate)만 시켜 OS가 모아서 그리게 두는 것이 부드럽습니다.
 	Invalidate(FALSE);
+}
+
+void CSkinnedEdit::SetUnitText(LPCTSTR szUnit, int rightPx)
+{
+	m_strUnitText = szUnit ? szUnit : _T("");
+	m_nUnitRightPx = rightPx;
+	if (::IsWindow(m_hWnd)) {
+		ApplyThemeAndMargins();
+		Invalidate(FALSE);
+	}
 }
 
 void CSkinnedEdit::ApplyThemeAndMargins()
@@ -2440,7 +2495,8 @@ void CSkinnedEdit::ApplyThemeAndMargins()
 
 	const KFTCInputTheme& th = GetActiveInputTheme();
 
-	::SendMessage(m_hWnd, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(th.marginLR, th.marginLR));
+	int scaledUnitPx = m_strUnitText.IsEmpty() ? 0 : ModernUIDpi::Scale(m_hWnd, m_nUnitRightPx);
+	::SendMessage(m_hWnd, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(th.marginLR, th.marginLR + scaledUnitPx));
 
 	CRect rc;
 	GetClientRect(&rc);
@@ -2483,7 +2539,7 @@ void CSkinnedEdit::ApplyThemeAndMargins()
 
 	CRect trc = rc;
 	trc.left += th.marginLR;
-	trc.right -= th.marginLR;
+	trc.right -= (th.marginLR + scaledUnitPx);
 	trc.top = topPad;
 	trc.bottom = h - inset;
 
@@ -2565,9 +2621,17 @@ HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
 		const int inset  = thickI + 1;
 		int rr = m_nRadius - thickI;
 		if (rr < 1) rr = 1;
+
+		// [핵심] 우측에 단위(Unit) 텍스트가 들어갈 픽셀만큼 클리핑에서 제외합니다.
+		int rightClip = rcCtl.Width() - inset + 1;
+		int scaledUnitPx = m_strUnitText.IsEmpty() ? 0 : ModernUIDpi::Scale(m_hWnd, m_nUnitRightPx);
+		if (scaledUnitPx > 0) {
+			rightClip -= scaledUnitPx;
+		}
+
 		HRGN hClip = ::CreateRoundRectRgn(
 			inset, inset,
-			rcCtl.Width()  - inset + 1,
+			rightClip, // <--- 단위 픽셀만큼 줄어든 우측 좌표 적용
 			rcCtl.Height() - inset + 1,
 			rr * 2, rr * 2);
 		::SelectClipRgn(pDC->GetSafeHdc(), hClip);
@@ -2715,6 +2779,22 @@ void CSkinnedEdit::OnPaint()
 		g.DrawPath(&penBorder, &pathOuter);
 	}
 
+	// 7. Unit text in right margin
+	if (!m_strUnitText.IsEmpty())
+	{
+		const int scaledPx = ModernUIDpi::Scale(m_hWnd, m_nUnitRightPx);
+		CRect unitRc(rc.right - 2 - scaledPx, 0, rc.right - 4, rc.bottom);
+		HFONT hUnitFont = (HFONT)::SendMessage(m_hWnd, WM_GETFONT, 0, 0);
+		HFONT hUnitOld = hUnitFont ? (HFONT)::SelectObject(memDC.m_hDC, hUnitFont) : NULL;
+		const int oldBkMode = ::SetBkMode(memDC.m_hDC, TRANSPARENT);
+		const COLORREF unitClr = enabled ? RGB(107, 114, 128) : RGB(180, 180, 180);
+		const COLORREF oldClr = ::SetTextColor(memDC.m_hDC, unitClr);
+		RECT unitRect = unitRc;
+		::DrawText(memDC.m_hDC, m_strUnitText, -1, &unitRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		::SetTextColor(memDC.m_hDC, oldClr);
+		::SetBkMode(memDC.m_hDC, oldBkMode);
+		if (hUnitOld) ::SelectObject(memDC.m_hDC, hUnitOld);
+	}
 	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
 	m_bInPaint = FALSE;
 }
