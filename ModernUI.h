@@ -519,6 +519,7 @@ public:
     CString GetBaseText() const { return m_strBaseText; } // 버튼 스타일 명시 설정
     void SetValidationError(BOOL bError);
     BOOL HasValidationError() const { return m_bValidationError; }
+    void SetNumericOnly(BOOL b) { m_bNumericOnly = b; }
     void SetUnitText(LPCTSTR szUnit, int rightPx = 30);
 
 protected:
@@ -562,6 +563,7 @@ private:
     BOOL m_bFocus;
     BOOL m_bInPaint;
     BOOL m_bValidationError;
+    BOOL m_bNumericOnly;
 
     int  m_nRadius;
     int  m_nTextPx;

@@ -2369,6 +2369,7 @@ CSkinnedEdit::CSkinnedEdit()
 	m_bFocus = FALSE;
 	m_bInPaint = FALSE;
 	m_bValidationError = FALSE;
+	m_bNumericOnly = FALSE;
 	m_bUseUnderlayBg = FALSE;
 	m_clrUnderlayBg = RGB(255, 255, 255);
 	m_clrBrushBg = (COLORREF)-1; // force create on first CtlColor
@@ -2489,6 +2490,13 @@ void CSkinnedEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	if (nChar == VK_RETURN || nChar == 0x0A)
 		return;
+
+	// Numeric-only mode: allow digits and control chars (Backspace, Ctrl+*), block all else
+	if (m_bNumericOnly)
+	{
+		if (!((nChar >= '0' && nChar <= '9') || nChar < 32))
+			return;
+	}
 
 	SetRedraw(FALSE);
 	CEdit::OnChar(nChar, nRepCnt, nFlags);

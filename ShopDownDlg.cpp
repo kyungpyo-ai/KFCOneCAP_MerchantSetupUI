@@ -261,6 +261,8 @@ void CShopDownDlg::ApplyFonts()
         m_editProd[slot].SetFont(&m_fontCell, FALSE);
         m_editBiz[slot].SetFont(&m_fontCell, FALSE);
         m_editPwd[slot].SetFont(&m_fontCell, FALSE);
+        m_editBiz[slot].SetNumericOnly(TRUE);
+        m_editPwd[slot].SetNumericOnly(TRUE);
         m_btnDownload[slot].SetFont(&m_fontCell, FALSE);
         m_btnDelete[slot].SetFont(&m_fontCell, FALSE);
     }

@@ -725,6 +725,12 @@ void CShopSetupDlg::InitializeControls()
     m_editCardDetectParam.SetUnderlayColor(bgColor);
     m_editSignPadPort.SetUnderlayColor(bgColor);
     m_editScannerPort.SetUnderlayColor(bgColor);
+    m_editPort.SetNumericOnly(TRUE);
+    m_editNoSignAmount.SetNumericOnly(TRUE);
+    m_editTaxPercent.SetNumericOnly(TRUE);
+    m_editCardTimeout.SetNumericOnly(TRUE);
+    m_editSignPadPort.SetNumericOnly(TRUE);
+    m_editScannerPort.SetNumericOnly(TRUE);
     m_staticShopContainer.SubclassDlgItem(IDC_STATIC_RECT, this);
     m_staticShopContainer.ModifyStyle(0, WS_CLIPCHILDREN); // 컨테이너가 자식을 지우지 않게 함
     // 체크박스
