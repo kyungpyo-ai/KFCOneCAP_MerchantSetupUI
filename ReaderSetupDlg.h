@@ -79,6 +79,9 @@ protected:
 	int   m_nIntegrityScrollPos;
 	CRect m_rcIntegrityScrollBar;
 	CRect m_rcIntegrityScrollThumb;
+	BOOL  m_bDraggingThumb;
+	int   m_nDragStartY;
+	int   m_nDragStartScrollPos;
 	void  NormalizeIntegrityScrollPos();
 	int   GetIntegrityVisibleRows() const;
 	void  StartLoadingOperation(UINT nButtonID);
@@ -114,6 +117,8 @@ protected:
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	//}}AFX_MSG

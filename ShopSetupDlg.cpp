@@ -343,6 +343,28 @@ CShopSetupDlg::~CShopSetupDlg()
     if (m_brushSection.GetSafeHandle())   m_brushSection.DeleteObject();
 }
 // ============================================================================
+// Amount field helpers: parse comma-formatted text, format int with commas
+static int ParseAmountText(const CString& s)
+{
+    CString digits;
+    for (int i = 0; i < s.GetLength(); ++i)
+        if (_istdigit(s[i])) digits += s[i];
+    return _ttoi(digits);
+}
+static CString FormatAmountWithCommas(int n)
+{
+    if (n < 0) n = 0;
+    CString s; s.Format(_T("%d"), n);
+    int len = s.GetLength();
+    CString result;
+    for (int i = 0; i < len; ++i)
+    {
+        result += s[i];
+        int rem = len - 1 - i;
+        if (rem > 0 && rem % 3 == 0) result += _T(',');
+    }
+    return result;
+}
 // DoDataExchange
 // ============================================================================
 void CShopSetupDlg::DoDataExchange(CDataExchange* pDX)
@@ -358,7 +380,7 @@ void CShopSetupDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_EDIT_SCANNER_PORT, m_editScannerPort);
     { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intPort);        DDX_Text(pDX, IDC_EDIT_PORT, _s); if (pDX->m_bSaveAndValidate) m_intPort = _ttoi(_s); }
     { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intCardTimeout);  DDX_Text(pDX, IDC_EDIT_CARD_TIMEOUT, _s); if (pDX->m_bSaveAndValidate) m_intCardTimeout = _ttoi(_s); }
-    { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intNoSignAmount); DDX_Text(pDX, IDC_EDIT_NO_SIGN_AMOUNT, _s); if (pDX->m_bSaveAndValidate) m_intNoSignAmount = _ttoi(_s); }
+    { CString _s; if (!pDX->m_bSaveAndValidate) _s = FormatAmountWithCommas(m_intNoSignAmount); DDX_Text(pDX, IDC_EDIT_NO_SIGN_AMOUNT, _s); if (pDX->m_bSaveAndValidate) m_intNoSignAmount = ParseAmountText(_s); }
     { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intTaxPercent);   DDX_Text(pDX, IDC_EDIT_TAX_PERCENT, _s); if (pDX->m_bSaveAndValidate) m_intTaxPercent = _ttoi(_s); }
     DDX_Control(pDX, IDC_COMBO_CASH_RECEIPT, m_comboCashReceipt);
     DDX_Control(pDX, IDC_COMBO_INTERLOCK, m_comboInterlock);
@@ -698,6 +720,8 @@ void CShopSetupDlg::InitializeControls()
     m_editTaxPercent.SetUnderlayColor(bgColor);
     m_editCardTimeout.SetUnderlayColor(bgColor);
     m_editCardTimeout.SetUnitText(_T("초"), 30);
+    m_editNoSignAmount.SetUnitText(_T("원"), 30);
+    m_editTaxPercent.SetUnitText(_T("%"), 25);
     m_editCardDetectParam.SetUnderlayColor(bgColor);
     m_editSignPadPort.SetUnderlayColor(bgColor);
     m_editScannerPort.SetUnderlayColor(bgColor);
@@ -2166,7 +2190,7 @@ BOOL CShopSetupDlg::HasChanges() const
     CString s;
     m_editPort.GetWindowText(s);           if (_ttoi(s) != m_snap.intPort)          return TRUE;
     m_editCardTimeout.GetWindowText(s);    if (_ttoi(s) != m_snap.intCardTimeout)   return TRUE;
-    m_editNoSignAmount.GetWindowText(s);   if (_ttoi(s) != m_snap.intNoSignAmount)  return TRUE;
+    m_editNoSignAmount.GetWindowText(s);   if (ParseAmountText(s) != m_snap.intNoSignAmount)  return TRUE;
     m_editTaxPercent.GetWindowText(s);     if (_ttoi(s) != m_snap.intTaxPercent)    return TRUE;
     m_editSignPadPort.GetWindowText(s);    if (_ttoi(s) != m_snap.intSignPadPort)   return TRUE;
     m_editScannerPort.GetWindowText(s);    if (_ttoi(s) != m_snap.intScannerPort)   return TRUE;
@@ -2533,7 +2557,8 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
             outMessage = _T("포트번호 입력");
         break;
     case VF_NO_SIGN_AMOUNT:
-        if (!GetTrimmed(IDC_EDIT_NO_SIGN_AMOUNT, s) || !IsDigitsOnly(s))
+        if (GetTrimmed(IDC_EDIT_NO_SIGN_AMOUNT, s)) { CString _t = s; _t.Remove(_T(',')); s = _t; }
+        if (!IsDigitsOnly(s))
             outMessage = _T("금액 입력");
         break;
     case VF_TAX_PERCENT:
@@ -2550,8 +2575,8 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
         }
         break;
     case VF_CARD_TIMEOUT:
-        if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || _ttoi(s) < 30)
-            outMessage = _T("30 이상 입력");
+        if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || (_ttoi(s) != 0 && _ttoi(s) < 30))
+            outMessage = _T("30초 이상 입력");
         break;
     case VF_SIGNPAD_PORT:
         if (m_comboSignPadUse.GetCurSel() == 0)
@@ -2643,6 +2668,37 @@ void CShopSetupDlg::OnEnChangeValidateInput()
     const int nCtrlId = pFocus->GetDlgCtrlID();
     if (!FindValidationBinding(nCtrlId))
         return;
+    if (nCtrlId == IDC_EDIT_NO_SIGN_AMOUNT)
+    {
+        static BOOL s_bFormatting = FALSE;
+        if (!s_bFormatting)
+        {
+            s_bFormatting = TRUE;
+            CString raw;
+            m_editNoSignAmount.GetWindowText(raw);
+            int nStart = 0, nEnd = 0;
+            m_editNoSignAmount.GetSel(nStart, nEnd);
+            int digitsBefore = 0;
+            for (int i = 0; i < (int)nStart && i < raw.GetLength(); ++i)
+                if (_istdigit(raw[i])) digitsBefore++;
+            CString digits;
+            for (int i = 0; i < raw.GetLength(); ++i)
+                if (_istdigit(raw[i])) digits += raw[i];
+            CString formatted = FormatAmountWithCommas(_ttoi(digits));
+            if (formatted != raw)
+            {
+                m_editNoSignAmount.SetWindowText(formatted);
+                int newPos = 0, dc = 0;
+                for (int i = 0; i < formatted.GetLength() && dc < digitsBefore; ++i)
+                {
+                    if (_istdigit(formatted[i])) dc++;
+                    newPos = i + 1;
+                }
+                m_editNoSignAmount.SetSel(newPos, newPos);
+            }
+            s_bFormatting = FALSE;
+        }
+    }
     ValidateControlAndUpdateUI(nCtrlId);
 }
 void CShopSetupDlg::DrawInputBorders(CDC* /*pDC*/) {}

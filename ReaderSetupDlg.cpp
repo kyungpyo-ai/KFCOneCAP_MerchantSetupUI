@@ -347,14 +347,12 @@ void CReaderSetupDlg::OnLButtonDown(UINT nFlags, CPoint point)
 			m_nIntegrityScrollPos += visibleRows;
 		else
 		{
-			const int trackH = m_rcIntegrityScrollBar.Height();
-			const int thumbH = m_rcIntegrityScrollThumb.Height();
-			const int thumbTravel = max(1, trackH - thumbH);
-			const int maxScroll = itemCount - visibleRows;
-			int relY = point.y - m_rcIntegrityScrollBar.top - thumbH / 2;
-			if (relY < 0) relY = 0;
-			if (relY > thumbTravel) relY = thumbTravel;
-			m_nIntegrityScrollPos = (maxScroll * relY) / thumbTravel;
+			// Start thumb drag
+			m_bDraggingThumb = TRUE;
+			m_nDragStartY = point.y;
+			m_nDragStartScrollPos = m_nIntegrityScrollPos;
+			SetCapture();
+			return;
 		}
 		NormalizeIntegrityScrollPos();
 		Invalidate(FALSE);
@@ -374,6 +372,38 @@ void CReaderSetupDlg::OnLButtonDown(UINT nFlags, CPoint point)
 	}
 
 	CDialog::OnLButtonDown(nFlags, point);
+}
+
+void CReaderSetupDlg::OnMouseMove(UINT nFlags, CPoint point)
+{
+	if (m_bDraggingThumb)
+	{
+		const int itemCount = (::IsWindow(m_integrity_list.GetSafeHwnd())) ? m_integrity_list.GetItemCount() : 0;
+		const int visibleRows = GetIntegrityVisibleRows();
+		if (itemCount > visibleRows && !m_rcIntegrityScrollBar.IsRectEmpty())
+		{
+			const int thumbH = m_rcIntegrityScrollThumb.Height();
+			const int thumbTravel = max(1, m_rcIntegrityScrollBar.Height() - thumbH);
+			const int maxScroll = itemCount - visibleRows;
+			int delta = point.y - m_nDragStartY;
+			m_nIntegrityScrollPos = m_nDragStartScrollPos + (maxScroll * delta) / thumbTravel;
+			NormalizeIntegrityScrollPos();
+			Invalidate(FALSE);
+		}
+		return;
+	}
+	CDialog::OnMouseMove(nFlags, point);
+}
+
+void CReaderSetupDlg::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	if (m_bDraggingThumb)
+	{
+		m_bDraggingThumb = FALSE;
+		ReleaseCapture();
+		return;
+	}
+	CDialog::OnLButtonUp(nFlags, point);
 }
 
 void CReaderSetupDlg::ApplyEnableStateToButtons(int readerIndex, BOOL bEnable)
@@ -603,6 +633,8 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_WM_DRAWITEM()
 	ON_WM_MOUSEWHEEL()
 	ON_WM_LBUTTONDOWN()
+	ON_WM_MOUSEMOVE()
+	ON_WM_LBUTTONUP()
 	ON_WM_TIMER()
 	ON_BN_CLICKED(IDC_BTN_PORT_OPEN_INFO,  OnBnClickedPortOpenInfo)
 	ON_BN_CLICKED(IDC_BTN_MULTIPAD1_INFO,  OnBnClickedMultipad1Info)
