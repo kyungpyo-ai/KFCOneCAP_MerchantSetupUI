@@ -2265,7 +2265,7 @@ void CShopSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTS
 // ============================================================================
 void CShopSetupDlg::OnBnClickedVanServerInfo()
 {
-    ShowInfoPopover(m_btnVanInfo, _T("금융결제원 서버"), _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용"));
+    ShowInfoPopover(m_btnVanInfo, _T("금융결제원 서버"), _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경 (기본값)\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용"));
 }
 // ============================================================================
 // 팝오버 아이콘 핸들러 - 탭0

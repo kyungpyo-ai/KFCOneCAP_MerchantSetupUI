@@ -1211,10 +1211,13 @@ CPortToggleButton::CPortToggleButton()
 	m_bToggled = FALSE;
 	m_bHover = FALSE;
 	m_bTracking = FALSE;
+	m_hCachedFont = NULL;
+	m_nCachedFontH = 0;
 }
 
 CPortToggleButton::~CPortToggleButton()
 {
+	if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
 }
 
 void CPortToggleButton::SetToggled(BOOL bToggled)
@@ -1554,8 +1557,12 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		COLORREF tclr = disabled ? KFTC_DISABLED_TEXT : RGB(6,52,109);
 		LOGFONT lfTgl = {}; lfTgl.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfTgl.lfWeight = FW_NORMAL; lfTgl.lfQuality = CLEARTYPE_QUALITY;
 		ModernUIFont::ApplyUIFontFace(lfTgl);
-		HFONT hTglFont = ::CreateFontIndirect(&lfTgl);
-		HFONT hOldTglFont = (HFONT)::SelectObject(pDC->GetSafeHdc(), hTglFont);
+		if (!m_hCachedFont || m_nCachedFontH != lfTgl.lfHeight) {
+			if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
+			m_hCachedFont = ::CreateFontIndirect(&lfTgl);
+			m_nCachedFontH = lfTgl.lfHeight;
+		}
+		HFONT hOldTglFont = (HFONT)::SelectObject(pDC->GetSafeHdc(), m_hCachedFont);
 		::SetTextColor(pDC->GetSafeHdc(), tclr);
 		::SetBkMode(pDC->GetSafeHdc(), TRANSPARENT);
 		UINT dtTgl = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
@@ -1564,7 +1571,6 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		std::wstring wText = kftc_to_wide(strText);
 		::DrawTextW(pDC->GetSafeHdc(), wText.c_str(), -1, &rcTglTxt, dtTgl);
 		::SelectObject(pDC->GetSafeHdc(), hOldTglFont);
-		::DeleteObject(hTglFont);
 	}
 }
 
@@ -1920,8 +1926,13 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 				// 폰트 캐시 체크
 				LOGFONT lfCmb = {}; lfCmb.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfCmb.lfWeight = FW_NORMAL; lfCmb.lfQuality = CLEARTYPE_QUALITY;
 				ModernUIFont::ApplyUIFontFace(lfCmb);
-				HFONT hCmbFont = ::CreateFontIndirect(&lfCmb);
-				HFONT hOldCmbFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), hCmbFont);
+				if (!m_bHasTextFontCache || ::memcmp(&m_lfTextCache, &lfCmb, sizeof(LOGFONT)) != 0) {
+					if (m_hTextFontCache) { ::DeleteObject(m_hTextFontCache); m_hTextFontCache = NULL; }
+					m_hTextFontCache = ::CreateFontIndirect(&lfCmb);
+					m_lfTextCache = lfCmb;
+					m_bHasTextFontCache = TRUE;
+				}
+				HFONT hOldCmbFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), m_hTextFontCache);
 				COLORREF cmbTxtClr = enabled ? RGB(35, 45, 60) : KFTC_DISABLED_TEXT;
 				::SetTextColor(memDC.GetSafeHdc(), cmbTxtClr);
 				::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
@@ -1929,7 +1940,6 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 				std::wstring wCmbTxt = kftc_to_wide(text);
 				::DrawTextW(memDC.GetSafeHdc(), wCmbTxt.c_str(), -1, &rcCmbTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
 				::SelectObject(memDC.GetSafeHdc(), hOldCmbFont);
-				::DeleteObject(hCmbFont);
 			}
 		}
 
@@ -2822,7 +2832,7 @@ END_MESSAGE_MAP()
 //  / 
 // -----------------------------------------------------------
 CModernTabCtrl::CModernTabCtrl()
-	: m_nSel(0), m_nHover(-1), m_bTrack(false)
+	: m_nSel(0), m_nHover(-1), m_bTrack(false), m_nCachedTabDpi(0)
 {
 }
 
@@ -2836,13 +2846,6 @@ CModernTabCtrl::~CModernTabCtrl()
 BOOL CModernTabCtrl::Create(CWnd* pParent, UINT nID, const CRect& rect)
 {
 	m_brushBg.CreateSolidBrush(RGB(255, 255, 255));
-
-	m_font.CreateFont(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
-	m_fontBold.CreateFont(13, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, 0,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
 
 	LPCTSTR cls = AfxRegisterWndClass(
 		CS_HREDRAW | CS_VREDRAW,
@@ -2985,12 +2988,21 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 		g.FillPath(&iBrush, &iPath);
 	}
 
-	const float kIconSz = 16.0f;
-	const float kIconGap = 6.0f;
+	const float kIconSz = ModernUIDpi::ScaleF(m_hWnd, 16.0f);
+	const float kIconGap = ModernUIDpi::ScaleF(m_hWnd, 6.0f);
 
-	LOGFONT lfTab = {}; lfTab.lfHeight = bActive ? -16 : -14; lfTab.lfWeight = bActive ? FW_BOLD : FW_NORMAL; lfTab.lfQuality = CLEARTYPE_QUALITY;
-	ModernUIFont::ApplyUIFontFace(lfTab);
-	HFONT hTabFont = ::CreateFontIndirect(&lfTab);
+	// Rebuild cached DPI-scaled fonts when DPI changes
+	const int curTabDpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
+	if (m_nCachedTabDpi != curTabDpi || !m_font.GetSafeHandle()) {
+		if (m_font.GetSafeHandle())     m_font.DeleteObject();
+		if (m_fontBold.GetSafeHandle()) m_fontBold.DeleteObject();
+		m_font.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 14.0f), 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
+			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
+		m_fontBold.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 16.0f), 0, 0, 0, FW_BOLD, FALSE, FALSE, 0,
+			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
+		m_nCachedTabDpi = curTabDpi;
+	}
+	HFONT hTabFont = (HFONT)(bActive ? m_fontBold.GetSafeHandle() : m_font.GetSafeHandle());
 	HDC hdcTab = g.GetHDC();
 	HFONT hOldTab = (HFONT)::SelectObject(hdcTab, hTabFont);
 	SIZE tabTextSz = {};
@@ -3019,7 +3031,6 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 	::SetBkMode(hdcTab, TRANSPARENT);
 	::DrawTextW(hdcTab, m_items[idx].text.GetString(), -1, &rcTabTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 	g.ReleaseHDC(hdcTab);
-	::DeleteObject(hTabFont);
 }
 
 void CModernTabCtrl::DrawIcon(Graphics& g, int iconType,
@@ -3279,6 +3290,7 @@ END_MESSAGE_MAP()
 CInfoIconButton::CInfoIconButton()
 	: m_bHover(FALSE), m_bTracking(FALSE)
 	, m_bUseUnderlay(FALSE), m_clrUnderlay(RGB(249, 250, 252))
+	, m_hCachedFont(NULL), m_nCachedFontH(0)
 {
 }
 
@@ -3390,14 +3402,17 @@ COLORREF fill = disabled ? KFTC_DISABLED_BG : (bHot ? KFTC_PRIMARY : RGB(232, 24
 	}
 	LOGFONT lfInfo = {}; lfInfo.lfHeight = -(int)(sz * 0.52f); lfInfo.lfWeight = FW_BOLD; lfInfo.lfQuality = CLEARTYPE_QUALITY;
 	ModernUIFont::ApplyUIFontFace(lfInfo);
-	HFONT hInfoFont = ::CreateFontIndirect(&lfInfo);
-	HFONT hOldInfoFont = (HFONT)::SelectObject(dcMem.GetSafeHdc(), hInfoFont);
+	if (!m_hCachedFont || m_nCachedFontH != lfInfo.lfHeight) {
+		if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
+		m_hCachedFont = ::CreateFontIndirect(&lfInfo);
+		m_nCachedFontH = lfInfo.lfHeight;
+	}
+	HFONT hOldInfoFont = (HFONT)::SelectObject(dcMem.GetSafeHdc(), m_hCachedFont);
 	::SetTextColor(dcMem.GetSafeHdc(), txt);
 	::SetBkMode(dcMem.GetSafeHdc(), TRANSPARENT);
 	RECT rcInfoTxt = { (LONG)rf.X, (LONG)rf.Y, (LONG)rf.GetRight(), (LONG)rf.GetBottom() };
 	::DrawTextW(dcMem.GetSafeHdc(), L"?", -1, &rcInfoTxt, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 	::SelectObject(dcMem.GetSafeHdc(), hOldInfoFont);
-	::DeleteObject(hInfoFont);
 
 	// Blit to screen
 	::BitBlt(lpDIS->hDC, rect.left, rect.top, rect.Width(), rect.Height(),
@@ -3422,6 +3437,7 @@ CModernPopover* CModernPopover::s_pPopoverInst = NULL;
 
 CModernPopover::CModernPopover()
 	: m_nArrowX(0), m_nCardW(0), m_nCardH(0), m_bVisible(FALSE), m_nBlurPad(0)
+	, m_hCachedFontBold(NULL), m_hCachedFontNormal(NULL), m_nCachedGdiFontDpi(0)
 {
 	m_pFontFamily = nullptr;
 }
@@ -3948,19 +3964,24 @@ void CModernPopover::RefreshLayered()
 
 		// --- GDI text: draw after GDI+ scope closed (hdcMem writes directly to pvBits) ---
 		{
-			LOGFONT lfGT = {}; lfGT.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGT.lfWeight = FW_BOLD;   ModernUIFont::ApplyUIFontFace(lfGT);
-			LOGFONT lfGB = {}; lfGB.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGB.lfWeight = FW_NORMAL; ModernUIFont::ApplyUIFontFace(lfGB);
-			HFONT hFT = ::CreateFontIndirect(&lfGT);
-			HFONT hFB = ::CreateFontIndirect(&lfGB);
+			const int popDpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
+			if (m_nCachedGdiFontDpi != popDpi || !m_hCachedFontBold || !m_hCachedFontNormal) {
+				if (m_hCachedFontBold)   { ::DeleteObject(m_hCachedFontBold);   m_hCachedFontBold   = NULL; }
+				if (m_hCachedFontNormal) { ::DeleteObject(m_hCachedFontNormal); m_hCachedFontNormal = NULL; }
+				LOGFONT lfGT = {}; lfGT.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGT.lfWeight = FW_BOLD;   ModernUIFont::ApplyUIFontFace(lfGT);
+				LOGFONT lfGB = {}; lfGB.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 14); lfGB.lfWeight = FW_NORMAL; ModernUIFont::ApplyUIFontFace(lfGB);
+				m_hCachedFontBold   = ::CreateFontIndirect(&lfGT);
+				m_hCachedFontNormal = ::CreateFontIndirect(&lfGB);
+				m_nCachedGdiFontDpi = popDpi;
+			}
 			for (const auto& tc : popTxt_) {
-				HFONT hF = tc.bBold ? hFT : hFB;
+				HFONT hF = tc.bBold ? m_hCachedFontBold : m_hCachedFontNormal;
 				HFONT hOld = (HFONT)::SelectObject(hdcMem, hF);
 				::SetTextColor(hdcMem, tc.clr);
 				::SetBkMode(hdcMem, TRANSPARENT);
 				RECT rcD = tc.rc; ::DrawTextW(hdcMem, tc.text.c_str(), -1, &rcD, tc.flags);
 				::SelectObject(hdcMem, hOld);
 			}
-			::DeleteObject(hFT); ::DeleteObject(hFB);
 			const int ax0=max(0,(int)cardX_), ay0=max(0,(int)cardY_);
 			const int ax1=min(W,(int)(cardX_+cardW_)), ay1=min(H,(int)(cardY_+cardH_));
 			for (int fy=ay0; fy<ay1; fy++) {

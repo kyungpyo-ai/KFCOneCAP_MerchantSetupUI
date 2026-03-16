@@ -339,6 +339,8 @@ private:
     // ()  
     int  m_nTextPx;
     BOOL m_bNoWrapEllipsis;
+    HFONT m_hCachedFont;
+    int   m_nCachedFontH;
 };
 
 // ========================================
@@ -652,6 +654,7 @@ private:
     int  m_nSel;
     int  m_nHover;
     bool m_bTrack;
+    int  m_nCachedTabDpi;
 
     CFont  m_font;
     CFont  m_fontBold;
@@ -671,7 +674,7 @@ class CInfoIconButton : public CButton
 {
 public:
     CInfoIconButton();
-    virtual ~CInfoIconButton() {}
+    virtual ~CInfoIconButton() { if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; } }
 
     void SetUnderlayColor(COLORREF clr) { m_bUseUnderlay = TRUE; m_clrUnderlay = clr; }
 
@@ -688,6 +691,8 @@ private:
     BOOL     m_bTracking;
     BOOL     m_bUseUnderlay;
     COLORREF m_clrUnderlay;
+    HFONT    m_hCachedFont;
+    int      m_nCachedFontH;
 };
 
 // ========================================
@@ -697,7 +702,7 @@ class CModernPopover : public CWnd
 {
 public:
     CModernPopover();
-    virtual ~CModernPopover() { if (s_hMouseHook && s_pPopoverInst == this) { ::UnhookWindowsHookEx(s_hMouseHook); s_hMouseHook = NULL; s_pPopoverInst = NULL; } delete m_pFontFamily; m_pFontFamily = nullptr; }
+    virtual ~CModernPopover() { if (s_hMouseHook && s_pPopoverInst == this) { ::UnhookWindowsHookEx(s_hMouseHook); s_hMouseHook = NULL; s_pPopoverInst = NULL; } delete m_pFontFamily; m_pFontFamily = nullptr; if (m_hCachedFontBold) { ::DeleteObject(m_hCachedFontBold); m_hCachedFontBold = NULL; } if (m_hCachedFontNormal) { ::DeleteObject(m_hCachedFontNormal); m_hCachedFontNormal = NULL; } }
 
     void ShowAt(const CRect& anchorScreenRect, LPCTSTR title, LPCTSTR body, CWnd* pParent);
     void Hide();
@@ -723,6 +728,9 @@ void RefreshLayered();
     int     m_nBlurPad; // extra pad for shadow blur (prevents clipping)
     BOOL    m_bVisible;
     Gdiplus::FontFamily* m_pFontFamily;  // cached once per ShowAt, reused for paint/measure
+    HFONT   m_hCachedFontBold;    // GDI font cache for RefreshLayered (bold)
+    HFONT   m_hCachedFontNormal;  // GDI font cache for RefreshLayered (normal)
+    int     m_nCachedGdiFontDpi;  // DPI at which the above fonts were created
     CRect   m_rcVisibleCard; // screen rect of visible card+arrow (excludes shadow padding)
     static HHOOK           s_hMouseHook;
     static CModernPopover* s_pPopoverInst;
