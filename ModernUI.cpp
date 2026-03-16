@@ -1786,8 +1786,13 @@ void CSkinnedComboBox::OnTimer(UINT_PTR nIDEvent)
 void CSkinnedComboBox::OnSetFocus(CWnd* pOldWnd)
 {
 	m_bFocus = TRUE;
+	// 시스템 콤보박스가 강제로 포커스 점선을 그리는 것을 차단합니다.
+	SetRedraw(FALSE);
 	CComboBox::OnSetFocus(pOldWnd);
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
+	SetRedraw(TRUE);
+
+	// 배경을 지우지 않고 즉시 덮어씌우듯 그리도록 강제합니다.
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
 }
 
 void CSkinnedComboBox::OnKillFocus(CWnd* pNewWnd)
@@ -1800,9 +1805,13 @@ void CSkinnedComboBox::OnKillFocus(CWnd* pNewWnd)
 		KillTimer(0x4A11);
 		m_bHoverTimer = FALSE;
 	}
-	CComboBox::OnKillFocus(pNewWnd);
 
-	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_NOERASE);
+	// 시스템 콤보박스가 배경을 지우는 것을 차단합니다.
+	SetRedraw(FALSE);
+	CComboBox::OnKillFocus(pNewWnd);
+	SetRedraw(TRUE);
+
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
 }
 
 /*
@@ -1814,11 +1823,13 @@ void CSkinnedComboBox::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	if (::IsWindowEnabled(m_hWnd) == FALSE) return;
 
-	// 기본 동작(드롭다운 열기) 수행 전후에 상태만 갱신
+	// 클릭하는 찰나에 발생하는 네이티브 상태 변화 그리기(눌림 효과 등)를 차단합니다.
+	SetRedraw(FALSE);
 	CComboBox::OnLButtonDown(nFlags, point);
+	SetRedraw(TRUE);
 
-	// 눌린 직후 화면 갱신 (Invalidate로 충분함)
-	Invalidate(FALSE);
+	// 클릭 직후 즉시 우리의 모던 UI 스타일로 화면을 갱신합니다.
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE);
 }
 
 CString CSkinnedComboBox::GetDisplayText() const
@@ -2034,10 +2045,60 @@ LRESULT CALLBACK CSkinnedComboBox::ListBoxProc(HWND hWnd, UINT msg, WPARAM wp, L
 		return oldProc ? ::CallWindowProc(oldProc, hWnd, msg, wp, lp) : 0;
 	}
 
-	// 1.           
+	// [추가] 1. 캡처되지 않았을 때의 기본 커서 처리 (리스트 위)
+	if (msg == WM_SETCURSOR)
+	{
+
+		POINT pt;
+		::GetCursorPos(&pt); // 글로벌 좌표
+
+		RECT rcList, rcCombo;
+		::GetWindowRect(hWnd, &rcList);
+		::SetRectEmpty(&rcCombo);
+
+		CSkinnedComboBox* pCombo = (CSkinnedComboBox*)::GetProp(hWnd, _T("SKCBX_PTR"));
+		if (pCombo && ::IsWindow(pCombo->m_hWnd))
+		{
+			::GetWindowRect(pCombo->m_hWnd, &rcCombo);
+		}
+
+		if (::PtInRect(&rcList, pt) || ::PtInRect(&rcCombo, pt))
+			::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		else
+			::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+
+		return TRUE; // 시스템이 덮어쓰지 못하도록 완벽 차단
+		
+	}
+
+	// 기본 동작(아이템 선택, 스크롤 등) 수행
 	LRESULT lRes = oldProc ? ::CallWindowProc(oldProc, hWnd, msg, wp, lp) : 0;
 
-	// 2.    ,  θ 
+	// [추가] 2. 마우스 캡처 상태일 때의 실시간 커서 추적 (본체 위, 리스트 위, 밖)
+	if (msg == WM_MOUSEMOVE)
+	{
+		POINT pt;
+		::GetCursorPos(&pt);
+
+		RECT rcList, rcCombo;
+		::GetWindowRect(hWnd, &rcList);
+		::SetRectEmpty(&rcCombo);
+
+		CSkinnedComboBox* pCombo = (CSkinnedComboBox*)::GetProp(hWnd, _T("SKCBX_PTR"));
+		if (pCombo && ::IsWindow(pCombo->m_hWnd))
+		{
+			::GetWindowRect(pCombo->m_hWnd, &rcCombo);
+		}
+
+		if (::PtInRect(&rcList, pt) || ::PtInRect(&rcCombo, pt))
+			::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		else
+			::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+
+		// 여기서는 return TRUE를 하지 않고 흘려보내어, 리스트 항목 Hover 색상이 정상 동작하게 둡니다.
+	}
+
+	// 3. WM_PAINT / WM_NCPAINT 후처리 (테두리 등)
 	if (msg == WM_PAINT || msg == WM_NCPAINT)
 	{
 		HDC hdc = ::GetWindowDC(hWnd); //      
@@ -2293,7 +2354,7 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 }
 
 // ============================================================
-// CSkinnedEdit (Edit - ComboBox  /θ )
+// CSkinnedEdit (Edit)
 // ============================================================
 
 BEGIN_MESSAGE_MAP(CSkinnedEdit, CEdit)
@@ -3078,7 +3139,7 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 		if (m_fontBold.GetSafeHandle()) m_fontBold.DeleteObject();
 		m_font.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 14.0f), 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
-		m_fontBold.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 16.0f), 0, 0, 0, FW_BOLD, FALSE, FALSE, 0,
+		m_fontBold.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 15.0f), 0, 0, 0, FW_BOLD, FALSE, FALSE, 0,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
 		m_nCachedTabDpi = curTabDpi;
 	}
