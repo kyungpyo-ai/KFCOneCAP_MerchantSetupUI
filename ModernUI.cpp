@@ -448,6 +448,11 @@ CModernButton::CModernButton()
 	m_style = ButtonStyle::Auto; // default: detect style from button text
 	m_nTextPx = 14;
 	m_bLoading = FALSE;
+	m_bLastHover     = false;
+	m_bLastPressed   = false;
+	m_bLastDisabled  = false;
+	m_clrLastUnderlay = (COLORREF)-1;
+	m_bRenderDirty    = TRUE;
 	m_hCachedFont     = NULL;
 	m_nCachedFontHeight = 0;
 }
@@ -506,6 +511,7 @@ void CModernButton::SetButtonStyle(ButtonStyle style)
 {
     // 버튼 스타일을 명시적으로 설정한다. 다음 렌더링 사이클부터 적용된다.
     m_style = style;
+    m_bRenderDirty = TRUE;
     if (GetSafeHwnd())
         Invalidate();
 }
@@ -585,12 +591,15 @@ void CModernButton::SetColors(COLORREF normalBg, COLORREF hoverBg, COLORREF text
 	m_clrNormalBg = normalBg;
 	m_clrHoverBg = hoverBg;
 	m_clrText = textColor;
+	m_bRenderDirty = TRUE;
+	if (GetSafeHwnd()) Invalidate(FALSE);
 }
 
 void CModernButton::SetHoverTextColor(COLORREF hoverTextColor)
 {
 	m_clrHoverText = hoverTextColor;
 	m_bUseHoverText = TRUE;
+	m_bRenderDirty = TRUE;
 	Invalidate(FALSE);
 }
 
@@ -693,13 +702,34 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	if (!m_memDC.GetSafeHdc()) m_memDC.CreateCompatibleDC(pDC);
 	const CSize newBmpSz(rect.Width(), rect.Height());
-	if (m_memBmpSize != newBmpSz) {
+	const bool sizeChanged = (m_memBmpSize != newBmpSz);
+	if (sizeChanged) {
 		if (m_memBmp.GetSafeHandle()) m_memBmp.DeleteObject();
 		m_memBmp.CreateCompatibleBitmap(pDC, newBmpSz.cx, newBmpSz.cy);
 		m_memBmpSize = newBmpSz;
 		m_memDC.SelectObject(&m_memBmp);
 	}
 	CDC& memDC = m_memDC;
+
+	CString strText;
+	GetWindowText(strText);
+	if (m_bLoading && !m_strLoadingText.IsEmpty())
+		strText = m_strLoadingText;
+
+	// Skip full re-render if visual state is unchanged (idle repaint from parent, etc.)
+	const bool textChanged  = (strText != m_strTextKey);
+	const bool stateChanged = (hover != m_bLastHover) || (pressed != m_bLastPressed) || (disabled != m_bLastDisabled);
+	const bool underlayChanged = m_bUseUnderlayBg && (m_clrUnderlayBg != m_clrLastUnderlay);
+	if (!m_bLoading && !textChanged && !stateChanged && !sizeChanged && !underlayChanged && !m_bRenderDirty && m_bUseUnderlayBg && m_memBmp.GetSafeHandle()) {
+		pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &m_memDC, 0, 0, SRCCOPY);
+		return;
+	}
+	if (textChanged) { m_strTextKey = strText; m_wstrTextCache = kftc_to_wide(strText); }
+	m_bLastHover     = hover;
+	m_bLastPressed   = pressed;
+	m_bLastDisabled  = disabled;
+	m_clrLastUnderlay = m_clrUnderlayBg;
+	m_bRenderDirty    = FALSE;
 
 	CRect rc(0, 0, rect.Width(), rect.Height());
 
@@ -715,11 +745,6 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 	g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 	g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);
-
-	CString strText;
-	GetWindowText(strText);
-	if (m_bLoading && !m_strLoadingText.IsEmpty())
-		strText = m_strLoadingText;
 
 	CString t = strText; t.Trim();
 	BOOL isPrimary = (t.Find(_T("확인")) >= 0);
@@ -872,7 +897,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		const float spinnerSize = ModernUIDpi::ScaleF(m_hWnd, 12.0f);
 		const float spinnerGap = ModernUIDpi::ScaleF(m_hWnd, 5.0f);
-		std::wstring wtMeasure = kftc_to_wide(strText);
+		const std::wstring& wtMeasure = m_wstrTextCache;
 		RECT rcMeasureBtn = { 0, 0, (LONG)rf.Width, (LONG)rf.Height };
 		::DrawTextW(memDC.GetSafeHdc(), wtMeasure.c_str(), -1, &rcMeasureBtn, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
 		float totalW = spinnerSize + spinnerGap + (float)(rcMeasureBtn.right - rcMeasureBtn.left);
@@ -894,7 +919,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		dtHAlign = DT_LEFT;
 	}
 
-	std::wstring wt = kftc_to_wide(strText);
+	const std::wstring& wt = m_wstrTextCache;
 	if (isFooterAction && !m_bLoading)
 	{
 		const Gdiplus::REAL iconGap = ModernUIDpi::ScaleF(m_hWnd, 9.5f);
@@ -1136,6 +1161,7 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		// Text
 	CString strText;
 	GetWindowText(strText);
+	if (strText != m_strTextKey) { m_strTextKey = strText; m_wstrTextCache = kftc_to_wide(strText); }
 
 	if (!strText.IsEmpty())
 	{
@@ -1198,7 +1224,7 @@ void CModernCheckBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			UINT dtChk = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
 			if (m_bNoWrapEllipsis) dtChk |= DT_END_ELLIPSIS;
 			RECT rcChkTxt = { (LONG)(boxX + boxSize + ModernUIDpi::ScaleF(m_hWnd, 8.0f)), 0, rect.Width(), rect.Height() };
-			std::wstring wText = kftc_to_wide(strText);
+			const std::wstring& wText = m_wstrTextCache;
 			::DrawTextW(pDC->GetSafeHdc(), wText.c_str(), -1, &rcChkTxt, dtChk);
 			::SelectObject(pDC->GetSafeHdc(), hOldChkFont);
 		}
@@ -1591,6 +1617,7 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	// 
 	CString strText;
 	GetWindowText(strText);
+	if (strText != m_strTextKey) { m_strTextKey = strText; m_wstrTextCache = kftc_to_wide(strText); }
 
 	if (!strText.IsEmpty())
 	{
@@ -1608,7 +1635,7 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		UINT dtTgl = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX;
 		if (m_bNoWrapEllipsis) dtTgl |= DT_END_ELLIPSIS;
 		RECT rcTglTxt = { (LONG)(switchX + switchW + ModernUIDpi::ScaleF(m_hWnd, 10.0f)), 0, rect.Width(), rect.Height() };
-		std::wstring wText = kftc_to_wide(strText);
+		const std::wstring& wText = m_wstrTextCache;
 		::DrawTextW(pDC->GetSafeHdc(), wText.c_str(), -1, &rcTglTxt, dtTgl);
 		::SelectObject(pDC->GetSafeHdc(), hOldTglFont);
 	}

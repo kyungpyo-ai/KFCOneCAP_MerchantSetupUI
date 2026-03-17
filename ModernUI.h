@@ -6,6 +6,7 @@
 #include <commctrl.h>
 #include <gdiplus.h>
 #include <vector>
+#include <string>
 #include <uxtheme.h>
 #pragma comment(lib, "uxtheme.lib")
 #pragma comment(lib, "gdiplus.lib")
@@ -281,11 +282,18 @@ private:
     HFONT    m_hCachedFont;
     int      m_nCachedFontHeight;
     BOOL     m_bNcStylePrepared;
+    bool     m_bLastHover;     // render cache: last drawn hover state
+    bool     m_bLastPressed;   // render cache: last drawn pressed state
+    bool     m_bLastDisabled;  // render cache: last drawn disabled state
+    COLORREF m_clrLastUnderlay; // render cache: last drawn underlay color
+    BOOL     m_bRenderDirty;    // render cache: TRUE forces full re-render on next DrawItem
 
     // Cached back-buffer (reused across DrawItem calls)
     CDC      m_memDC;
     CBitmap  m_memBmp;
     CSize    m_memBmpSize;
+    std::wstring m_wstrTextCache;  // cached wide text (updated when window text changes)
+    CString      m_strTextKey;     // text key for cache invalidation
 };
 
 // ========================================
@@ -348,6 +356,8 @@ private:
     BOOL     m_bLoading;
     CString  m_strBaseText;
     CString  m_strLoadingText;
+    std::wstring m_wstrTextCache;  // cached wide text
+    CString      m_strTextKey;     // text key for cache invalidation
 
     // Cached font handle (avoids CreateFontIndirect on every paint call)
     HFONT    m_hCachedFont;
@@ -387,6 +397,8 @@ private:
     BOOL m_bNoWrapEllipsis;
     HFONT m_hCachedFont;
     int   m_nCachedFontH;
+    std::wstring m_wstrTextCache;  // cached wide text
+    CString      m_strTextKey;     // text key for cache invalidation
 };
 
 // ========================================
