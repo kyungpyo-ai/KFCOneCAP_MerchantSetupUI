@@ -1387,8 +1387,9 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			rOff=230; gOff=236; bOff=245;  rOn=0;   gOn=100; bOn=221;
 		}
 		float t = m_fAnimProgress;
+		float _easeT = 1.0f - (1.0f - t)*(1.0f - t)*(1.0f - t); // ease-out-cubic
 		Gdiplus::SolidBrush trackBrush(Gdiplus::Color(255,
-			(BYTE)(rOff+(rOn-rOff)*t), (BYTE)(gOff+(gOn-gOff)*t), (BYTE)(bOff+(bOn-bOff)*t)));
+			(BYTE)(rOff+(rOn-rOff)*_easeT), (BYTE)(gOff+(gOn-gOff)*_easeT), (BYTE)(bOff+(bOn-bOff)*_easeT)));
 		graphics.FillPath(&trackBrush, &switchPath);
 	}
 
@@ -1397,7 +1398,8 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	REAL knobPadding = (switchRect.Height - knobSize) / 2.0f;
 	REAL knobLeft  = switchRect.X + knobPadding;
 	REAL knobRight = switchRect.X + switchRect.Width - knobSize - knobPadding;
-	REAL knobX = knobLeft + (knobRight - knobLeft) * m_fAnimProgress;
+	float _eT = m_fAnimProgress; _eT = 1.0f - (1.0f - _eT)*(1.0f - _eT)*(1.0f - _eT);
+	REAL knobX = knobLeft + (knobRight - knobLeft) * _eT;
 	REAL knobY = switchRect.Y + knobPadding;
 
 	Gdiplus::RectF knobRect(knobX, knobY, knobSize, knobSize);
@@ -3207,7 +3209,7 @@ void CModernTabCtrl::DrawIcon(Graphics& g, int iconType,
 		REAL cw = hw * 2.0f, ch = hw * 1.25f;
 		REAL x0 = cx - hw, y0 = cy - ch * 0.5f;
 		// Filled magnetic stripe band first (so card outline covers the edges cleanly)
-		REAL s1 = y0 + ch * 0.25f;
+		REAL s1 = y0 + ch * 0.1f;
 		REAL sH = ch * 0.27f;
 		Gdiplus::SolidBrush stripeBrush(iconColor);
 		g.FillRectangle(&stripeBrush, x0, s1, cw, sH);
