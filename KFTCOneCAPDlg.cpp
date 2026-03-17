@@ -647,19 +647,12 @@ void CKFTCOneCAPDlg::DrawReaderIcon(Graphics& g, const RectF& rc, const Color& c
     Pen pen(clr, 1.3f);
     pen.SetLineJoin(LineJoinRound);
 
-    auto AddRR = [](GraphicsPath& p, RectF r, REAL rad) {
-        REAL d = rad * 2.0f;
-        p.AddArc(r.X, r.Y, d, d, 180.0f, 90.0f);
-        p.AddArc(r.GetRight() - d, r.Y, d, d, 270.0f, 90.0f);
-        p.AddArc(r.GetRight() - d, r.GetBottom() - d, d, d, 0.0f, 90.0f);
-        p.AddArc(r.X, r.GetBottom() - d, d, d, 90.0f, 90.0f);
-        p.CloseFigure();
-        };
+
 
     // 몸체 + 화면 구멍 + 키패드 버튼 구멍을 FillModeAlternate 한 번에 처리
     // → 배경색이 비쳐서 화면과 키버튼이 뚜렷하게 보임
     GraphicsPath bodyPath(FillModeAlternate);
-    AddRR(bodyPath, RectF(rc.X + 4.5f, rc.Y + 1.0f, 19.0f, 23.5f), 3.0f);  // 몸체
+    ModernUIGfx::AddRoundRect(bodyPath, RectF(rc.X + 4.5f, rc.Y + 1.0f, 19.0f, 23.5f), 3.0f);  // 몸체
 
     bodyPath.AddRectangle(RectF(rc.X + 7.0f, rc.Y + 3.5f, 14.0f, 8.0f));    // 화면 구멍
 
@@ -668,7 +661,7 @@ void CKFTCOneCAPDlg::DrawReaderIcon(Graphics& g, const RectF& rc, const Color& c
         for (int j = 0; j < 2; j++) {
             REAL kx = rc.X + 7.5f + (i * 4.5f);
             REAL ky = rc.Y + 14.5f + (j * 4.2f);
-            AddRR(bodyPath, RectF(kx, ky, 3.2f, 2.8f), 0.7f);  // 각 키버튼 구멍
+            ModernUIGfx::AddRoundRect(bodyPath, RectF(kx, ky, 3.2f, 2.8f), 0.7f);  // 각 키버튼 구멍
         }
     }
 
@@ -706,28 +699,21 @@ void CKFTCOneCAPDlg::DrawTransIcon(Graphics& g, const RectF& rc, const Color& cl
 {
     SolidBrush br(clr);
 
-    auto AddRR = [](GraphicsPath& p, RectF r, REAL rad) {
-        REAL d = rad * 2.0f;
-        p.AddArc(r.X, r.Y, d, d, 180.0f, 90.0f);
-        p.AddArc(r.GetRight() - d, r.Y, d, d, 270.0f, 90.0f);
-        p.AddArc(r.GetRight() - d, r.GetBottom() - d, d, d, 0.0f, 90.0f);
-        p.AddArc(r.X, r.GetBottom() - d, d, d, 90.0f, 90.0f);
-        p.CloseFigure();
-        };
+
 
     // 카드 외곽 + 자기띠(구멍) + IC칩 슬롯(구멍)
     GraphicsPath card(FillModeAlternate);
-    AddRR(card, RectF(rc.X + 1.0f, rc.Y + 4.5f, 26.0f, 19.0f), 2.5f); // 카드 외곽
+    ModernUIGfx::AddRoundRect(card, RectF(rc.X + 1.0f, rc.Y + 4.5f, 26.0f, 19.0f), 2.5f); // 카드 외곽
     card.AddRectangle(RectF(rc.X + 1.0f, rc.Y + 8.0f, 26.0f, 3.0f));   // 자기띠
-    AddRR(card, RectF(rc.X + 3.5f, rc.Y + 13.5f, 9.0f, 6.0f), 1.0f);  // IC칩 슬롯
+    ModernUIGfx::AddRoundRect(card, RectF(rc.X + 3.5f, rc.Y + 13.5f, 9.0f, 6.0f), 1.0f);  // IC칩 슬롯
     g.FillPath(&br, &card);
 
     // IC칩 내부 접점 3x2 (FillModeAlternate: 슬롯 위에 채움→구멍 반복)
     GraphicsPath chip(FillModeAlternate);
-    AddRR(chip, RectF(rc.X + 3.5f, rc.Y + 13.5f, 9.0f, 6.0f), 1.0f);  // 칩 채움
+    ModernUIGfx::AddRoundRect(chip, RectF(rc.X + 3.5f, rc.Y + 13.5f, 9.0f, 6.0f), 1.0f);  // 칩 채움
     for (int c2 = 0; c2 < 3; c2++)
         for (int r2 = 0; r2 < 2; r2++)
-            AddRR(chip,
+            ModernUIGfx::AddRoundRect(chip,
                 RectF(rc.X + 4.3f + (c2 * 2.8f), rc.Y + 14.2f + (r2 * 2.4f), 1.8f, 1.6f),
                 0.3f);
     g.FillPath(&br, &chip);

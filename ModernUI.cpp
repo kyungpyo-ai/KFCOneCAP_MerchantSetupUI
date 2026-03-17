@@ -1279,6 +1279,7 @@ BEGIN_MESSAGE_MAP(CModernToggleSwitch, CButton)
 	ON_WM_LBUTTONUP()
 	ON_WM_SETCURSOR() // 추가
 	ON_MESSAGE(WM_MOUSEHOVER, OnMouseHover)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 CModernToggleSwitch::CModernToggleSwitch()
@@ -1290,16 +1291,25 @@ CModernToggleSwitch::CModernToggleSwitch()
 	m_bNoWrapEllipsis = TRUE;
 	m_bUseUnderlay = FALSE;
 	m_clrUnderlay = RGB(255, 255, 255);
+	m_fAnimProgress = 0.0f;
+	m_uAnimTimer    = 0;
 	m_bPressed = FALSE; // 추가
 }
 
 CModernToggleSwitch::~CModernToggleSwitch()
 {
+	if (m_uAnimTimer && m_hWnd) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
 }
 
 void CModernToggleSwitch::SetToggled(BOOL bToggled)
 {
-	m_bToggled = bToggled ? TRUE : FALSE;
+	BOOL bNew = bToggled ? TRUE : FALSE;
+	if (m_bToggled != bNew)
+	{
+		if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+		m_bToggled = bNew;
+		m_fAnimProgress = bNew ? 1.0f : 0.0f;
+	}
 	Invalidate(FALSE);
 }
 
@@ -1366,30 +1376,28 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchRect.Height / 2.0f);
 
 	// 트랙 그리기 (ON/OFF 색상 로직)
-	if (m_bToggled) {
-		Gdiplus::Color c1, c2;
+	// Animate track color between OFF/ON states using m_fAnimProgress
+	{
+		float rOff, gOff, bOff, rOn, gOn, bOn;
 		if (disabled) {
-			c1 = Gdiplus::Color(255, 200, 200, 200); c2 = Gdiplus::Color(255, 220, 220, 220);
+			rOff=220; gOff=220; bOff=220;  rOn=200; gOn=200; bOn=200;
+		} else if (m_bHover) {
+			rOff=208; gOff=218; bOff=232;  rOn=20;  gOn=118; bOn=245;
+		} else {
+			rOff=230; gOff=236; bOff=245;  rOn=0;   gOn=100; bOn=221;
 		}
-		else {
-			c1 = m_bHover ? Gdiplus::Color(255, 20, 118, 245) : Gdiplus::Color(255, 0, 100, 221);
-			c2 = m_bHover ? Gdiplus::Color(255, 10, 140, 255) : Gdiplus::Color(255, 15, 124, 255);
-		}
-		Gdiplus::LinearGradientBrush trackBrush(Gdiplus::PointF(switchRect.X, switchRect.Y),
-			Gdiplus::PointF(switchRect.X, switchRect.Y + switchRect.Height), c1, c2);
-		graphics.FillPath(&trackBrush, &switchPath);
-	}
-	else {
-		Gdiplus::Color offColor = disabled ? Gdiplus::Color(255, 220, 220, 220) :
-			(m_bHover ? Gdiplus::Color(255, 208, 218, 232) : Gdiplus::Color(255, 230, 236, 245));
-		Gdiplus::SolidBrush trackBrush(offColor);
+		float t = m_fAnimProgress;
+		Gdiplus::SolidBrush trackBrush(Gdiplus::Color(255,
+			(BYTE)(rOff+(rOn-rOff)*t), (BYTE)(gOff+(gOn-gOff)*t), (BYTE)(bOff+(bOn-bOff)*t)));
 		graphics.FillPath(&trackBrush, &switchPath);
 	}
 
 	// 4. 노브(Knob) 그리기 - switchRect 기준으로 자동 스케일링됨
 	REAL knobSize = switchRect.Height * 0.85f; // 트랙 높이의 85% 크기
 	REAL knobPadding = (switchRect.Height - knobSize) / 2.0f;
-	REAL knobX = m_bToggled ? (switchRect.X + switchRect.Width - knobSize - knobPadding) : (switchRect.X + knobPadding);
+	REAL knobLeft  = switchRect.X + knobPadding;
+	REAL knobRight = switchRect.X + switchRect.Width - knobSize - knobPadding;
+	REAL knobX = knobLeft + (knobRight - knobLeft) * m_fAnimProgress;
 	REAL knobY = switchRect.Y + knobPadding;
 
 	Gdiplus::RectF knobRect(knobX, knobY, knobSize, knobSize);
@@ -1467,9 +1475,27 @@ void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point) {
 	if (!::IsWindowEnabled(m_hWnd)) return;
 	m_bPressed = FALSE; // 상태 해제
 	m_bToggled = !m_bToggled;
-	Invalidate(FALSE);
+	if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+	m_uAnimTimer = SetTimer(1, 16, NULL);
 	GetParent()->SendMessage(WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(), BN_CLICKED), (LPARAM)m_hWnd);
 	CButton::OnLButtonUp(nFlags, point);
+}
+
+void CModernToggleSwitch::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == m_uAnimTimer) {
+		const float kStep = 0.25f;
+		if (m_bToggled) {
+			m_fAnimProgress += kStep;
+			if (m_fAnimProgress >= 1.0f) { m_fAnimProgress = 1.0f; KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+		} else {
+			m_fAnimProgress -= kStep;
+			if (m_fAnimProgress <= 0.0f) { m_fAnimProgress = 0.0f; KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+		}
+		Invalidate(FALSE);
+		return;
+	}
+	CButton::OnTimer(nIDEvent);
 }
 
 
@@ -1543,7 +1569,9 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	//  
 	REAL knobSize = (float)ModernUIDpi::Scale(m_hWnd, 18);
 	REAL knobPadding = ModernUIDpi::ScaleF(m_hWnd, 3.0f);
-	REAL knobX = m_bToggled ? (switchRect.X + switchRect.Width - knobSize - knobPadding) : (switchRect.X + knobPadding);
+	REAL knobLeft  = switchRect.X + knobPadding;
+	REAL knobRight = switchRect.X + switchRect.Width - knobSize - knobPadding;
+	REAL knobX = m_bToggled ? knobRight : knobLeft;
 	REAL knobY = switchRect.Y + (switchRect.Height - knobSize) / 2;
 
 	Gdiplus::RectF knobRect(knobX, knobY, knobSize, knobSize);
@@ -1866,20 +1894,11 @@ const KFTCInputTheme& CSkinnedComboBox::GetActiveInputTheme() const
 
 void CSkinnedComboBox::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, REAL radius)
 {
-	if (radius <= 0.1f)
-	{
-		path.AddRectangle(rect);
-		path.CloseFigure();
-		return;
-	}
-
+	// Clamp radius, then delegate to shared helper (no duplicate arc logic)
+	if (radius <= 0.1f) { path.AddRectangle(rect); path.CloseFigure(); return; }
 	REAL maxR = (rect.Width < rect.Height ? rect.Width : rect.Height) / 2.0f;
 	if (radius > maxR) radius = maxR;
-	path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-	path.AddArc(rect.X + rect.Width - radius * 2, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 0, 90);
-	path.AddArc(rect.X, rect.Y + rect.Height - radius * 2, radius * 2, radius * 2, 90, 90);
-	path.CloseFigure();
+	ModernUIGfx::AddRoundRect(path, rect, radius);
 }
 
 void CSkinnedComboBox::PaintComboToDC(CDC& dc)
@@ -2714,21 +2733,10 @@ HBRUSH CSkinnedEdit::CtlColor(CDC* pDC, UINT /*nCtlColor*/)
 }
 void CSkinnedEdit::AddRoundRect(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, Gdiplus::REAL radius)
 {
+	// Reset path, then delegate to shared helper (no duplicate arc logic)
 	path.Reset();
-
-	if (radius <= 0.1f)
-	{
-		path.AddRectangle(rect);
-		path.CloseFigure();
-		return;
-	}
-
-	const Gdiplus::REAL d = radius * 2.0f;
-	path.AddArc(rect.X, rect.Y, d, d, 180.0f, 90.0f);
-	path.AddArc(rect.X + rect.Width - d, rect.Y, d, d, 270.0f, 90.0f);
-	path.AddArc(rect.X + rect.Width - d, rect.Y + rect.Height - d, d, d, 0.0f, 90.0f);
-	path.AddArc(rect.X, rect.Y + rect.Height - d, d, d, 90.0f, 90.0f);
-	path.CloseFigure();
+	if (radius <= 0.1f) { path.AddRectangle(rect); path.CloseFigure(); return; }
+	ModernUIGfx::AddRoundRect(path, rect, radius);
 }
 
 /*

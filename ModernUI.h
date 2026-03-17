@@ -415,6 +415,7 @@ protected:
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
 
     DECLARE_MESSAGE_MAP()
 
@@ -430,6 +431,9 @@ private:
 
     BOOL m_bUseUnderlay;
     COLORREF m_clrUnderlay;
+
+    float    m_fAnimProgress;
+    UINT_PTR m_uAnimTimer;
 };
 
 // ========================================
