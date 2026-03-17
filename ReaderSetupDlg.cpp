@@ -891,16 +891,16 @@ void CReaderSetupDlg::ApplyDialogFonts()
 void CReaderSetupDlg::InitModernButtonStyles()
 {
 	// 리더 카드 액션 버튼은 전부 동일한 Secondary 계열 스타일을 써서 시선이 분산되지 않게 한다.
-	m_reader_init1.SetButtonStyle(ButtonStyle::Download);
-	m_status_check1.SetButtonStyle(ButtonStyle::Download);
-	m_keydown1.SetButtonStyle(ButtonStyle::Download);
-	m_integrity_check1.SetButtonStyle(ButtonStyle::Download);
-	m_update1.SetButtonStyle(ButtonStyle::Download);
-	m_reader_init2.SetButtonStyle(ButtonStyle::Download);
-	m_status_check2.SetButtonStyle(ButtonStyle::Download);
-	m_keydown2.SetButtonStyle(ButtonStyle::Download);
-	m_integrity_check2.SetButtonStyle(ButtonStyle::Download);
-	m_update2.SetButtonStyle(ButtonStyle::Download);
+	m_reader_init1.SetButtonStyle(ButtonStyle::Reader);
+	m_status_check1.SetButtonStyle(ButtonStyle::Reader);
+	m_keydown1.SetButtonStyle(ButtonStyle::Reader);
+	m_integrity_check1.SetButtonStyle(ButtonStyle::Reader);
+	m_update1.SetButtonStyle(ButtonStyle::Reader);
+	m_reader_init2.SetButtonStyle(ButtonStyle::Reader);
+	m_status_check2.SetButtonStyle(ButtonStyle::Reader);
+	m_keydown2.SetButtonStyle(ButtonStyle::Reader);
+	m_integrity_check2.SetButtonStyle(ButtonStyle::Reader);
+	m_update2.SetButtonStyle(ButtonStyle::Reader);
 
 	if (CWnd* pOK = GetDlgItem(IDOK))
 		m_btnOk.SubclassDlgItem(IDOK, this);
@@ -910,7 +910,7 @@ void CReaderSetupDlg::InitModernButtonStyles()
 	m_btnCancel.SetButtonStyle(ButtonStyle::Default);
 
 	m_btnSearch.SubclassDlgItem(IDC_SEARCH, this);
-	m_btnSearch.SetButtonStyle(ButtonStyle::Download);
+	m_btnSearch.SetButtonStyle(ButtonStyle::Reader);
 
 	m_reader_init1.SetWindowText(_T("초기화"));
 	m_status_check1.SetWindowText(_T("상태체크"));

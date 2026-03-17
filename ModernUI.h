@@ -216,6 +216,7 @@ enum class ButtonStyle {
     Primary,    // 파랑 채움 (확인/제출)
     Danger,     // 빨강 (삭제/위험 동작)
     Download,   // 연파랑 (다운로드)
+    Reader,     // Reader button (init/update/status)
     Exit        // 회색 테두리 (취소/닫기)
 };
 class CModernButton : public CButton

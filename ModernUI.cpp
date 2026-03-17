@@ -751,6 +751,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	BOOL isExit = (t.Find(_T("취소")) >= 0) || (t.Find(_T("닫기")) >= 0);
 	BOOL isDanger = (t.Find(_T("삭제")) >= 0);
 	BOOL isDownload = (t.Find(_T("다운")) >= 0) || (t.Find(_T("조회")) >= 0);
+	BOOL isReader = FALSE;
 	BOOL isMini = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
 	BOOL isProgramExit = (t.Find(_T("프로그램 종료")) >= 0);
 	BOOL isFooterAction = (isMini || isProgramExit);
@@ -760,6 +761,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		isExit = (m_style == ButtonStyle::Exit) ? TRUE : FALSE;
 		isDanger = (m_style == ButtonStyle::Danger) ? TRUE : FALSE;
 		isDownload = (m_style == ButtonStyle::Download) ? TRUE : FALSE;
+		isReader = (m_style == ButtonStyle::Reader) ? TRUE : FALSE;
 		isMini = FALSE;
 	}
 
@@ -813,15 +815,31 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (isDanger)
 	{
-		COLORREF bg = pressed ? RGB(254, 202, 202) : (hover ? RGB(254, 226, 226) : RGB(254, 242, 242));
+		// [개선] 흰색/연회색 카드 위에서 흐려지지 않도록 배경 톤을 한 단계씩 진하게 올려줍니다.
+		COLORREF bg = pressed ? RGB(252, 165, 165) : (hover ? RGB(254, 202, 202) : RGB(254, 226, 226));
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
-		COLORREF border = bg;
-		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.0f);
+
+		// [개선] 테두리를 배경보다 한 단계 더 붉게 잡아주어 형태가 뚜렷하게 보이도록 합니다. (두께도 1.2f로 미세하게 보강)
+		COLORREF border = pressed ? RGB(248, 113, 113) : (hover ? RGB(252, 165, 165) : RGB(254, 202, 202));
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
 	else if (isDownload)
+	{
+		// [개선] 연회색/흰색 배경 어디서든 형태가 무너지지 않도록 파란색 톤을 한 단계 깊게 조절
+		COLORREF bg = pressed ? RGB(150, 195, 255) : (hover ? RGB(175, 215, 255) : RGB(200, 225, 255));
+		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
+		g.FillPath(&br, &bp);
+
+		// [개선] 테두리를 배경색보다 아주 살짝 진하게 주어, 밝은 배경 위에서 네모난 버튼 윤곽이 선명하게 보이도록 방어
+		COLORREF border = pressed ? RGB(130, 180, 255) : (hover ? RGB(155, 200, 255) : RGB(180, 210, 255));
+		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.2f);
+		pen.SetLineJoin(Gdiplus::LineJoinRound);
+		g.DrawPath(&pen, &bp);
+	}
+	else if (isReader)
 	{
 		COLORREF bg = pressed ? BLUE_200 : (hover ? BLUE_100 : BLUE_50);
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
@@ -840,7 +858,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
-	else if (isExit || (!isPrimary && !isDanger && !isDownload))
+	else if (isExit || (!isPrimary && !isDanger && !isDownload && !isReader))
 	{
 		const COLORREF bgBase = m_clrNormalBg;
 		const COLORREF bgHover = m_clrHoverBg;
@@ -867,7 +885,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		? Gdiplus::Color(255, 255, 255, 255)
 		: (isDanger
 			? Gdiplus::Color(255, 185, 28, 28)
-			: (isDownload
+			: (isDownload || isReader
 				? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
 				: (m_bUseHoverText && hover
 					? Gdiplus::Color(255, GetRValue(m_clrHoverText), GetGValue(m_clrHoverText), GetBValue(m_clrHoverText))
