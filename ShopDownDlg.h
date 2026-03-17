@@ -128,6 +128,11 @@ private:
     HFONT m_hFontVal;
     HFONT m_hFontValBold;
 
+    // Cached GDI+ paint objects (created in OnInitDialog, paths rebuilt on resize)
+    Gdiplus::SolidBrush*   m_pBrCardNormal;         // white card background
+    Gdiplus::SolidBrush*   m_pBrCardEmpty;          // light blue background (no data)
+    Gdiplus::GraphicsPath* m_pRowPath[kRowsPerPage]; // rounded card outlines per slot
+
     // ---------- Data strings --------------------------------------------------
     // ---------- Per-row data (all 20 rows) ------------------------------------
     // 2-row slot reuse: only kRowsPerPage rows visible at a time.

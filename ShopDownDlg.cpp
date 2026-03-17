@@ -126,7 +126,11 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_bNavAnimNext(false)
     , m_nAnimFromPage(0)
     , m_fPillFrom(0.f)
+    , m_pBrCardNormal(nullptr)
+    , m_pBrCardEmpty(nullptr)
 {
+    m_pRowPath[0] = nullptr;
+    m_pRowPath[1] = nullptr;
 
 }
 
@@ -145,6 +149,9 @@ void CShopDownDlg::OnDestroy()
     if (m_hFontLbl)     { ::DeleteObject(m_hFontLbl);     m_hFontLbl     = nullptr; }
     if (m_hFontVal)     { ::DeleteObject(m_hFontVal);     m_hFontVal     = nullptr; }
     if (m_hFontValBold) { ::DeleteObject(m_hFontValBold); m_hFontValBold = nullptr; }
+    delete m_pBrCardNormal; m_pBrCardNormal = nullptr;
+    delete m_pBrCardEmpty;  m_pBrCardEmpty  = nullptr;
+    for (int i = 0; i < kRowsPerPage; ++i) { delete m_pRowPath[i]; m_pRowPath[i] = nullptr; }
     m_memDC.DeleteDC();
     m_memBmp.DeleteObject();
     CDialog::OnDestroy();
@@ -180,6 +187,8 @@ BOOL CShopDownDlg::OnInitDialog()
     m_brushBg.CreateSolidBrush(KFTC_DLG_CONTENT_BG);
     m_brushCard.CreateSolidBrush(RGB(255, 255, 255));
     m_brushCardDisabled.CreateSolidBrush(KFTC_CARD_DISABLED_BG);
+    m_pBrCardNormal = new Gdiplus::SolidBrush(Gdiplus::Color(255, 255, 255, 255));
+    m_pBrCardEmpty  = new Gdiplus::SolidBrush(Gdiplus::Color(255, 246, 248, 251));
 
     SetRedraw(FALSE);
     CreateControlsOnce();
@@ -334,6 +343,12 @@ void CShopDownDlg::LayoutControls()
         const int y = padY + slot * (rowH + rowGap);
 
         m_rcRow[slot].SetRect(padX, y, rc.right - padX, y + rowH);
+        {   // rebuild cached rounded card path for this slot
+            Gdiplus::RectF rfp((float)m_rcRow[slot].left, (float)m_rcRow[slot].top,
+                               (float)m_rcRow[slot].Width(), (float)m_rcRow[slot].Height());
+            delete m_pRowPath[slot]; m_pRowPath[slot] = new Gdiplus::GraphicsPath();
+            ModernUIGfx::AddRoundRect(*m_pRowPath[slot], rfp, 12.f);
+        }
         CRect inner = m_rcRow[slot];
         inner.DeflateRect(m_card.cardPad, m_card.cardPad);
 
@@ -371,10 +386,9 @@ void CShopDownDlg::LayoutControls()
         if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_editPwd[slot].m_hWnd, NULL, m_rcPwd[slot].left, m_rcPwd[slot].top, m_rcPwd[slot].Width(), m_rcPwd[slot].Height(), flags | sw);
         if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDownload[slot].m_hWnd, NULL, m_rcBtn[slot].left, m_rcBtn[slot].top, m_rcBtn[slot].Width(), m_rcBtn[slot].Height(), flags | sw);
         if (hdwp) hdwp = ::DeferWindowPos(hdwp, m_btnDelete[slot].m_hWnd, NULL, m_rcDel[slot].left, m_rcDel[slot].top, m_rcDel[slot].Width(), m_rcDel[slot].Height(), flags | sw);
-
-        ApplyRowUnderlay(slot, FALSE);
     }
     if (hdwp) ::EndDeferWindowPos(hdwp);
+    ApplyAllRowUnderlays();
 
     RebindSlots();
     m_bInLayout = FALSE;
@@ -560,8 +574,6 @@ void CShopDownDlg::OnPaint()
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
 
-    if (m_hFontLbl == nullptr) ApplyFonts();
-
     const COLORREF clrLbl = kClrInfoLabel;
     const COLORREF clrVal = kClrInfoValue;
     const COLORREF clrPh  = kClrInfoEmpty;
@@ -579,11 +591,12 @@ void CShopDownDlg::OnPaint()
         const bool hasRep = !rep.IsEmpty();
 
         // 카드 배경
-        Gdiplus::RectF rf((float)r.left, (float)r.top, (float)r.Width(), (float)r.Height());
-        Gdiplus::GraphicsPath rp;
-        ModernUIGfx::AddRoundRect(rp, rf, 12.f);
-        Gdiplus::SolidBrush brCard(hasRep ? Gdiplus::Color(255, 255, 255, 255) : Gdiplus::Color(255, 246, 248, 251));
-        g.FillPath(&brCard, &rp);
+        // use cached path and brush (created in OnInitDialog/LayoutControls)
+        if (m_pRowPath[slot])
+        {
+            Gdiplus::SolidBrush* pBrCard = hasRep ? m_pBrCardNormal : m_pBrCardEmpty;
+            g.FillPath(pBrCard, m_pRowPath[slot]);
+        }
 
         const float yLbl = (float)r.top + (float)m_card.cardPad;
         const float hLbl = (float)m_card.labelH;
