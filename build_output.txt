@@ -1,7 +1,6 @@
 ﻿msbuild 踰꾩쟾 17.13.19+0d9f5a35a(.NET Framework??
 
   KFTCOneCAPDlg.cpp
-  MerchantSetupApp.cpp
   ReaderSetupDlg.cpp
   RegistryUtil.cpp
   ShopDownDlg.cpp

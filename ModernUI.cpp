@@ -3607,6 +3607,7 @@ BEGIN_MESSAGE_MAP(CModernPopover, CWnd)
 	ON_WM_ERASEBKGND()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_SETCURSOR()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 HHOOK           CModernPopover::s_hMouseHook = NULL;
@@ -3615,6 +3616,7 @@ CModernPopover* CModernPopover::s_pPopoverInst = NULL;
 CModernPopover::CModernPopover()
 	: m_nArrowX(0), m_nCardW(0), m_nCardH(0), m_bVisible(FALSE), m_nBlurPad(0)
 	, m_hCachedFontBold(NULL), m_hCachedFontNormal(NULL), m_nCachedGdiFontDpi(0)
+	, m_nFadeAlpha(255), m_uFadeTimer(0)
 {
 	m_pFontFamily = nullptr;
 }
@@ -3701,7 +3703,7 @@ static int MeasurePopoverTextHeight(HWND hRef, Gdiplus::FontFamily* pMeasureFami
 	g.SetPageUnit(Gdiplus::UnitPixel);
 
 
-	Gdiplus::Font fTitle(pMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+	Gdiplus::Font fTitle(pMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 	Gdiplus::Font fBody(pMeasureFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 
 	Gdiplus::StringFormat sfTitle;
@@ -3772,6 +3774,10 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			WS_POPUP,
 			0, 0, kPopW + 2 * (kShadowPad + kShadowBlurPad), kPopMinH + kArrowH + (kShadowPad + kShadowBlurPad),
 			pParent ? pParent->GetSafeHwnd() : NULL, NULL);
+		// Prime the DWM compositor with a transparent DIB immediately after creation.
+		// This ensures no uninitialized-content flash on the first ShowWindow call.
+		m_nFadeAlpha = 0;
+		RefreshLayered();
 	}
 
 	HWND hRef = pParent ? pParent->GetSafeHwnd() : m_hWnd;
@@ -3795,7 +3801,7 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			Gdiplus::Graphics gg(hdc);
 			gg.SetPageUnit(Gdiplus::UnitPixel);
 	
-			Gdiplus::Font fTitle(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 13), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+			Gdiplus::Font fTitle(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 			Gdiplus::Font fBody(m_pFontFamily,  (Gdiplus::REAL)ModernUIDpi::Scale(hRef, 14), Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
 	
 			Gdiplus::StringFormat sfNoWrap;
@@ -3867,11 +3873,20 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 			py + totalPad + arrowHScaled + m_nCardH);
 	}
 
-	BOOL bPos = SetWindowPos(&wndTopMost, px, py, popW, popH, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-	ASSERT(bPos);
+	// Set position + topmost z-order without changing window visibility
+	SetWindowPos(&wndTopMost, px, py, popW, popH, SWP_NOACTIVATE);
 
+	// Pre-render at alpha=0 while window may still be hidden (no flash on DWM first frame)
+	m_nFadeAlpha = 0;
 	RefreshLayered();
+
+	// Only call ShowWindow when the window is not yet visible (avoids hide+show flash)
+	if (!IsWindowVisible())
+		ShowWindow(SW_SHOWNOACTIVATE);
+
 	m_bVisible = TRUE;
+	if (m_uFadeTimer) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+	m_uFadeTimer = SetTimer(2, 16, NULL);
 
 	// Low-level mouse hook: close popup on any click outside
 	if (!s_hMouseHook)
@@ -3883,14 +3898,13 @@ void CModernPopover::ShowAt(const CRect& anchorScrRc, LPCTSTR title,
 
 void CModernPopover::Hide()
 {
-	if (GetSafeHwnd()) ShowWindow(SW_HIDE);
 	m_bVisible = FALSE;
-	if (s_hMouseHook)
-	{
-		UnhookWindowsHookEx(s_hMouseHook);
-		s_hMouseHook = NULL;
-		s_pPopoverInst = NULL;
-	}
+	if (s_hMouseHook) { UnhookWindowsHookEx(s_hMouseHook); s_hMouseHook = NULL; s_pPopoverInst = NULL; }
+	if (m_uFadeTimer) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+	if (GetSafeHwnd() && ::IsWindowVisible(m_hWnd))
+		m_uFadeTimer = SetTimer(3, 16, NULL);
+	else
+		if (GetSafeHwnd()) ShowWindow(SW_HIDE);
 }
 
 /*
@@ -3911,6 +3925,29 @@ BOOL CModernPopover::OnEraseBkgnd(CDC* pDC)
 void CModernPopover::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	Hide();
+}
+
+void CModernPopover::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == m_uFadeTimer)
+	{
+		if (m_bVisible) { // fade-in
+			m_nFadeAlpha = (BYTE)min(255, (int)m_nFadeAlpha + 52);
+			RefreshLayered();
+			if (m_nFadeAlpha >= 255) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+		} else { // fade-out
+			if (m_nFadeAlpha <= 52) {
+				m_nFadeAlpha = 0;
+				KillTimer(m_uFadeTimer); m_uFadeTimer = 0;
+				if (GetSafeHwnd()) ShowWindow(SW_HIDE);
+			} else {
+				m_nFadeAlpha -= 52;
+				RefreshLayered();
+			}
+		}
+		return;
+	}
+	CWnd::OnTimer(nIDEvent);
 }
 
 /*
@@ -3968,8 +4005,8 @@ void CModernPopover::RefreshLayered()
 
 	float cardX_ = 0, cardY_ = 0, cardW_ = 0, cardH_ = 0;  // saved for GDI text after scope
 	{
-		// GDI+ bitmap wraps the DIB (BGRA in memory == PixelFormat32bppARGB)
-		Gdiplus::Bitmap bmpGdi(W, H, W * 4, PixelFormat32bppARGB, pvBits);
+		// [핵심] PARGB를 사용하여 GDI+가 윈도우 호환 프리멀티플라이(Premultiply)를 자동 처리하게 합니다.
+		Gdiplus::Bitmap bmpGdi(W, H, W * 4, PixelFormat32bppPARGB, pvBits);
 		Gdiplus::Graphics g(&bmpGdi);
 		g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 		g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);
@@ -4027,7 +4064,7 @@ void CModernPopover::RefreshLayered()
 		const float padBottom = ModernUIDpi::ScaleF(m_hWnd, 14.0f);
 		const float gapTB = ModernUIDpi::ScaleF(m_hWnd, 8.0f);
 
-		Gdiplus::Font fTitle(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 13),
+		Gdiplus::Font fTitle(m_pFontFamily, (Gdiplus::REAL)ModernUIDpi::Scale(m_hWnd, 14),
 			Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 		Gdiplus::SolidBrush brTitle(Gdiplus::Color(255, 35, 45, 60));
 
@@ -4167,22 +4204,14 @@ void CModernPopover::RefreshLayered()
 		}
 	}
 
-	// Premultiply alpha (required for ULW_ALPHA / AC_SRC_ALPHA)
-	for (int i = 0; i < W * H; ++i)
-	{
-		BYTE a = pvBits[i * 4 + 3];
-		if (a > 0 && a < 255)
-		{
-			pvBits[i * 4 + 0] = static_cast<BYTE>(pvBits[i * 4 + 0] * a / 255);
-			pvBits[i * 4 + 1] = static_cast<BYTE>(pvBits[i * 4 + 1] * a / 255);
-			pvBits[i * 4 + 2] = static_cast<BYTE>(pvBits[i * 4 + 2] * a / 255);
-		}
-	}
+	// [삭제됨] 수동 알파 연산(for문) 전체 제거: CPU 렉과 렌더링 깜빡임의 주범
 
 	POINT          ptDst = { rcWin.left, rcWin.top };
 	SIZE           szWnd = { W, H };
 	POINT          ptSrc = { 0, 0 };
-	BLENDFUNCTION  bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+
+	// [핵심] 수동 픽셀 조작 대신 OS(DWM)의 GPU 가속 기능에 투명도(m_nFadeAlpha)를 직접 넘깁니다.
+	BLENDFUNCTION  bf = { AC_SRC_OVER, 0, (BYTE)m_nFadeAlpha, AC_SRC_ALPHA };
 	::UpdateLayeredWindow(m_hWnd, hdcScreen,
 		&ptDst, &szWnd,
 		hdcMem, &ptSrc, 0, &bf, ULW_ALPHA);

@@ -770,6 +770,7 @@ protected:
     afx_msg void OnPaint();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -790,6 +791,8 @@ void RefreshLayered();
     HFONT   m_hCachedFontNormal;  // GDI font cache for RefreshLayered (normal)
     int     m_nCachedGdiFontDpi;  // DPI at which the above fonts were created
     CRect   m_rcVisibleCard; // screen rect of visible card+arrow (excludes shadow padding)
+    BYTE     m_nFadeAlpha;   // 0=transparent, 255=fully visible
+    UINT_PTR m_uFadeTimer;   // fade animation timer ID
     static HHOOK           s_hMouseHook;
     static CModernPopover* s_pPopoverInst;
 

@@ -866,6 +866,7 @@ void CReaderSetupDlg::InitIntegrityListColumns()
 void CReaderSetupDlg::ApplyDialogFonts()
 {
 	ApplyFontIfWindow(m_comport1, m_fontNormal);
+	ApplyFontIfWindow(m_comport2, m_fontNormal);
 	
 	m_comport1.SetTextPx(14);
 	m_comport2.SetTextPx(14);
