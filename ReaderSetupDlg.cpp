@@ -53,14 +53,11 @@ static HISTORY_COL_INFO col_info[] =
 	{NULL			, NULL			, 0	}
 };
 
+// Thin forwarding wrapper - delegates to shared ModernUIGfx::AddRoundRect
 static void GdipAddRoundRect(Gdiplus::GraphicsPath& p, float x, float y, float w, float h, float r)
 {
-	float d = r * 2.f;
-	Gdiplus::RectF a(x, y, d, d);
-	p.AddArc(a, 180.f, 90.f); a.X = x + w - d;
-	p.AddArc(a, 270.f, 90.f); a.Y = y + h - d;
-	p.AddArc(a, 0.f, 90.f); a.X = x;
-	p.AddArc(a, 90.f, 90.f); p.CloseFigure();
+	Gdiplus::RectF rect(x, y, w, h);
+	ModernUIGfx::AddRoundRect(p, rect, r);
 }
 
 static void FillRoundRect(Gdiplus::Graphics& g, const CRect& rc, int radius, COLORREF fill, COLORREF border, int borderW = 1)
@@ -70,7 +67,8 @@ static void FillRoundRect(Gdiplus::Graphics& g, const CRect& rc, int radius, COL
 	float r = (float)radius;
 
 	Gdiplus::GraphicsPath path;
-	GdipAddRoundRect(path, x, y, w, h, r);
+	Gdiplus::RectF rect(x, y, w, h);
+	ModernUIGfx::AddRoundRect(path, rect, r);
 
 	Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(fill), GetGValue(fill), GetBValue(fill)));
 	g.FillPath(&br, &path);
@@ -110,8 +108,8 @@ static void DrawRoundRectBorder(Gdiplus::Graphics& g, const CRect& rc, int radiu
 		return;
 	Gdiplus::GraphicsPath path;
 	float bw = (float)borderW;
-	GdipAddRoundRect(path, (float)rc.left + bw * 0.5f, (float)rc.top + bw * 0.5f,
-		(float)rc.Width() - bw, (float)rc.Height() - bw, (float)radius);
+	Gdiplus::RectF rect2((float)rc.left + bw * 0.5f, (float)rc.top + bw * 0.5f, (float)rc.Width() - bw, (float)rc.Height() - bw);
+	ModernUIGfx::AddRoundRect(path, rect2, (float)radius);
 	Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), bw);
 	g.DrawPath(&pen, &path);
 }
@@ -1365,17 +1363,17 @@ void CReaderSetupDlg::OnPaint()
 		CRect tableOuter = listRc;
 		tableOuter.DeflateRect(1, 1);
 		tableOuter.OffsetRect(0, -SX(14));
-		const COLORREF tableBorder = RGB(214, 223, 235);
-		const COLORREF headerBg = RGB(250, 251, 253);
-		const COLORREF headerLine = RGB(238, 241, 247);
-		const COLORREF bodyLine = RGB(242, 245, 249);
-		const COLORREF bodyBg = RGB(255, 255, 255);
-		const COLORREF altRowBg = RGB(251, 252, 255);
-		const COLORREF headerText = RGB(26, 32, 44);
-		const COLORREF bodyText = RGB(92, 104, 122);
-		const COLORREF emptyText = RGB(160, 168, 180);
-		const COLORREF scrollTrack = RGB(243, 246, 250);
-		const COLORREF scrollThumb = RGB(196, 205, 216);
+		const COLORREF tableBorder = KFTC_TBL_BORDER;
+		const COLORREF headerBg    = KFTC_TBL_HDR_BG;
+		const COLORREF headerLine  = KFTC_TBL_HDR_LINE;
+		const COLORREF bodyLine    = KFTC_TBL_ROW_LINE;
+		const COLORREF bodyBg      = KFTC_CARD_BG;
+		const COLORREF altRowBg    = KFTC_TBL_ALT_ROW;
+		const COLORREF headerText  = KFTC_TBL_HDR_TEXT;
+		const COLORREF bodyText    = KFTC_TBL_BODY_TXT;
+		const COLORREF emptyText   = KFTC_TBL_EMPTY_TXT;
+		const COLORREF scrollTrack = KFTC_TBL_SCRL_TRK;
+		const COLORREF scrollThumb = KFTC_TBL_SCRL_THB;
 
 		FillRoundRect(gPaint, tableOuter, SX(8), bodyBg, tableBorder, 0);
 

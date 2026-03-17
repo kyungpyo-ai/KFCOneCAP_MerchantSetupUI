@@ -202,24 +202,7 @@ protected:
     afx_msg BOOL OnNcActivate(BOOL bActive);   // [FIX v2.1] DefDlgProc xxxSaveDlgFocus O(N^2) Â÷´Ü
     afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     afx_msg void OnTcnSelchange(NMHDR* pNMHDR, LRESULT* pResult);
-    afx_msg void OnBnClickedVanServerInfo();
-    afx_msg void OnBnClickedPortInfo();
-    afx_msg void OnBnClickedTaxPercentInfo();
-    afx_msg void OnBnClickedCommTypeInfo();
-    afx_msg void OnBnClickedCashReceiptInfo();
-    afx_msg void OnBnClickedCardTimeoutInfo();
-    afx_msg void OnBnClickedInterlockInfo();
-    afx_msg void OnBnClickedMultiVoiceInfo();
-    afx_msg void OnBnClickedCardDetectInfo();
-    afx_msg void OnBnClickedScannerUseInfo();
-    afx_msg void OnBnClickedAutoResetInfo();
-    afx_msg void OnBnClickedAutoRebootInfo();
-    afx_msg void OnBnClickedAlarmGraphInfo();
-    afx_msg void OnBnClickedAlarmDualInfo();
-    afx_msg void OnBnClickedSignPadUseInfo();
-    afx_msg void OnBnClickedSignPadPortInfo();
-    afx_msg void OnBnClickedSignPadSpeedInfo();
-    afx_msg void OnBnClickedAlarmSizeInfo();
+    afx_msg void OnInfoButtonClicked(UINT nID); // unified handler for all 18 info buttons (IDC_BTN_VAN_SERVER_INFO..IDC_BTN_SIGN_PAD_PORT_INFO)
 
     // Unified popover helper
     void ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody);

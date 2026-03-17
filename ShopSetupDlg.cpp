@@ -269,24 +269,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_NCACTIVATE()          // [FIX v2.1] xxxSaveDlgFocus O(N^2) 차단
     ON_WM_ACTIVATE()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
-    ON_BN_CLICKED(IDC_BTN_VAN_SERVER_INFO, OnBnClickedVanServerInfo)
-    ON_BN_CLICKED(IDC_BTN_PORT_INFO, OnBnClickedPortInfo)
-    ON_BN_CLICKED(IDC_BTN_TAX_PERCENT_INFO, OnBnClickedTaxPercentInfo)
-    ON_BN_CLICKED(IDC_BTN_COMM_TYPE_INFO, OnBnClickedCommTypeInfo)
-    ON_BN_CLICKED(IDC_BTN_CASH_RECEIPT_INFO, OnBnClickedCashReceiptInfo)
-    ON_BN_CLICKED(IDC_BTN_CARD_TIMEOUT_INFO, OnBnClickedCardTimeoutInfo)
-    ON_BN_CLICKED(IDC_BTN_INTERLOCK_INFO, OnBnClickedInterlockInfo)
-    ON_BN_CLICKED(IDC_BTN_MULTI_VOICE_INFO, OnBnClickedMultiVoiceInfo)
-    ON_BN_CLICKED(IDC_BTN_CARD_DETECT_INFO, OnBnClickedCardDetectInfo)
-    ON_BN_CLICKED(IDC_BTN_SCANNER_USE_INFO, OnBnClickedScannerUseInfo)
-    ON_BN_CLICKED(IDC_BTN_AUTO_RESET_INFO, OnBnClickedAutoResetInfo)
-    ON_BN_CLICKED(IDC_BTN_AUTO_REBOOT_INFO, OnBnClickedAutoRebootInfo)
-    ON_BN_CLICKED(IDC_BTN_ALARM_GRAPH_INFO, OnBnClickedAlarmGraphInfo)
-    ON_BN_CLICKED(IDC_BTN_ALARM_DUAL_INFO, OnBnClickedAlarmDualInfo)
-    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_USE_INFO, OnBnClickedSignPadUseInfo)
-    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_PORT_INFO, OnBnClickedSignPadPortInfo)
-    ON_BN_CLICKED(IDC_BTN_SIGN_PAD_SPEED_INFO, OnBnClickedSignPadSpeedInfo)
-    ON_BN_CLICKED(IDC_BTN_ALARM_SIZE_INFO, OnBnClickedAlarmSizeInfo)
+    ON_COMMAND_RANGE(IDC_BTN_VAN_SERVER_INFO, IDC_BTN_SIGN_PAD_PORT_INFO, OnInfoButtonClicked)
     ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE, OnCbnSelchangeSignPadUse)
     ON_BN_CLICKED(IDC_CHECK_CARD_DETECT, OnBnClickedCardDetectToggle)
     ON_BN_CLICKED(IDC_CHECK_SCANNER_USE, OnBnClickedScannerUseToggle)
@@ -2237,88 +2220,35 @@ void CShopSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTS
     m_popover.ShowAt(rc, szTitle, szBody, this);
 }
 // ============================================================================
-// OnBnClickedVanServerInfo - toggle popover
+// OnInfoButtonClicked - unified handler for all 18 info popover buttons
+//   IDC range: IDC_BTN_VAN_SERVER_INFO (60100) .. IDC_BTN_SIGN_PAD_PORT_INFO (60117)
 // ============================================================================
-void CShopSetupDlg::OnBnClickedVanServerInfo()
+void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
 {
-    ShowInfoPopover(m_btnVanInfo, _T("금융결제원 서버"), _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경 (기본값)\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용"));
-}
-// ============================================================================
-// 팝오버 아이콘 핸들러 - 탭0
-// ============================================================================
-void CShopSetupDlg::OnBnClickedPortInfo()
-{
-    ShowInfoPopover(m_btnPortInfo, _T("포트번호"), _T("금융결제원 서버 접속 포트번호\n· 기본값 : 8002"));
-}
-void CShopSetupDlg::OnBnClickedCommTypeInfo()
-{
-    ShowInfoPopover(m_btnCommTypeInfo, _T("통신방식"), _T("포스 프로그램 통신 방식 선택\n· CS 방식: 윈도우 포스 프로그램 (기본값)\n· WEB 방식: WEB 포스 프로그램 (EASYPOS 포함)"));
-}
-void CShopSetupDlg::OnBnClickedCashReceiptInfo()
-{
-    ShowInfoPopover(m_btnCashReceiptInfo, _T("현금영수증 거래"), _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력"));
-}
-void CShopSetupDlg::OnBnClickedTaxPercentInfo()
-{
-    ShowInfoPopover(m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용"));
-}
-// ============================================================================
-// 팝오버 아이콘 핸들러 - 탭1
-// ============================================================================
-void CShopSetupDlg::OnBnClickedCardTimeoutInfo()
-{
-    ShowInfoPopover(m_btnCardTimeoutInfo, _T("카드입력 Timeout"), _T("카드 입력 대기 시간 (초 단위)\n· 권장값: 100초 / 0 입력 시 자동 100초 설정"));
-}
-void CShopSetupDlg::OnBnClickedInterlockInfo()
-{
-    ShowInfoPopover(m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· AOP 리더기: AOP 리더기(Naver Connect 포함)"));
-}
-void CShopSetupDlg::OnBnClickedMultiVoiceInfo()
-{
-    ShowInfoPopover(m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※SPAY-8800Q, DP636X 모델만 가능"));
-}
-void CShopSetupDlg::OnBnClickedCardDetectInfo()
-{
-    ShowInfoPopover(m_btnCardDetectInfo, _T("카드 감지 우선 거래 사용"), _T("카드 감지 우선 거래 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용"));
-}
-void CShopSetupDlg::OnBnClickedScannerUseInfo()
-{
-    ShowInfoPopover(m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용 \n※POS 프로그램에서 연동하는 경우 사용 X"));
-}
-void CShopSetupDlg::OnBnClickedAutoResetInfo()
-{
-    ShowInfoPopover(m_btnAutoResetInfo, _T("자동 재실행"), _T("KFTCOneCAP 종료 시 자동 재실행 여부\n· 기본값 : 사용"));
-}
-void CShopSetupDlg::OnBnClickedAutoRebootInfo()
-{
-    ShowInfoPopover(m_btnAutoRebootInfo, _T("자동 리부팅"), _T("일일 단위 KFTCOneCAP 자동 리부팅 여부\n· 기본값 : 사용"));
-}
-void CShopSetupDlg::OnBnClickedAlarmGraphInfo()
-{
-    ShowInfoPopover(m_btnAlarmGraphInfo, _T("알림창 그림"), _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용"));
-}
-void CShopSetupDlg::OnBnClickedAlarmDualInfo()
-{
-    ShowInfoPopover(m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용"));
-}
-void CShopSetupDlg::OnBnClickedSignPadUseInfo()
-{
-    ShowInfoPopover(m_btnSignPadUseInfo, _T("서명패드 사용"), _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력"));
-}
-void CShopSetupDlg::OnBnClickedSignPadPortInfo()
-{
-    ShowInfoPopover(m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호"));
-}
-void CShopSetupDlg::OnBnClickedSignPadSpeedInfo()
-{
-    ShowInfoPopover(m_btnSignPadSpeedInfo, _T("서명패드 속도"), _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시"));
-}
-// ============================================================================
-// 팝오버 아이콘 핸들러 - 탭2
-// ============================================================================
-void CShopSetupDlg::OnBnClickedAlarmSizeInfo()
-{
-    ShowInfoPopover(m_btnAlarmSizeInfo, _T("알림창 크기"), _T("거래 알림창의 표시 크기를 설정합니다.\n· 기본값 : 매우작게 "));
+    struct InfoEntry { CInfoIconButton* pBtn; LPCTSTR title; LPCTSTR body; };
+    static const InfoEntry kTable[] = {
+        { &m_btnVanInfo, _T("금융결제원 서버"), _T("금융결제원 서버 선택\n· 실제 거래 서버 : 운영 환경 (기본값)\n· 테스트 서버 : 승인 테스트용\n· 테스트 서버(내부용) : 개발/검증용") },
+        { &m_btnPortInfo, _T("포트번호"), _T("금융결제원 서버 접속 포트번호\n· 기본값 : 8002") },
+        { &m_btnCommTypeInfo, _T("통신방식"), _T("포스 프로그램 통신 방식 선택\n· CS 방식: 윈도우 포스 프로그램 (기본값)\n· WEB 방식: WEB 포스 프로그램 (EASYPOS 포함)") },
+        { &m_btnCashReceiptInfo, _T("현금영수증 거래"), _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력") },
+        { &m_btnCardTimeoutInfo, _T("카드입력 Timeout"), _T("카드 입력 대기 시간 (초 단위)\n· 권장값: 100초 / 0 입력 시 자동 100초 설정") },
+        { &m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· AOP 리더기: AOP 리더기(Naver Connect 포함)") },
+        { &m_btnSignPadUseInfo, _T("서명패드 사용"), _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력") },
+        { &m_btnSignPadSpeedInfo, _T("서명패드 속도"), _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시") },
+        { &m_btnAlarmSizeInfo, _T("알림창 크기"), _T("거래 알림창의 표시 크기를 설정합니다.\n· 기본값 : 매우작게 ") },
+        { &m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※SPAY-8800Q, DP636X 모델만 가능") },
+        { &m_btnCardDetectInfo, _T("카드 감지 우선 거래 사용"), _T("카드 감지 우선 거래 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용") },
+        { &m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용 \n※POS 프로그램에서 연동하는 경우 사용 X") },
+        { &m_btnAutoResetInfo, _T("자동 재실행"), _T("KFTCOneCAP 종료 시 자동 재실행 여부\n· 기본값 : 사용") },
+        { &m_btnAutoRebootInfo, _T("자동 리부팅"), _T("일일 단위 KFTCOneCAP 자동 리부팅 여부\n· 기본값 : 사용") },
+        { &m_btnAlarmGraphInfo, _T("알림창 그림"), _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용") },
+        { &m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용") },
+        { &m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용") },
+        { &m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호") }
+    };
+    const int idx = (int)nID - IDC_BTN_VAN_SERVER_INFO;
+    if (idx < 0 || idx >= _countof(kTable)) return;
+    ShowInfoPopover(*kTable[idx].pBtn, kTable[idx].title, kTable[idx].body);
 }
 const CShopSetupDlg::ValidationBinding* CShopSetupDlg::GetValidationBindings(int& outCount)
 {

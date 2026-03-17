@@ -3,11 +3,11 @@
 #include <string>
 
 // Info panel text colors (card layout)
-static const COLORREF kClrInfoLabel   = RGB(120, 128, 142); // secondary label text
-static const COLORREF kClrInfoValue   = RGB( 24,  28,  35); // primary value text
-static const COLORREF kClrInfoEmpty   = RGB(160, 165, 175); // empty / placeholder text
-static const COLORREF kClrEditText    = RGB( 18,  24,  40); // edit control text (enabled)
-static const COLORREF kClrEditTextDis = RGB(120, 125, 135); // edit control text (disabled)
+static const COLORREF kClrInfoLabel   = KFTC_INFO_LABEL;    // secondary label text
+static const COLORREF kClrInfoValue   = KFTC_INFO_VALUE;    // primary value text
+static const COLORREF kClrInfoEmpty   = KFTC_INFO_EMPTY;    // placeholder / empty text
+static const COLORREF kClrEditText    = KFTC_EDIT_TEXT;     // edit control text (enabled)
+static const COLORREF kClrEditTextDis = KFTC_EDIT_TEXT_DIS; // edit control text (disabled)
 
 // ==============================================================
 // [ShopDownDlg.cpp]

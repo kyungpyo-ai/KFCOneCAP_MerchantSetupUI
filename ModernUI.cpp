@@ -9,7 +9,6 @@
 #include <memory>
 #include <cmath>
 #include <dwmapi.h>
-#include <vector>
 #pragma comment(lib, "dwmapi.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE

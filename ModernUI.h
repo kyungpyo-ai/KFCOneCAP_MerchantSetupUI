@@ -53,6 +53,36 @@ typedef float REAL;
 #define KFTC_DLG_CONTENT_BG    RGB(250, 251, 253)   // ShopDownDlg content bg
 #define KFTC_CARD_DISABLED_BG  RGB(245, 246, 248)   // disabled control surface
 
+// Text hierarchy (info panels, card layouts)
+#define KFTC_INFO_LABEL        RGB(120, 128, 142)    // secondary label text
+#define KFTC_INFO_VALUE        RGB( 24,  28,  35)    // primary value text
+#define KFTC_INFO_EMPTY        RGB(160, 165, 175)    // placeholder / empty text
+#define KFTC_EDIT_TEXT         RGB( 18,  24,  40)    // edit control text (enabled)
+#define KFTC_EDIT_TEXT_DIS     RGB(120, 125, 135)    // edit control text (disabled)
+
+// Home screen (KFTCOneCAPDlg)
+#define KFTC_HOME_BG           RGB(248, 250, 252)    // home dialog background
+#define KFTC_CARD_BG           RGB(255, 255, 255)    // home card background
+#define KFTC_CARD_BORDER       RGB(232, 236, 242)    // home card border (normal)
+#define KFTC_CARD_BORDER_H     RGB(226, 232, 240)    // home card border (hover)
+#define KFTC_CARD_FILL_PRE     RGB(210, 230, 255)    // home card fill (pressed)
+#define KFTC_TITLE_TEXT        RGB( 25,  31,  40)    // page title text
+#define KFTC_CARD_TITLE_T      RGB( 51,  61,  75)    // card title text
+#define KFTC_SUB_TEXT          RGB(139, 149, 161)    // subtitle / description text
+#define KFTC_FOOTER_DIV        RGB(220, 226, 234)    // footer divider line
+
+// Table / integrity check (ReaderSetupDlg)
+#define KFTC_TBL_BORDER        RGB(214, 223, 235)    // table outer border
+#define KFTC_TBL_HDR_BG        RGB(250, 251, 253)    // table header background
+#define KFTC_TBL_HDR_LINE      RGB(238, 241, 247)    // table header separator
+#define KFTC_TBL_ROW_LINE      RGB(242, 245, 249)    // table row divider
+#define KFTC_TBL_ALT_ROW       RGB(251, 252, 255)    // table alternate row background
+#define KFTC_TBL_HDR_TEXT      RGB( 26,  32,  44)    // table header text
+#define KFTC_TBL_BODY_TXT      RGB( 92, 104, 122)    // table body text
+#define KFTC_TBL_EMPTY_TXT     RGB(160, 168, 180)    // table empty state text
+#define KFTC_TBL_SCRL_TRK      RGB(243, 246, 250)    // scroll track
+#define KFTC_TBL_SCRL_THB      RGB(196, 205, 216)    // scroll thumb
+
 
 // ========================================
 // Input theme (Combo/Edit )

@@ -224,27 +224,18 @@ void CHomeCardButton::OnTimer(UINT_PTR nIDEvent)
 
 namespace
 {
-    COLORREF kHomeBg = RGB(0xF8, 0xFA, 0xFC);
-    COLORREF kCardBg = RGB(255, 255, 255);
-    COLORREF kCardBorder = RGB(232, 236, 242);
-    COLORREF kCardBorderHover = RGB(226, 232, 240);
-    COLORREF kCardFillHover = RGB(255, 255, 255);
-    COLORREF kCardFillPressed = RGB(210, 230, 255);   // 더 진한 파랑: 선명한 눌림감
+    COLORREF kHomeBg          = KFTC_HOME_BG;
+    COLORREF kCardBg          = KFTC_CARD_BG;
+    COLORREF kCardBorder      = KFTC_CARD_BORDER;
+    COLORREF kCardBorderHover = KFTC_CARD_BORDER_H;
+    COLORREF kCardFillHover   = KFTC_CARD_BG;
+    COLORREF kCardFillPressed = KFTC_CARD_FILL_PRE;   // 더 진한 파랑: 선명한 눌림감
     // kIconBg 계열: DrawCardIcon 내부 직접 보간으로 대체됨
-    COLORREF kTitleText = RGB(25, 31, 40);      // 헤더 h1: #191F28
-    COLORREF kCardTitleText = RGB(51, 61, 75);   // 카드 h3: #333D4B
-    COLORREF kSubText = RGB(139, 149, 161);   // #8B95A1
-    COLORREF kFooterDivider = RGB(220, 226, 234);
+    COLORREF kTitleText     = KFTC_TITLE_TEXT;      // 헤더 h1: #191F28
+    COLORREF kCardTitleText = KFTC_CARD_TITLE_T;   // 카드 h3: #333D4B
+    COLORREF kSubText       = KFTC_SUB_TEXT;    // #8B95A1
+    COLORREF kFooterDivider = KFTC_FOOTER_DIV;
 
-    void AddRoundRectPath(GraphicsPath& path, const RectF& rc, REAL radius)
-    {
-        REAL d = radius * 2.0f;
-        path.AddArc(rc.X, rc.Y, d, d, 180.0f, 90.0f);
-        path.AddArc(rc.GetRight() - d, rc.Y, d, d, 270.0f, 90.0f);
-        path.AddArc(rc.GetRight() - d, rc.GetBottom() - d, d, d, 0.0f, 90.0f);
-        path.AddArc(rc.X, rc.GetBottom() - d, d, d, 90.0f, 90.0f);
-        path.CloseFigure();
-    }
 }
 
 CKFTCOneCAPDlg::CKFTCOneCAPDlg(CWnd* pParent /*=NULL*/)
@@ -899,7 +890,7 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
             (REAL)rcPaint.Width() - (REAL)SX(8), (REAL)rcPaint.Height() - (REAL)SX(14));
 
         GraphicsPath glowPath;
-        AddRoundRectPath(glowPath, baseGlowRect, (REAL)SX(22));
+        ModernUIGfx::AddRoundRect(glowPath, baseGlowRect, (REAL)SX(22));
 
         for (int i = blurSpread; i >= 1; i -= 2) {
             BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 2) / (blurSpread * 2));
@@ -921,7 +912,7 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
 
     RectF cardRect((REAL)rcPaint.left + 0.5f, (REAL)rcPaint.top + 0.5f, (REAL)rcPaint.Width() - 1.0f, (REAL)rcPaint.Height() - 1.0f);
     GraphicsPath path;
-    AddRoundRectPath(path, cardRect, (REAL)SX(20));
+    ModernUIGfx::AddRoundRect(path, cardRect, (REAL)SX(20));
     SolidBrush fillBrush(Color(255, (BYTE)fillR, (BYTE)fillG, (BYTE)fillB));
     g.FillPath(&fillBrush, &path);
 
