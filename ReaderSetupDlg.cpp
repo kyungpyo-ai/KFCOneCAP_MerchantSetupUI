@@ -1318,12 +1318,12 @@ void CReaderSetupDlg::OnPaint()
 	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
 		{
 			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(252, 253, 255);
-			COLORREF br = enabled ? RGB(214, 226, 246) : RGB(232, 237, 244);
+			COLORREF br = enabled ? KFTC_BORDER : RGB(232, 237, 244);
 			FillRoundRect(gPaint, r, SX(10), bg, br, 1);
 
 			const int badgeSize = SX(34);
 			CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
-			COLORREF badgeBg = enabled ? RGB(0, 96, 210) : RGB(190, 199, 209);
+			COLORREF badgeBg = enabled ? BLUE_500 : RGB(190, 199, 209);
 			FillRoundRect(gPaint, badge, SX(6), badgeBg, badgeBg, 1);
 			CString numText; numText.Format(_T("%d"), num);
 			memDC.SelectObject(&m_fontNormal);
@@ -1650,7 +1650,7 @@ void CReaderSetupDlg::DrawSectionTitle(CDC& dc, CPoint pt, LPCTSTR text)
 	bp.AddArc(barX + barW - bd, barY + barH - bd, bd, bd, 0, 90);
 	bp.AddArc(barX, barY + barH - bd, bd, bd, 90, 90);
 	bp.CloseFigure();
-	Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
+	Gdiplus::SolidBrush barBr(Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)));
 	gSec.FillPath(&barBr, &bp);
 	CFont* pOldSec = dc.SelectObject(&m_fontSection);
 	dc.SetTextColor(RGB(26, 32, 44));

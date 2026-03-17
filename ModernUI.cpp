@@ -823,7 +823,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 	else if (isDownload)
 	{
-		COLORREF bg = pressed ? RGB(120, 188, 255) : (hover ? RGB(168, 208, 255) : RGB(235, 244, 255));
+		COLORREF bg = pressed ? BLUE_200 : (hover ? BLUE_100 : BLUE_50);
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
 		Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)), 1.0f);
@@ -1587,9 +1587,9 @@ void CPortToggleButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	if (disabled)
 		borderColor = Gdiplus::Color(255, GetRValue(KFTC_DISABLED_BORDER), GetGValue(KFTC_DISABLED_BORDER), GetBValue(KFTC_DISABLED_BORDER));
 	else if (m_bHover)
-		borderColor = m_bToggled ? Gdiplus::Color(255, 0, 163, 224) : Gdiplus::Color(255, 160, 160, 160);
+		borderColor = m_bToggled ? Gdiplus::Color(255, GetRValue(BLUE_300), GetGValue(BLUE_300), GetBValue(BLUE_300)) : Gdiplus::Color(255, 160, 160, 160);
 	else
-		borderColor = m_bToggled ? Gdiplus::Color(255, 0, 118, 190) : Gdiplus::Color(100, 0, 0, 0);
+		borderColor = m_bToggled ? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)) : Gdiplus::Color(100, 0, 0, 0);
 
 	Gdiplus::Pen borderPen(borderColor, 1.5f);
 	graphics.DrawPath(&borderPen, &switchPath);
@@ -3154,7 +3154,7 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 		Gdiplus::GraphicsPath iPath;
 		Gdiplus::RectF iRc(iX, iY, iW, 3.5f);
 		MakeRoundRect(iPath, iRc, 1.8f);
-		Gdiplus::SolidBrush iBrush(Gdiplus::Color(255, 0, 96, 210));
+		Gdiplus::SolidBrush iBrush(Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)));
 		g.FillPath(&iBrush, &iPath);
 	}
 	else if (bHover)
@@ -3165,7 +3165,7 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 		Gdiplus::GraphicsPath iPath;
 		Gdiplus::RectF iRc(iX, iY, iW, 2.0f);
 		MakeRoundRect(iPath, iRc, 1.0f);
-		Gdiplus::SolidBrush iBrush(Gdiplus::Color(100, 0, 96, 210));
+		Gdiplus::SolidBrush iBrush(Gdiplus::Color(100, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)));
 		g.FillPath(&iBrush, &iPath);
 	}
 
@@ -3199,7 +3199,7 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 		startX + kIconSz * 0.5f, midY, kIconSz, bActive);
 
 	COLORREF tabTxtClr;
-	if (bActive)      tabTxtClr = RGB(0, 76, 200);
+	if (bActive)      tabTxtClr = BLUE_600;
 	else if (bHover)  tabTxtClr = RGB(60, 72, 96);
 	else              tabTxtClr = RGB(128, 138, 160);
 
@@ -3219,7 +3219,7 @@ void CModernTabCtrl::DrawIcon(Graphics& g, int iconType,
 	REAL sz, bool active)
 {
 	Gdiplus::Color iconColor = active
-		? Gdiplus::Color(255, 0, 96, 210)
+		? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
 		: Gdiplus::Color(255, 140, 152, 175);
 
 	Gdiplus::Pen pen(iconColor, 1.6f);
