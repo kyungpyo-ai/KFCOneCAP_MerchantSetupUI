@@ -102,6 +102,15 @@ private:
     CString GetCardDescription(HomeCardType type) const;
 
 private:
+    struct CardCache {
+        CDC      dc;
+        CBitmap  bmp;
+        CBitmap* pOldBmp;
+        CSize    size;
+        CardCache() : pOldBmp(NULL), size(0, 0) {}
+    };
+    CardCache m_cardCache[4];
+
     CHomeCardButton m_btnReaderCard;
     CHomeCardButton m_btnShopCard;
     CHomeCardButton m_btnTransCard;

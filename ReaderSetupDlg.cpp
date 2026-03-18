@@ -587,6 +587,10 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_pGdipSecFont = nullptr;
 	m_pGdipHdrTitleFont = nullptr;
 	m_pGdipHdrSubFont = nullptr;
+	// [버그 수정] 스크롤바 드래그 상태 변수들을 명시적으로 초기화하여 쓰레기값에 의한 스크롤 튕김 방지
+	m_bDraggingThumb = FALSE;
+	m_nDragStartY = 0;
+	m_nDragStartScrollPos = 0;
 	//{{AFX_DATA_INIT(CReaderSetupDlg)
 		// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT

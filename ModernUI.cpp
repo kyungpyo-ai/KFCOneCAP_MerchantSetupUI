@@ -1820,7 +1820,13 @@ void CSkinnedComboBox::OnMouseMove(UINT nFlags, CPoint point)
 			m_bHoverTimer = TRUE;
 		}
 	}
-	TrackMouseLeave();
+
+	// [최적화] 이미 마우스 트래킹(감시) 중이라면 무거운 API를 중복 호출하지 않습니다.
+	if (!m_bTracking)
+	{
+		TrackMouseLeave();
+	}
+
 	CComboBox::OnMouseMove(nFlags, point);
 }
 
@@ -2031,8 +2037,8 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 				::SetTextColor(memDC.GetSafeHdc(), cmbTxtClr);
 				::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
 				RECT rcCmbTxt = { (LONG)rfText.X, (LONG)rfText.Y, (LONG)rfText.GetRight(), (LONG)rfText.GetBottom() };
-				std::wstring wCmbTxt = kftc_to_wide(text);
-				::DrawTextW(memDC.GetSafeHdc(), wCmbTxt.c_str(), -1, &rcCmbTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+				if (text != m_strDisplayCache) { m_strDisplayCache = text; m_wstrDisplayCache = kftc_to_wide(text); }
+				::DrawTextW(memDC.GetSafeHdc(), m_wstrDisplayCache.c_str(), -1, &rcCmbTxt, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
 				::SelectObject(memDC.GetSafeHdc(), hOldCmbFont);
 			}
 		}
@@ -2112,6 +2118,12 @@ LRESULT CALLBACK CSkinnedComboBox::ListBoxProc(HWND hWnd, UINT msg, WPARAM wp, L
 {
 	WNDPROC oldProc = (WNDPROC)::GetProp(hWnd, _T("SKCBX_OLDPROC"));
 
+	// [최적화] 리스트박스 스크롤 시 시스템이 배경을 강제로 지우는 것을 막아 깜빡임(Flicker) 방지
+	if (msg == WM_ERASEBKGND)
+	{
+		return 1;
+	}
+
 	if (msg == WM_NCDESTROY)
 	{
 		if (oldProc)
@@ -2151,25 +2163,37 @@ LRESULT CALLBACK CSkinnedComboBox::ListBoxProc(HWND hWnd, UINT msg, WPARAM wp, L
 	LRESULT lRes = oldProc ? ::CallWindowProc(oldProc, hWnd, msg, wp, lp) : 0;
 
 	// [추가] 2. 마우스 캡처 상태일 때의 실시간 커서 추적 (본체 위, 리스트 위, 밖)
+// [추가] 2. 마우스 캡처 상태일 때의 실시간 커서 추적 (본체 위, 리스트 위, 밖)
 	if (msg == WM_MOUSEMOVE)
 	{
 		POINT pt;
 		::GetCursorPos(&pt);
 
-		RECT rcList, rcCombo;
+		RECT rcList;
 		::GetWindowRect(hWnd, &rcList);
-		::SetRectEmpty(&rcCombo);
 
-		CSkinnedComboBox* pCombo = (CSkinnedComboBox*)::GetProp(hWnd, _T("SKCBX_PTR"));
-		if (pCombo && ::IsWindow(pCombo->m_hWnd))
+		// [최적화] 99%의 경우는 리스트박스 영역 안에서 움직입니다. 
+		// 이때는 무거운 GetProp이나 본체 영역 검사를 수행하지 않고 즉시 손가락 커서를 띄워 연산을 아낍니다.
+		if (::PtInRect(&rcList, pt))
 		{
-			::GetWindowRect(pCombo->m_hWnd, &rcCombo);
-		}
-
-		if (::PtInRect(&rcList, pt) || ::PtInRect(&rcCombo, pt))
 			::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		}
 		else
-			::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+		{
+			// 마우스가 리스트박스 밖으로 벗어났을 때만 (1% 확률) 본체(Combo) 위치를 검사합니다.
+			RECT rcCombo;
+			::SetRectEmpty(&rcCombo);
+			CSkinnedComboBox* pCombo = (CSkinnedComboBox*)::GetProp(hWnd, _T("SKCBX_PTR"));
+			if (pCombo && ::IsWindow(pCombo->m_hWnd))
+			{
+				::GetWindowRect(pCombo->m_hWnd, &rcCombo);
+			}
+
+			if (::PtInRect(&rcCombo, pt))
+				::SetCursor(::LoadCursor(NULL, IDC_HAND));
+			else
+				::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+		}
 
 		// 여기서는 return TRUE를 하지 않고 흘려보내어, 리스트 항목 Hover 색상이 정상 동작하게 둡니다.
 	}
@@ -2190,16 +2214,21 @@ void CSkinnedComboBox::HookListBox(HWND hList)
 
 	// 1. 테두리(Border) 속성을 완전히 제거하여 그림자만 깔끔하게 남깁니다.
 	LONG_PTR style = ::GetWindowLongPtr(m_hList, GWL_STYLE);
-	style &= ~WS_BORDER;
-	::SetWindowLongPtr(m_hList, GWL_STYLE, style);
 
-	LONG_PTR exStyle = ::GetWindowLongPtr(m_hList, GWL_EXSTYLE);
-	exStyle &= ~(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
-	::SetWindowLongPtr(m_hList, GWL_EXSTYLE, exStyle);
+	// [최적화] 이미 테두리가 제거되었다면 무거운 프레임 재계산을 건너뜁니다.
+	if ((style & WS_BORDER) != 0)
+	{
+		style &= ~WS_BORDER;
+		::SetWindowLongPtr(m_hList, GWL_STYLE, style);
 
-	// 프레임 재계산
-	::SetWindowPos(m_hList, NULL, 0, 0, 0, 0,
-		SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+		LONG_PTR exStyle = ::GetWindowLongPtr(m_hList, GWL_EXSTYLE);
+		exStyle &= ~(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+		::SetWindowLongPtr(m_hList, GWL_EXSTYLE, exStyle);
+
+		// 프레임 재계산
+		::SetWindowPos(m_hList, NULL, 0, 0, 0, 0,
+			SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+	}
 
 	// ==========================================================
 	// [수정된 부분] 2. 그림자(DropShadow) 복구 및 렉 원천 차단
@@ -2252,14 +2281,17 @@ void CSkinnedComboBox::OnCbnDropdown()
 	{
 		CFont* pFont = GetFont();
 		if (cbi.hwndList && pFont && pFont->GetSafeHandle())
-			::SendMessage(cbi.hwndList, WM_SETFONT, (WPARAM)pFont->GetSafeHandle(), TRUE);
+			::SendMessage(cbi.hwndList, WM_SETFONT, (WPARAM)pFont->GetSafeHandle(), FALSE);
 
 		if (cbi.hwndList)
 		{
 			int itemH = (int)::SendMessage(m_hWnd, CB_GETITEMHEIGHT, (WPARAM)-1, 0);
 			if (itemH <= 0)
 				itemH = max(26, m_nTextPx + 14);
-			::SendMessage(cbi.hwndList, LB_SETITEMHEIGHT, 0, (LPARAM)itemH);
+			// Only update if height differs to avoid unnecessary listbox layout recalc
+			int curH = (int)::SendMessage(cbi.hwndList, LB_GETITEMHEIGHT, 0, 0);
+			if (curH != itemH)
+				::SendMessage(cbi.hwndList, LB_SETITEMHEIGHT, 0, (LPARAM)itemH);
 		}
 
 		HookListBox(cbi.hwndList);
@@ -2355,29 +2387,27 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 
 	CRect rc(lpDIS->rcItem);
 
-	const COLORREF clrBg = RGB(255, 255, 255);
-	const COLORREF clrText = RGB(50, 50, 50);
+	const COLORREF clrBg      = RGB(255, 255, 255);
+	const COLORREF clrText    = RGB(50,  50,  50);
 	const COLORREF clrDisText = RGB(160, 160, 160);
-
-	//  UI: ε  
 	const COLORREF clrSelFill = RGB(242, 246, 252);
-	const COLORREF clrSelText = RGB(15, 124, 255);
-	const COLORREF clrSep = RGB(235, 238, 242);
+	const COLORREF clrSelText = RGB(15,  124, 255);
+	const COLORREF clrSep     = RGB(235, 238, 242);
 
+	// [최적화] 깜빡임 원인(배경 지우기)이 해결되었으므로, 무거운 더블 버퍼링을 제거하고 화면(DC)에 직접 고속으로 그립니다.
 	dc.FillSolidRect(&rc, clrBg);
 
 	if (bSelected)
 	{
-		// Gdiplus 대신 표준 GDI를 사용하여 렉 방지
 		CRect rSel = rc;
 		rSel.DeflateRect(4, 2, 4, 2);
 
-		CPen penSel(PS_SOLID, 1, clrSelFill);
-		CBrush brSel(clrSelFill);
-		CPen* pOldPen = dc.SelectObject(&penSel);
-		CBrush* pOldBr = dc.SelectObject(&brSel);
+		// 회원님의 훌륭한 최적화 아이디어 유지 (브러시/펜 재사용)
+		static CBrush s_brSel(clrSelFill);
+		static CPen   s_penSel(PS_SOLID, 1, clrSelFill);
+		CPen* pOldPen = dc.SelectObject(&s_penSel);
+		CBrush* pOldBr = dc.SelectObject(&s_brSel);
 
-		// 6.0f 반경에 해당하는 둥근 사각형 그리기
 		dc.RoundRect(rSel, CPoint(12, 12));
 
 		dc.SelectObject(pOldPen);
@@ -2388,13 +2418,9 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 	GetLBText((int)lpDIS->itemID, s);
 
 	CRect rcText = rc;
-	//  ¿     ο (14 -> 18)
 	rcText.DeflateRect(18, 0, 18, 0);
 	dc.SetBkMode(TRANSPARENT);
-	if (bDisabled)
-		dc.SetTextColor(clrDisText);
-	else
-		dc.SetTextColor(bSelected ? clrSelText : clrText);
+	dc.SetTextColor(bDisabled ? clrDisText : (bSelected ? clrSelText : clrText));
 
 	int nCount = GetCount();
 	if ((int)lpDIS->itemID >= 0 && (int)lpDIS->itemID < nCount - 1)
@@ -2409,8 +2435,8 @@ void CSkinnedComboBox::DrawItem(LPDRAWITEMSTRUCT lpDIS)
 
 	CFont* pOldFont = dc.SelectObject(GetFont());
 	dc.DrawText(s, &rcText, DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
-
 	dc.SelectObject(pOldFont);
+
 	dc.Detach();
 }
 

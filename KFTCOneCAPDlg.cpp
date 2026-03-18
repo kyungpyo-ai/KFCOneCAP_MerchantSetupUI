@@ -97,7 +97,8 @@ void CHomeCardButton::ForceFadeOut()
 void CHomeCardButton::StartAnimTimer()
 {
     if (::IsWindow(m_hWnd))
-        SetTimer(kCardAnimTimerId, 16, NULL);
+        // [최적화] 16ms(60FPS) -> 20ms(50FPS)로 조정하여 저사양 PC의 메시지 큐 과부하 방지
+        SetTimer(kCardAnimTimerId, 20, NULL);
 }
 
 void CHomeCardButton::StopAnimTimerIfIdle()
@@ -115,26 +116,38 @@ void CHomeCardButton::StepAnimation()
     const int nPressTarget = m_bPressed ? 100 : 0;
     BOOL bChanged = FALSE;
 
-    // [Hover 속도] /4 -> /3으로 변경 (더 즉각적으로 '툭' 떠오르는 느낌)
+    // [최적화] Hover 보폭 조정 및 목표 도달 강제 처리 (쓸데없는 연산 종료)
     if (m_nHoverProgress != nHoverTarget)
     {
         int diff = nHoverTarget - m_nHoverProgress;
-        int step = diff / 3; // 숫자가 작을수록 빨라집니다.
-        if (step == 0) step = (diff > 0) ? 1 : -1;
+        int step = diff / 2; // 보폭을 키워 더 빠릿하게 만듦 (프레임 낭비 감소)
+        if (step == 0) step = (diff > 0) ? 2 : -2; // 최소 속도 보장
+
         m_nHoverProgress += step;
+
+        // 오버슈팅(목표치를 넘어가거나 못 미치는 현상) 방지
+        if ((step > 0 && m_nHoverProgress > nHoverTarget) || (step < 0 && m_nHoverProgress < nHoverTarget))
+            m_nHoverProgress = nHoverTarget;
+
         bChanged = TRUE;
     }
-    // [Press 속도] 눌렀다 뗄 때의 쫀득함 유지
+
+    // [최적화] Press 보폭 조정 및 목표 도달 강제 처리
     if (m_nPressProgress != nPressTarget)
     {
         int diff = nPressTarget - m_nPressProgress;
         int step = 0;
-        if (diff > 0) step = (diff + 2) / 3; // 누를 때 더 빠르게
+        if (diff > 0) step = (diff / 2) + 2;
         else {
-            step = diff / 4; // 뗄 때 살짝 끈적하게 복귀 (고급스러움)
-            if (step == 0) step = -1;
+            step = diff / 3;
+            if (step == 0) step = -2;
         }
+
         m_nPressProgress += step;
+
+        if ((step > 0 && m_nPressProgress > nPressTarget) || (step < 0 && m_nPressProgress < nPressTarget))
+            m_nPressProgress = nPressTarget;
+
         bChanged = TRUE;
     }
 
@@ -270,6 +283,15 @@ CKFTCOneCAPDlg::~CKFTCOneCAPDlg()
     {
         delete m_pLogoBitmap;
         m_pLogoBitmap = NULL;
+    }
+    for (int i = 0; i < 4; ++i)
+    {
+        if (m_cardCache[i].dc.GetSafeHdc())
+        {
+            if (m_cardCache[i].pOldBmp) m_cardCache[i].dc.SelectObject(m_cardCache[i].pOldBmp);
+            m_cardCache[i].bmp.DeleteObject();
+            m_cardCache[i].dc.DeleteDC();
+        }
     }
 }
 
@@ -817,17 +839,29 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     dc.Attach(lpDIS->hDC);
     CRect rc = lpDIS->rcItem;
 
-    CDC memDC;
-    memDC.CreateCompatibleDC(&dc);
-    CBitmap bmp;
-    bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
-    CBitmap* pOldBmp = memDC.SelectObject(&bmp);
+    CHomeCardButton* pCard = (CHomeCardButton*)GetDlgItem((int)lpDIS->CtlID);
+
+    CSize szNow(rc.Width(), rc.Height());
+    CardCache& cache = m_cardCache[type];
+    if (!cache.dc.GetSafeHdc() || cache.size != szNow)
+    {
+        if (cache.dc.GetSafeHdc())
+        {
+            if (cache.pOldBmp) cache.dc.SelectObject(cache.pOldBmp);
+            cache.bmp.DeleteObject();
+            cache.dc.DeleteDC();
+        }
+        cache.dc.CreateCompatibleDC(&dc);
+        cache.bmp.CreateCompatibleBitmap(&dc, szNow.cx, szNow.cy);
+        cache.pOldBmp = cache.dc.SelectObject(&cache.bmp);
+        cache.size = szNow;
+    }
+    CDC& memDC = cache.dc;
 
     // [1] 배경 초기화
     memDC.FillSolidRect(0, 0, rc.Width(), rc.Height(), kHomeBg);
 
     int nHoverProgress = 0, nPressProgress = 0;
-    CHomeCardButton* pCard = (CHomeCardButton*)GetDlgItem((int)lpDIS->CtlID);
     if (pCard != NULL && ::IsWindow(pCard->m_hWnd)) {
         nHoverProgress = pCard->GetHoverProgress();
         nPressProgress = pCard->GetPressProgress();
@@ -842,11 +876,20 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     rcPaint.DeflateRect(SX(2), SX(2));
     rcPaint.bottom -= SX(16);
 
-    // [3] 물리 변화량 계산
-    REAL cardScale = 1.0f - (0.04f * nPressProgress / 100.0f); // 배경은 4% 축소
-    REAL textScale = 1.0f - (0.02f * nPressProgress / 100.0f); // 글자는 2%만 축소 (선명도 유지)
+    // [3] 물리 변화량 계산 (소프트 텐션 이징 적용)
+    float t = nHoverProgress / 100.0f;
 
-    REAL liftY = (REAL)SX(5) * nHoverProgress / 100.0f;
+    // [수정] 순간이동 느낌이 들지 않도록 탄성 계수를 2.0에서 0.5로 대폭 낮춥니다.
+    float tension = 0.5f;
+    float t2 = t - 1.0f;
+    float hoverEase = (t == 0.0f) ? 0.0f : ((t2 * t2 * ((tension + 1.0f) * t2 + tension)) + 1.0f);
+
+    // [수정] 아주 미세하게(0.5%)만 부풀어 오르게 하여 눈에 거슬리지 않는 고급스러운 디테일 추가
+    REAL cardScale = 1.0f + (0.005f * hoverEase) - (0.04f * nPressProgress / 100.0f);
+    REAL textScale = 1.0f + (0.005f * hoverEase) - (0.02f * nPressProgress / 100.0f);
+
+    // [수정] 뜨는 높이는 원래의 5로 유지하되, 수학적 곡선(hoverEase)을 태워 쫀득함만 남깁니다.
+    REAL liftY = (REAL)SX(5) * hoverEase;
     REAL pushY = (REAL)SX(6) * nPressProgress / 100.0f;
     REAL totalOffsetY = pushY - liftY;
 
@@ -868,9 +911,9 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     // [수정] 눌렀을 때(Press) 그림자가 10% 정도는 남도록 (완전히 사라짐 방지)
     if (nPressProgress > 0)
         maxAlpha = (BYTE)(maxAlpha * (100 - (nPressProgress * 0.9f)) / 100);
-    if (maxAlpha > 0) {
-        // 그림자가 아래로 내려가는 거리 (호버 시 더 멀어짐)
-        REAL glowOffsetY = (REAL)SX(10) + (REAL)MulDiv(SX(8), nHoverProgress, 100);
+    if (maxAlpha > 5 && nHoverProgress > 10) {
+        // [수정] 그림자 거리도 카드와 동일한 곡선(hoverEase)을 타도록 맞춰주어 따로 노는 느낌을 없앱니다.
+        REAL glowOffsetY = (REAL)SX(10) + ((REAL)SX(6) * hoverEase);
 
         RectF baseGlowRect((REAL)rcPaint.left + (REAL)SX(4), (REAL)rcPaint.top + glowOffsetY,
             (REAL)rcPaint.Width() - (REAL)SX(8), (REAL)rcPaint.Height() - (REAL)SX(14));
@@ -878,10 +921,12 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
         GraphicsPath glowPath;
         ModernUIGfx::AddRoundRect(glowPath, baseGlowRect, (REAL)SX(22));
 
-        for (int i = blurSpread; i >= 1; i -= 2) {
-            BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 2) / (blurSpread * 2));
+        // [최적화] 반복 간격을 i -= 2 에서 i -= 4 로 늘려 CPU 연산량을 절반으로 줄입니다. 
+                // 저사양 PC의 렉(Stuttering)을 유발하는 가장 큰 주범을 해결합니다.
+        for (int i = blurSpread; i >= 1; i -= 4) {
+            // 간격이 넓어진 만큼 빈 곳이 비어 보이지 않도록 알파값 보정 (+4)
+            BYTE currentAlpha = (BYTE)(maxAlpha * (blurSpread - i + 4) / (blurSpread * 2));
 
-            // [색상 수정] 0, 100, 221(순수 파랑) 대신 20, 40, 100 정도의 짙은 네이비를 섞으면 훨씬 고급스럽습니다.
             Pen glowPen(Color(currentAlpha, 20, 60, 160), (REAL)(i * 2));
             glowPen.SetLineJoin(LineJoinRound);
             g.DrawPath(&glowPen, &glowPath);
@@ -949,9 +994,6 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
 
     // [6] 최종 출력
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
-    memDC.SelectObject(pOldBmp);
-    bmp.DeleteObject();
-    memDC.DeleteDC();
     dc.Detach();
 }
 
@@ -1013,18 +1055,25 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
         CHomeCardButton* pBtn = (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
             (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard : NULL;
 
-        if (pBtn && pBtn->GetPressProgress() <= 12 && pBtn->GetHoverProgress() <= 12)
+        // [최적화 핵심] 12까지 기다리면 너무 답답합니다. 
+        // 60 정도로 조건을 대폭 완화하여, 손을 떼고 카드가 절반쯤 올라오는 찰나에 즉시 창을 띄웁니다.
+        if (pBtn && pBtn->GetPressProgress() <= 30)
         {
             KillTimer(kTimerWaitRelease);
 
             EPendingOpen ePending = m_ePendingOpen;
             m_ePendingOpen = PENDING_NONE;
 
-            // [1] 현재 상태를 메모리 DC 기반으로 깨끗하게 한 번 그립니다.
-            this->Invalidate(FALSE);
-            this->UpdateWindow(); // 즉시 OnPaint 호출
+            // [필수] 창이 뜨는 순간 홈 화면이 멈추므로, 창을 띄우기 '직전'에 카드를 완전히 원상복구(0) 시킵니다.
+            if (pBtn) {
+                pBtn->ResetVisualState();
+            }
 
-            // [2] 모달 실행 (DoModal이 안전하게 부모 창을 비활성화/활성화해 줍니다)
+            // [1] 카드가 완전히 내려앉은 깨끗한 상태를 메모리 DC를 통해 화면에 즉시 강제 출력(새로고침)합니다.
+            this->Invalidate(FALSE);
+            this->UpdateWindow();
+
+            // [2] 모달 실행 (대기 시간이 확 줄어서 체감 속도가 엄청나게 빠릿해집니다)
             if (ePending == PENDING_SHOP) {
                 CShopSetupDlg dlg(this);
                 dlg.DoModal();
@@ -1033,8 +1082,6 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
                 CReaderSetupDlg dlg(this);
                 dlg.DoModal();
             }
-
-            if (pBtn) pBtn->ResetVisualState();
 
             // [3] 돌아왔을 때 부드럽게 갱신
             this->Invalidate(FALSE);

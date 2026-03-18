@@ -533,6 +533,8 @@ private:
     WNDPROC m_oldListProc;
 
     // GDI+ 텍스트용 캐시 폰트
+    CString      m_strDisplayCache;   // text key for kftc_to_wide cache
+    std::wstring m_wstrDisplayCache;  // cached wide string for DrawTextW
     HFONT   m_hTextFontCache;
     LOGFONT m_lfTextCache;
     BOOL    m_bHasTextFontCache;
