@@ -694,22 +694,6 @@ void CReaderSetupDlg::SetReaderCardBusy(int readerIndex, BOOL bBusy)
 		(readerIndex == 1) ? &m_update1 : &m_update2,
 	};
 
-	if (bBusy)
-	{
-		CWnd* pFocus = GetFocus();
-		if (pFocus)
-		{
-			HWND hFocus = pFocus->GetSafeHwnd();
-			BOOL bFocusOnCard = (hFocus == pCombo->GetSafeHwnd() ||
-				hFocus == pToggleOpen->GetSafeHwnd() ||
-				hFocus == pToggleMulti->GetSafeHwnd());
-			for (int i = 0; !bFocusOnCard && i < (int)(sizeof(buttons) / sizeof(buttons[0])); ++i)
-				if (hFocus == buttons[i]->GetSafeHwnd()) bFocusOnCard = TRUE;
-			if (bFocusOnCard && ::IsWindow(m_btnOk.GetSafeHwnd()))
-				m_btnOk.SetFocus();
-		}
-	}
-
 	for (int i = 0; i < (int)(sizeof(buttons) / sizeof(buttons[0])); ++i)
 	{
 		if (!buttons[i]->GetSafeHwnd())
