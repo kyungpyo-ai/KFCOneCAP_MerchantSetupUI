@@ -641,6 +641,7 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_BN_CLICKED(IDC_BTN_PORT_OPEN_INFO,  OnBnClickedPortOpenInfo)
 	ON_BN_CLICKED(IDC_BTN_MULTIPAD1_INFO,  OnBnClickedMultipad1Info)
 	ON_BN_CLICKED(IDC_BTN_MULTIPAD2_INFO,  OnBnClickedMultipad2Info)
+	ON_MESSAGE(WM_READER_DONE, OnReaderDone)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -692,6 +693,22 @@ void CReaderSetupDlg::SetReaderCardBusy(int readerIndex, BOOL bBusy)
 		(readerIndex == 1) ? &m_integrity_check1 : &m_integrity_check2,
 		(readerIndex == 1) ? &m_update1 : &m_update2,
 	};
+
+	if (bBusy)
+	{
+		CWnd* pFocus = GetFocus();
+		if (pFocus)
+		{
+			HWND hFocus = pFocus->GetSafeHwnd();
+			BOOL bFocusOnCard = (hFocus == pCombo->GetSafeHwnd() ||
+				hFocus == pToggleOpen->GetSafeHwnd() ||
+				hFocus == pToggleMulti->GetSafeHwnd());
+			for (int i = 0; !bFocusOnCard && i < (int)(sizeof(buttons) / sizeof(buttons[0])); ++i)
+				if (hFocus == buttons[i]->GetSafeHwnd()) bFocusOnCard = TRUE;
+			if (bFocusOnCard && ::IsWindow(m_btnOk.GetSafeHwnd()))
+				m_btnOk.SetFocus();
+		}
+	}
 
 	for (int i = 0; i < (int)(sizeof(buttons) / sizeof(buttons[0])); ++i)
 	{
@@ -1038,7 +1055,7 @@ void CReaderSetupDlg::StartLoadingOperation(UINT nButtonID)
 	m_nLoadingAnimTimerID = 0x4810;
 	m_nLoadingTimerID = 0x4811;
 	SetTimer(m_nLoadingAnimTimerID, 33, NULL);
-	SetTimer(m_nLoadingTimerID, 1200, NULL);
+	SetTimer(m_nLoadingTimerID, 10000, NULL);
 	Invalidate(FALSE);
 }
 
@@ -1081,6 +1098,15 @@ void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
 	m_nLoadingButtonID = 0;
 	if (bRefresh)
 		Invalidate(FALSE);
+}
+
+LRESULT CReaderSetupDlg::OnReaderDone(WPARAM wParam, LPARAM lParam)
+{
+	// Called on UI thread via PostMessage from worker thread.
+	// wParam: TRUE = success, FALSE = failure
+	// lParam: button ID that triggered the operation (IDC_READER_INIT1, etc.)
+	FinishLoadingOperation(TRUE);
+	return 0;
 }
 
 BOOL CReaderSetupDlg::OnInitDialog()

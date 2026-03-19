@@ -10,6 +10,8 @@
 #include <vector>
 #include "ModernUI.h"
 
+#define WM_READER_DONE  (WM_APP + 100)
+
 
 using namespace std;
 
@@ -119,6 +121,7 @@ protected:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg LRESULT OnReaderDone(WPARAM wParam, LPARAM lParam);
 
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	//}}AFX_MSG
