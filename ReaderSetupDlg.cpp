@@ -1222,7 +1222,6 @@ void CReaderSetupDlg::OnPaint()
 {
 	CPaintDC dc(this);
 	EnsureFonts();
-	m_brushBg.CreateSolidBrush(RGB(249, 250, 252));
 
 	CRect rc; GetClientRect(&rc);
 
