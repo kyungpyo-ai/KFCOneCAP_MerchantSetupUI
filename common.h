@@ -376,6 +376,7 @@ typedef struct {
 #define COMPORT2_FIELD			"COMPORT2"
 #define MULTIPAD1_FIELD			"MULTIPAD1"
 #define MULTIPAD2_FIELD			"MULTIPAD2"
+#define PORT_ALWAYS_OPEN		"PORT_ALWAYSOPEN"
 #define SIGNPAD_PORT_FIELD		"SIGNPAD"
 #define SIGNPAD_SPEED_FIELD		"SIGNPAD_SPEED"		// by Wonseok. 16.07.19		// 서명패드 속도, 타임아웃 설정 추가
 #define TIMEOUT_FIELD			"TIMEOUT"			// by Wonseok. 16.07.19		// 서명패드 속도, 타임아웃 설정 추가

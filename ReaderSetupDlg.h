@@ -10,7 +10,8 @@
 #include <vector>
 #include "ModernUI.h"
 
-#define WM_READER_DONE  (WM_APP + 100)
+#define WM_READER_DONE    (WM_APP + 100)
+#define WM_PORT_OPEN_DONE (WM_APP + 101)
 
 
 using namespace std;
@@ -122,6 +123,7 @@ protected:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg LRESULT OnReaderDone(WPARAM wParam, LPARAM lParam);
+	afx_msg LRESULT OnPortOpenDone(WPARAM wParam, LPARAM lParam);
 
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	//}}AFX_MSG
@@ -184,10 +186,12 @@ protected:
 	afx_msg void OnBnClickedPortOpenInfo();
 	afx_msg void OnBnClickedMultipad1Info();
 	afx_msg void OnBnClickedMultipad2Info();
+	afx_msg void OnPortOpen1Clicked();
 
 
 	//}}AFX_MSG
 	void ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody);
+
 
 	struct SettingsSnapshot {
 		int  cmbPort1, cmbPort2;

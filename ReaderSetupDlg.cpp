@@ -641,7 +641,9 @@ BEGIN_MESSAGE_MAP(CReaderSetupDlg, CDialog)
 	ON_BN_CLICKED(IDC_BTN_PORT_OPEN_INFO,  OnBnClickedPortOpenInfo)
 	ON_BN_CLICKED(IDC_BTN_MULTIPAD1_INFO,  OnBnClickedMultipad1Info)
 	ON_BN_CLICKED(IDC_BTN_MULTIPAD2_INFO,  OnBnClickedMultipad2Info)
-	ON_MESSAGE(WM_READER_DONE, OnReaderDone)
+	ON_BN_CLICKED(IDC_PORT_OPEN1, OnPortOpen1Clicked)
+	ON_MESSAGE(WM_READER_DONE,    OnReaderDone)
+	ON_MESSAGE(WM_PORT_OPEN_DONE, OnPortOpenDone)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -833,6 +835,10 @@ void CReaderSetupDlg::LoadSavedPortSelections()
 
 	applySelection(m_comport1, com_port1);
 	applySelection(m_comport2, com_port2);
+
+	// Load port always open state: "0" = ON, "1" = OFF (default)
+	CString portAlwaysOpen = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, PORT_ALWAYS_OPEN, _T("1"));
+	m_togglePortOpen1.SetToggled(portAlwaysOpen == _T("0"));
 
 	// Load multipad toggle state: "1" = OFF (default), "0" = ON
 	CString mp1 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, MULTIPAD1_FIELD, _T("1"));
@@ -1084,14 +1090,86 @@ void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
 	m_nLoadingButtonID = 0;
 	if (bRefresh)
 		Invalidate(FALSE);
+	if (::IsWindow(m_btnOk.GetSafeHwnd()))
+		m_btnOk.SetFocus();
+}
+
+struct PortOpenParam
+{
+    HWND hWnd;
+    BOOL bDesired;   // desired toggle state after thread completes
+};
+
+static UINT PortOpenWorkerThread(LPVOID pParam)
+{
+
+    PortOpenParam* p = (PortOpenParam*)pParam;
+    // TODO: actual port open/close operation here
+    BOOL bSuccess = TRUE;
+    ::PostMessage(p->hWnd, WM_PORT_OPEN_DONE, bSuccess, (LPARAM)p->bDesired);
+    delete p;
+
+    return 0;
+}
+
+void CReaderSetupDlg::OnPortOpen1Clicked()
+{
+    BOOL bDesired = m_togglePortOpen1.IsToggled(); // already flipped by OnLButtonUp
+    m_togglePortOpen1.SetToggled(!bDesired);       // revert before showing confirm dialog
+
+    // TODO: replace message text with Korean strings in Visual Studio
+    LPCTSTR pMsg = bDesired ? _T("Open port?") : _T("Close port?");
+    if (MessageBox(pMsg, _T("Confirm"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+        return; // cancelled - toggle already reverted
+
+    m_togglePortOpen1.SetToggled(bDesired);        // confirmed - apply new state
+    m_togglePortOpen1.EnableWindow(FALSE);         // prevent double-click while thread runs
+
+    PortOpenParam* p = new PortOpenParam();
+    p->hWnd     = m_hWnd;
+    p->bDesired = bDesired;
+    AfxBeginThread(PortOpenWorkerThread, p);
 }
 
 LRESULT CReaderSetupDlg::OnReaderDone(WPARAM wParam, LPARAM lParam)
 {
-	// Called on UI thread via PostMessage from worker thread.
-	// wParam: TRUE = success, FALSE = failure
-	// lParam: button ID that triggered the operation (IDC_READER_INIT1, etc.)
+	BOOL bSuccess = (BOOL)wParam;
+	int  nCtrlID  = (int)HIWORD(lParam);
+	BOOL bDesired = (BOOL)LOWORD(lParam);
+
 	FinishLoadingOperation(TRUE);
+	return 0;
+}
+
+LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
+{
+	BOOL bSuccess = (BOOL)wParam;
+	BOOL bDesired = (BOOL)lParam;
+
+	BOOL bFinalState = bDesired;
+	if (!bSuccess)
+	{
+		bFinalState = !bDesired; // revert on failure
+		m_togglePortOpen1.SetToggled(bFinalState);
+	}
+	m_togglePortOpen1.EnableWindow(TRUE);
+	// When reader1 port is ON, set reader2 comport to unused and disable buttons
+	if (bFinalState)
+	{
+		m_comport2.SetCurSel(0);
+		m_comport2.EnableWindow(FALSE);
+		ApplyEnableStateToButtons(2, FALSE);
+		Invalidate(FALSE);
+	}
+
+	// Save port open state to registry: "0" = ON, "1" = OFF
+	if (bSuccess)
+		AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, PORT_ALWAYS_OPEN, bFinalState ? _T("0") : _T("1"));
+
+	AfxMessageBox("»Æ¿Œ");
+
+	if (::IsWindow(m_btnOk.GetSafeHwnd()))
+		m_btnOk.SetFocus();
 	return 0;
 }
 
@@ -1828,8 +1906,6 @@ BOOL CReaderSetupDlg::HasChanges() const
 {
 	if (m_comport1.GetCurSel()           != m_snap.cmbPort1)     return TRUE;
 	if (m_comport2.GetCurSel()           != m_snap.cmbPort2)     return TRUE;
-	if (m_togglePortOpen1.IsToggled() != m_snap.tglPortOpen1) return TRUE;
-	if (m_togglePortOpen2.IsToggled() != m_snap.tglPortOpen2) return TRUE;
 	if (m_toggleMultipad1.IsToggled()  != m_snap.tglMultipad1) return TRUE;
 	if (m_toggleMultipad2.IsToggled()  != m_snap.tglMultipad2) return TRUE;
 	return FALSE;
