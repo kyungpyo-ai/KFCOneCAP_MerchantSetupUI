@@ -833,6 +833,12 @@ void CReaderSetupDlg::LoadSavedPortSelections()
 
 	applySelection(m_comport1, com_port1);
 	applySelection(m_comport2, com_port2);
+
+	// Load multipad toggle state: "1" = OFF (default), "0" = ON
+	CString mp1 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, MULTIPAD1_FIELD, _T("1"));
+	CString mp2 = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, MULTIPAD2_FIELD, _T("1"));
+	m_toggleMultipad1.SetToggled(mp1 == _T("0"));
+	m_toggleMultipad2.SetToggled(mp2 == _T("0"));
 }
 
 void CReaderSetupDlg::InitSearchDateCombo()
@@ -961,10 +967,6 @@ void CReaderSetupDlg::InitToggleAndUnderlayColors()
 	const COLORREF cardBgDisabled = RGB(251, 252, 253);
 	const COLORREF infoCardBg = RGB(248, 249, 251);
 
-	m_togglePortOpen1.SetCheck(BST_UNCHECKED);
-	m_togglePortOpen2.SetCheck(BST_UNCHECKED);
-	m_toggleMultipad1.SetCheck(BST_UNCHECKED);
-	m_toggleMultipad2.SetCheck(BST_UNCHECKED);
 	// Setup text labels inside toggle controls (ShopSetupDlg style)
 	m_togglePortOpen1.SetFont(&m_fontLabel);
 	m_togglePortOpen1.SetWindowText(_T("포트 열기"));
@@ -1039,7 +1041,7 @@ void CReaderSetupDlg::StartLoadingOperation(UINT nButtonID)
 	m_nLoadingAnimTimerID = 0x4810;
 	m_nLoadingTimerID = 0x4811;
 	SetTimer(m_nLoadingAnimTimerID, 33, NULL);
-	SetTimer(m_nLoadingTimerID, 10000, NULL);
+	SetTimer(m_nLoadingTimerID, 3000, NULL);
 	Invalidate(FALSE);
 }
 
@@ -1586,7 +1588,7 @@ BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 		case IDC_INTEGRITY_CHECK2: OnIntegrityCheck(2); return TRUE;
 		case IDC_UPDATE1:          OnUpdate(1);        return TRUE;
 		case IDC_UPDATE2:          OnUpdate(2);        return TRUE;
-		case IDC_SEARCH:           OnSearch();         return TRUE;
+		case IDC_SEARCH:           OnSearch(TRUE);         return TRUE;
 		}
 	}
 
@@ -1748,10 +1750,46 @@ void CReaderSetupDlg::OnUpdate(int readerIndex)
 	// TODO: readerIndex 1 or 2
 }
 
-void CReaderSetupDlg::OnSearch()
+void CReaderSetupDlg::OnSearch(BOOL isLoading)
 {
-	StartLoadingOperation(IDC_SEARCH);
-	// TODO: implement search logic
+	if (isLoading)
+		StartLoadingOperation(IDC_SEARCH);
+
+	m_integrity_list.DeleteAllItems();
+
+	// Determine sample count based on selected period
+	int nSel = (m_search_date.GetSafeHwnd()) ? m_search_date.GetCurSel() : 0;
+	int nCount = 3;           // index 0: 1-day  -> 3 rows
+	if (nSel == 1) nCount = 5;            // index 1: 7-day  -> 5 rows
+	else if (nSel >= 2) nCount = 10;      // index 2: 30-day, index 3: 100-day -> 10 rows
+
+	const TCHAR* rows[][6] =
+	{
+		{ _T("20260308091234"), _T("COM 01"), _T("00"), _T("RDR-1001"), _T("##SPAY-8800Q3001"),  _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 01"), _T("04"), _T("RDR-1001"), _T("##SPAY-8800Q3001"),  _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 02"), _T("00"), _T("RDR-2003"), _T("DAULPAY633RDK201"),  _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 03"), _T("00"), _T("RDR-1010"), _T("DAULPAY633RDK201"),  _T("KFTCONECAP3001") },
+		{ _T("20260308091234"), _T("COM 01"), _T("00"), _T("RDR-1001"), _T("##SPAY-8800Q3001"),  _T("KFTCONECAP3001") },
+		{ _T("20260309154312"), _T("COM 04"), _T("00"), _T("RDR-3011"), _T("##SPAY-8800Q3001"),  _T("KFTCONECAP3001") },
+		{ _T("20260310143022"), _T("COM 02"), _T("00"), _T("RDR-2003"), _T("DAULPAY633RDK201"),  _T("KFTCONECAP3001") },
+		{ _T("20260311083045"), _T("COM 01"), _T("00"), _T("RDR-1001"), _T("##SPAY-8800Q3001"),  _T("KFTCONECAP3001") },
+		{ _T("20260312120011"), _T("COM 03"), _T("01"), _T("RDR-1010"), _T("DAULPAY633RDK201"),  _T("KFTCONECAP3001") },
+		{ _T("20260313175533"), _T("COM 04"), _T("00"), _T("RDR-3011"), _T("##SPAY-8800Q3001"),  _T("KFTCONECAP3001") },
+	};
+
+	for (int r = 0; r < nCount; ++r)
+	{
+		int idx = m_integrity_list.InsertItem(r, rows[r][0]);
+		for (int c = 1; c < 6; ++c)
+			m_integrity_list.SetItemText(idx, c, rows[r][c]);
+	}
+
+	m_nIntegrityScrollPos = 0;
+	NormalizeIntegrityScrollPos();
+	Invalidate(FALSE);
+
+	if (isLoading)
+		PostMessage(WM_READER_DONE, TRUE, IDC_SEARCH);
 }
 void CReaderSetupDlg::OnOK()
 {
@@ -1760,7 +1798,9 @@ void CReaderSetupDlg::OnOK()
 	m_comport2.GetWindowText(port2);
 	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, port1);
 	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, port2);
-	// TODO: save toggle states (PORT_OPEN1/2, MULTIPAD1/2)
+	// Save multipad toggle state: "0" = ON, "1" = OFF
+	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, MULTIPAD1_FIELD, m_toggleMultipad1.IsToggled() ? _T("0") : _T("1"));
+	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, MULTIPAD2_FIELD, m_toggleMultipad2.IsToggled() ? _T("0") : _T("1"));
 	CDialog::OnOK();
 }
 

@@ -207,7 +207,7 @@ protected:
 	void OnKeyDown(int readerIndex);
 	void OnIntegrityCheck(int readerIndex);
 	void OnUpdate(int readerIndex);
-	void OnSearch();
+	void OnSearch(BOOL isLoading);
 	DECLARE_MESSAGE_MAP()
 };
 
