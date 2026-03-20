@@ -1223,7 +1223,12 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	// --- 6) 최종 상태 반영 ---
 	UpdateReaderEnableState(1);
 	UpdateReaderEnableState(2);
+	// If port1 is ON, disable comport2 combobox after UpdateReaderEnableState
+	if (m_togglePortOpen1.IsToggled())
+		m_comport2.EnableWindow(FALSE);
 
+
+		
 	// 초기 포커스는 확인 버튼으로 넘겨 포커스 링이 콤보에 남지 않게 한다.
 	ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
 	TakeSnapshot();
