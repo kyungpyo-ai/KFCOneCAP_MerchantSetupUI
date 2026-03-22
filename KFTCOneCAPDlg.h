@@ -132,7 +132,7 @@ private:
     Gdiplus::Font* m_pGdiFontHeader;
     Gdiplus::Font* m_pGdiFontSub;
 
-    enum EPendingOpen { PENDING_NONE = 0, PENDING_SHOP, PENDING_READER };
+    enum EPendingOpen { PENDING_NONE = 0, PENDING_SHOP, PENDING_READER, PENDING_TRANS };
 
     BOOL         m_bFontsReady;
     EPendingOpen m_ePendingOpen;

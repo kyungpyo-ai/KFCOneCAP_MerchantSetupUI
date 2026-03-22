@@ -55,6 +55,7 @@
     <ClCompile Include="RegistryUtil.cpp" />
     <ClCompile Include="ShopDownDlg.cpp" />
     <ClCompile Include="ShopSetupDlg.cpp" />
+    <ClCompile Include="TransDlg.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="ModernUI.cpp" />
   </ItemGroup>
@@ -64,6 +65,7 @@
     <ClInclude Include="RegistryUtil.h" />
     <ClInclude Include="ShopDownDlg.h" />
     <ClInclude Include="ShopSetupDlg.h" />
+    <ClInclude Include="TransDlg.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="ModernUI.h" />

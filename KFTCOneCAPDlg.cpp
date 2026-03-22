@@ -3,6 +3,7 @@
 #include "KFTCOneCAPDlg.h"
 #include "ReaderSetupDlg.h"
 #include "ShopSetupDlg.h"
+#include "TransDlg.h"
 
 // Release 쑴니메이의하 다이아로그 오핀 지연 메시지
 // Poll until the pressed card button finishes its release animation, then open
@@ -1053,7 +1054,8 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
     if (nIDEvent == kTimerWaitRelease)
     {
         CHomeCardButton* pBtn = (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
-            (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard : NULL;
+            (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard :
+            (m_ePendingOpen == PENDING_TRANS) ? &m_btnTransCard : NULL;
 
         // [최적화 핵심] 12까지 기다리면 너무 답답합니다. 
         // 60 정도로 조건을 대폭 완화하여, 손을 떼고 카드가 절반쯤 올라오는 찰나에 즉시 창을 띄웁니다.
@@ -1082,6 +1084,10 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
                 CReaderSetupDlg dlg(this);
                 dlg.DoModal();
             }
+            else if (ePending == PENDING_TRANS) {
+                CTransDlg dlg(this);
+                dlg.DoModal();
+            }
 
             // [3] 돌아왔을 때 부드럽게 갱신
             this->Invalidate(FALSE);
@@ -1102,7 +1108,9 @@ void CKFTCOneCAPDlg::OnShopSetup()
 
 void CKFTCOneCAPDlg::OnTrans()
 {
-    AfxMessageBox(_T("결제 및 수납 화면은 다음 버전에서 연결할 예정입니다."), MB_ICONINFORMATION);
+    m_ePendingOpen = PENDING_TRANS;
+    m_btnTransCard.ForceFadeOut();
+    SetTimer(kTimerWaitRelease, 16, NULL);
 }
 
 void CKFTCOneCAPDlg::OnReceiptSetup()
