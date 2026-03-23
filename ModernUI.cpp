@@ -1337,12 +1337,16 @@ CModernToggleSwitch::CModernToggleSwitch()
 	m_clrUnderlay = RGB(255, 255, 255);
 	m_fAnimProgress = 0.0f;
 	m_uAnimTimer    = 0;
-	m_bPressed = FALSE; // 추가
+	m_bPressed  = FALSE; //
+	m_bPending  = FALSE;
+	m_fSpinAngle = 0.0f;
+	m_uSpinTimer = 0; 
 }
 
 CModernToggleSwitch::~CModernToggleSwitch()
 {
 	if (m_uAnimTimer && m_hWnd) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+	if (m_uSpinTimer && m_hWnd) { KillTimer(m_uSpinTimer); m_uSpinTimer = 0; }
 }
 
 void CModernToggleSwitch::SetToggled(BOOL bToggled)
@@ -1368,6 +1372,29 @@ BOOL CModernToggleSwitch::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 	return CButton::OnSetCursor(pWnd, nHitTest, message);
 }
 
+void CModernToggleSwitch::SetPending(BOOL bPending)
+{
+	if (m_bPending == bPending) return;
+	m_bPending = bPending;
+	if (bPending)
+	{
+		// Freeze thumb at midpoint and start spinner
+		if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+		m_fAnimProgress = 0.5f;
+		m_fSpinAngle = 0.0f;
+		if (m_uSpinTimer) { KillTimer(m_uSpinTimer); m_uSpinTimer = 0; }
+		m_uSpinTimer = SetTimer(2, 33, NULL);
+	}
+	else
+	{
+		// Stop spinner; slide thumb from midpoint to final m_bToggled state
+		if (m_uSpinTimer) { KillTimer(m_uSpinTimer); m_uSpinTimer = 0; }
+		m_fSpinAngle = 0.0f;
+		if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
+		m_uAnimTimer = SetTimer(1, 16, NULL);
+	}
+	Invalidate(FALSE);
+}
 void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
 	CDC* pDC = CDC::FromHandle(lpDrawItemStruct->hDC);
@@ -1420,7 +1447,14 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchRect.Height / 2.0f);
 
 	// 트랙 그리기 (ON/OFF 색상 로직)
-	// Animate track color between OFF/ON states using m_fAnimProgress
+	// Track color: pending state overrides normal ON/OFF/disabled colors
+	if (m_bPending)
+	{
+		// Muted mid-blue: signals 'in progress' (not full ON, not OFF)
+		Gdiplus::SolidBrush trackBrush(Gdiplus::Color(255, 140, 185, 235));
+		graphics.FillPath(&trackBrush, &switchPath);
+	}
+	else
 	{
 		float rOff, gOff, bOff, rOn, gOn, bOn;
 		if (disabled) {
@@ -1431,7 +1465,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			rOff=230; gOff=236; bOff=245;  rOn=0;   gOn=100; bOn=221;
 		}
 		float t = m_fAnimProgress;
-		float _easeT = 1.0f - (1.0f - t)*(1.0f - t)*(1.0f - t); // ease-out-cubic
+		float _easeT = 1.0f - (1.0f - t)*(1.0f - t)*(1.0f - t);
 		Gdiplus::SolidBrush trackBrush(Gdiplus::Color(255,
 			(BYTE)(rOff+(rOn-rOff)*_easeT), (BYTE)(gOff+(gOn-gOff)*_easeT), (BYTE)(bOff+(bOn-bOff)*_easeT)));
 		graphics.FillPath(&trackBrush, &switchPath);
@@ -1442,8 +1476,10 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	REAL knobPadding = (switchRect.Height - knobSize) / 2.0f;
 	REAL knobLeft  = switchRect.X + knobPadding;
 	REAL knobRight = switchRect.X + switchRect.Width - knobSize - knobPadding;
-	float _eT = m_fAnimProgress; _eT = 1.0f - (1.0f - _eT)*(1.0f - _eT)*(1.0f - _eT);
-	REAL knobX = knobLeft + (knobRight - knobLeft) * _eT;
+	REAL knobX;
+	if (m_bPending)
+		knobX = knobLeft + (knobRight - knobLeft) * 0.5f;  // true center, no easing
+	else { float _eT = m_fAnimProgress; _eT = 1.0f - (1.0f - _eT)*(1.0f - _eT)*(1.0f - _eT); knobX = knobLeft + (knobRight - knobLeft) * _eT; }
 	REAL knobY = switchRect.Y + knobPadding;
 
 	Gdiplus::RectF knobRect(knobX, knobY, knobSize, knobSize);
@@ -1453,9 +1489,24 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	graphics.FillEllipse(&shadowBrush, knobX, knobY + 1.0f, knobSize, knobSize);
 
 	// 노브 본체
-	Gdiplus::Color kClr = disabled ? Gdiplus::Color(255, 240, 240, 240) : Gdiplus::Color(255, 255, 255, 255);
+	Gdiplus::Color kClr = (disabled && !m_bPending) ? Gdiplus::Color(255, 240, 240, 240) : Gdiplus::Color(255, 255, 255, 255);
 	Gdiplus::SolidBrush knobBrush(kClr);
 	graphics.FillEllipse(&knobBrush, knobRect);
+
+	// Pending spinner: thin spinning arc drawn over the knob center
+	if (m_bPending)
+	{
+		REAL arcMargin = knobSize * 0.22f;
+		Gdiplus::RectF arcRect(
+			knobX + arcMargin,
+			knobY + arcMargin,
+			knobSize - arcMargin * 2.0f,
+			knobSize - arcMargin * 2.0f);
+		Gdiplus::Pen arcPen(Gdiplus::Color(255, 0, 100, 221), ModernUIDpi::ScaleF(m_hWnd, 1.8f));
+		arcPen.SetStartCap(Gdiplus::LineCapRound);
+		arcPen.SetEndCap(Gdiplus::LineCapRound);
+		graphics.DrawArc(&arcPen, arcRect, m_fSpinAngle, 120.0f);
+	}
 
 	// 5. 텍스트 그리기 - pressY 만큼 아래로 이동
 	CString strText;
@@ -1538,6 +1589,12 @@ void CModernToggleSwitch::OnTimer(UINT_PTR nIDEvent)
 			m_fAnimProgress -= kStep;
 			if (m_fAnimProgress <= 0.0f) { m_fAnimProgress = 0.0f; KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
 		}
+		Invalidate(FALSE);
+		return;
+	}
+	if (nIDEvent == m_uSpinTimer && m_uSpinTimer != 0) {
+		m_fSpinAngle += 12.0f;
+		if (m_fSpinAngle >= 360.0f) m_fSpinAngle -= 360.0f;
 		Invalidate(FALSE);
 		return;
 	}

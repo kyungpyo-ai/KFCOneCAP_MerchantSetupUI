@@ -414,6 +414,7 @@ public:
 
     void SetToggled(BOOL bToggled);
     BOOL IsToggled() const { return m_bToggled; }
+    void SetPending(BOOL bPending);
 
     void SetTextSizePx(int px) { m_nTextPx = px; Invalidate(FALSE); }
     void SetNoWrapEllipsis(BOOL b) { m_bNoWrapEllipsis = b; Invalidate(FALSE); }
@@ -447,6 +448,10 @@ private:
 
     float    m_fAnimProgress;
     UINT_PTR m_uAnimTimer;
+
+    BOOL     m_bPending;     // TRUE while async operation in progress
+    float    m_fSpinAngle;   // spinner arc rotation angle (0..360)
+    UINT_PTR m_uSpinTimer;   // 33ms timer for spinner animation
 };
 
 // ========================================

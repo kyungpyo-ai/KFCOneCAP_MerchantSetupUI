@@ -1105,6 +1105,7 @@ static UINT PortOpenWorkerThread(LPVOID pParam)
 
     PortOpenParam* p = (PortOpenParam*)pParam;
     // TODO: actual port open/close operation here
+    Sleep(2500);  // TODO: remove - simulates operation delay for animation testing
     BOOL bSuccess = TRUE;
     ::PostMessage(p->hWnd, WM_PORT_OPEN_DONE, bSuccess, (LPARAM)p->bDesired);
     delete p;
@@ -1123,6 +1124,7 @@ void CReaderSetupDlg::OnPortOpen1Clicked()
         return; // cancelled - toggle already reverted
 
     m_togglePortOpen1.SetToggled(bDesired);        // confirmed - apply new state
+    m_togglePortOpen1.SetPending(TRUE);            // start spinner animation
     m_nBusyReaderIndex = 1;
     SetReaderCardBusy(1, TRUE);  // disable all reader1 controls while port open runs
 
@@ -1153,6 +1155,7 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 		bFinalState = !bDesired; // revert on failure
 		m_togglePortOpen1.SetToggled(bFinalState);
 	}
+	m_togglePortOpen1.SetPending(FALSE);          // stop spinner, animate to final state
 	m_nBusyReaderIndex = 0;
 	SetReaderCardBusy(1, FALSE);  // re-enable all reader1 controls
 	// When reader1 port is ON, set reader2 comport to unused and disable buttons
