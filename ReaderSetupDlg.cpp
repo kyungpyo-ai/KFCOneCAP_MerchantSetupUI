@@ -1123,7 +1123,8 @@ void CReaderSetupDlg::OnPortOpen1Clicked()
         return; // cancelled - toggle already reverted
 
     m_togglePortOpen1.SetToggled(bDesired);        // confirmed - apply new state
-    m_togglePortOpen1.EnableWindow(FALSE);         // prevent double-click while thread runs
+    m_nBusyReaderIndex = 1;
+    SetReaderCardBusy(1, TRUE);  // disable all reader1 controls while port open runs
 
     PortOpenParam* p = new PortOpenParam();
     p->hWnd     = m_hWnd;
@@ -1152,7 +1153,8 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 		bFinalState = !bDesired; // revert on failure
 		m_togglePortOpen1.SetToggled(bFinalState);
 	}
-	m_togglePortOpen1.EnableWindow(TRUE);
+	m_nBusyReaderIndex = 0;
+	SetReaderCardBusy(1, FALSE);  // re-enable all reader1 controls
 	// When reader1 port is ON, set reader2 comport to unused and disable buttons
 	if (bFinalState)
 	{
