@@ -4,6 +4,7 @@
 #include "ReaderSetupDlg.h"
 #include "ShopSetupDlg.h"
 #include "TransDlg.h"
+#include "ModernMessageBox.h"
 
 // Release 쑴니메이의하 다이아로그 오핀 지연 메시지
 // Poll until the pressed card button finishes its release animation, then open
@@ -1115,7 +1116,7 @@ void CKFTCOneCAPDlg::OnTrans()
 
 void CKFTCOneCAPDlg::OnReceiptSetup()
 {
-    AfxMessageBox(_T("전표 설정 화면은 다음 버전에서 연결할 예정입니다."), MB_ICONINFORMATION);
+    CModernMessageBox::Info(_T("전표 설정 화면은 다음 버전에서 연결할 예정입니다."), this);
 }
 
 void CKFTCOneCAPDlg::OnMinimize()

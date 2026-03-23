@@ -6,6 +6,8 @@
 #include "resource.h"
 #include "ReaderSetupDlg.h"
 
+#include "ModernMessageBox.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -1120,7 +1122,7 @@ void CReaderSetupDlg::OnPortOpen1Clicked()
 
     // TODO: replace message text with Korean strings in Visual Studio
     LPCTSTR pMsg = bDesired ? _T("Open port?") : _T("Close port?");
-    if (MessageBox(pMsg, _T("Confirm"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+    if (CModernMessageBox::Question(pMsg, this) != IDYES)
         return; // cancelled - toggle already reverted
 
     m_togglePortOpen1.SetToggled(bDesired);        // confirmed - apply new state
@@ -1177,7 +1179,7 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 	if (bSuccess)
 		AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, PORT_ALWAYS_OPEN, bFinalState ? _T("0") : _T("1"));
 
-	AfxMessageBox("확인");
+	CModernMessageBox::Info(_T("확인"), this);
 
 	if (::IsWindow(m_btnOk.GetSafeHwnd()))
 		m_btnOk.SetFocus();
@@ -1903,7 +1905,7 @@ void CReaderSetupDlg::OnCancel()
 	if (m_popover.GetSafeHwnd()) m_popover.Hide();
 	if (HasChanges())
 	{
-		if (MessageBox(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), _T("확인"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+		if (CModernMessageBox::Question(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), this) != IDYES)
 			return;
 	}
 	CDialog::OnCancel();

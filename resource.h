@@ -5,6 +5,8 @@
 #define IDD_STARTUP_SELECT_DLG           134
 #define IDD_KFTCONECAP_DIALOG            170
 #define IDD_TRANS_DIALOG                 190
+#define IDD_MODERN_MESSAGEBOX            191
+#define IDC_STATIC_MESSAGE               300
 #define IDD_SHOP_SETUP_DLG               2000
 #define IDD_DIALOG1                      5000
 #define IDD_SHOP_DOWN_DIALOG             5000

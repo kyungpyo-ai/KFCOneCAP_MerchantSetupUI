@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "TransDlg.h"
+#include "ModernMessageBox.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -771,7 +772,7 @@ BOOL CTransDlg::OnCommand(WPARAM wParam, LPARAM lParam)
         if (nID == IDC_TRANS_BTN_CLOSE) { EndDialog(IDCANCEL); return TRUE; }
         if (nID == IDC_TRANS_BTN_RUN) {
             CString err;
-            if (!ValidateCurrentMode(err)) { AfxMessageBox(err,MB_ICONEXCLAMATION|MB_OK); return TRUE; }
+            if (!ValidateCurrentMode(err)) { CModernMessageBox::Warning(err, this); return TRUE; }
             CString amt; m_edtAmount.GetWindowText(amt); amt.Trim();
             bool bCash = (m_eMode==MODE_CASH_APPROVAL || m_eMode==MODE_CASH_CANCEL);
             SetResultValue(0, _T("2026-03-20 21:12:06"));

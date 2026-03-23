@@ -1380,7 +1380,7 @@ void CModernToggleSwitch::SetPending(BOOL bPending)
 	{
 		// Freeze thumb at midpoint and start spinner
 		if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
-		m_fAnimProgress = 0.5f;
+		m_fAnimProgress = m_bToggled ? 0.0f : 1.0f;  // hold at origin while pending
 		m_fSpinAngle = 0.0f;
 		if (m_uSpinTimer) { KillTimer(m_uSpinTimer); m_uSpinTimer = 0; }
 		m_uSpinTimer = SetTimer(2, 33, NULL);
@@ -1447,14 +1447,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	ModernUIGfx::AddRoundRect(switchPath, switchRect, switchRect.Height / 2.0f);
 
 	// 트랙 그리기 (ON/OFF 색상 로직)
-	// Track color: pending state overrides normal ON/OFF/disabled colors
-	if (m_bPending)
-	{
-		// Muted mid-blue: signals 'in progress' (not full ON, not OFF)
-		Gdiplus::SolidBrush trackBrush(Gdiplus::Color(255, 140, 185, 235));
-		graphics.FillPath(&trackBrush, &switchPath);
-	}
-	else
+	// Track color: reflects actual ON/OFF state (same during pending)
 	{
 		float rOff, gOff, bOff, rOn, gOn, bOn;
 		if (disabled) {
@@ -1465,7 +1458,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			rOff=230; gOff=236; bOff=245;  rOn=0;   gOn=100; bOn=221;
 		}
 		float t = m_fAnimProgress;
-		float _easeT = 1.0f - (1.0f - t)*(1.0f - t)*(1.0f - t);
+		float _easeT = m_bToggled ? (1.0f-(1.0f-t)*(1.0f-t)*(1.0f-t)) : (t*t*t);
 		Gdiplus::SolidBrush trackBrush(Gdiplus::Color(255,
 			(BYTE)(rOff+(rOn-rOff)*_easeT), (BYTE)(gOff+(gOn-gOff)*_easeT), (BYTE)(bOff+(bOn-bOff)*_easeT)));
 		graphics.FillPath(&trackBrush, &switchPath);
@@ -1477,9 +1470,7 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	REAL knobLeft  = switchRect.X + knobPadding;
 	REAL knobRight = switchRect.X + switchRect.Width - knobSize - knobPadding;
 	REAL knobX;
-	if (m_bPending)
-		knobX = knobLeft + (knobRight - knobLeft) * 0.5f;  // true center, no easing
-	else { float _eT = m_fAnimProgress; _eT = 1.0f - (1.0f - _eT)*(1.0f - _eT)*(1.0f - _eT); knobX = knobLeft + (knobRight - knobLeft) * _eT; }
+	{ float _eT = m_fAnimProgress; _eT = m_bToggled ? (1.0f-(1.0f-_eT)*(1.0f-_eT)*(1.0f-_eT)) : (_eT*_eT*_eT); knobX = knobLeft + (knobRight - knobLeft) * _eT; }
 	REAL knobY = switchRect.Y + knobPadding;
 
 	Gdiplus::RectF knobRect(knobX, knobY, knobSize, knobSize);
@@ -1581,7 +1572,7 @@ void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point) {
 void CModernToggleSwitch::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_uAnimTimer) {
-		const float kStep = 0.25f;
+		const float kStep = 0.08f;
 		if (m_bToggled) {
 			m_fAnimProgress += kStep;
 			if (m_fAnimProgress >= 1.0f) { m_fAnimProgress = 1.0f; KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }

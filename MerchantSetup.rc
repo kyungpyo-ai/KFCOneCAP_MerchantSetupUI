@@ -196,6 +196,18 @@ BEGIN
     0
 END
 
+
+IDD_MODERN_MESSAGEBOX DIALOGEX 0, 0, 360, 140
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION
+EXSTYLE WS_EX_TOPMOST | WS_EX_APPWINDOW
+CAPTION "KFTCGiroCAP"
+FONT 9, "맑은 고딕", 0, 0, 0x0
+BEGIN
+    LTEXT           "메시지 내용",IDC_STATIC_MESSAGE,80,45,260,40,SS_LEFT
+    DEFPUSHBUTTON   "확인",IDOK,140,95,80,30,BS_OWNERDRAW
+    PUSHBUTTON      "취소",IDCANCEL,230,95,80,30,BS_OWNERDRAW
+END
+
 #endif    // 한국어(대한민국) resources
 /////////////////////////////////////////////////////////////////////////////
 

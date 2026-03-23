@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "Resource.h"
 #include "ShopSetupDlg.h"
+
+#include "ModernMessageBox.h"
 #include "ShopDownDlg.h"
 #include "ModernUI.h"
 #include "RegistryUtil.h"
@@ -2178,9 +2180,7 @@ BOOL CShopSetupDlg::ValidateComboInputs()
                 _T("SERIALPORT"), _T("PORT_ALWAYSOPEN"), _T("1"));
             if (portOpen == _T("0"))
             {
-                MessageBox(
-                    _T("AOP reader requires port-always-open to be enabled.\nPlease configure the reader port settings first."),
-                    _T("Validation Error"), MB_OK | MB_ICONWARNING);
+                CModernMessageBox::Warning(_T("AOP reader requires port-always-open to be enabled.\nPlease configure the reader port settings first."), this);
                 if (m_nActiveTab != 1) { m_tabCtrl.SetCurSel(1); ShowTab(1); }
                 m_comboInterlock.SetFocus();
                 return FALSE;
@@ -2190,9 +2190,7 @@ BOOL CShopSetupDlg::ValidateComboInputs()
     // Rule 2: VAN server changed but no merchant download has been performed
     if (m_comboVanServer.GetCurSel() != m_snap.cmbVanServer && !m_bMerchantDownloaded)
     {
-        MessageBox(
-            _T("VAN server has been changed. Please perform a merchant download before saving."),
-            _T("Validation Error"), MB_OK | MB_ICONWARNING);
+        CModernMessageBox::Warning(_T("VAN server has been changed. Please perform a merchant download before saving."), this);
         if (m_nActiveTab != 3) { m_tabCtrl.SetCurSel(3); ShowTab(3); }
         m_comboVanServer.SetFocus();
         return FALSE;
@@ -2205,9 +2203,7 @@ BOOL CShopSetupDlg::ValidateComboInputs()
             (int)(sizeof(kHotkeys)/sizeof(kHotkeys[0])), _T("NORMAL"));
         if (cancelKey != _T("NORMAL") && msrKey != _T("NORMAL") && cancelKey == msrKey)
         {
-            MessageBox(
-                _T("Cancel hotkey and MSR hotkey cannot be set to the same key."),
-                _T("Validation Error"), MB_OK | MB_ICONWARNING);
+            CModernMessageBox::Warning(_T("Cancel hotkey and MSR hotkey cannot be set to the same key."), this);
             if (m_nActiveTab != 2) { m_tabCtrl.SetCurSel(2); ShowTab(2); }
             m_comboCancelKey.SetFocus();
             return FALSE;
@@ -2227,7 +2223,7 @@ void CShopSetupDlg::OnOK()
     int nFirstInvalidCtrlId = 0;
     if (!ValidateAllInputs(FALSE, &nFirstInvalidCtrlId))
     {
-        MessageBox(_T("입력값을 확인해주세요."), _T("확인"), MB_OK | MB_ICONWARNING);
+        CModernMessageBox::Warning(_T("입력값을 확인해주세요."), this);
         const int nErrorTab = GetTabIndexForControl(nFirstInvalidCtrlId);
         if (nErrorTab >= 0 && nErrorTab <= 2 && nErrorTab != m_nActiveTab)
         {
@@ -2263,7 +2259,7 @@ void CShopSetupDlg::OnCancel()
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
     if (HasChanges())
     {
-        if (MessageBox(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), _T("확인"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+        if (CModernMessageBox::Question(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), this) != IDYES)
             return;
     }
     CDialog::OnCancel();
