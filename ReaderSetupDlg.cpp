@@ -1161,6 +1161,12 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 		ApplyEnableStateToButtons(2, FALSE);
 		Invalidate(FALSE);
 	}
+	else
+	{
+		// Port open turned OFF: re-enable reader2 controls
+		UpdateReaderEnableState(2);
+		Invalidate(FALSE);
+	}
 
 	// Save port open state to registry: "0" = ON, "1" = OFF
 	if (bSuccess)

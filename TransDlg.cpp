@@ -259,7 +259,7 @@ int CTransDlg::GetSetupCardHeight() const
 int CTransDlg::GetResultCardHeight() const
 {
     // 2열 구성: 5행 (열 2개 × 행 5개)
-    return SX(44) + 5 * SX(34) + SX(14);
+    return SX(44) + 10 * SX(34) + SX(14);
 }
 void CTransDlg::ResizeForCurrentMode()
 {
@@ -282,7 +282,6 @@ BOOL CTransDlg::OnInitDialog()
     CDialog::OnInitDialog();
     // WS_CLIPCHILDREN 제거: 부모 BitBlt가 숨겨진 컨트롤 영역도 덮도록 함
     // (이게 없으면 SW_HIDE된 CStatic 영역에 ghost text가 남음)
-    ModifyStyle(WS_CLIPCHILDREN, 0, 0);
     ModernUIGfx::EnsureGdiplusStartup();
     EnsureFonts();
     SetWindowText(_T("통합 결제 테스트"));
@@ -577,7 +576,7 @@ void CTransDlg::LayoutControls()
     if (!::IsWindow(m_hWnd)) return;
     CRect cl; GetClientRect(&cl);
 
-    const int om=SX(10), cp=SX(18), ig=SX(14);
+    const int om=SX(10), cp=SX(18), ig=SX(16);
     const int lH=SX(14), cH=SX(32), gLC=SX(4);
     const int fGX=SX(12), fGY=SX(10);
     const int bH=SX(42), bW1=SX(90), bW2=SX(140);
@@ -635,17 +634,12 @@ void CTransDlg::LayoutControls()
     int rTY = rcR.top + SX(44);
     int rL=rcR.left+SX(16), rR2=rcR.right-SX(16);
     int rTW = rR2 - rL;                 // 전체 가용 너비
-    int rColGap = SX(16);               // 열 간격
-    int rColW = (rTW - rColGap) / 2;   // 열 너비
-    int rLW = SX(60);                   // 레이블 너비
+    int rLW = SX(72);
+    int vW  = rTW - rLW;
     for (int i=0; i<10; i++) {
-        int col = i / 5;                // 0=좌열(0~4), 1=우열(5~9)
-        int row = i % 5;
-        int cx = rL + col * (rColW + rColGap);
-        int ry = rTY + rRowH * row;
-        int vW = rColW - rLW;
-        m_resultLabels[i].MoveWindow(cx, ry+(rRowH-SX(13))/2, rLW, SX(13));
-        m_resultValues[i].MoveWindow(cx+rLW, ry+(rRowH-SX(14))/2, vW, SX(14));
+        int ry = rTY + rRowH * i;
+        m_resultLabels[i].MoveWindow(rL, ry+(rRowH-SX(13))/2, rLW, SX(13));
+        m_resultValues[i].MoveWindow(rL+rLW, ry+(rRowH-SX(14))/2, vW, SX(14));
     }
 
     // 버튼
@@ -670,7 +664,7 @@ void CTransDlg::OnPaint()
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
-    const int om=SX(10), cp=SX(18), ig=SX(14);
+    const int om=SX(10), cp=SX(18), ig=SX(16);
     CRect rcMain(om, om, cl.right-om, cl.bottom-om);
     CRect rcHdr(rcMain.left, rcMain.top, rcMain.right, rcMain.top+SX(84));
     int cL=rcMain.left+cp, cR=rcMain.right-cp;
@@ -716,20 +710,12 @@ void CTransDlg::OnPaint()
         const int rRowH=SX(34);
         int rTY=rcR.top+SX(44);
         int rL=rcR.left+SX(16), rR2=rcR.right-SX(16);
-        int rTW=rR2-rL, rColGap=SX(16), rColW=(rTW-rColGap)/2;
         Gdiplus::Pen pen(Gdiplus::Color(255,
             GetRValue(kDivider),GetGValue(kDivider),GetBValue(kDivider)), 1.f);
-        // 각 열 내부 수평 구분선 (행 사이)
-        for (int col=0; col<2; col++) {
-            int cx = rL + col * (rColW + rColGap);
-            for (int row=1; row<5; row++) {
-                float ly = (float)(rTY + rRowH * row);
-                g.DrawLine(&pen,(float)cx, ly,(float)(cx+rColW), ly);
-            }
+        for (int row=1; row<10; row++) {
+            float ly = (float)(rTY + rRowH * row);
+            g.DrawLine(&pen,(float)rL, ly,(float)rR2, ly);
         }
-        // 열 사이 수직 구분선
-        float vx = (float)(rL + rColW + rColGap/2);
-        g.DrawLine(&pen, vx,(float)rTY, vx,(float)(rTY+5*rRowH));
     }
 
     dc.BitBlt(0,0,cl.Width(),cl.Height(),&mem,0,0,SRCCOPY);

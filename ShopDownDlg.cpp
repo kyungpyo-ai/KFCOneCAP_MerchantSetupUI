@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ShopDownDlg.h"
+#include "ShopSetupDlg.h"
 #include <string>
 
 // Info panel text colors (card layout)
@@ -23,6 +24,17 @@ static const COLORREF kClrEditTextDis = KFTC_EDIT_TEXT_DIS; // edit control text
 //  - WM_VSCROLL/마우스휠 처리 시 범위(clamp) 누락이 크래시/깜빡임 원인이 되기 쉬움
 // ==============================================================
 
+
+#define WM_SHOPDOWN_DOWNLOAD_DONE  (WM_APP + 200)
+
+static UINT DownloadWorkerThread(LPVOID pParam)
+{
+    HWND hWnd = (HWND)pParam;
+    // TODO: replace with actual KFTC download API call
+    BOOL bSuccess = TRUE;
+    ::PostMessage(hWnd, WM_SHOPDOWN_DOWNLOAD_DONE, (WPARAM)bSuccess, 0);
+    return 0;
+}
 
 IMPLEMENT_DYNAMIC(CShopDownDlg, CDialog)
 
@@ -57,6 +69,7 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_WM_ACTIVATE()
     ON_WM_NCACTIVATE()
     ON_WM_TIMER()
+    ON_MESSAGE(WM_SHOPDOWN_DOWNLOAD_DONE, OnDownloadDone)
 END_MESSAGE_MAP()
 
 // ============================================================================
@@ -126,6 +139,10 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     , m_bNavAnimNext(false)
     , m_nAnimFromPage(0)
     , m_fPillFrom(0.f)
+    , m_nLoadingSlot(-1)
+    , m_nLoadingRowIdx(-1)
+    , m_nLoadingAnimTimerID(0)
+    , m_nLoadingTimerID(0)
     , m_pBrCardNormal(nullptr)
     , m_pBrCardEmpty(nullptr)
 {
@@ -144,6 +161,8 @@ CShopDownDlg::~CShopDownDlg()
 void CShopDownDlg::OnDestroy()
 {
     // 창 소멸 시 실행 중인 애니메이션 타이머가 있다면 안전하게 해제
+    if (m_nLoadingAnimTimerID != 0) { KillTimer(m_nLoadingAnimTimerID); m_nLoadingAnimTimerID = 0; }
+    if (m_nLoadingTimerID     != 0) { KillTimer(m_nLoadingTimerID);     m_nLoadingTimerID     = 0; }
     KillTimer(42);
 
     if (m_hFontLbl)     { ::DeleteObject(m_hFontLbl);     m_hFontLbl     = nullptr; }
@@ -206,17 +225,20 @@ BOOL CShopDownDlg::OnInitDialog()
 // ============================================================================
 void CShopDownDlg::CreateControlsOnce()
 {
-    // 데이터 초기화 부분은 기존과 동일
-    struct { LPCTSTR prod; LPCTSTR biz; LPCTSTR name; } data[25] = {
-        {_T("K074404214"), _T("1050844729"), _T("금융결제원 테스트")},
-    };
-
+    // Load saved registry data for all rows
     for (int i = 0; i < kRowCount; ++i)
     {
-        m_rowData[i].prdid = (data[i].prod ? data[i].prod : _T(""));
-        m_rowData[i].regno = (data[i].biz ? data[i].biz : _T(""));
-        m_rowData[i].retail_name = (data[i].name ? data[i].name : _T(""));
-        m_rowData[i].second_name = _T("");
+        int n = i + 1;
+        CString keyPrd, keyReg, keyName, keySecond;
+        keyPrd.Format(_T("RECENT_PRODUCT_ID%d"), n);
+        keyReg.Format(_T("RECENT_REGNO%d"), n);
+        keyName.Format(_T("RECENT_RETAIL_NAME%d"), n);
+        keySecond.Format(_T("RECENT_SECOND_NAME%d"), n);
+        m_rowData[i].prdid       = AfxGetApp()->GetProfileString(_T("TCP"), keyPrd,    _T(""));
+        m_rowData[i].regno       = AfxGetApp()->GetProfileString(_T("TCP"), keyReg,    _T(""));
+        m_rowData[i].retail_name = AfxGetApp()->GetProfileString(_T("TCP"), keyName,   _T(""));
+        m_rowData[i].second_name = AfxGetApp()->GetProfileString(_T("TCP"), keySecond, _T(""));
+        m_rowData[i].passwd      = _T("");
     }
 
     // Edit/버튼 컨트롤은 리소스 기반 정적 컨트롤로 전환했으므로
@@ -404,6 +426,49 @@ void CShopDownDlg::LayoutControls()
 // ============================================================================
 // Commands / events
 // ============================================================================
+// ============================================================================
+// PreTranslateMessage - Tab key cycles through edits: left->right, top->bottom
+// ============================================================================
+BOOL CShopDownDlg::PreTranslateMessage(MSG* pMsg)
+{
+    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB)
+    {
+        const BOOL bShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        CWnd* pFocus = GetFocus();
+        if (!pFocus) return CDialog::PreTranslateMessage(pMsg);
+
+        // Tab order: prod[0] -> biz[0] -> pwd[0] -> prod[1] -> biz[1] -> pwd[1]
+        CWnd* const tabOrder[] = {
+            &m_editProd[0], &m_editBiz[0], &m_editPwd[0],
+            &m_editProd[1], &m_editBiz[1], &m_editPwd[1]
+        };
+        const int count = (int)(sizeof(tabOrder) / sizeof(tabOrder[0]));
+
+        int cur = -1;
+        for (int i = 0; i < count; ++i)
+        {
+            if (tabOrder[i]->GetSafeHwnd() && tabOrder[i]->GetSafeHwnd() == pFocus->GetSafeHwnd())
+            { cur = i; break; }
+        }
+        if (cur < 0) return CDialog::PreTranslateMessage(pMsg);
+
+        // Find next visible+enabled control, skipping hidden ones
+        int next = cur;
+        for (int i = 0; i < count; ++i)
+        {
+            next = bShift ? (next - 1 + count) % count : (next + 1) % count;
+            CWnd* p = tabOrder[next];
+            if (p->GetSafeHwnd() && p->IsWindowVisible() && p->IsWindowEnabled())
+                break;
+        }
+        tabOrder[next]->SetFocus();
+        if (CEdit* pEd = DYNAMIC_DOWNCAST(CEdit, tabOrder[next]))
+            pEd->SetSel(0, -1);
+        return TRUE;
+    }
+    return CDialog::PreTranslateMessage(pMsg);
+}
+
 BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
     /* [UI-STEP] 컨트롤 이벤트 라우팅(버튼 클릭 등)
@@ -435,27 +500,122 @@ BOOL CShopDownDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 
 void CShopDownDlg::OnDownloadClick(int slot, int rowIdx)
 {
-    /* [UI-STEP] 다운로드 버튼 처리(UI 연동)
-     * 1) 선택된 단말/가맹점 정보를 확인한다.
-     * 2) 다운로드 요청을 수행한 뒤 결과를 리스트/카드에 반영한다.
-     * 3) 반영 후 Invalidate()로 화면 갱신한다.
-     */
-
     if (slot < 0 || slot >= kRowsPerPage) return;
+    if (m_nLoadingSlot >= 0) return; // another download in progress
 
-    // 테스트용: 다운로드 시 대표가맹점명(RetailName)에 "TEST"를 채워 카드 상태(배경)를 즉시 전환
-    m_rowData[rowIdx].retail_name = _T("TEST");
+    // Read current VAN server IP and port directly from ShopSetupDlg controls
+    CString strVanServerIp, strVanServerPort;
+    {
+        CShopSetupDlg* pSetup = DYNAMIC_DOWNCAST(CShopSetupDlg, GetParent()->GetParent());
+        if (pSetup && pSetup->GetSafeHwnd())
+            pSetup->GetVanSettings(strVanServerIp, strVanServerPort);
+        else {
+            strVanServerIp   = AfxGetApp()->GetProfileString(_T("TCP"), _T("VAN_SERVER_IP"),   _T("www.kftcvan.or.kr"));
+            strVanServerPort = AfxGetApp()->GetProfileString(_T("TCP"), _T("VAN_SERVER_PORT"), _T("443"));
+        }
+    }
 
-    // 필요 시 단말기별 가맹점도 동일하게 표시(빈칸이면 보기 어색해서 같이 채움)
-    if (m_rowData[rowIdx].second_name.IsEmpty())
-        m_rowData[rowIdx].second_name = _T("TEST");
+    // Read current edit values and update rowData
+    CString prdid, regno, passwd;
+    if (m_editProd[slot].GetSafeHwnd()) m_editProd[slot].GetWindowText(prdid);
+    if (m_editBiz[slot].GetSafeHwnd())  m_editBiz[slot].GetWindowText(regno);
+    if (m_editPwd[slot].GetSafeHwnd())  m_editPwd[slot].GetWindowText(passwd);
+    m_rowData[rowIdx].prdid  = prdid;
+    m_rowData[rowIdx].regno  = regno;
+    m_rowData[rowIdx].passwd = passwd;
 
-    // 화면/컨트롤 underlay 즉시 동기화
-    // 다운로드되면 삭제 버튼 활성화
-    if (m_btnDelete[slot].GetSafeHwnd()) m_btnDelete[slot].EnableWindow(TRUE);
+    // Start loading UI
+    StartLoadingOperation(slot);
+    m_nLoadingRowIdx = rowIdx;
 
-    ApplyRowUnderlay(slot, FALSE);
-    InvalidateRect(&m_rcRow[slot], FALSE);
+    // Launch worker thread
+    AfxBeginThread(DownloadWorkerThread, (LPVOID)m_hWnd);
+}
+
+// ============================================================================
+// Loading state management (spin + timeout)
+// ============================================================================
+void CShopDownDlg::StartLoadingOperation(int slot)
+{
+    if (m_nLoadingSlot >= 0) return;
+    m_nLoadingSlot = slot;
+
+    if (m_btnDownload[slot].GetSafeHwnd())
+        m_btnDownload[slot].SetLoading(TRUE, _T(""));
+
+    m_nLoadingAnimTimerID = 0x4820;
+    m_nLoadingTimerID     = 0x4821;
+    SetTimer(m_nLoadingAnimTimerID, 33, NULL);
+    SetTimer(m_nLoadingTimerID,   8000, NULL);
+    Invalidate(FALSE);
+}
+
+void CShopDownDlg::FinishLoadingOperation(BOOL bRefresh)
+{
+    if (m_nLoadingAnimTimerID != 0) { KillTimer(m_nLoadingAnimTimerID); m_nLoadingAnimTimerID = 0; }
+    if (m_nLoadingTimerID     != 0) { KillTimer(m_nLoadingTimerID);     m_nLoadingTimerID     = 0; }
+
+    if (m_nLoadingSlot >= 0 && m_nLoadingSlot < kRowsPerPage)
+    {
+        if (m_btnDownload[m_nLoadingSlot].GetSafeHwnd())
+            m_btnDownload[m_nLoadingSlot].SetLoading(FALSE);
+    }
+    m_nLoadingSlot   = -1;
+    m_nLoadingRowIdx = -1;
+    if (bRefresh) Invalidate(FALSE);
+}
+
+// Called on main thread when DownloadWorkerThread posts WM_SHOPDOWN_DOWNLOAD_DONE
+LRESULT CShopDownDlg::OnDownloadDone(WPARAM wParam, LPARAM lParam)
+{
+    BOOL bSuccess = (BOOL)wParam;
+    int  slot     = m_nLoadingSlot;    // set by StartLoadingOperation
+    int  rowIdx   = m_nLoadingRowIdx;  // set by OnDownloadClick
+
+    if (bSuccess && rowIdx >= 0 && rowIdx < kRowCount)
+    {
+        // retail_name / second_name come from download result (stub)
+        if (m_rowData[rowIdx].retail_name.IsEmpty())
+            m_rowData[rowIdx].retail_name = _T("TEST");
+        if (m_rowData[rowIdx].second_name.IsEmpty())
+            m_rowData[rowIdx].second_name = _T("TEST");
+
+        // Write all fields to registry
+        {
+            int n = rowIdx + 1;
+            CString keyPrd, keyReg, keyName, keySecond, keyTid, keyWork, keyAddr, keyRepr, keyPhone, keyPosid;
+            keyPrd.Format(_T("RECENT_PRODUCT_ID%d"), n);
+            keyReg.Format(_T("RECENT_REGNO%d"), n);
+            keyName.Format(_T("RECENT_RETAIL_NAME%d"), n);
+            keySecond.Format(_T("RECENT_SECOND_NAME%d"), n);
+            keyTid.Format(_T("RECENT_TID%d"), n);
+            keyWork.Format(_T("RECENT_WORKKEY%d"), n);
+            keyAddr.Format(_T("RECENT_RETAIL_ADDR%d"), n);
+            keyRepr.Format(_T("RECENT_RETAIL_REPR%d"), n);
+            keyPhone.Format(_T("RECENT_RETAIL_PHONE%d"), n);
+            keyPosid.Format(_T("RECENT_POSID%d"), n);
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyTid,    _T(""));
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyPrd,    m_rowData[rowIdx].prdid);
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyReg,    m_rowData[rowIdx].regno);
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyWork,   _T(""));
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyPosid,  _T(""));
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyName,   m_rowData[rowIdx].retail_name);
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyAddr,   _T(""));
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyRepr,   _T(""));
+            AfxGetApp()->WriteProfileString(_T("TCP"), keyPhone,  _T(""));
+            AfxGetApp()->WriteProfileString(_T("TCP"), keySecond, m_rowData[rowIdx].second_name);
+        }
+
+        // Update card UI for this slot
+        if (slot >= 0 && slot < kRowsPerPage)
+        {
+            if (m_btnDelete[slot].GetSafeHwnd()) m_btnDelete[slot].EnableWindow(TRUE);
+            ApplyRowUnderlay(slot, FALSE);
+        }
+    }
+
+    FinishLoadingOperation(TRUE);
+    return 0;
 }
 
 void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
@@ -474,6 +634,32 @@ void CShopDownDlg::OnDeleteClick(int slot, int rowIdx)
     m_rowData[rowIdx].prdid       = _T("");
     m_rowData[rowIdx].regno       = _T("");
     m_rowData[rowIdx].passwd      = _T("");
+
+    // Clear registry for this row
+    {
+        int n = rowIdx + 1;
+        CString keyPrd, keyReg, keyName, keySecond, keyTid, keyWork, keyAddr, keyRepr, keyPhone, keyPosid;
+        keyPrd.Format(_T("RECENT_PRODUCT_ID%d"), n);
+        keyReg.Format(_T("RECENT_REGNO%d"), n);
+        keyName.Format(_T("RECENT_RETAIL_NAME%d"), n);
+        keySecond.Format(_T("RECENT_SECOND_NAME%d"), n);
+        keyTid.Format(_T("RECENT_TID%d"), n);
+        keyWork.Format(_T("RECENT_WORKKEY%d"), n);
+        keyAddr.Format(_T("RECENT_RETAIL_ADDR%d"), n);
+        keyRepr.Format(_T("RECENT_RETAIL_REPR%d"), n);
+        keyPhone.Format(_T("RECENT_RETAIL_PHONE%d"), n);
+        keyPosid.Format(_T("RECENT_POSID%d"), n);
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyPrd,    _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyReg,    _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyName,   _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keySecond, _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyTid,    _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyWork,   _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyAddr,   _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyRepr,   _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyPhone,  _T(""));
+        AfxGetApp()->WriteProfileString(_T("TCP"), keyPosid,  _T(""));
+    }
 
     if (m_editProd[slot].GetSafeHwnd()) m_editProd[slot].SetWindowText(_T(""));
     if (m_editBiz[slot].GetSafeHwnd())  m_editBiz[slot].SetWindowText(_T(""));
@@ -819,7 +1005,9 @@ void CShopDownDlg::OnPrevPageClick()
         m_nAnimFromPage = m_nCurrentPage;
         m_nCurrentPage--;
         m_bNavAnimNext = false; m_nNavAnim = 10;
-        KillTimer(42); SetTimer(42, 16, NULL);
+        if (m_nLoadingAnimTimerID != 0) { KillTimer(m_nLoadingAnimTimerID); m_nLoadingAnimTimerID = 0; }
+    if (m_nLoadingTimerID     != 0) { KillTimer(m_nLoadingTimerID);     m_nLoadingTimerID     = 0; }
+    KillTimer(42); SetTimer(42, 16, NULL);
         RefreshPage();
     }
 }
@@ -839,7 +1027,9 @@ void CShopDownDlg::OnNextPageClick()
         m_nAnimFromPage = m_nCurrentPage;
         m_nCurrentPage++;
         m_bNavAnimNext = true; m_nNavAnim = 10;
-        KillTimer(42); SetTimer(42, 16, NULL);
+        if (m_nLoadingAnimTimerID != 0) { KillTimer(m_nLoadingAnimTimerID); m_nLoadingAnimTimerID = 0; }
+    if (m_nLoadingTimerID     != 0) { KillTimer(m_nLoadingTimerID);     m_nLoadingTimerID     = 0; }
+    KillTimer(42); SetTimer(42, 16, NULL);
         RefreshPage();
     }
 }
@@ -955,6 +1145,20 @@ void CShopDownDlg::OnMouseLeave()
 // ============================================================================
 void CShopDownDlg::OnTimer(UINT_PTR nIDEvent)
 {
+    if (nIDEvent == m_nLoadingAnimTimerID && m_nLoadingAnimTimerID != 0)
+    {
+        if (m_nLoadingSlot >= 0 && m_nLoadingSlot < kRowsPerPage)
+        {
+            if (m_btnDownload[m_nLoadingSlot].GetSafeHwnd())
+                m_btnDownload[m_nLoadingSlot].Invalidate(FALSE);
+        }
+        return;
+    }
+    if (nIDEvent == m_nLoadingTimerID && m_nLoadingTimerID != 0)
+    {
+        FinishLoadingOperation(TRUE);
+        return;
+    }
     if (nIDEvent == 42 && m_nNavAnim > 0)
     {
         m_nNavAnim--;

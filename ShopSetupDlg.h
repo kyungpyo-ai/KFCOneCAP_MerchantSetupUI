@@ -128,6 +128,9 @@ public:
 
     int m_intPort;
 
+    // Returns current live control values (before OK is pressed)
+    void GetVanSettings(CString& strIp, CString& strPort);
+
     // 카드/결제
     int m_intCardTimeout;
     int m_intNoSignAmount;

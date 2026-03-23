@@ -1537,6 +1537,18 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
 //  - OnOK()에서 ValidateAllInputs() 통과 후에만 호출된다.
 //  - 따라서 이 함수는 "검증이 끝난 정상값"을 저장하는 단계라고 보면 된다.
 // --------------------------------------------------------------
+void CShopSetupDlg::GetVanSettings(CString& strIp, CString& strPort)
+{
+    strIp = GetSelectedComboValue(m_comboVanServer, kVanServers,
+                                  (int)(sizeof(kVanServers) / sizeof(kVanServers[0])),
+                                  _T("www.kftcvan.or.kr"));
+    strPort.Empty();
+    if (m_editPort.GetSafeHwnd())
+        m_editPort.GetWindowText(strPort);
+    if (strPort.IsEmpty())
+        strPort = _T("443");
+}
+
 void CShopSetupDlg::SaveOptionsToRegistry()
 {
     UpdateData(TRUE);

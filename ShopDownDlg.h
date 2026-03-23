@@ -2,6 +2,8 @@
 #include "resource.h"
 #include "ModernUI.h"
 
+#define WM_SHOPDOWN_DOWNLOAD_DONE  (WM_APP + 200)
+
 // ==============================================================
 // [ShopDownDlg.h]
 //  - 가맹점 다운로드(조회/다운로드/삭제) 화면을 담당
@@ -38,6 +40,8 @@ protected:
     afx_msg BOOL OnNcActivate(BOOL bActive);
     afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
+    afx_msg LRESULT OnDownloadDone(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()
 
@@ -48,6 +52,8 @@ private:
     void OnDownloadClick(int slot, int rowIdx);
     void OnDeleteClick(int slot, int rowIdx);
     void RebindSlots();
+    void StartLoadingOperation(int slot);
+    void FinishLoadingOperation(BOOL bRefresh = TRUE);
 
     // ---------- Card/Control background sync ---------------------------------
      // 카드(행) 배경색이 상태에 따라 바뀌는 경우, 각 컨트롤의 UnderlayColor도
@@ -163,6 +169,12 @@ private:
     CRect m_rcInfoTermVal[kRowsPerPage];
 
     BOOL m_bInLayout;
+
+    // ---------- Download loading state ----------------------------------
+    int  m_nLoadingSlot;          // slot index being downloaded (-1 = none)
+    int  m_nLoadingRowIdx;        // rowIdx being downloaded
+    UINT m_nLoadingAnimTimerID;   // 33ms spin-frame timer
+    UINT m_nLoadingTimerID;       // timeout timer
 
     // ---------- Cached back-buffer (OnPaint) -----------------------------------
     CDC     m_memDC;
