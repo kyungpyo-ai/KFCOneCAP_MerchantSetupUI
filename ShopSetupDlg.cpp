@@ -308,6 +308,7 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     m_strCardDetectParam = _T("KFTCOneCAP TEST");
     m_intSignPadPort = 56;
     m_intScannerPort = 0;
+    m_bMerchantDownloaded = FALSE;
     m_hFontCardTitle = nullptr;
     m_hFontHdrTitle = nullptr;
     m_hFontHdrSub = nullptr;
@@ -2160,6 +2161,60 @@ BOOL CShopSetupDlg::HasChanges() const
     if (m_chkAutoReboot.IsToggled() != m_snap.tglAutoReboot)  return TRUE;
     return FALSE;
 }
+// ============================================================================
+// ValidateComboInputs -- combo-box specific validation rules
+// Called from OnOK after ValidateAllInputs passes.
+// Returns FALSE if any rule fails (also shows MessageBox and sets focus).
+// ============================================================================
+BOOL CShopSetupDlg::ValidateComboInputs()
+{
+    // Rule 1: AOP interlock requires PORT_ALWAYSOPEN enabled (not "0")
+    {
+        CString interlockVal = GetSelectedComboValue(m_comboInterlock, kInterlock,
+            (int)(sizeof(kInterlock)/sizeof(kInterlock[0])), _T("NORMAL"));
+        if (interlockVal == _T("AOP"))
+        {
+            CString portOpen = AfxGetApp()->GetProfileString(
+                _T("SERIALPORT"), _T("PORT_ALWAYSOPEN"), _T("1"));
+            if (portOpen == _T("0"))
+            {
+                MessageBox(
+                    _T("AOP reader requires port-always-open to be enabled.\nPlease configure the reader port settings first."),
+                    _T("Validation Error"), MB_OK | MB_ICONWARNING);
+                if (m_nActiveTab != 1) { m_tabCtrl.SetCurSel(1); ShowTab(1); }
+                m_comboInterlock.SetFocus();
+                return FALSE;
+            }
+        }
+    }
+    // Rule 2: VAN server changed but no merchant download has been performed
+    if (m_comboVanServer.GetCurSel() != m_snap.cmbVanServer && !m_bMerchantDownloaded)
+    {
+        MessageBox(
+            _T("VAN server has been changed. Please perform a merchant download before saving."),
+            _T("Validation Error"), MB_OK | MB_ICONWARNING);
+        if (m_nActiveTab != 3) { m_tabCtrl.SetCurSel(3); ShowTab(3); }
+        m_comboVanServer.SetFocus();
+        return FALSE;
+    }
+    // Rule 3: Cancel hotkey and MSR hotkey must not be the same non-default key
+    {
+        CString cancelKey = GetSelectedComboValue(m_comboCancelKey, kHotkeys,
+            (int)(sizeof(kHotkeys)/sizeof(kHotkeys[0])), _T("NORMAL"));
+        CString msrKey    = GetSelectedComboValue(m_comboMSRKey,    kHotkeys,
+            (int)(sizeof(kHotkeys)/sizeof(kHotkeys[0])), _T("NORMAL"));
+        if (cancelKey != _T("NORMAL") && msrKey != _T("NORMAL") && cancelKey == msrKey)
+        {
+            MessageBox(
+                _T("Cancel hotkey and MSR hotkey cannot be set to the same key."),
+                _T("Validation Error"), MB_OK | MB_ICONWARNING);
+            if (m_nActiveTab != 2) { m_tabCtrl.SetCurSel(2); ShowTab(2); }
+            m_comboCancelKey.SetFocus();
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
 // OnOK / OnCancel
 // ============================================================================
 // --------------------------------------------------------------
@@ -2198,6 +2253,8 @@ void CShopSetupDlg::OnOK()
         }
         return;
     }
+    if (!ValidateComboInputs())
+        return;
     SaveOptionsToRegistry();
     CDialog::OnOK();
 }

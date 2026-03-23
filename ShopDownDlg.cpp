@@ -294,6 +294,7 @@ void CShopDownDlg::ApplyFonts()
         m_editPwd[slot].SetFont(&m_fontCell, FALSE);
         m_editBiz[slot].SetNumericOnly(TRUE);
         m_editPwd[slot].SetNumericOnly(TRUE);
+        m_editPwd[slot].SetPasswordChar(_T('*'));
         m_btnDownload[slot].SetFont(&m_fontCell, FALSE);
         m_btnDelete[slot].SetFont(&m_fontCell, FALSE);
     }
@@ -614,7 +615,14 @@ LRESULT CShopDownDlg::OnDownloadDone(WPARAM wParam, LPARAM lParam)
         }
     }
 
-    FinishLoadingOperation(TRUE);
+    // Notify parent ShopSetupDlg that a download was performed (for VAN-server validation)
+    if (bSuccess)
+    {
+        CShopSetupDlg* pSetup = DYNAMIC_DOWNCAST(CShopSetupDlg, GetParent()->GetParent());
+        if (pSetup && pSetup->GetSafeHwnd())
+            pSetup->m_bMerchantDownloaded = TRUE;
+    }
+        FinishLoadingOperation(TRUE);
     return 0;
 }
 
