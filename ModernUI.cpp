@@ -1566,7 +1566,7 @@ void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point) {
 	if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
 	m_uAnimTimer = SetTimer(1, 16, NULL);
 	GetParent()->SendMessage(WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(), BN_CLICKED), (LPARAM)m_hWnd);
-	CButton::OnLButtonUp(nFlags, point);
+	ReleaseCapture();
 }
 
 void CModernToggleSwitch::OnTimer(UINT_PTR nIDEvent)

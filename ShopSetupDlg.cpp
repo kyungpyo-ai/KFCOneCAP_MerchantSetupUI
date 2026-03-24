@@ -734,13 +734,13 @@ void CShopSetupDlg::InitializeControls()
             sw.ModifyStyleEx(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE, 0);
             sw.SetWindowPos(NULL, 0, 0, 0, 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            sw.SetToggled(bOn);
+            sw.SetUnderlayColor(bgColor);
+            sw.SetWindowText(txt);
             sw.RedrawWindow(NULL, NULL,
                 RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_UPDATENOW);
-            sw.SetWindowText(txt);
-            sw.SetToggled(bOn);
             sw.SetTextSizePx(labelPx_);  // fontLabel과 동일 (13px)
             sw.SetNoWrapEllipsis(TRUE);
-            sw.SetUnderlayColor(bgColor);
         };
     SetupTgl(m_chkCardDetect, IDC_CHECK_CARD_DETECT, _T("카드 감지 우선 거래 사용"), FALSE);
     SetupTgl(m_chkMultiVoice, IDC_CHECK_MULTI_VOICE, _T("멀티패드 음성 출력"), FALSE);
