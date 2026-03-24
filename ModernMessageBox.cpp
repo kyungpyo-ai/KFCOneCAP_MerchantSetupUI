@@ -91,6 +91,7 @@ BOOL CModernMessageBox::OnInitDialog()
     SetupButtons(btnY);
 
     CenterWindow();
+
     return TRUE;
 }
 
@@ -162,8 +163,13 @@ void CModernMessageBox::SetupButtons(int btnY)
     case ModernMsgBoxButtons::YesNo:
         if (pOK)     pOK->SetDlgCtrlID(IDYES);
         if (pCancel) pCancel->SetDlgCtrlID(IDNO);
-        ApplyBtn(m_btnNo, pCancel, FALSE, _T("아니오"), margin, halfW);
-        ApplyBtn(m_btnYes, pOK, TRUE, _T("예"), margin + halfW + gap, halfW);
+        if (m_type == ModernMsgBoxType::Question) {
+            ApplyBtn(m_btnYes, pOK, TRUE, _T("예"), margin, halfW);
+            ApplyBtn(m_btnNo, pCancel, FALSE, _T("아니오"), margin + halfW + gap, halfW);
+        } else {
+            ApplyBtn(m_btnNo, pCancel, FALSE, _T("아니오"), margin, halfW);
+            ApplyBtn(m_btnYes, pOK, TRUE, _T("예"), margin + halfW + gap, halfW);
+        }
         break;
     default: break;
     }
@@ -193,7 +199,6 @@ void CModernMessageBox::OnPaint()
     EnsureFonts();
     int textL = iconX + iconSz + SX(16);
     int textR = cl.right - SX(24);
-    int textT = SX(24);
 
     CString title, body;
     int nPos = m_strMessage.Find(_T('\n'));
@@ -202,44 +207,44 @@ void CModernMessageBox::OnPaint()
 
     mem.SetBkMode(TRANSPARENT);
 
-    // 제목 (Pretendard Bold, 진한 회색)
+    // 1. 제목 높이 먼저 계산
     CFont* pOldFont = mem.SelectObject(&m_fontTitle);
     mem.SetTextColor(RGB(25, 31, 40));
-    CRect rcTitle(textL, textT, textR, textT + 2000);
-    mem.DrawText(title, &rcTitle, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX | DT_CALCRECT);
-    int titleHeight = rcTitle.Height();
+    CRect rcTitleCalc(textL, 0, textR, 2000);
+    mem.DrawText(title, &rcTitleCalc, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX | DT_CALCRECT);
+    int titleH = rcTitleCalc.Height();
 
-    // ?? 디테일 추가: 본문(body)이 없을 경우, 텍스트 전체를 세로로 약간 내려서 아이콘과 중앙을 맞춤
-    int drawY = textT;
+    //  2. 텍스트 세로 중앙 정렬 로직 (본문이 없으면 아이콘 중앙에 맞춤!)
+    int drawY = SX(24); // 기본 Y 좌표
     if (body.IsEmpty())
     {
         int iconCenterY = iconY + (iconSz / 2);
-        drawY = iconCenterY - (titleHeight / 2);
+        drawY = iconCenterY - (titleH / 2);
     }
 
-    // 계산된 drawY 위치에 텍스트 그리기
-    CRect rcTitleDraw(textL, drawY, textR, drawY + titleHeight);
+    // 3. 계산된 위치에 제목 그리기
+    CRect rcTitleDraw(textL, drawY, textR, drawY + titleH);
     mem.DrawText(title, &rcTitleDraw, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
 
-    // 본문 (Pretendard Regular, 부드러운 회색)
+    // 4. 본문이 있으면 이어서 그리기
     if (!body.IsEmpty()) {
         mem.SelectObject(&m_fontBody);
-        mem.SetTextColor(RGB(139, 149, 161));
+        mem.SetTextColor(RGB(78, 89, 104));
         int bodyT = rcTitleDraw.bottom + SX(8);
         CRect rcBody(textL, bodyT, textR, bodyT + 2000);
         mem.DrawText(body, &rcBody, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
     }
-
     mem.SelectObject(pOldFont);
 
-    // 외곽 테두리 1px 그리기 (타이틀바가 없으므로 은은한 경계선이 필요함)
-    CPen borderPen(PS_SOLID, 1, RGB(229, 232, 235));
+    //  5. 배경과 창을 분리하는 깔끔한 1px 테두리 (필수!)
+    CPen borderPen(PS_SOLID, 1, RGB(220, 224, 228)); // 연한 회색 외곽선
     CPen* pOldPen = mem.SelectObject(&borderPen);
     CBrush* pOldBrush = (CBrush*)mem.SelectStockObject(NULL_BRUSH);
     mem.Rectangle(0, 0, cl.right, cl.bottom);
     mem.SelectObject(pOldPen);
     mem.SelectObject(pOldBrush);
 
+    // 화면에 출력
     dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
     mem.SelectObject(pOld);
 }
@@ -249,44 +254,49 @@ void CModernMessageBox::DrawIcon(Gdiplus::Graphics& g, Gdiplus::RectF rect, Mode
 {
     if (rect.Width <= 0 || rect.Height <= 0) return;
 
-    struct IconTheme { BYTE r1, g1, b1, rt, gt, bt; WCHAR sym; };
+    // ?? 회원님의 피드백 반영: 왼쪽 아래 쏠림을 해결하기 위해 
+    // offsetX는 플러스(오른쪽), offsetY는 마이너스(위쪽)로 정밀 조정
+    struct IconTheme { BYTE r1, g1, b1, rt, gt, bt; WCHAR sym; float offsetX; float offsetY; };
     static const IconTheme themes[] = {
-        { 235, 244, 255,   27, 100, 242, L'i' },       // Info
-        { 255, 248, 230,  245, 166,  35, L'!' },       // Warning
-        { 255, 235, 238,  240,  68,  82, L'\u00D7'},   // Error (x 표)
-        { 230, 248, 238,   49, 172, 100, L'\u2713'},   // Success (체크)
-        { 235, 244, 255,   27, 100, 242, L'?' },       // Question
+        { 235, 244, 255,   27, 100, 242, L'i',      0.5f, -0.5f },
+        { 255, 248, 230,  245, 166,  35, L'!',      1.5f, -1.5f }, // ?? 오른쪽 위로 1.5px 이동
+        { 255, 235, 238,  240,  68,  82, L'\u00D7', 1.0f, -1.0f }, // ?? x표도 오른쪽 위로 1px 이동
+        { 230, 248, 238,   49, 172, 100, L'\u2713', 0.5f, -0.5f },
+        { 235, 244, 255,   27, 100, 242, L'?',      0.5f, -0.5f },
     };
     const IconTheme& th = themes[(int)type];
 
-    // 1. 연한 파스텔 배경 그리기
+    // 1. 배경 그리기
     Gdiplus::SolidBrush bgBr(Gdiplus::Color(255, th.r1, th.g1, th.b1));
     g.FillEllipse(&bgBr, rect);
 
-    // ?? 2. CStringW를 사용하여 WCHAR -> const WCHAR* 변환 에러 완벽 차단!
+    // 2. 심볼 준비
     CStringW strSym;
-    strSym.AppendChar(th.sym); // 문자 1개를 안전한 와이드 문자열 개체에 넣음
-
+    strSym.AppendChar(th.sym);
     Gdiplus::SolidBrush symBr(Gdiplus::Color(255, th.rt, th.gt, th.bt));
 
     Gdiplus::StringFormat fmt;
     fmt.SetAlignment(Gdiplus::StringAlignmentCenter);
     fmt.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-    g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
+    g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit); // ?? 힌팅 옵션 변경으로 가독성 향상
 
     Gdiplus::Font symFont(L"Malgun Gothic", rect.Height * 0.55f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
 
-    // 3. strSym.GetString()은 항상 완벽한 const WCHAR* 포인터를 반환합니다.
+    //  3. 좌표 보정 적용 (X는 더하고, Y는 빼서 오른쪽 위로 이동)
+    Gdiplus::RectF textRect = rect;
+    textRect.X += th.offsetX;
+    textRect.Y += th.offsetY;
+
     if (symFont.GetLastStatus() == Gdiplus::Ok)
     {
-        g.DrawString(strSym.GetString(), strSym.GetLength(), &symFont, rect, &fmt, &symBr);
+        g.DrawString(strSym.GetString(), strSym.GetLength(), &symFont, textRect, &fmt, &symBr);
     }
     else
     {
         Gdiplus::Font fallbackFont(Gdiplus::FontFamily::GenericSansSerif(), rect.Height * 0.55f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
         if (fallbackFont.GetLastStatus() == Gdiplus::Ok)
         {
-            g.DrawString(strSym.GetString(), strSym.GetLength(), &fallbackFont, rect, &fmt, &symBr);
+            g.DrawString(strSym.GetString(), strSym.GetLength(), &fallbackFont, textRect, &fmt, &symBr);
         }
     }
 }

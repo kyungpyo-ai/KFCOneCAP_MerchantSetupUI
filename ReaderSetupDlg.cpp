@@ -1179,7 +1179,7 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 	if (bSuccess)
 		AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, PORT_ALWAYS_OPEN, bFinalState ? _T("0") : _T("1"));
 
-	CModernMessageBox::Info(_T("확인"), this);
+	CModernMessageBox::Warning(_T("확인"), this);
 
 	if (::IsWindow(m_btnOk.GetSafeHwnd()))
 		m_btnOk.SetFocus();

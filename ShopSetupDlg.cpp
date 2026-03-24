@@ -2259,7 +2259,7 @@ void CShopSetupDlg::OnCancel()
     if (m_popover.GetSafeHwnd()) m_popover.Hide();
     if (HasChanges())
     {
-        if (CModernMessageBox::Question(_T("변경된 내용이 있습니다.저장하지 않고 종료하시겠습니까?"), this) != IDYES)
+        if (CModernMessageBox::Question(_T("변경된 내용이 있습니다.\n저장하지 않고 종료하시겠습니까?\n종료하시겠습니까?"), this) != IDYES)
             return;
     }
     CDialog::OnCancel();
