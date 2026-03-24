@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -50,6 +50,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="common.cpp" />
     <ClCompile Include="KFTCOneCAPDlg.cpp" />
     <ClCompile Include="ReaderSetupDlg.cpp" />
     <ClCompile Include="RegistryUtil.cpp" />
@@ -61,6 +62,7 @@
     <ClCompile Include="ModernMessageBox.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common.h" />
     <ClInclude Include="KFTCOneCAPDlg.h" />
     <ClInclude Include="ReaderSetupDlg.h" />
     <ClInclude Include="RegistryUtil.h" />

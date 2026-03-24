@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "common.h"
 #include "resource.h"
 #include "KFTCOneCAPDlg.h"
 #include "ReaderSetupDlg.h"
@@ -239,16 +240,16 @@ void CHomeCardButton::OnTimer(UINT_PTR nIDEvent)
 
 namespace
 {
-    COLORREF kHomeBg          = KFTC_HOME_BG;
-    COLORREF kCardBg          = KFTC_CARD_BG;
-    COLORREF kCardBorder      = KFTC_CARD_BORDER;
+    COLORREF kHomeBg = KFTC_HOME_BG;
+    COLORREF kCardBg = KFTC_CARD_BG;
+    COLORREF kCardBorder = KFTC_CARD_BORDER;
     COLORREF kCardBorderHover = KFTC_CARD_BORDER_H;
-    COLORREF kCardFillHover   = KFTC_CARD_BG;
+    COLORREF kCardFillHover = KFTC_CARD_BG;
     COLORREF kCardFillPressed = KFTC_CARD_FILL_PRE;   // 더 진한 파랑: 선명한 눌림감
     // kIconBg 계열: DrawCardIcon 내부 직접 보간으로 대체됨
-    COLORREF kTitleText     = KFTC_TITLE_TEXT;      // 헤더 h1: #191F28
+    COLORREF kTitleText = KFTC_TITLE_TEXT;      // 헤더 h1: #191F28
     COLORREF kCardTitleText = KFTC_CARD_TITLE_T;   // 카드 h3: #333D4B
-    COLORREF kSubText       = KFTC_SUB_TEXT;    // #8B95A1
+    COLORREF kSubText = KFTC_SUB_TEXT;    // #8B95A1
     COLORREF kFooterDivider = KFTC_FOOTER_DIV;
 
 }
@@ -275,8 +276,8 @@ CKFTCOneCAPDlg::~CKFTCOneCAPDlg()
     }
     if (m_pGdiFontDesc != NULL) {
         delete m_pGdiFontDesc;
-    if (m_pGdiFontHeader != NULL) { delete m_pGdiFontHeader; m_pGdiFontHeader = NULL; }
-    if (m_pGdiFontSub    != NULL) { delete m_pGdiFontSub;    m_pGdiFontSub    = NULL; }
+        if (m_pGdiFontHeader != NULL) { delete m_pGdiFontHeader; m_pGdiFontHeader = NULL; }
+        if (m_pGdiFontSub != NULL) { delete m_pGdiFontSub;    m_pGdiFontSub = NULL; }
         m_pGdiFontDesc = NULL;
     }
 
@@ -431,11 +432,11 @@ void CKFTCOneCAPDlg::EnsureFonts()
     {
         LOGFONT lfCardTitle;
         m_fontCardTitle.GetLogFont(&lfCardTitle);
-        m_pGdiFontTitle  = ModernUIFont::CreateGdipFontFromLogFont(lfCardTitle);
+        m_pGdiFontTitle = ModernUIFont::CreateGdipFontFromLogFont(lfCardTitle);
 
         LOGFONT lfCardDesc;
         m_fontCardDesc.GetLogFont(&lfCardDesc);
-        m_pGdiFontDesc   = ModernUIFont::CreateGdipFontFromLogFont(lfCardDesc);
+        m_pGdiFontDesc = ModernUIFont::CreateGdipFontFromLogFont(lfCardDesc);
 
         LOGFONT lfHdr;
         m_fontTitle.GetLogFont(&lfHdr);
@@ -443,7 +444,7 @@ void CKFTCOneCAPDlg::EnsureFonts()
 
         LOGFONT lfSub;
         m_fontSubtitle.GetLogFont(&lfSub);
-        m_pGdiFontSub    = ModernUIFont::CreateGdipFontFromLogFont(lfSub);
+        m_pGdiFontSub = ModernUIFont::CreateGdipFontFromLogFont(lfSub);
     }
 
     // [3] 모든 폰트 준비 완료 플래그 설정
@@ -568,7 +569,7 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
 
     // --- 타이틀/서브타이틀 그리기 (GDI+ 방식으로 교체) ---
     Gdiplus::Font* pTitleFont = m_pGdiFontHeader;
-    Gdiplus::Font* pSubFont   = m_pGdiFontSub;
+    Gdiplus::Font* pSubFont = m_pGdiFontSub;
 
     SolidBrush titleBrush(Color(255, GetRValue(kTitleText), GetGValue(kTitleText), GetBValue(kTitleText)));
     SolidBrush subBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
@@ -1087,8 +1088,9 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
             }
             else if (ePending == PENDING_TRANS) {
 
-                CTransDlg dlg(this);
-                dlg.DoModal();
+                RestartApplication();
+                //CTransDlg dlg(this);
+                //dlg.DoModal();
             }
 
             // [3] 돌아왔을 때 부드럽게 갱신
@@ -1143,12 +1145,19 @@ void CKFTCOneCAPDlg::OnClose()
 class CKFTCOneCAPApp : public CWinApp
 {
 public:
-    CKFTCOneCAPApp() : m_bIntentionalExit(FALSE) { m_pszAppName = _tcsdup(_T("KFTCOneCAP")); }
+    CKFTCOneCAPApp()
+        : m_bIntentionalExit(FALSE)
+        , m_hSingleInstanceMutex(NULL)
+    {
+        m_pszAppName = _tcsdup(_T("KFTCOneCAP"));
+    }
 
-    // Set TRUE before intentional exit so watchdog does not restart.
-    BOOL m_bIntentionalExit;
+    BOOL   m_bIntentionalExit;       // TRUE = intentional exit, watchdog will not restart
+    HANDLE m_hSingleInstanceMutex;   // Named mutex for single-instance guard
 
-    // Launches a hidden copy of this EXE with /watchdog <PID> argument.
+    // ----------------------------------------------------------------
+    // SpawnWatchdog: launches a hidden copy of this EXE as watchdog.
+    // ----------------------------------------------------------------
     void SpawnWatchdog()
     {
         TCHAR exePath[MAX_PATH] = {};
@@ -1164,11 +1173,10 @@ public:
         PROCESS_INFORMATION pi = {};
 
         if (::CreateProcess(
-                NULL,
-                cmdLine.GetBuffer(),
-                NULL, NULL, FALSE,
-                CREATE_NO_WINDOW,
-                NULL, NULL, &si, &pi))
+            NULL, cmdLine.GetBuffer(),
+            NULL, NULL, FALSE,
+            CREATE_NO_WINDOW,
+            NULL, NULL, &si, &pi))
         {
             ::CloseHandle(pi.hThread);
             ::CloseHandle(pi.hProcess);
@@ -1176,8 +1184,9 @@ public:
         cmdLine.ReleaseBuffer();
     }
 
-    // Parses PID from "/watchdog <PID>", waits for process exit, relaunches if unexpected.
-    // Minimum uptime guard: if process ran less than 5 s, skip restart (crash-loop prevention).
+    // ----------------------------------------------------------------
+    // RunAsWatchdog: waits for target PID, relaunches on unexpected exit.
+    // ----------------------------------------------------------------
     BOOL RunAsWatchdog(const CString& cmdLine)
     {
         DWORD targetPid = 0;
@@ -1196,13 +1205,9 @@ public:
         ::GetExitCodeProcess(hProc, &exitCode);
         ::CloseHandle(hProc);
 
-        // exitCode != 0 -> intentional close, do not restart
-        if (exitCode == 42) return TRUE;  // 42 = intentional exit;
+        if (exitCode == INTENTIONAL_EXIT_CODE) return TRUE;   // intentional exit, do not restart
+        if (exitCode != RESTART_EXIT_CODE && elapsedMs < 5000) return TRUE;  // startup crash guard
 
-        // Ran less than 5 seconds -> startup crash, do not loop
-        if (elapsedMs < 5000) return TRUE;
-
-        // Relaunch main EXE (without /watchdog; it will spawn a new watchdog)
         TCHAR exePath[MAX_PATH] = {};
         ::GetModuleFileName(NULL, exePath, MAX_PATH);
 
@@ -1229,6 +1234,19 @@ public:
             return FALSE;
         }
 
+        // ---- Single instance check ----
+        m_hSingleInstanceMutex = ::CreateMutex(NULL, TRUE, _T(KFTCAPP_MUTEX_NAME));
+        if (::GetLastError() == ERROR_ALREADY_EXISTS)
+        {
+            // Another instance is already running
+            if (m_hSingleInstanceMutex)
+            {
+                ::CloseHandle(m_hSingleInstanceMutex);
+                m_hSingleInstanceMutex = NULL;
+            }
+            return FALSE;
+        }
+
         // ---- Normal mode ----
         CWinApp::InitInstance();
         SetRegistryKey(_T("KFTC_VAN"));
@@ -1252,10 +1270,16 @@ public:
 
     virtual int ExitInstance()
     {
+        if (m_hSingleInstanceMutex)
+        {
+            ::ReleaseMutex(m_hSingleInstanceMutex);
+            ::CloseHandle(m_hSingleInstanceMutex);
+            m_hSingleInstanceMutex = NULL;
+        }
+
         ModernUIFont::ShutdownFonts();
         ModernUIGfx::ShutdownGdiplus();
-        // 1 = intentional (watchdog will not restart), 0 = unexpected (watchdog restarts)
-        return m_bIntentionalExit ? 42 : CWinApp::ExitInstance();
+        return g_bPendingRestart ? RESTART_EXIT_CODE : (m_bIntentionalExit ? INTENTIONAL_EXIT_CODE : CWinApp::ExitInstance());
     }
 };
 

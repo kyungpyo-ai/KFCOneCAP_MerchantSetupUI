@@ -374,9 +374,6 @@ typedef struct {
 
 #define COMPORT1_FIELD			"COMPORT1"
 #define COMPORT2_FIELD			"COMPORT2"
-#define MULTIPAD1_FIELD			"MULTIPAD1"
-#define MULTIPAD2_FIELD			"MULTIPAD2"
-#define PORT_ALWAYS_OPEN		"PORT_ALWAYSOPEN"
 #define SIGNPAD_PORT_FIELD		"SIGNPAD"
 #define SIGNPAD_SPEED_FIELD		"SIGNPAD_SPEED"		// by Wonseok. 16.07.19		// 서명패드 속도, 타임아웃 설정 추가
 #define TIMEOUT_FIELD			"TIMEOUT"			// by Wonseok. 16.07.19		// 서명패드 속도, 타임아웃 설정 추가
@@ -968,7 +965,6 @@ int seed_enc(const char *data, int len, char *enc_data);
 int seed_dec(const char *enc_data, int enc_len, char *dec_data);
 int seed_keyin_enc(const char *data, int len, char *enc_data);	// by Wonseok. 17.06.02		// 키인거래 기능 추가
 
-BOOL GetRegisterData(const char *strSection, const char *strField, CString &strData);
 
 SOCKET cat_connect(char *ip, int port, char *bind_ip = NULL);
 
@@ -989,4 +985,30 @@ void  set_field_data(int field, char *input, char *output);
 bool startAutoRestart();
 bool stopAutoRestart();
 
+
+// ----------------------------------------------------------------
+
+
+// Added: port/multipad fields
+#define MULTIPAD1_FIELD         "MULTIPAD1"
+#define MULTIPAD2_FIELD         "MULTIPAD2"
+#define PORT_ALWAYS_OPEN        "PORT_ALWAYSOPEN"
+
+// ----------------------------------------------------------------
+// Process helper functions (common.cpp)
+// ----------------------------------------------------------------
+#include <afxwin.h>
+#include <tlhelp32.h>
+
+#define KFTCAPP_MUTEX_NAME  _T("KFTCOneCAP_SingleInstance")
+#define INTENTIONAL_EXIT_CODE  42  // watchdog: do not restart
+#define RESTART_EXIT_CODE      43  // watchdog: restart requested
+
+extern BOOL g_bPendingRestart;  // TRUE = watchdog should restart after exit
+
+
+CString GetExeDirectory();
+BOOL LaunchExeInSameDir(LPCTSTR exeName);
+BOOL TerminateExeByName(LPCTSTR exeName, DWORD gracePeriodMs = 3000);
+void RestartApplication();
 #endif

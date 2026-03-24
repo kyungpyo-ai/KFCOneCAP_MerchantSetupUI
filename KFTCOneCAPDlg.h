@@ -1,4 +1,5 @@
 #pragma once
+#include "common.h"
 
 #include "resource.h"
 #include "ModernUI.h"
@@ -141,3 +142,4 @@ private:
     Gdiplus::Bitmap* m_pLogoBitmap;
     int m_nFooterDividerY;
 };
+

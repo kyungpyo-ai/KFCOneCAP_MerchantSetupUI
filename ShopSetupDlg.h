@@ -29,9 +29,6 @@
 #ifndef IDC_BTN_SCANNER_USE_INFO
 #define IDC_BTN_SCANNER_USE_INFO     60111
 #endif
-#ifndef IDC_BTN_AUTO_RESET_INFO
-#define IDC_BTN_AUTO_RESET_INFO     60112
-#endif
 #ifndef IDC_BTN_AUTO_REBOOT_INFO
 #define IDC_BTN_AUTO_REBOOT_INFO     60113
 #endif
@@ -158,7 +155,6 @@ public:
     CModernToggleSwitch m_chkAlarmDual;
 
     // 시스템 동작
-    CModernToggleSwitch m_chkAutoReset;
     CModernToggleSwitch m_chkAutoReboot;
 
     // 단축키
@@ -179,7 +175,6 @@ public:
     CInfoIconButton m_btnMultiVoiceInfo;    // Tab1: 멀티패드 음성 출력
     CInfoIconButton m_btnCardDetectInfo;   // Tab0: 우선 거래
     CInfoIconButton m_btnScannerUseInfo;   // Tab1: 스캐너 사용
-    CInfoIconButton m_btnAutoResetInfo;    // Tab2: 자동 재실행
     CInfoIconButton m_btnAutoRebootInfo;   // Tab2: 자동 리부팅
     CInfoIconButton m_btnAlarmGraphInfo;   // Tab2: 알림창 그림
     CInfoIconButton m_btnAlarmDualInfo;    // Tab2: 알림창 듀얼
@@ -286,7 +281,7 @@ private:
         int    cmbSignPadUse, cmbSignPadSpeed;
         int    cmbAlarmPos, cmbAlarmSize, cmbCancelKey, cmbMSRKey;
         BOOL   tglCardDetect, tglMultiVoice, tglScannerUse;
-        BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReset, tglAutoReboot;
+        BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReboot;
     };
     SettingsSnapshot m_snap;
     void TakeSnapshot();
@@ -381,3 +376,4 @@ private:
     HFONT m_hFontHdrTitle;    // header title (bold, DPI-scaled 16px)
     HFONT m_hFontHdrSub;      // header subtitle (regular, DPI-scaled 11px)
 };
+

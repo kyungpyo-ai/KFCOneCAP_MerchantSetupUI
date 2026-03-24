@@ -7,7 +7,9 @@
 #include "ModernUI.h"
 #include "RegistryUtil.h"
 #include <gdiplus.h>
-#include <tlhelp32.h>
+// Forward declarations (defined in common.cpp)
+BOOL LaunchExeInSameDir(LPCTSTR exeName);
+BOOL TerminateExeByName(LPCTSTR exeName, DWORD gracePeriodMs = 3000);
 #pragma comment(lib, "gdiplus.lib")
 // ==============================================================
 // [ShopSetupDlg.cpp]
@@ -95,7 +97,6 @@ namespace
     static LPCTSTR BARCODE_PORT_FIELD = _T("BARCODE_PORT");
     static LPCTSTR CARD_DETECT_FIELD = _T("CARD_DETECT");
     static LPCTSTR DETECT_PROGRAM_FIELD = _T("DETECT_PROGRAM");
-    static LPCTSTR AUTO_RESTART_FIELD = _T("AUTO_RESTART");
     static LPCTSTR AUTO_REBOOT_FIELD = _T("AUTO_REBOOT");
     static LPCTSTR NOTIFY_IMG_FIELD = _T("NOTIFY_IMG");
     static LPCTSTR NOTIFY_DUAL_FIELD = _T("NOTIFY_DUAL_MONITOR");
@@ -229,101 +230,6 @@ namespace
     }
 
     // ----------------------------------------------------------------
-    // Process helpers: launch or gracefully terminate a same-dir EXE.
-    // ----------------------------------------------------------------
-
-    // Returns the directory of the running EXE with a trailing backslash.
-    static CString GetExeDirectory()
-    {
-        TCHAR buf[MAX_PATH] = {};
-        ::GetModuleFileName(NULL, buf, MAX_PATH);
-        CString path(buf);
-        int pos = path.ReverseFind(_T('\\'));
-        return (pos >= 0) ? path.Left(pos + 1) : CString(_T(".\\"));
-    }
-
-    // Launches exeName from the same directory as this application.
-    // Returns TRUE on success, FALSE if file not found or CreateProcess failed.
-    static BOOL LaunchExeInSameDir(LPCTSTR exeName)
-    {
-        if (!exeName || !exeName[0]) return FALSE;
-
-        CString fullPath = GetExeDirectory() + exeName;
-
-        if (::GetFileAttributes(fullPath) == INVALID_FILE_ATTRIBUTES)
-            return FALSE;  // file does not exist
-
-        STARTUPINFO si = {};
-        si.cb = sizeof(si);
-        PROCESS_INFORMATION pi = {};
-
-        BOOL ok = ::CreateProcess(
-            fullPath,           // lpApplicationName
-            NULL,               // lpCommandLine
-            NULL, NULL,         // process / thread security attrs
-            FALSE,              // bInheritHandles
-            0,                  // dwCreationFlags
-            NULL,               // lpEnvironment (inherit)
-            GetExeDirectory(),  // lpCurrentDirectory
-            &si, &pi);
-
-        if (ok)
-        {
-            ::CloseHandle(pi.hThread);
-            ::CloseHandle(pi.hProcess);
-        }
-        return ok;
-    }
-
-    // Terminates all processes named exeName (case-insensitive).
-    // Tries graceful WM_CLOSE first, force-kills after gracePeriodMs ms.
-    // Returns TRUE if at least one process was found.
-    static BOOL TerminateExeByName(LPCTSTR exeName, DWORD gracePeriodMs = 3000)
-    {
-        if (!exeName || !exeName[0]) return FALSE;
-
-        BOOL bFound = FALSE;
-        HANDLE hSnap = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (hSnap == INVALID_HANDLE_VALUE) return FALSE;
-
-        PROCESSENTRY32 pe = {};
-        pe.dwSize = sizeof(pe);
-
-        if (::Process32First(hSnap, &pe))
-        {
-            do
-            {
-                if (::lstrcmpi(pe.szExeFile, exeName) != 0) continue;
-
-                bFound = TRUE;
-                DWORD targetPid = pe.th32ProcessID;
-
-                HANDLE hProc = ::OpenProcess(
-                    PROCESS_TERMINATE | SYNCHRONIZE, FALSE, targetPid);
-                if (!hProc) continue;
-
-                // Step 1: post WM_CLOSE to all top-level windows of this PID
-                struct WndCloseCtx { DWORD pid; };
-                WndCloseCtx ctx = { targetPid };
-                ::EnumWindows([](HWND hwnd, LPARAM lp) -> BOOL {
-                    DWORD pid = 0;
-                    ::GetWindowThreadProcessId(hwnd, &pid);
-                    if (pid == reinterpret_cast<WndCloseCtx*>(lp)->pid)
-                        ::PostMessage(hwnd, WM_CLOSE, 0, 0);
-                    return TRUE;
-                }, reinterpret_cast<LPARAM>(&ctx));
-
-                // Step 2: wait for graceful exit; force-kill on timeout
-                if (::WaitForSingleObject(hProc, gracePeriodMs) != WAIT_OBJECT_0)
-                    ::TerminateProcess(hProc, 1);
-
-                ::CloseHandle(hProc);
-
-            } while (::Process32Next(hSnap, &pe));
-        }
-        ::CloseHandle(hSnap);
-        return bFound;
-    }
 } // namespace
 // ============================================================================
 // [TUNE] 헤더 / 탭 / 컨텐츠 레이아웃 튜닝 파라미터
@@ -583,7 +489,6 @@ BOOL CShopSetupDlg::OnInitDialog()
     CreateInfoBtn(m_btnMultiVoiceInfo, IDC_BTN_MULTI_VOICE_INFO);
     CreateInfoBtn(m_btnCardDetectInfo, IDC_BTN_CARD_DETECT_INFO);
     CreateInfoBtn(m_btnScannerUseInfo, IDC_BTN_SCANNER_USE_INFO);
-    CreateInfoBtn(m_btnAutoResetInfo, IDC_BTN_AUTO_RESET_INFO);
     CreateInfoBtn(m_btnAutoRebootInfo, IDC_BTN_AUTO_REBOOT_INFO);
     CreateInfoBtn(m_btnAlarmGraphInfo, IDC_BTN_ALARM_GRAPH_INFO);
     CreateInfoBtn(m_btnAlarmDualInfo, IDC_BTN_ALARM_DUAL_INFO);
@@ -845,7 +750,6 @@ void CShopSetupDlg::InitializeControls()
     SetupTgl(m_chkScannerUse, IDC_CHECK_SCANNER_USE, _T("스캐너 사용"), FALSE);
     SetupTgl(m_chkAlarmGraph, IDC_CHECK_ALARM_GRAPH, _T("알림창 그림"), TRUE);
     SetupTgl(m_chkAlarmDual, IDC_CHECK_ALARM_DUAL, _T("알림창 듀얼"), FALSE);
-    SetupTgl(m_chkAutoReset, IDC_CHECK_AUTO_RESET, _T("자동 재실행"), TRUE);
     SetupTgl(m_chkAutoReboot, IDC_CHECK_AUTO_REBOOT, _T("자동 리부팅"), TRUE);
     if (!::IsWindow(::GetDlgItem(m_hWnd, IDC_STATIC_CARD_DETECT_POSINFO)))
     {
@@ -1267,30 +1171,17 @@ void CShopSetupDlg::ApplyLayoutTab1()
     // ── 카드 2: 시스템 ──────────────────────────────
     {
         int fy = curY + cPadY + cHdrH;
-        // 체크박스 2개: 자동 리셋 / 자동 재부팅
-        int chk2W = (inW - cG) / 2;
-        // 자동 옵션: 토글 오른쪽에 팝오버 아이콘 영역 확보(겹치지 않게)
         {
             const int BtnSz = SX(18);
             const int BtnGap = SX(4);
             int iconNeed = BtnSz + BtnGap;
-            int wL = chk2W;
-            int wR = chk2W;
+            int wL = (inW - cG) / 2;
             if (wL > SX(80) + iconNeed) wL -= iconNeed;
-            if (wR > SX(80) + iconNeed) wR -= iconNeed;
             int xL = inX;
-            int xR = inX + chk2W + cG;
-            Move(IDC_CHECK_AUTO_RESET, xL, fy, wL, FIELD_H);
-            if (m_btnAutoResetInfo.GetSafeHwnd())
-            {
-                int ibX = xL + wL + BtnGap;
-                int ibY = fy + (FIELD_H - BtnSz) / 2;
-                m_btnAutoResetInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
-            }
-            Move(IDC_CHECK_AUTO_REBOOT, xR, fy, wR, FIELD_H);
+            Move(IDC_CHECK_AUTO_REBOOT, xL, fy, wL, FIELD_H);
             if (m_btnAutoRebootInfo.GetSafeHwnd())
             {
-                int ibX = xR + wR + BtnGap;
+                int ibX = xL + wL + BtnGap;
                 int ibY = fy + (FIELD_H - BtnSz) / 2;
                 m_btnAutoRebootInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
@@ -1618,7 +1509,6 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     // NOTIFY_DUAL_MONITOR: ON=1 / OFF=0
     m_chkAlarmDual.SetToggled(ReadToggle_DefaultOnWhenMissing(NOTIFY_DUAL_FIELD, FALSE, _T("1"), _T("0")));
     // AUTO_*: ON=0 / OFF=1
-    m_chkAutoReset.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_RESTART_FIELD, TRUE, _T("0"), _T("1")));
     m_chkAutoReboot.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_REBOOT_FIELD, TRUE, _T("0"), _T("1")));
     // UI에 반영
     UpdateData(FALSE);
@@ -1705,7 +1595,6 @@ void CShopSetupDlg::SaveOptionsToRegistry()
     // NOTIFY_IMG: ON=0, OFF=1
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_IMG_FIELD, m_chkAlarmGraph.IsToggled() ? _T("0") : _T("1"));
     // AUTO_*: ON=0, OFF=1
-    AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_RESTART_FIELD, m_chkAutoReset.IsToggled() ? _T("0") : _T("1"));
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_REBOOT_FIELD, m_chkAutoReboot.IsToggled() ? _T("0") : _T("1"));
 }
 // ============================================================================
@@ -1734,7 +1623,7 @@ void CShopSetupDlg::ShowTab(int nTab)
     };
     static const int s_tab2[] = {
         IDC_STATIC_ALARM_SIZE, IDC_COMBO_ALARM_SIZE, IDC_STATIC_ALARM_POS, IDC_COMBO_ALARM_POS,
-        IDC_CHECK_ALARM_GRAPH, IDC_CHECK_ALARM_DUAL, IDC_CHECK_AUTO_RESET, IDC_CHECK_AUTO_REBOOT,
+        IDC_CHECK_ALARM_GRAPH, IDC_CHECK_ALARM_DUAL, IDC_CHECK_AUTO_REBOOT,
         IDC_STATIC_CANCEL_KEY, IDC_COMBO_CANCEL_KEY, IDC_STATIC_MSR_KEY, IDC_COMBO_MSR_KEY, 0
     };
     const int* tabs[3] = { s_tab0, s_tab1, s_tab2 };
@@ -1786,7 +1675,6 @@ void CShopSetupDlg::ShowTab(int nTab)
     m_btnAlarmSizeInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     m_btnAlarmGraphInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     m_btnAlarmDualInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
-    m_btnAutoResetInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     m_btnAutoRebootInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     RefreshValidationVisibilityByTab();
     // [5] 잠금 해제 및 부모/자식 전체 부드럽게 갱신
@@ -2228,7 +2116,6 @@ void CShopSetupDlg::TakeSnapshot()
     m_snap.tglScannerUse = m_chkScannerUse.IsToggled();
     m_snap.tglAlarmGraph = m_chkAlarmGraph.IsToggled();
     m_snap.tglAlarmDual = m_chkAlarmDual.IsToggled();
-    m_snap.tglAutoReset = m_chkAutoReset.IsToggled();
     m_snap.tglAutoReboot = m_chkAutoReboot.IsToggled();
 }
 BOOL CShopSetupDlg::HasChanges() const
@@ -2257,7 +2144,6 @@ BOOL CShopSetupDlg::HasChanges() const
     if (m_chkScannerUse.IsToggled() != m_snap.tglScannerUse)  return TRUE;
     if (m_chkAlarmGraph.IsToggled() != m_snap.tglAlarmGraph)  return TRUE;
     if (m_chkAlarmDual.IsToggled() != m_snap.tglAlarmDual)   return TRUE;
-    if (m_chkAutoReset.IsToggled() != m_snap.tglAutoReset)   return TRUE;
     if (m_chkAutoReboot.IsToggled() != m_snap.tglAutoReboot)  return TRUE;
     return FALSE;
 }
@@ -2286,27 +2172,7 @@ void CShopSetupDlg::CheckOptionChangesAndNotify()
     BOOL bNewIsWeb  = (newSocketVal.GetLength()  >= 3 && newSocketVal.Left(3)  == _T("WEB"));
 
     // Toggle ON=true -> registry "0", Toggle OFF=false -> registry "1"
-    BOOL bAutoRestartChanged = (m_chkAutoReset.IsToggled()  != m_snap.tglAutoReset);
     BOOL bCardDetectChanged  = (m_chkCardDetect.IsToggled() != m_snap.tglCardDetect);
-
-    // [1] AUTO_RESTART_FIELD changed
-    if (bAutoRestartChanged)
-    {
-        if (m_chkAutoReset.IsToggled())  // new value = "0" (enabled)
-        {
-            CModernMessageBox::Info(
-                _T("Auto restart has been enabled.\n")
-                _T("The program will restart automatically after each transaction ends."),
-                this);
-        }
-        else  // new value = "1" (disabled)
-        {
-            CModernMessageBox::Info(
-                _T("Auto restart has been disabled.\n")
-                _T("The program will not restart automatically after transactions."),
-                this);
-        }
-    }
 
     // [2] SOCKET_TYPE_FIELD changed
     if (bNewIsWeb && !bOldWasWeb)
@@ -2499,16 +2365,20 @@ void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
         { &m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※SPAY-8800Q, DP636X 모델만 가능") },
         { &m_btnCardDetectInfo, _T("카드 감지 우선 거래 사용"), _T("카드 감지 우선 거래 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용") },
         { &m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용 \n※POS 프로그램에서 연동하는 경우 사용 X") },
-        { &m_btnAutoResetInfo, _T("자동 재실행"), _T("KFTCOneCAP 종료 시 자동 재실행 여부\n· 기본값 : 사용") },
         { &m_btnAutoRebootInfo, _T("자동 리부팅"), _T("일일 단위 KFTCOneCAP 자동 리부팅 여부\n· 기본값 : 사용") },
         { &m_btnAlarmGraphInfo, _T("알림창 그림"), _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용") },
         { &m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용") },
         { &m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용") },
         { &m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호") }
     };
-    const int idx = (int)nID - IDC_BTN_VAN_SERVER_INFO;
-    if (idx < 0 || idx >= _countof(kTable)) return;
-    ShowInfoPopover(*kTable[idx].pBtn, kTable[idx].title, kTable[idx].body);
+    for (int i = 0; i < _countof(kTable); i++)
+    {
+        if (kTable[i].pBtn->GetSafeHwnd() && (UINT)kTable[i].pBtn->GetDlgCtrlID() == nID)
+        {
+            ShowInfoPopover(*kTable[i].pBtn, kTable[i].title, kTable[i].body);
+            return;
+        }
+    }
 }
 const CShopSetupDlg::ValidationBinding* CShopSetupDlg::GetValidationBindings(int& outCount)
 {
