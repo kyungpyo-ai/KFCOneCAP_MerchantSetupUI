@@ -258,6 +258,7 @@ private:
     // 전체 입력값을 검사한다. bUpdateUI=TRUE면 오류문구/테두리까지 같이 갱신한다.
     BOOL ValidateAllInputs(BOOL bUpdateUI, int* pFirstInvalidCtrlId = NULL);
     BOOL ValidateComboInputs();
+    void CheckOptionChangesAndNotify();
     // 특정 Edit 1개만 검사하고, 해당 오류문구/오류테두리 UI를 최소 범위로 반영한다.
     void ValidateControlAndUpdateUI(int nCtrlId);
     const ValidationBinding* FindValidationBinding(int nCtrlId) const;

@@ -1086,6 +1086,7 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
                 dlg.DoModal();
             }
             else if (ePending == PENDING_TRANS) {
+
                 CTransDlg dlg(this);
                 dlg.DoModal();
             }
@@ -1134,6 +1135,7 @@ void CKFTCOneCAPDlg::OnClose()
     EndDialog(IDCANCEL);
 }
 
+
 // ============================================================
 // Application entry point
 // ============================================================
@@ -1141,10 +1143,93 @@ void CKFTCOneCAPDlg::OnClose()
 class CKFTCOneCAPApp : public CWinApp
 {
 public:
-    CKFTCOneCAPApp() { m_pszAppName = _tcsdup(_T("KFTCOneCAP")); }
+    CKFTCOneCAPApp() : m_bIntentionalExit(FALSE) { m_pszAppName = _tcsdup(_T("KFTCOneCAP")); }
+
+    // Set TRUE before intentional exit so watchdog does not restart.
+    BOOL m_bIntentionalExit;
+
+    // Launches a hidden copy of this EXE with /watchdog <PID> argument.
+    void SpawnWatchdog()
+    {
+        TCHAR exePath[MAX_PATH] = {};
+        ::GetModuleFileName(NULL, exePath, MAX_PATH);
+
+        DWORD myPid = ::GetCurrentProcessId();
+
+        CString cmdLine;
+        cmdLine.Format(_T("\"%s\" /watchdog %u"), exePath, myPid);
+
+        STARTUPINFO si = {};
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi = {};
+
+        if (::CreateProcess(
+                NULL,
+                cmdLine.GetBuffer(),
+                NULL, NULL, FALSE,
+                CREATE_NO_WINDOW,
+                NULL, NULL, &si, &pi))
+        {
+            ::CloseHandle(pi.hThread);
+            ::CloseHandle(pi.hProcess);
+        }
+        cmdLine.ReleaseBuffer();
+    }
+
+    // Parses PID from "/watchdog <PID>", waits for process exit, relaunches if unexpected.
+    // Minimum uptime guard: if process ran less than 5 s, skip restart (crash-loop prevention).
+    BOOL RunAsWatchdog(const CString& cmdLine)
+    {
+        DWORD targetPid = 0;
+        _stscanf_s(cmdLine, _T("/watchdog %u"), &targetPid);
+        if (targetPid == 0) return FALSE;
+
+        HANDLE hProc = ::OpenProcess(
+            SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, targetPid);
+        if (!hProc) return FALSE;
+
+        DWORD startTick = ::GetTickCount();
+        ::WaitForSingleObject(hProc, INFINITE);
+        DWORD elapsedMs = ::GetTickCount() - startTick;
+
+        DWORD exitCode = 0;
+        ::GetExitCodeProcess(hProc, &exitCode);
+        ::CloseHandle(hProc);
+
+        // exitCode != 0 -> intentional close, do not restart
+        if (exitCode == 42) return TRUE;  // 42 = intentional exit;
+
+        // Ran less than 5 seconds -> startup crash, do not loop
+        if (elapsedMs < 5000) return TRUE;
+
+        // Relaunch main EXE (without /watchdog; it will spawn a new watchdog)
+        TCHAR exePath[MAX_PATH] = {};
+        ::GetModuleFileName(NULL, exePath, MAX_PATH);
+
+        STARTUPINFO si = {};
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi = {};
+
+        if (::CreateProcess(exePath, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+        {
+            ::CloseHandle(pi.hThread);
+            ::CloseHandle(pi.hProcess);
+        }
+        return TRUE;
+    }
 
     virtual BOOL InitInstance()
     {
+        // ---- Watchdog mode ----
+        CString cmdLine(m_lpCmdLine);
+        cmdLine.Trim();
+        if (cmdLine.Left(9) == _T("/watchdog"))
+        {
+            RunAsWatchdog(cmdLine);
+            return FALSE;
+        }
+
+        // ---- Normal mode ----
         CWinApp::InitInstance();
         SetRegistryKey(_T("KFTC_VAN"));
 
@@ -1154,8 +1239,14 @@ public:
 
         ModernUIFont::EnsureFontsLoaded();
 
+        // Spawn watchdog before showing UI
+        SpawnWatchdog();
+
         CKFTCOneCAPDlg dlg;
         dlg.DoModal();
+
+        // Dialog closed normally -> mark intentional so watchdog skips restart
+        m_bIntentionalExit = TRUE;
         return FALSE;
     }
 
@@ -1163,7 +1254,8 @@ public:
     {
         ModernUIFont::ShutdownFonts();
         ModernUIGfx::ShutdownGdiplus();
-        return CWinApp::ExitInstance();
+        // 1 = intentional (watchdog will not restart), 0 = unexpected (watchdog restarts)
+        return m_bIntentionalExit ? 42 : CWinApp::ExitInstance();
     }
 };
 

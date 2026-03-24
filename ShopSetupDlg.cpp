@@ -7,6 +7,7 @@
 #include "ModernUI.h"
 #include "RegistryUtil.h"
 #include <gdiplus.h>
+#include <tlhelp32.h>
 #pragma comment(lib, "gdiplus.lib")
 // ==============================================================
 // [ShopSetupDlg.cpp]
@@ -225,6 +226,103 @@ namespace
     static void WriteToggleValue(LPCTSTR field, BOOL bOn, LPCTSTR valueOn, LPCTSTR valueOff)
     {
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, field, bOn ? valueOn : valueOff);
+    }
+
+    // ----------------------------------------------------------------
+    // Process helpers: launch or gracefully terminate a same-dir EXE.
+    // ----------------------------------------------------------------
+
+    // Returns the directory of the running EXE with a trailing backslash.
+    static CString GetExeDirectory()
+    {
+        TCHAR buf[MAX_PATH] = {};
+        ::GetModuleFileName(NULL, buf, MAX_PATH);
+        CString path(buf);
+        int pos = path.ReverseFind(_T('\\'));
+        return (pos >= 0) ? path.Left(pos + 1) : CString(_T(".\\"));
+    }
+
+    // Launches exeName from the same directory as this application.
+    // Returns TRUE on success, FALSE if file not found or CreateProcess failed.
+    static BOOL LaunchExeInSameDir(LPCTSTR exeName)
+    {
+        if (!exeName || !exeName[0]) return FALSE;
+
+        CString fullPath = GetExeDirectory() + exeName;
+
+        if (::GetFileAttributes(fullPath) == INVALID_FILE_ATTRIBUTES)
+            return FALSE;  // file does not exist
+
+        STARTUPINFO si = {};
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi = {};
+
+        BOOL ok = ::CreateProcess(
+            fullPath,           // lpApplicationName
+            NULL,               // lpCommandLine
+            NULL, NULL,         // process / thread security attrs
+            FALSE,              // bInheritHandles
+            0,                  // dwCreationFlags
+            NULL,               // lpEnvironment (inherit)
+            GetExeDirectory(),  // lpCurrentDirectory
+            &si, &pi);
+
+        if (ok)
+        {
+            ::CloseHandle(pi.hThread);
+            ::CloseHandle(pi.hProcess);
+        }
+        return ok;
+    }
+
+    // Terminates all processes named exeName (case-insensitive).
+    // Tries graceful WM_CLOSE first, force-kills after gracePeriodMs ms.
+    // Returns TRUE if at least one process was found.
+    static BOOL TerminateExeByName(LPCTSTR exeName, DWORD gracePeriodMs = 3000)
+    {
+        if (!exeName || !exeName[0]) return FALSE;
+
+        BOOL bFound = FALSE;
+        HANDLE hSnap = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (hSnap == INVALID_HANDLE_VALUE) return FALSE;
+
+        PROCESSENTRY32 pe = {};
+        pe.dwSize = sizeof(pe);
+
+        if (::Process32First(hSnap, &pe))
+        {
+            do
+            {
+                if (::lstrcmpi(pe.szExeFile, exeName) != 0) continue;
+
+                bFound = TRUE;
+                DWORD targetPid = pe.th32ProcessID;
+
+                HANDLE hProc = ::OpenProcess(
+                    PROCESS_TERMINATE | SYNCHRONIZE, FALSE, targetPid);
+                if (!hProc) continue;
+
+                // Step 1: post WM_CLOSE to all top-level windows of this PID
+                struct WndCloseCtx { DWORD pid; };
+                WndCloseCtx ctx = { targetPid };
+                ::EnumWindows([](HWND hwnd, LPARAM lp) -> BOOL {
+                    DWORD pid = 0;
+                    ::GetWindowThreadProcessId(hwnd, &pid);
+                    if (pid == reinterpret_cast<WndCloseCtx*>(lp)->pid)
+                        ::PostMessage(hwnd, WM_CLOSE, 0, 0);
+                    return TRUE;
+                }, reinterpret_cast<LPARAM>(&ctx));
+
+                // Step 2: wait for graceful exit; force-kill on timeout
+                if (::WaitForSingleObject(hProc, gracePeriodMs) != WAIT_OBJECT_0)
+                    ::TerminateProcess(hProc, 1);
+
+                ::CloseHandle(hProc);
+
+            } while (::Process32Next(hSnap, &pe));
+        }
+        ::CloseHandle(hSnap);
+        return bFound;
     }
 } // namespace
 // ============================================================================
@@ -2164,6 +2262,102 @@ BOOL CShopSetupDlg::HasChanges() const
     return FALSE;
 }
 // ============================================================================
+// CheckOptionChangesAndNotify -- notify user about specific option changes
+// Called from OnOK() after validation, before SaveOptionsToRegistry().
+// Shows messages for settings that need user attention.
+// ============================================================================
+void CShopSetupDlg::CheckOptionChangesAndNotify()
+{
+    const int nInterlockCount = (int)(sizeof(kInterlock) / sizeof(kInterlock[0]));
+    const int nCommTypeCount  = (int)(sizeof(kCommType)  / sizeof(kCommType[0]));
+
+    // Resolve old string values from snapshot indices
+    CString oldInterlockVal = (m_snap.cmbInterlock >= 0 && m_snap.cmbInterlock < nInterlockCount)
+        ? CString(kInterlock[m_snap.cmbInterlock].value) : CString(_T("NORMAL"));
+    CString oldSocketVal = (m_snap.cmbCommType >= 0 && m_snap.cmbCommType < nCommTypeCount)
+        ? CString(kCommType[m_snap.cmbCommType].value) : CString(_T(""));
+
+    // Resolve new string values from current UI
+    CString newInterlockVal = GetSelectedComboValue(m_comboInterlock, kInterlock, nInterlockCount, _T("NORMAL"));
+    CString newSocketVal    = GetSelectedComboValue(m_comboCommType,  kCommType,  nCommTypeCount,  _T(""));
+
+    // WEB mode: value starts with "WEB" (ASCII-safe)
+    BOOL bOldWasWeb = (oldSocketVal.GetLength() >= 3 && oldSocketVal.Left(3) == _T("WEB"));
+    BOOL bNewIsWeb  = (newSocketVal.GetLength()  >= 3 && newSocketVal.Left(3)  == _T("WEB"));
+
+    // Toggle ON=true -> registry "0", Toggle OFF=false -> registry "1"
+    BOOL bAutoRestartChanged = (m_chkAutoReset.IsToggled()  != m_snap.tglAutoReset);
+    BOOL bCardDetectChanged  = (m_chkCardDetect.IsToggled() != m_snap.tglCardDetect);
+
+    // [1] AUTO_RESTART_FIELD changed
+    if (bAutoRestartChanged)
+    {
+        if (m_chkAutoReset.IsToggled())  // new value = "0" (enabled)
+        {
+            CModernMessageBox::Info(
+                _T("Auto restart has been enabled.\n")
+                _T("The program will restart automatically after each transaction ends."),
+                this);
+        }
+        else  // new value = "1" (disabled)
+        {
+            CModernMessageBox::Info(
+                _T("Auto restart has been disabled.\n")
+                _T("The program will not restart automatically after transactions."),
+                this);
+        }
+    }
+
+    // [2] SOCKET_TYPE_FIELD changed
+    if (bNewIsWeb && !bOldWasWeb)
+    {
+        CModernMessageBox::Warning(
+            _T("Communication type changed to WEB mode.\n")
+            _T("Please restart the program for the change to take effect."),
+            this);
+
+        LaunchExeInSameDir(_T("KFTCOneCAP.exe"));
+    }
+    else if (!bNewIsWeb && bOldWasWeb)
+    {
+        CModernMessageBox::Warning(
+            _T("Communication type changed to CS mode.\n")
+            _T("Please restart the program for the change to take effect."),
+            this);
+
+        TerminateExeByName(_T("KFTCOneCAP.exe"));
+    }
+
+    // [3] CARD_DETECT_FIELD changed
+    if (bCardDetectChanged)
+    {
+        if (m_chkCardDetect.IsToggled())  // new value = "0" (enabled)
+        {
+            CModernMessageBox::Info(
+                _T("Card detection priority has been enabled.\n")
+                _T("Please restart the program for the change to take effect."),
+                this);
+        }
+        else  // new value = "1" (disabled)
+        {
+            CModernMessageBox::Info(
+                _T("Card detection priority has been disabled.\n")
+                _T("Please restart the program for the change to take effect."),
+                this);
+        }
+    }
+
+    // [4] INTERLOCK_FIELD was "AOP" and changed to non-AOP
+    if (oldInterlockVal == _T("AOP") && newInterlockVal != _T("AOP"))
+    {
+        CModernMessageBox::Warning(
+            _T("AOP reader interlock has been disabled.\n")
+            _T("Please check the port settings in reader configuration after restart."),
+            this);
+    }
+}
+
+// ============================================================================
 // ValidateComboInputs -- combo-box specific validation rules
 // Called from OnOK after ValidateAllInputs passes.
 // Returns FALSE if any rule fails (also shows MessageBox and sets focus).
@@ -2251,6 +2445,7 @@ void CShopSetupDlg::OnOK()
     }
     if (!ValidateComboInputs())
         return;
+    CheckOptionChangesAndNotify();
     SaveOptionsToRegistry();
     CDialog::OnOK();
 }
