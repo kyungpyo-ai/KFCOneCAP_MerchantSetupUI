@@ -712,8 +712,11 @@ void CReaderSetupDlg::SetReaderCardBusy(int readerIndex, BOOL bBusy)
 	if (pToggleOpen->GetSafeHwnd()) pToggleOpen->EnableWindow(!bBusy);
 	if (pToggleMulti->GetSafeHwnd()) pToggleMulti->EnableWindow(!bBusy);
 
-	if (!bBusy)
-		UpdateReaderEnableState(readerIndex);
+    if (!bBusy)
+    {
+        UpdateReaderEnableState(readerIndex);
+        ApplyAopRestrictions();
+    }
 }
 
 void CReaderSetupDlg::SetSearchBusy(BOOL bBusy)
@@ -1236,6 +1239,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	// --- 6) 최종 상태 반영 ---
 	UpdateReaderEnableState(1);
 	UpdateReaderEnableState(2);
+    ApplyAopRestrictions();
 	// If port1 is ON, disable comport2 combobox after UpdateReaderEnableState
 	if (m_togglePortOpen1.IsToggled())
 		m_comport2.EnableWindow(FALSE);
@@ -1696,6 +1700,7 @@ void CReaderSetupDlg::OnSelchangeComport1()
 	CString value;
 	m_comport1.GetWindowText(value);
 	UpdateReaderEnableState(1);
+    ApplyAopRestrictions();
 }
 
 void CReaderSetupDlg::OnSelchangeComport2()
@@ -1927,4 +1932,21 @@ BOOL CReaderSetupDlg::HasChanges() const
 	if (m_toggleMultipad1.IsToggled()  != m_snap.tglMultipad1) return TRUE;
 	if (m_toggleMultipad2.IsToggled()  != m_snap.tglMultipad2) return TRUE;
 	return FALSE;
+}
+
+void CReaderSetupDlg::ApplyAopRestrictions()
+{
+    CString interlock = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T(""));
+    if (interlock != _T("AOP")) return;
+
+    // Disable all controls of reader 2
+    ApplyEnableStateToButtons(2, FALSE);
+    m_comport2.EnableWindow(FALSE);
+
+    // Disable reader 1 init and update buttons
+    m_reader_init1.EnableWindow(FALSE);
+    m_update1.EnableWindow(FALSE);
+    m_togglePortOpen1.EnableWindow(FALSE);
+
+    Invalidate(FALSE);
 }

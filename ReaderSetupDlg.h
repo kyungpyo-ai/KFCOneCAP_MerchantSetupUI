@@ -76,6 +76,7 @@ protected:
 
 	void  UpdateReaderEnableState(int readerIndex); // 1 or 2
 	void  ApplyEnableStateToButtons(int readerIndex, BOOL bEnable);
+    void  ApplyAopRestrictions();             // Disable reader2 + reader1 init when INTERLOCK=AOP
 
 	void  HideLegacyStatics(); // "리더기1/2/조회 범위" 같은 기존 static 숨김
 	void  RecalcIntegrityColumns(); // 무결성 리스트 컬럼 너비를 화면 폭에 맞게 재계산
