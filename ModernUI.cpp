@@ -448,6 +448,7 @@ CModernButton::CModernButton()
 	m_style = ButtonStyle::Auto; // default: detect style from button text
 	m_nTextPx = 14;
 	m_bLoading = FALSE;
+	m_bLoadingBaseDirty = FALSE;
 	m_bLastHover     = false;
 	m_bLastPressed   = false;
 	m_bLastDisabled  = false;
@@ -460,6 +461,7 @@ CModernButton::CModernButton()
 CModernButton::~CModernButton()
 {
 	if (m_hCachedFont) { ::DeleteObject(m_hCachedFont); m_hCachedFont = NULL; }
+	if (m_memBmpBase.GetSafeHandle()) m_memBmpBase.DeleteObject();
 }
 
 
@@ -474,6 +476,7 @@ void CModernButton::SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText)
                 m_strBaseText = _T(" ");
         }
         m_bLoading = TRUE;
+        m_bLoadingBaseDirty = TRUE;
         if (lpszLoadingText != NULL && lpszLoadingText[0] != 0)
             m_strLoadingText = lpszLoadingText;
         else
@@ -486,6 +489,7 @@ void CModernButton::SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText)
     else
     {
         m_bLoading = FALSE;
+        if (m_memBmpBase.GetSafeHandle()) m_memBmpBase.DeleteObject();
         if (!m_strBaseText.IsEmpty())
             SetWindowText(m_strBaseText);
         m_strLoadingText.Empty();
@@ -724,6 +728,19 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &m_memDC, 0, 0, SRCCOPY);
 		return;
 	}
+	// Fast path: loading frames 2+ - restore base cache, draw only rotating arc
+	if (m_bLoading && !m_bLoadingBaseDirty && !sizeChanged && m_memBmpBase.GetSafeHandle()) {
+		memDC.BitBlt(0, 0, rect.Width(), rect.Height(), &m_memDCBase, 0, 0, SRCCOPY);
+		Gdiplus::Graphics gSpin(memDC.m_hDC);
+		gSpin.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		Gdiplus::Pen actPen(m_cachedSpColor, ModernUIDpi::ScaleF(m_hWnd, 2.0f));
+		actPen.SetStartCap(Gdiplus::LineCapRound);
+		actPen.SetEndCap(Gdiplus::LineCapRound);
+		float fStart = (float)(::GetTickCount() % 720) * 360.0f / 720.0f;
+		gSpin.DrawArc(&actPen, m_cachedSpRc, fStart, 132.0f);
+		pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
+		return;
+	}
 	if (textChanged) { m_strTextKey = strText; m_wstrTextCache = kftc_to_wide(strText); }
 	m_bLastHover     = hover;
 	m_bLastPressed   = pressed;
@@ -922,16 +939,12 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		float startX = rf.X + max(0.0f, (rf.Width - totalW) * 0.5f);
 		float cy = rf.Y + rf.Height * 0.5f;
 		Gdiplus::RectF spRc(startX, cy - spinnerSize * 0.5f, spinnerSize, spinnerSize);
+		m_cachedSpRc    = spRc;
+		m_cachedSpColor = txtColor;
 		Gdiplus::Pen basePen(Gdiplus::Color(70, txtColor.GetR(), txtColor.GetG(), txtColor.GetB()), ModernUIDpi::ScaleF(m_hWnd, 1.7f));
 		basePen.SetStartCap(Gdiplus::LineCapRound);
 		basePen.SetEndCap(Gdiplus::LineCapRound);
-		g.DrawArc(&basePen, spRc, 0.0f, 360.0f);
-		DWORD tick = ::GetTickCount();
-		float start = (float)(tick % 720) * 360.0f / 720.0f;
-		Gdiplus::Pen actPen(txtColor, ModernUIDpi::ScaleF(m_hWnd, 2.0f));
-		actPen.SetStartCap(Gdiplus::LineCapRound);
-		actPen.SetEndCap(Gdiplus::LineCapRound);
-		g.DrawArc(&actPen, spRc, start, 132.0f);
+		g.DrawArc(&basePen, spRc, 0.0f, 360.0f);  // static ring -- goes into base cache
 		textRf.X = startX + spinnerSize + spinnerGap;
 		textRf.Width = rf.GetRight() - textRf.X;
 		dtHAlign = DT_LEFT;
@@ -977,6 +990,26 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	RECT rcBtnTxt = { (LONG)textRf.X, (LONG)textRf.Y, (LONG)textRf.GetRight(), (LONG)textRf.GetBottom() };
 	::DrawTextW(memDC.GetSafeHdc(), wt.c_str(), -1, &rcBtnTxt, dtHAlign | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
 	::SelectObject(memDC.GetSafeHdc(), hOldBtnFont);
+
+	if (m_bLoading) {
+		// First frame: save base cache (bg + text + static ring, no rotating arc)
+		if (!m_memDCBase.GetSafeHdc()) m_memDCBase.CreateCompatibleDC(pDC);
+		if (!m_memBmpBase.GetSafeHandle() || sizeChanged) {
+			if (m_memBmpBase.GetSafeHandle()) m_memBmpBase.DeleteObject();
+			m_memBmpBase.CreateCompatibleBitmap(pDC, rect.Width(), rect.Height());
+			m_memDCBase.SelectObject(&m_memBmpBase);
+		}
+		m_memDCBase.BitBlt(0, 0, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
+		m_bLoadingBaseDirty = FALSE;
+		// Draw rotating arc on top (first frame only -- subsequent frames use fast path)
+		Gdiplus::Graphics gSpin(memDC.m_hDC);
+		gSpin.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		Gdiplus::Pen actPen(m_cachedSpColor, ModernUIDpi::ScaleF(m_hWnd, 2.0f));
+		actPen.SetStartCap(Gdiplus::LineCapRound);
+		actPen.SetEndCap(Gdiplus::LineCapRound);
+		float fStart = (float)(::GetTickCount() % 720) * 360.0f / 720.0f;
+		gSpin.DrawArc(&actPen, m_cachedSpRc, fStart, 132.0f);
+	}
 
 	pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &memDC, 0, 0, SRCCOPY);
 }

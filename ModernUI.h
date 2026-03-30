@@ -295,6 +295,13 @@ private:
     CSize    m_memBmpSize;
     std::wstring m_wstrTextCache;  // cached wide text (updated when window text changes)
     CString      m_strTextKey;     // text key for cache invalidation
+
+    // Loading base cache: bg + text + static arc (no rotating arc)
+    CDC            m_memDCBase;
+    CBitmap        m_memBmpBase;
+    BOOL           m_bLoadingBaseDirty;
+    Gdiplus::RectF m_cachedSpRc;
+    Gdiplus::Color m_cachedSpColor;
 };
 
 // ========================================
