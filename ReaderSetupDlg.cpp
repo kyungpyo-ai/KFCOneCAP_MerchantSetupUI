@@ -1053,7 +1053,6 @@ void CReaderSetupDlg::StartLoadingOperation(UINT nButtonID)
 	m_nLoadingTimerID = 0x4811;
 	SetTimer(m_nLoadingAnimTimerID, 33, NULL);
 	SetTimer(m_nLoadingTimerID, 3000, NULL);
-	pButton->Invalidate(FALSE);
 }
 
 void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
@@ -1719,7 +1718,7 @@ void CReaderSetupDlg::OnTimer(UINT_PTR nIDEvent)
 		if (m_nLoadingButtonID != 0)
 		{
 			if (CWnd* pWnd = GetDlgItem(m_nLoadingButtonID))
-				pWnd->Invalidate(FALSE);
+			{ static_cast<CModernButton*>(pWnd)->DrawLoadingFrame(); }
 			if (m_bBusySearch)
 				Invalidate(FALSE);
 		}

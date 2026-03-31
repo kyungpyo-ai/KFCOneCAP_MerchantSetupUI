@@ -465,6 +465,38 @@ CModernButton::~CModernButton()
 }
 
 
+
+void CModernButton::DrawLoadingFrame()
+{
+    // If base cache not ready, fall back to Invalidate (first frame only)
+    if (!m_bLoading || m_bLoadingBaseDirty || !m_memBmpBase.GetSafeHandle())
+    {
+        Invalidate(FALSE);
+        return;
+    }
+    CRect rect;
+    GetClientRect(&rect);
+    if (rect.IsRectEmpty()) return;
+    // Size mismatch: fall back to Invalidate
+    if (m_memBmpSize != CSize(rect.Width(), rect.Height()))
+    {
+        Invalidate(FALSE);
+        return;
+    }
+    CDC* pDC = GetDC();
+    if (!pDC) return;
+    // Restore base cache + draw only rotating arc -- no WM_PAINT/WM_DRAWITEM
+    m_memDC.BitBlt(0, 0, rect.Width(), rect.Height(), &m_memDCBase, 0, 0, SRCCOPY);
+    Gdiplus::Graphics gSpin(m_memDC.m_hDC);
+    gSpin.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    Gdiplus::Pen actPen(m_cachedSpColor, ModernUIDpi::ScaleF(m_hWnd, 2.0f));
+    actPen.SetStartCap(Gdiplus::LineCapRound);
+    actPen.SetEndCap(Gdiplus::LineCapRound);
+    float fStart = (float)(::GetTickCount() % 720) * 360.0f / 720.0f;
+    gSpin.DrawArc(&actPen, m_cachedSpRc, fStart, 132.0f);
+    pDC->BitBlt(rect.left, rect.top, rect.Width(), rect.Height(), &m_memDC, 0, 0, SRCCOPY);
+    ReleaseDC(pDC);
+}
 void CModernButton::SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText)
 {
     if (bLoading)

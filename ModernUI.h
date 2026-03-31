@@ -233,6 +233,7 @@ public:
     void ClearUnderlayColor();
     void SetButtonStyle(ButtonStyle style);
     void SetLoading(BOOL bLoading, LPCTSTR lpszLoadingText = NULL);
+    void DrawLoadingFrame();  // Draw animation frame directly to DC (no Invalidate/WM_PAINT)
     BOOL IsLoading() const { return m_bLoading; }
     void SetTextPx(int px) { m_nTextPx = px; Invalidate(FALSE); }
     CString GetBaseText() const { return m_strBaseText; } // 버튼 스타일 명시 설정
