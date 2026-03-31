@@ -1053,7 +1053,7 @@ void CReaderSetupDlg::StartLoadingOperation(UINT nButtonID)
 	m_nLoadingTimerID = 0x4811;
 	SetTimer(m_nLoadingAnimTimerID, 33, NULL);
 	SetTimer(m_nLoadingTimerID, 3000, NULL);
-	Invalidate(FALSE);
+	pButton->Invalidate(FALSE);
 }
 
 void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
