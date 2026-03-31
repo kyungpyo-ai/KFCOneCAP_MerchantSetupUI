@@ -19,6 +19,8 @@ CModernMessageBox::CModernMessageBox(
     : CDialog(IDD_MODERN_MESSAGEBOX, pParent)
     , m_strMessage(strMessage), m_strCaption(strCaption)
     , m_type(type), m_buttons(buttons), m_gdiplusToken(0)
+    , m_pIconFont(nullptr), m_pIconFontFallback(nullptr)
+    , m_pIconFmt(nullptr), m_pIconBgBrush(nullptr), m_pIconSymBrush(nullptr)
 {}
 
 CModernMessageBox::~CModernMessageBox() {}
@@ -52,6 +54,21 @@ void CModernMessageBox::EnsureFonts()
     // 제목은 크게(15), 본문은 작게(13) 분리
     lf.lfHeight = -SX(15); lf.lfWeight = FW_BOLD;    m_fontTitle.CreateFontIndirect(&lf);
     lf.lfHeight = -SX(13); lf.lfWeight = FW_NORMAL;  m_fontBody.CreateFontIndirect(&lf);
+
+    // DrawIcon cached GDI+ objects
+    struct IconColor { BYTE r1,g1,b1,rt,gt,bt; };
+    static const IconColor kTC[] = {
+        {235,244,255, 27,100,242}, {255,248,230,245,166, 35},
+        {255,235,238,240, 68, 82}, {230,248,238, 49,172,100},
+        {235,244,255, 27,100,242},
+    };
+    const int ti = max(0, min(4, (int)m_type));
+    const float iFontH = SX(40) * 0.55f;
+    if (!m_pIconFont)         m_pIconFont        = new Gdiplus::Font(L"Malgun Gothic", iFontH, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    if (!m_pIconFontFallback) m_pIconFontFallback = new Gdiplus::Font(Gdiplus::FontFamily::GenericSansSerif(), iFontH, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
+    if (!m_pIconFmt) { m_pIconFmt = new Gdiplus::StringFormat(); m_pIconFmt->SetAlignment(Gdiplus::StringAlignmentCenter); m_pIconFmt->SetLineAlignment(Gdiplus::StringAlignmentCenter); }
+    if (!m_pIconBgBrush)  m_pIconBgBrush  = new Gdiplus::SolidBrush(Gdiplus::Color(255,kTC[ti].r1,kTC[ti].g1,kTC[ti].b1));
+    if (!m_pIconSymBrush) m_pIconSymBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255,kTC[ti].rt,kTC[ti].gt,kTC[ti].bt));
 }
 
 void CModernMessageBox::MeasureText(CFont& font, const CString& text, int maxW, int& outH)
@@ -267,38 +284,19 @@ void CModernMessageBox::DrawIcon(Gdiplus::Graphics& g, Gdiplus::RectF rect, Mode
     const IconTheme& th = themes[(int)type];
 
     // 1. 배경 그리기
-    Gdiplus::SolidBrush bgBr(Gdiplus::Color(255, th.r1, th.g1, th.b1));
-    g.FillEllipse(&bgBr, rect);
+    if (m_pIconBgBrush) g.FillEllipse(m_pIconBgBrush, rect);
 
     // 2. 심볼 준비
     CStringW strSym;
     strSym.AppendChar(th.sym);
-    Gdiplus::SolidBrush symBr(Gdiplus::Color(255, th.rt, th.gt, th.bt));
-
-    Gdiplus::StringFormat fmt;
-    fmt.SetAlignment(Gdiplus::StringAlignmentCenter);
-    fmt.SetLineAlignment(Gdiplus::StringAlignmentCenter);
     g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit); // ?? 힌팅 옵션 변경으로 가독성 향상
 
-    Gdiplus::Font symFont(L"Malgun Gothic", rect.Height * 0.55f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-
-    //  3. 좌표 보정 적용 (X는 더하고, Y는 빼서 오른쪽 위로 이동)
     Gdiplus::RectF textRect = rect;
     textRect.X += th.offsetX;
     textRect.Y += th.offsetY;
-
-    if (symFont.GetLastStatus() == Gdiplus::Ok)
-    {
-        g.DrawString(strSym.GetString(), strSym.GetLength(), &symFont, textRect, &fmt, &symBr);
-    }
-    else
-    {
-        Gdiplus::Font fallbackFont(Gdiplus::FontFamily::GenericSansSerif(), rect.Height * 0.55f, Gdiplus::FontStyleBold, Gdiplus::UnitPixel);
-        if (fallbackFont.GetLastStatus() == Gdiplus::Ok)
-        {
-            g.DrawString(strSym.GetString(), strSym.GetLength(), &fallbackFont, textRect, &fmt, &symBr);
-        }
-    }
+    Gdiplus::Font* pF = (m_pIconFont && m_pIconFont->GetLastStatus() == Gdiplus::Ok) ? m_pIconFont : m_pIconFontFallback;
+    if (pF && m_pIconFmt && m_pIconSymBrush)
+        g.DrawString(strSym.GetString(), strSym.GetLength(), pF, textRect, m_pIconFmt, m_pIconSymBrush);
 }
 HBRUSH CModernMessageBox::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {

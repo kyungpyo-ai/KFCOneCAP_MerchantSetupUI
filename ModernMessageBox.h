@@ -92,6 +92,12 @@ private:
     CBrush m_brushBg;
     CFont m_fontTitle;
     CFont m_fontBody;
+    // Cached GDI+ objects for DrawIcon (created once in EnsureFonts)
+    Gdiplus::Font*          m_pIconFont;
+    Gdiplus::Font*          m_pIconFontFallback;
+    Gdiplus::StringFormat*  m_pIconFmt;
+    Gdiplus::SolidBrush*    m_pIconBgBrush;
+    Gdiplus::SolidBrush*    m_pIconSymBrush;
 
     CModernButton m_btnOK;
     CModernButton m_btnCancel;

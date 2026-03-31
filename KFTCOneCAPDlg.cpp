@@ -1088,9 +1088,9 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
             }
             else if (ePending == PENDING_TRANS) {
 
-                RestartApplication();
-                //CTransDlg dlg(this);
-                //dlg.DoModal();
+                //RestartApplication();
+                CTransDlg dlg(this);
+                dlg.DoModal();
             }
 
             // [3] 돌아왔을 때 부드럽게 갱신
