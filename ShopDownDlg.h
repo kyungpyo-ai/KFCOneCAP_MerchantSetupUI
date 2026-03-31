@@ -52,6 +52,7 @@ private:
     void OnDownloadClick(int slot, int rowIdx);
     void OnDeleteClick(int slot, int rowIdx);
     void RebindSlots();
+    void FlushCurrentPageEdits();
     void StartLoadingOperation(int slot);
     void FinishLoadingOperation(BOOL bRefresh = TRUE);
 

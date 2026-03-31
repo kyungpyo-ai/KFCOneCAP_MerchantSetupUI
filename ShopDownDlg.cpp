@@ -31,6 +31,7 @@ static UINT DownloadWorkerThread(LPVOID pParam)
 {
     HWND hWnd = (HWND)pParam;
     // TODO: replace with actual KFTC download API call
+    ::Sleep(5000); // simulate 5-second download
     BOOL bSuccess = TRUE;
     ::PostMessage(hWnd, WM_SHOPDOWN_DOWNLOAD_DONE, (WPARAM)bSuccess, 0);
     return 0;
@@ -413,6 +414,7 @@ void CShopDownDlg::LayoutControls()
     if (hdwp) ::EndDeferWindowPos(hdwp);
     ApplyAllRowUnderlays();
 
+    FlushCurrentPageEdits();
     RebindSlots();
     m_bInLayout = FALSE;
     Invalidate(FALSE);
@@ -901,6 +903,21 @@ void CShopDownDlg::OnPaint()
     m_memDC.SelectObject(pOldBmp);
 }
 
+void CShopDownDlg::FlushCurrentPageEdits()
+{
+    // Save current edit control values back to m_rowData before rebinding or page change.
+    const int pageStart = m_nCurrentPage * kRowsPerPage;
+    for (int slot = 0; slot < kRowsPerPage; ++slot)
+    {
+        const int rowIdx = pageStart + slot;
+        if (rowIdx >= kRowCount) continue;
+        CString val;
+        if (m_editProd[slot].GetSafeHwnd()) { m_editProd[slot].GetWindowText(val); m_rowData[rowIdx].prdid  = val; }
+        if (m_editBiz[slot].GetSafeHwnd())  { m_editBiz[slot].GetWindowText(val);  m_rowData[rowIdx].regno  = val; }
+        if (m_editPwd[slot].GetSafeHwnd())  { m_editPwd[slot].GetWindowText(val);   m_rowData[rowIdx].passwd = val; }
+    }
+}
+
 void CShopDownDlg::RebindSlots()
 {
     const int pageStart = m_nCurrentPage * kRowsPerPage;
@@ -1011,6 +1028,7 @@ void CShopDownDlg::OnPrevPageClick()
             m_fPillFrom = (float)m_nCurrentPage;
         }
         m_nAnimFromPage = m_nCurrentPage;
+        FlushCurrentPageEdits();
         m_nCurrentPage--;
         m_bNavAnimNext = false; m_nNavAnim = 10;
         if (m_nLoadingAnimTimerID != 0) { KillTimer(m_nLoadingAnimTimerID); m_nLoadingAnimTimerID = 0; }
@@ -1033,6 +1051,7 @@ void CShopDownDlg::OnNextPageClick()
             m_fPillFrom = (float)m_nCurrentPage;
         }
         m_nAnimFromPage = m_nCurrentPage;
+        FlushCurrentPageEdits();
         m_nCurrentPage++;
         m_bNavAnimNext = true; m_nNavAnim = 10;
         if (m_nLoadingAnimTimerID != 0) { KillTimer(m_nLoadingAnimTimerID); m_nLoadingAnimTimerID = 0; }
