@@ -1456,7 +1456,7 @@ void CModernToggleSwitch::SetPending(BOOL bPending)
 		if (m_uSpinTimer) { KillTimer(m_uSpinTimer); m_uSpinTimer = 0; }
 		m_fSpinAngle = 0.0f;
 		if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
-		m_uAnimTimer = SetTimer(1, 25, NULL);
+		m_uAnimTimer = SetTimer(1, 16, NULL);
 	}
 	Invalidate(FALSE);
 }
@@ -1629,7 +1629,7 @@ void CModernToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point) {
 	m_bPressed = FALSE; // 상태 해제
 	m_bToggled = !m_bToggled;
 	if (m_uAnimTimer) { KillTimer(m_uAnimTimer); m_uAnimTimer = 0; }
-	m_uAnimTimer = SetTimer(1, 25, NULL);
+	m_uAnimTimer = SetTimer(1, 16, NULL);
 	GetParent()->SendMessage(WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(), BN_CLICKED), (LPARAM)m_hWnd);
 	ReleaseCapture();
 }
