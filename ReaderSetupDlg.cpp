@@ -1046,7 +1046,10 @@ void CReaderSetupDlg::StartLoadingOperation(UINT nButtonID)
 	else
 	{
 		m_nBusyReaderIndex = (nButtonID == IDC_READER_INIT2 || nButtonID == IDC_STATUS_CHECK2 || nButtonID == IDC_KEYDOWN2 || nButtonID == IDC_INTEGRITY_CHECK2 || nButtonID == IDC_UPDATE2) ? 2 : 1;
-		SetReaderCardBusy(m_nBusyReaderIndex, TRUE);
+		SetReaderCardBusy(1, TRUE);
+		SetReaderCardBusy(2, TRUE);
+		// Also disable the loading button itself
+		if (pButton->GetSafeHwnd()) pButton->EnableWindow(FALSE);
 	}
 
 	m_nLoadingAnimTimerID = 0x4810;
@@ -1088,7 +1091,10 @@ void CReaderSetupDlg::FinishLoadingOperation(BOOL bRefresh)
 	if (m_bBusySearch)
 		SetSearchBusy(FALSE);
 	if (m_nBusyReaderIndex != 0)
-		SetReaderCardBusy(m_nBusyReaderIndex, FALSE);
+	{
+		SetReaderCardBusy(1, FALSE);
+		SetReaderCardBusy(2, FALSE);
+	}
 
 	m_nBusyReaderIndex = 0;
 	m_nLoadingButtonID = 0;
@@ -1889,7 +1895,10 @@ void CReaderSetupDlg::OnSearch(BOOL isLoading)
 	Invalidate(FALSE);
 
 	if (isLoading)
+	{
+		::Sleep(2000); // simulate search delay
 		PostMessage(WM_READER_DONE, TRUE, IDC_SEARCH);
+	}
 }
 void CReaderSetupDlg::OnOK()
 {

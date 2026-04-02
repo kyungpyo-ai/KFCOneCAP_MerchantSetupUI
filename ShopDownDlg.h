@@ -170,6 +170,7 @@ private:
     CRect m_rcInfoTermVal[kRowsPerPage];
 
     BOOL m_bInLayout;
+    BOOL m_bLayoutDone;  // TRUE after first successful LayoutControls
 
     // ---------- Download loading state ----------------------------------
     int  m_nLoadingSlot;          // slot index being downloaded (-1 = none)

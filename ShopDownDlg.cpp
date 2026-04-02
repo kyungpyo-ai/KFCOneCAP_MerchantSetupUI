@@ -127,6 +127,7 @@ CShopDownDlg::CShopDownDlg(CWnd* pParent)
     : CDialog(CShopDownDlg::IDD, pParent)
     , m_nCurrentPage(0)
     , m_bInLayout(FALSE)
+    , m_bLayoutDone(FALSE)
     , m_nCachedPaintDpi(0)
     , m_hFontLbl(nullptr)
     , m_hFontVal(nullptr)
@@ -414,8 +415,10 @@ void CShopDownDlg::LayoutControls()
     if (hdwp) ::EndDeferWindowPos(hdwp);
     ApplyAllRowUnderlays();
 
-    FlushCurrentPageEdits();
+    if (m_bLayoutDone)
+        FlushCurrentPageEdits();
     RebindSlots();
+    m_bLayoutDone = TRUE;
     m_bInLayout = FALSE;
     Invalidate(FALSE);
 }
@@ -546,6 +549,12 @@ void CShopDownDlg::StartLoadingOperation(int slot)
     if (m_btnDownload[slot].GetSafeHwnd())
         m_btnDownload[slot].SetLoading(TRUE, _T(""));
 
+    // Disable all buttons to block interaction during loading
+    for (int s = 0; s < kRowsPerPage; ++s)
+    {
+        if (m_btnDownload[s].GetSafeHwnd()) m_btnDownload[s].EnableWindow(FALSE);
+        if (m_btnDelete[s].GetSafeHwnd())   m_btnDelete[s].EnableWindow(FALSE);
+    }
     m_nLoadingAnimTimerID = 0x4820;
     m_nLoadingTimerID     = 0x4821;
     SetTimer(m_nLoadingAnimTimerID, 33, NULL);
@@ -565,6 +574,8 @@ void CShopDownDlg::FinishLoadingOperation(BOOL bRefresh)
     }
     m_nLoadingSlot   = -1;
     m_nLoadingRowIdx = -1;
+    // Restore buttons -- RebindSlots will re-enable based on data state
+    RebindSlots();
     if (bRefresh) Invalidate(FALSE);
 }
 
