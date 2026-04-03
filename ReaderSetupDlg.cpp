@@ -1897,7 +1897,7 @@ void CReaderSetupDlg::OnSearch(BOOL isLoading)
 	if (isLoading)
 	{
 		::Sleep(2000); // simulate search delay
-		PostMessage(WM_READER_DONE, TRUE, IDC_SEARCH);
+		SendMessage(WM_READER_DONE, TRUE, IDC_SEARCH);
 	}
 }
 void CReaderSetupDlg::OnOK()
