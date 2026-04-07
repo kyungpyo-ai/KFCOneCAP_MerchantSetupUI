@@ -581,6 +581,7 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_nLoadingButtonID = 0;
 	m_nLoadingTimerID = 0;
 	m_nLoadingAnimTimerID = 0;
+	m_nPortOpenTimerID = 0;
 	m_nBusyReaderIndex = 0;
 	m_bBusySearch = FALSE;
 	m_rcIntegrityScrollBar.SetRectEmpty();
@@ -1142,6 +1143,7 @@ void CReaderSetupDlg::OnPortOpen1Clicked()
     p->hWnd     = m_hWnd;
     p->bDesired = bDesired;
     AfxBeginThread(PortOpenWorkerThread, p);
+    m_nPortOpenTimerID = SetTimer(0x4820, 10000, NULL);  // 10-second timeout
 }
 
 LRESULT CReaderSetupDlg::OnReaderDone(WPARAM wParam, LPARAM lParam)
@@ -1156,6 +1158,7 @@ LRESULT CReaderSetupDlg::OnReaderDone(WPARAM wParam, LPARAM lParam)
 
 LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 {
+	if (m_nPortOpenTimerID) { KillTimer(m_nPortOpenTimerID); m_nPortOpenTimerID = 0; }
 	BOOL bSuccess = (BOOL)wParam;
 	BOOL bDesired = (BOOL)lParam;
 
@@ -1733,6 +1736,13 @@ void CReaderSetupDlg::OnTimer(UINT_PTR nIDEvent)
 	if (nIDEvent == m_nLoadingTimerID)
 	{
 		FinishLoadingOperation(TRUE);
+		return;
+	}
+	if (nIDEvent == m_nPortOpenTimerID)
+	{
+		KillTimer(m_nPortOpenTimerID);
+		m_nPortOpenTimerID = 0;
+		::PostMessage(m_hWnd, WM_PORT_OPEN_DONE, FALSE, (LPARAM)FALSE);  // timeout -> failure
 		return;
 	}
 	CDialog::OnTimer(nIDEvent);

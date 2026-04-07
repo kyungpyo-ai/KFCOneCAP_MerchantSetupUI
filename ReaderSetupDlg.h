@@ -109,6 +109,7 @@ protected:
 	UINT  m_nLoadingButtonID;
 	UINT  m_nLoadingTimerID;
 	UINT  m_nLoadingAnimTimerID;
+	UINT_PTR m_nPortOpenTimerID;  // 10-second timeout for port open operation
 	int   m_nBusyReaderIndex;
 	BOOL  m_bBusySearch;
 
