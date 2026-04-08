@@ -231,3 +231,29 @@ IDR_FONT_PRETENDARD_MEDIUM   RCDATA  "fonts\Pretendard-Medium.ttf"
 IDR_FONT_PRETENDARD_BOLD     RCDATA  "fonts\Pretendard-Bold.ttf"
 
 #endif    // not APSTUDIO_INVOKED
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 3,0,1,300
+ PRODUCTVERSION 3,0,1,300
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041204b0"
+        BEGIN
+            VALUE "CompanyName", "KFTC"
+            VALUE "FileDescription", "KFTCOneCAP MFC 응용 프로그램"
+            VALUE "FileVersion", "3.0.1.300"
+            VALUE "ProductName", "KFTCOneCAP 응용 프로그램"
+            VALUE "ProductVersion", "3.0.1.300"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x412, 1200
+    END
+END

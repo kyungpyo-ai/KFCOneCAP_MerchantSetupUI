@@ -5,7 +5,7 @@
 #define AppName "KFTCOneCAP"
 #define AppVersion "3.0.1.300"
 #define AppPublisher "KFTC"
-#define AppExeName "MerchantSetup.exe"
+#define AppExeName "KFTCOneCAP.exe"
 #define AppInstallDir "{pf32}\KFTCOneCAP"
 
 [Setup]
@@ -19,7 +19,7 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=D:\OneCap\RELEASE
 OutputBaseFilename=KFTCOneCAP_Setup_{#AppVersion}
-SetupIconFile=D:\OneCap\RELEASE\KFTCOneCAP\KFTCOneCAP.ico
+SetupIconFile=D:\OneCap\RELEASE\KFTCOneCAP\setupico.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -44,7 +44,7 @@ Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilenam
 Name: "{commonstartup}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\KFTCOneCAP.ico"
 
 [Tasks]
-Name: "desktopicon"; Description: "바탕화면에 아이콘 만들기"; GroupDescription: "추가 작업:"; Flags: unchecked
+Name: "desktopicon"; Description: "바탕화면에 아이콘 만들기"; GroupDescription: "추가 작업:"
 
 [Registry]
 ; 설치 경로
@@ -56,6 +56,6 @@ Root: HKCU; Subkey: "Software\KFTC_VAN\KFTCOneCAP\SERIALPORT"; ValueType: string
 
 [Run]
 ; OCX 등록 배치 파일 설치 중 실행 (HideWizardWindow=0 이므로 숨김 실행)
-Filename: "{app}\OCX_Register_32bit_AsyncforPOS_Script.bat"; Flags: runhidden waituntilterminated
+Filename: "{app}\OCX_Register_32bit_AsyncforPOS.bat"; Flags: runhidden waituntilterminated
 ; 설치 완료 후 앱 실행
 Filename: "{app}\{#AppExeName}"; Description: "설치 후 실행"; Flags: nowait postinstall skipifsilent

@@ -372,6 +372,7 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     LayoutControls();
     CenterWindow();
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
+    ShowWindow(SW_SHOWMINIMIZED);
     return TRUE;
 }
 

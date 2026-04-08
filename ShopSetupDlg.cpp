@@ -154,12 +154,12 @@ namespace
     static const ComboItem kInterlock[] =
     {
         { _T("IC/MS 리더기"),          _T("NORMAL") },
+        { _T("멀티패드(동반위)"),      _T("TRANSINFO") },
+        { _T("AOP(NpayConnect)"),  _T("AOP") },
+        { _T("단말기(forPOS)"),        _T("FORPOS") },
         { _T("LockType 리더기"),       _T("LOCKTYPE(TDR)") },
         { _T("AutoDriven 리더기"),     _T("LOCKTYPE(TTM)") },
-        { _T("단말기(forPOS)"),        _T("FORPOS") },
         { _T("멀티패드(복지단)"),      _T("DP636-MND") },
-        { _T("멀티패드(동반위)"),      _T("TRANSINFO") },
-        { _T("AOP 리더기"),            _T("AOP") },
         { _T("연동 안함"),             _T("NOTHING") },
     };
     static const ComboItem kCommType[] =
