@@ -1,0 +1,8 @@
+{
+    "[innosetup]": {
+        "files.encoding": "utf8"
+    },
+    "files.associations": {
+        "*.iss": "innosetup"
+    }
+}
