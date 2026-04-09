@@ -310,6 +310,7 @@ private:
     CFont m_fontSubtitle;
     CFont m_fontSection;
     CFont m_fontLabel;
+    CFont m_fontCombo;
     CFont m_fontGroupTitle;
     CFont m_fontGroupBracket;
     CFont m_fontValidation;

@@ -73,22 +73,25 @@ BEGIN_MESSAGE_MAP(CShopDownDlg, CDialog)
     ON_MESSAGE(WM_SHOPDOWN_DOWNLOAD_DONE, OnDownloadDone)
 END_MESSAGE_MAP()
 
+static BOOL IsCompactScreen() { return ::GetSystemMetrics(SM_CYSCREEN) <= 800; }
+
 // ============================================================================
 // ColLayout::Compute
 // ============================================================================
 void CShopDownDlg::CardLayout::Compute(int clientWidth, HWND hwnd)
 {
         cardM    = ModernUIDpi::Scale(hwnd, 0); // host is already inset by parent card padding
-    cardPad  = ModernUIDpi::Scale(hwnd, 16);
-    colGap   = ModernUIDpi::Scale(hwnd, 16);
-        idxW     = ModernUIDpi::Scale(hwnd, 34); // widened for 2-digit indices
-editGap  = ModernUIDpi::Scale(hwnd, 8);
-labelH   = ModernUIDpi::Scale(hwnd, 28);
-    labelGap = ModernUIDpi::Scale(hwnd, 6);
-    infoLineH= ModernUIDpi::Scale(hwnd, 22);
+    const BOOL bC = IsCompactScreen();
+    cardPad  = ModernUIDpi::Scale(hwnd, bC ? 12 : 16);
+    colGap   = ModernUIDpi::Scale(hwnd, bC ? 12 : 16);
+    idxW     = ModernUIDpi::Scale(hwnd, 34);
+    editGap  = ModernUIDpi::Scale(hwnd, bC ?  6 :  8);
+    labelH   = ModernUIDpi::Scale(hwnd, bC ? 22 : 28);
+    labelGap = ModernUIDpi::Scale(hwnd, bC ?  4 :  6);
+    infoLineH= ModernUIDpi::Scale(hwnd, bC ? 18 : 22);
 
-        btnW = ModernUIDpi::Scale(hwnd, 140); // ensure "다운로드" fits on one line
-            btnH = ModernUIDpi::Scale(hwnd, 38);
+    btnW = ModernUIDpi::Scale(hwnd, bC ? 120 : 140);
+    btnH = ModernUIDpi::Scale(hwnd, bC ?  30 :  38);
 
     // item card available inner width
     // (section margin is handled by caller; here we just decide the split ratio)
@@ -249,9 +252,9 @@ void CShopDownDlg::CreateControlsOnce()
     for (int slot = 0; slot < kRowsPerPage; ++slot)
     {
         m_btnDownload[slot].SetColors(KFTC_PRIMARY, KFTC_PRIMARY_HOVER, RGB(255, 255, 255));
-        m_btnDownload[slot].SetTextPx(14);
+        m_btnDownload[slot].SetTextPx(IsCompactScreen() ? 12 : 14);
         m_btnDelete[slot].SetColors(KFTC_BTN_SECONDARY, KFTC_BTN_SECONDARY_HOV, RGB(40, 40, 40));
-        m_btnDelete[slot].SetTextPx(14);
+        m_btnDelete[slot].SetTextPx(IsCompactScreen() ? 12 : 14);
     }
 }
 
@@ -271,20 +274,19 @@ void CShopDownDlg::ApplyFonts()
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     ModernUIFont::ApplyUIFontFace(lf);
 
-    // Field labels: match other tabs (13px)
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
-    lf.lfWeight = FW_NORMAL;
+    const int fontPx = IsCompactScreen() ? 12 : 14;
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, fontPx);
+    lf.lfWeight = FW_BOLD;
+    lf.lfQuality = CLEARTYPE_QUALITY;
     m_fontHeader.DeleteObject();
     m_fontHeader.CreateFontIndirect(&lf);
 
-    // Cell text (edit, button): match other tabs (13px)
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, fontPx);
     lf.lfWeight = FW_NORMAL;
     m_fontCell.DeleteObject();
     m_fontCell.CreateFontIndirect(&lf);
 
-    // Row number badge: semi-bold 13px
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, 14);
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, fontPx);
     lf.lfWeight = FW_SEMIBOLD;
     m_fontBadge.DeleteObject();
     m_fontBadge.CreateFontIndirect(&lf);
@@ -309,13 +311,14 @@ void CShopDownDlg::ApplyFonts()
             if (m_hFontLbl)     { ::DeleteObject(m_hFontLbl);     m_hFontLbl     = nullptr; }
             if (m_hFontVal)     { ::DeleteObject(m_hFontVal);     m_hFontVal     = nullptr; }
             if (m_hFontValBold) { ::DeleteObject(m_hFontValBold); m_hFontValBold = nullptr; }
-            const int lblPx = ModernUIDpi::Scale(m_hWnd, 14);
-            const int valPx = ModernUIDpi::Scale(m_hWnd, 14);
+            const int lblPx = ModernUIDpi::Scale(m_hWnd, IsCompactScreen() ? 12 : 14);
+            const int valPx = lblPx;
             LOGFONT lf = {};
             lf.lfCharSet = DEFAULT_CHARSET;
             ModernUIFont::ApplyUIFontFace(lf);
             lf.lfHeight = -lblPx;
-            lf.lfWeight = FW_NORMAL;
+            lf.lfWeight = FW_BOLD;
+            lf.lfQuality = CLEARTYPE_QUALITY;
             m_hFontLbl = ::CreateFontIndirect(&lf);
             lf.lfHeight = -valPx;
             m_hFontVal = ::CreateFontIndirect(&lf);
@@ -335,18 +338,19 @@ void CShopDownDlg::LayoutControls()
     GetClientRect(&rc);
     if (rc.IsRectEmpty()) { m_bInLayout = FALSE; return; }
 
-    const int padX = ModernUIDpi::Scale(m_hWnd, 12);
-    const int padY = ModernUIDpi::Scale(m_hWnd, 8);
-    const int navH = ModernUIDpi::Scale(m_hWnd, 44);
-    const int rowGap = ModernUIDpi::Scale(m_hWnd, 12);
-    const int ctrlH = ModernUIDpi::Scale(m_hWnd, 38);
+    const BOOL bCmp = IsCompactScreen();
+    const int padX  = ModernUIDpi::Scale(m_hWnd, bCmp ?  8 : 12);
+    const int padY  = ModernUIDpi::Scale(m_hWnd, bCmp ?  6 :  8);
+    const int navH  = ModernUIDpi::Scale(m_hWnd, bCmp ? 36 : 44);
+    const int rowGap= ModernUIDpi::Scale(m_hWnd, bCmp ?  8 : 12);
+    const int ctrlH = ModernUIDpi::Scale(m_hWnd, bCmp ? 30 : 38);
 
     // [1] 네비게이션 좌표 계산
     const int navY_bot = rc.Height() - padY - navH;
     m_rcNavBar.SetRect(padX, navY_bot, rc.Width() - padX, navY_bot + navH);
 
-    const int navBtnS = ModernUIDpi::Scale(m_hWnd, 32);
-    const int navGap = ModernUIDpi::Scale(m_hWnd, 140);
+    const int navBtnS = ModernUIDpi::Scale(m_hWnd, bCmp ? 26 : 32);
+    const int navGap  = ModernUIDpi::Scale(m_hWnd, 140);
     const int navCX = m_rcNavBar.CenterPoint().x;
     const int navCY = m_rcNavBar.CenterPoint().y;
 
@@ -391,8 +395,8 @@ void CShopDownDlg::LayoutControls()
         const int y2Edit = y2Label + labelH + labelGap;
         m_rcPwd[slot].SetRect(xL, y2Edit, xL + m_card.leftW, y2Edit + ctrlH);
 
-        const int btnW = ModernUIDpi::Scale(m_hWnd, 84);
-        const int btnGap = ModernUIDpi::Scale(m_hWnd, 8);
+        const int btnW   = ModernUIDpi::Scale(m_hWnd, bCmp ? 70 : 84);
+        const int btnGap = ModernUIDpi::Scale(m_hWnd, bCmp ?  6 :  8);
         const int btnY = inner.bottom - ctrlH;
         const int btnRight = inner.right - ModernUIDpi::Scale(m_hWnd, 4);
         m_rcDel[slot].SetRect(btnRight - btnW, btnY, btnRight, btnY + ctrlH);

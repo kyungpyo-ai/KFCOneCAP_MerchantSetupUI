@@ -454,8 +454,9 @@ BOOL CShopSetupDlg::OnInitDialog()
 
         BOOL bCompactHdr = IsCompactScreen();
 
-        // [FIX] 각 카드의 제목(리더기, 서명패드 등) 폰트 크기 축소 (15 -> 12)
-        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompactHdr ? 12 : 15);
+        // [FIX] 콤팩트 모드에서 카드 제목이 라벨보다 작아 보이는 현상 수정
+                // GDI+ 렌더링 특성을 고려하여 라벨 크기(12)와 시각적으로 동일하게 보이도록 13으로 상향 조정
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompactHdr ? 13 : 15);
         lf.lfWeight = FW_BOLD;
         m_hFontCardTitle = ::CreateFontIndirect(&lf);
 
@@ -663,13 +664,20 @@ void CShopSetupDlg::EnsureFonts()
     m_fontSection.DeleteObject();
     m_fontSection.CreateFontIndirect(&lf);
 
-    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompact ? 13 : 14);
-    // [FIX] 원래 두께(FW_NORMAL: 400)가 너무 얇아서 FW_MEDIUM(500)으로 상향
-    lf.lfWeight = FW_MEDIUM;
-    // [FIX] 윈도우 기본 설정에 의존하지 않고 고품질 ClearType 렌더링 강제 적용
+    lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompact ? 12 : 14);
+
+    // [완벽 해결] 애매한 두께 때문에 깨져 보이는 현상을 막기 위해 아주 굵고 탄탄한 FW_BOLD(700) 적용!
+    lf.lfWeight = FW_BOLD;
+
+    // [완벽 해결] 렌더링 충돌을 막기 위해 윈도우 기본 ClearType(5)으로 안정화
     lf.lfQuality = CLEARTYPE_QUALITY;
+
     m_fontLabel.DeleteObject();
     m_fontLabel.CreateFontIndirect(&lf);
+
+    lf.lfWeight = FW_MEDIUM;
+    m_fontCombo.DeleteObject();
+    m_fontCombo.CreateFontIndirect(&lf);
 
     lf.lfWeight = FW_BOLD;
     m_fontGroupTitle.DeleteObject();
@@ -853,7 +861,7 @@ void CShopSetupDlg::InitializeControls()
     };
     // CShopSetupDlg::InitializeControls() 끝부분
     for (CWnd* w : inputControls)
-        w->SetFont(&m_fontLabel);
+        w->SetFont(&m_fontCombo);
 
     // [FIX] 콤보박스 내부 텍스트 크기도 콤팩트 모드일 때 줄임
     int comboTextPx = IsCompactScreen() ? 12 : 14;
@@ -936,16 +944,16 @@ void CShopSetupDlg::ApplyLayoutTab0()
     const int FIELD_H = CTRL_H;
     // ... 중략 ...
     int y = m_rcTabContent.top + SX(GetTabPadTop());
-    const int cardOuterPadX = 16;
-    const int cardOuterPadY = bCompact ? 8 : 12;
-    const int cardGapY = bCompact ? 8 : 16;
-    const int cardPadX = 22;
+    const int cardOuterPadX = bCompact ? 10 : 16;
+    const int cardOuterPadY = bCompact ?  8 : 12;
+    const int cardGapY      = bCompact ?  8 : 16;
+    const int cardPadX      = bCompact ? 14 : 22;
     const int cardPadY = bCompact ? 10 : 16;
     const int headerH = bCompact ? 36 : 44;
     const int capH = bCompact ? 16 : 18;
     const int capGap = bCompact ? 4 : 7;
     const int rowGap = bCompact ? 10 : 20;
-    const int colGap = 20;
+    const int colGap = bCompact ? 12 : 20;
     int cardLeft = m_rcTabContent.left + cardOuterPadX;
     int cardRight = m_rcTabContent.right - cardOuterPadX;
     int cardW = cardRight - cardLeft;
@@ -1067,16 +1075,16 @@ void CShopSetupDlg::ApplyLayoutTab1()
     const int FIELD_H = CTRL_H;
     // ... 중략 ...
     int y = m_rcTabContent.top + SX(GetTabPadTop());
-    const int cOutX = 16;
-    const int cOutY = bCompact ? 8 : 12;
-    const int cGapY = bCompact ? 8 : 12;
-    const int cPadX = 22;
+    const int cOutX = bCompact ? 10 : 16;
+    const int cOutY = bCompact ?  8 : 12;
+    const int cGapY = bCompact ?  8 : 12;
+    const int cPadX = bCompact ? 14 : 22;
     const int cPadY = bCompact ? 10 : 16;
     const int cHdrH = bCompact ? 36 : 44;
     const int capH = bCompact ? 16 : 18;
     const int capG = bCompact ? 4 : 7;
     const int rG = bCompact ? 10 : 20;
-    const int cG = 18;   // [TUNE] 열 간격
+    const int cG = bCompact ? 10 : 18;
     const int chkW = 140;  // [TUNE] 체크박스 1개 폭 (3개/행 기준)
     int cLeft = m_rcTabContent.left + cOutX;
     int cRight = m_rcTabContent.right - cOutX;
@@ -1285,9 +1293,9 @@ void CShopSetupDlg::ApplyLayoutTab3()
     GetClientRect(&rc);
     int y = m_rcTabContent.top + SX(GetTabPadTop());
     BOOL bCompact = IsCompactScreen();
-    const int cOutX = 16;
-    const int cOutY = bCompact ? 8 : 12;
-    const int cPadX = 22;
+    const int cOutX = bCompact ? 10 : 16;
+    const int cOutY = bCompact ?  8 : 12;
+    const int cPadX = bCompact ? 14 : 22;
     const int cPadY = bCompact ? 10 : 16;
     const int cHdrH = bCompact ? 36 : 44;
     const int hostGapBottom = bCompact ? 8 : 14;
@@ -1357,11 +1365,12 @@ void CShopSetupDlg::ApplyLayout()
     // ---- 탭 컨트롤 위치 ----
     // 탭 바를 타이틀/서브타이틀 구분선 바로 아래 배치
     const int TAB_INSET = SX(2); // keep tab visuals from touching outer card border
-    int tabLeft = SX(20) + TAB_INSET;
-    int tabRight = rc.Width() - SX(20) - TAB_INSET;
+    const int tabMargin = bCompact ? 12 : 20;
+    int tabLeft  = SX(tabMargin) + TAB_INSET;
+    int tabRight = rc.Width() - SX(tabMargin) - TAB_INSET;
     int tabTop = SX(GetTabBarTop());
     int tabBottom = tabTop + SX(GetTabBarH()) + SX(200);
-    int tabH = SX(GetTabBarH()) + SX(8);
+    int tabH = SX(IsCompactScreen() ? GetTabBarH() : CModernTabCtrl::kBarH) + SX(8);
     m_tabCtrl.MoveWindow(tabLeft, tabTop, tabRight - tabLeft, tabH);
 
     m_rcTabContent = CRect(tabLeft, tabTop + tabH, tabRight, rc.bottom - SX(bCompact ? 60 : 90));
@@ -1922,10 +1931,11 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
     CRect rc;
     GetClientRect(&rc);
     //pDC->FillSolidRect(rc, RGB(249, 250, 252));  // 밝은 회색 배경
-    const int kCardMarginL = 20;
-    const int kCardMarginT = 10;
-    const int kCardMarginR = 20;
-    const int kCardMarginB = 20;
+    const BOOL bCmp = IsCompactScreen();
+    const int kCardMarginL = bCmp ? 12 : 20;
+    const int kCardMarginT = bCmp ?  6 : 10;
+    const int kCardMarginR = bCmp ? 12 : 20;
+    const int kCardMarginB = bCmp ? 12 : 20;
     const float kRadius = 12.0f;
     CRect contentRect(kCardMarginL, kCardMarginT,
         rc.Width() - kCardMarginR, rc.bottom - kCardMarginB);
@@ -2114,8 +2124,8 @@ HBRUSH CShopSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
         pDC->SetBkMode(OPAQUE);
         pDC->SetBkColor(RGB(250, 251, 253));
 
-        // [최적화 3] 렉의 원흉이었던 GetWindowText(텍스트 읽어오기) 완전 삭제!
-        COLORREF clr = RGB(70, 82, 102);  // 기본 label gray
+        // [FIX] 글씨 두께(Bold)로 선명함은 유지하되, 색상을 연하게 빼서 시각적 무게감과 투박함을 줄임
+        COLORREF clr = RGB(115, 125, 142);  // soft label gray (원래 70, 82, 102)
 
         /* * 기존에 '[' 로 시작하는 글자를 파란색으로 칠하던 로직이 있었으나,
          * 현재 소스를 보면 GDI+ 로 카드를 직접 그리고 계시기 때문에 불필요한 연산이었습니다.

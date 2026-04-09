@@ -2137,15 +2137,20 @@ void CSkinnedComboBox::PaintComboToDC(CDC& dc)
 
 			if (rfText.Width > 0) {
 				// 폰트 캐시 체크
-				LOGFONT lfCmb = {}; lfCmb.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfCmb.lfWeight = FW_NORMAL; lfCmb.lfQuality = CLEARTYPE_QUALITY;
-				ModernUIFont::ApplyUIFontFace(lfCmb);
-				if (!m_bHasTextFontCache || ::memcmp(&m_lfTextCache, &lfCmb, sizeof(LOGFONT)) != 0) {
-					if (m_hTextFontCache) { ::DeleteObject(m_hTextFontCache); m_hTextFontCache = NULL; }
-					m_hTextFontCache = ::CreateFontIndirect(&lfCmb);
-					m_lfTextCache = lfCmb;
-					m_bHasTextFontCache = TRUE;
+				// Use SetFont() font (same as DrawItem) for consistent appearance.
+				HFONT hCmbFont = GetFont() ? (HFONT)GetFont()->GetSafeHandle() : NULL;
+				if (!hCmbFont) {
+					LOGFONT lfCmb = {}; lfCmb.lfHeight = -(int)ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx); lfCmb.lfWeight = FW_NORMAL; lfCmb.lfQuality = CLEARTYPE_QUALITY;
+					ModernUIFont::ApplyUIFontFace(lfCmb);
+					if (!m_bHasTextFontCache || ::memcmp(&m_lfTextCache, &lfCmb, sizeof(LOGFONT)) != 0) {
+						if (m_hTextFontCache) { ::DeleteObject(m_hTextFontCache); m_hTextFontCache = NULL; }
+						m_hTextFontCache = ::CreateFontIndirect(&lfCmb);
+						m_lfTextCache = lfCmb;
+						m_bHasTextFontCache = TRUE;
+					}
+					hCmbFont = m_hTextFontCache;
 				}
-				HFONT hOldCmbFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), m_hTextFontCache);
+				HFONT hOldCmbFont = (HFONT)::SelectObject(memDC.GetSafeHdc(), hCmbFont);
 				COLORREF cmbTxtClr = enabled ? RGB(35, 45, 60) : KFTC_DISABLED_TEXT;
 				::SetTextColor(memDC.GetSafeHdc(), cmbTxtClr);
 				::SetBkMode(memDC.GetSafeHdc(), TRANSPARENT);
@@ -3340,8 +3345,8 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 		// [FIX] 한글 폰트가 찌부되지 않는 최소 마지노선인 13.0f로 상향 조정합니다.
 		// 모던 UI 스타일에 맞게, 선택된 탭도 크기를 키우지 않고 굵기(FW_SEMIBOLD)로만 구분합니다.
 		float normalSize = bCompact ? 13.0f : 14.0f;
-		float boldSize = bCompact ? 13.0f : 15.0f;
-		int   boldWeight = bCompact ? FW_SEMIBOLD : FW_BOLD;
+		float boldSize = bCompact ? 14.0f : 15.0f;
+		int   boldWeight = FW_BOLD;
 
 		m_font.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, normalSize), 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
