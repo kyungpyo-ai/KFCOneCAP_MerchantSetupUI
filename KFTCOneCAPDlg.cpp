@@ -368,6 +368,14 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     GetDlgItem(IDC_TRANS)->SetWindowText(_T(""));
     GetDlgItem(IDC_RECEIPT_SETUP)->SetWindowText(_T(""));
 
+    // Clamp window size to work area before layout
+    {
+        RECT rcWork; SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWork, 0);
+        CRect rcWnd; GetWindowRect(&rcWnd);
+        int w = min(rcWnd.Width(),  (int)(rcWork.right  - rcWork.left));
+        int h = min(rcWnd.Height(), (int)(rcWork.bottom - rcWork.top));
+        SetWindowPos(NULL, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
+    }
     LoadLogoImage();
     LayoutControls();
     CenterWindow();

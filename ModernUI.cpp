@@ -3024,7 +3024,7 @@ void CSkinnedEdit::OnPaint()
 		::SelectClipRgn(memDC.m_hDC, hrgn);
 		::DeleteObject(hrgn);
 
-		::SendMessage(m_hWnd, WM_PRINTCLIENT, (WPARAM)memDC.m_hDC, (LPARAM)(PRF_CLIENT));
+		if (enabled) ::SendMessage(m_hWnd, WM_PRINTCLIENT, (WPARAM)memDC.m_hDC, (LPARAM)(PRF_CLIENT));
 	}
 	memDC.RestoreDC(save);
 
@@ -3334,12 +3334,23 @@ void CModernTabCtrl::DrawTab(Graphics& g, int idx, const RectF& rc)
 	if (m_nCachedTabDpi != curTabDpi || !m_font.GetSafeHandle()) {
 		if (m_font.GetSafeHandle())     m_font.DeleteObject();
 		if (m_fontBold.GetSafeHandle()) m_fontBold.DeleteObject();
-		m_font.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 14.0f), 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
+
+		bool bCompact = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
+
+		// [FIX] 한글 폰트가 찌부되지 않는 최소 마지노선인 13.0f로 상향 조정합니다.
+		// 모던 UI 스타일에 맞게, 선택된 탭도 크기를 키우지 않고 굵기(FW_SEMIBOLD)로만 구분합니다.
+		float normalSize = bCompact ? 13.0f : 14.0f;
+		float boldSize = bCompact ? 13.0f : 15.0f;
+		int   boldWeight = bCompact ? FW_SEMIBOLD : FW_BOLD;
+
+		m_font.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, normalSize), 0, 0, 0, FW_NORMAL, FALSE, FALSE, 0,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
-		m_fontBold.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, 15.0f), 0, 0, 0, FW_BOLD, FALSE, FALSE, 0,
+
+		m_fontBold.CreateFont(-(int)ModernUIDpi::ScaleF(m_hWnd, boldSize), 0, 0, 0, boldWeight, FALSE, FALSE, 0,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ModernUIFont::GetUIFontFace());
+
 		m_nCachedTabDpi = curTabDpi;
-	}
+	}	
 	HFONT hTabFont = (HFONT)(bActive ? m_fontBold.GetSafeHandle() : m_font.GetSafeHandle());
 	HDC hdcTab = g.GetHDC();
 	HFONT hOldTab = (HFONT)::SelectObject(hdcTab, hTabFont);
@@ -4494,64 +4505,72 @@ void Draw(HDC hdc,
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
-    // --- Badge gradient background ---
-    {
-        Gdiplus::GraphicsPath bgPath;
-        MRR(bgPath, bx, by, bsz, bsz, bsz * 0.22f);
-        Gdiplus::LinearGradientBrush grad(
-            Gdiplus::PointF(bx, by),
-            Gdiplus::PointF(bx + bsz, by + bsz),
-            Gdiplus::Color(255,  0,  90, 220),
-            Gdiplus::Color(255, 30, 130, 255));
-        g.FillPath(&grad, &bgPath);
-    }
+	float badgeY = by - 3.0f; // 아이콘만 10픽셀 위로 끌어올림!
 
-    // --- Icon: CardTerminal ---
-    if (iconType == IconType::CardTerminal) {
-        const float tW = bsz * 0.52f, tH = bsz * 0.60f;
-        const float tX = bx + (bsz - tW) * 0.5f, tY = by + (bsz - tH) * 0.5f;
-        {
-            Gdiplus::GraphicsPath iconPath(Gdiplus::FillModeAlternate);
-            MRR(iconPath, tX, tY, tW, tH, bsz * 0.09f);
-            const float si = tW * 0.12f;
-            iconPath.AddRectangle(Gdiplus::RectF(tX+si, tY+tH*0.08f, tW-si*2.0f, tH*0.26f));
-            const float slot = (tW - tW*0.22f) / 3.0f;
-            const float bW = slot * 0.64f, bH = tH * 0.09f;
-            const float kX0 = tX + tW*0.11f + (slot - bW)*0.5f;
-            const float kY0 = tY + tH*0.08f + tH*0.26f + tH*0.15f;
-            for (int ki = 0; ki < 3; ki++)
-                for (int kj = 0; kj < 2; kj++)
-                    MRR(iconPath, kX0+ki*slot, kY0+kj*tH*0.18f, bW, bH, 0.8f);
-            Gdiplus::SolidBrush wb(Gdiplus::Color(255, 255, 255, 255));
-            g.FillPath(&wb, &iconPath);
-        }
-        Gdiplus::Pen slotPen(Gdiplus::Color(255, 255, 255, 255), 1.5f);
-        slotPen.SetStartCap(Gdiplus::LineCapRound);
-        slotPen.SetEndCap(Gdiplus::LineCapRound);
-        g.DrawLine(&slotPen,
-            Gdiplus::PointF(tX + tW*0.18f, tY + tH*0.91f),
-            Gdiplus::PointF(tX + tW*0.82f, tY + tH*0.91f));
-    }
-    else if (iconType == IconType::Store) {
-        const float cx = bx + bsz * 0.5f, cy = by + bsz * 0.5f;
-        Gdiplus::SolidBrush wBr(Gdiplus::Color(255, 255, 255, 255));
-        const float iH = bsz * 0.60f, iW = bsz * 0.52f;
-        const float rH = iH * 0.28f, bHh = iH - rH;
-        const float iX = cx - iW * 0.5f, iY = cy - iH * 0.5f + 0.5f;
-        Gdiplus::PointF rf[3] = {
-            Gdiplus::PointF(cx, iY),
-            Gdiplus::PointF(iX - iW * 0.14f, iY + rH + 1.5f),
-            Gdiplus::PointF(iX + iW * 1.14f, iY + rH + 1.5f) };
-        g.FillPolygon(&wBr, rf, 3);
-        g.FillRectangle(&wBr, Gdiplus::RectF(iX, iY + rH, iW, bHh));
-        Gdiplus::SolidBrush dBr(Gdiplus::Color(130, 28, 76, 210));
-        const float dW = iW * 0.26f, dH = bHh * 0.44f;
-        g.FillRectangle(&dBr, Gdiplus::RectF(cx - dW * 0.5f, iY + rH + bHh - dH, dW, dH));
-    }
+	// --- Badge gradient background ---
+	{
+		Gdiplus::GraphicsPath bgPath;
+		// [수정] by 대신 badgeY 적용
+		MRR(bgPath, bx, badgeY, bsz, bsz, bsz * 0.22f);
+		Gdiplus::LinearGradientBrush grad(
+			Gdiplus::PointF(bx, badgeY),
+			Gdiplus::PointF(bx + bsz, badgeY + bsz),
+			Gdiplus::Color(255, 0, 90, 220),
+			Gdiplus::Color(255, 30, 130, 255));
+		g.FillPath(&grad, &bgPath);
+	}
 
-    // --- Title + Subtitle ---
-    const float tx     = bx + bsz + 12.0f;
-    const float titleY = by + bsz * 0.5f - 22.0f;
+	// --- Icon: CardTerminal ---
+	if (iconType == IconType::CardTerminal) {
+		const float tW = bsz * 0.52f, tH = bsz * 0.60f;
+		// [수정] by 대신 badgeY 적용
+		const float tX = bx + (bsz - tW) * 0.5f, tY = badgeY + (bsz - tH) * 0.5f;
+		{
+			Gdiplus::GraphicsPath iconPath(Gdiplus::FillModeAlternate);
+			MRR(iconPath, tX, tY, tW, tH, bsz * 0.09f);
+			const float si = tW * 0.12f;
+			iconPath.AddRectangle(Gdiplus::RectF(tX + si, tY + tH * 0.08f, tW - si * 2.0f, tH * 0.26f));
+			const float slot = (tW - tW * 0.22f) / 3.0f;
+			const float bW = slot * 0.64f, bH = tH * 0.09f;
+			const float kX0 = tX + tW * 0.11f + (slot - bW) * 0.5f;
+			const float kY0 = tY + tH * 0.08f + tH * 0.26f + tH * 0.15f;
+			for (int ki = 0; ki < 3; ki++)
+				for (int kj = 0; kj < 2; kj++)
+					MRR(iconPath, kX0 + ki * slot, kY0 + kj * tH * 0.18f, bW, bH, 0.8f);
+			Gdiplus::SolidBrush wb(Gdiplus::Color(255, 255, 255, 255));
+			g.FillPath(&wb, &iconPath);
+		}
+		Gdiplus::Pen slotPen(Gdiplus::Color(255, 255, 255, 255), 1.5f);
+		slotPen.SetStartCap(Gdiplus::LineCapRound);
+		slotPen.SetEndCap(Gdiplus::LineCapRound);
+		g.DrawLine(&slotPen,
+			Gdiplus::PointF(tX + tW * 0.18f, tY + tH * 0.91f),
+			Gdiplus::PointF(tX + tW * 0.82f, tY + tH * 0.91f));
+	}
+	else if (iconType == IconType::Store) {
+		// [수정] by 대신 badgeY 적용
+		const float cx = bx + bsz * 0.5f, cy = badgeY + bsz * 0.5f;
+		Gdiplus::SolidBrush wBr(Gdiplus::Color(255, 255, 255, 255));
+		const float iH = bsz * 0.60f, iW = bsz * 0.52f;
+		const float rH = iH * 0.28f, bHh = iH - rH;
+		const float iX = cx - iW * 0.5f, iY = cy - iH * 0.5f + 0.5f;
+		Gdiplus::PointF rf[3] = {
+			Gdiplus::PointF(cx, iY),
+			Gdiplus::PointF(iX - iW * 0.14f, iY + rH + 1.5f),
+			Gdiplus::PointF(iX + iW * 1.14f, iY + rH + 1.5f) };
+		g.FillPolygon(&wBr, rf, 3);
+		g.FillRectangle(&wBr, Gdiplus::RectF(iX, iY + rH, iW, bHh));
+		Gdiplus::SolidBrush dBr(Gdiplus::Color(130, 28, 76, 210));
+		const float dW = iW * 0.26f, dH = bHh * 0.44f;
+		g.FillRectangle(&dBr, Gdiplus::RectF(cx - dW * 0.5f, iY + rH + bHh - dH, dW, dH));
+	}
+
+	// --- Title + Subtitle ---
+	const float tx = bx + bsz + 12.0f;
+	// ------------------------------------------------------------------------
+	// [중요 유지] 글자는 기존 'by'를 그대로 사용하여 절대 위로 끌려가지 않게 고정합니다.
+	// ------------------------------------------------------------------------
+	const float titleY = by + bsz * 0.5f - 22.0f;
     {
         HDC hdcT = g.GetHDC();
         ::SetBkMode(hdcT, TRANSPARENT);
