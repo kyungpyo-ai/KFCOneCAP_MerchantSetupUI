@@ -128,33 +128,36 @@ void CReaderSetupDlg::EnsureFonts()
 	LOGFONT lf = { 0 };
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0);
 
-	// Title
+	// [FIX] 폰트 페이스를 먼저 일괄 적용 (Pretendard 등)
+	ModernUIFont::ApplyUIFontFace(lf);
+
+	// Title (메인 타이틀)
 	lf.lfHeight = -SX(18);
 	lf.lfWeight = FW_BOLD;
-	ModernUIFont::ApplyUIFontFace(lf);
 	m_fontTitle.CreateFontIndirect(&lf);
 
-	// Sub
+	// Sub (부제목 - ShopSetupDlg처럼 강조)
 	lf.lfHeight = -SX(13);
-	lf.lfWeight = FW_NORMAL;
+	lf.lfWeight = FW_BOLD; // FW_NORMAL -> FW_BOLD
 	m_fontSub.CreateFontIndirect(&lf);
 
-	// Section title
+	// Section title (섹션 제목 - 포트 설정, 무결성 등)
 	lf.lfHeight = -SX(15);
 	lf.lfWeight = FW_BOLD;
 	m_fontSection.CreateFontIndirect(&lf);
 
-	// Normal
+	// Normal (콤보박스, 버튼 등 본문)
 	lf.lfHeight = -SX(14);
-	lf.lfWeight = FW_NORMAL;
+	lf.lfWeight = FW_MEDIUM; // FW_NORMAL -> FW_MEDIUM (약간 도톰하게)
 	m_fontNormal.CreateFontIndirect(&lf);
 
-	// Label
+	// Label (일반 라벨 및 토글 텍스트 - 깨짐 방지 완벽 세팅)
 	lf.lfHeight = -SX(14);
-	lf.lfWeight = FW_NORMAL;
+	lf.lfWeight = FW_BOLD;                 // FW_NORMAL -> FW_BOLD
+	lf.lfQuality = CLEARTYPE_QUALITY;      // [FIX] GDI 렌더링 품질 안정화 (ShopSetupDlg 비법)
 	m_fontLabel.CreateFontIndirect(&lf);
 
-	// Small
+	// Small (리스트 데이터 등)
 	lf.lfHeight = -SX(12);
 	lf.lfWeight = FW_NORMAL;
 	m_fontSmall.CreateFontIndirect(&lf);
@@ -890,11 +893,17 @@ void CReaderSetupDlg::ApplyDialogFonts()
 {
 	ApplyFontIfWindow(m_comport1, m_fontNormal);
 	ApplyFontIfWindow(m_comport2, m_fontNormal);
-	
-	m_comport1.SetTextPx(14);
-	m_comport2.SetTextPx(14);
 	ApplyFontIfWindow(m_search_date, m_fontNormal);
-	m_search_date.SetTextPx(14);
+
+	// [FIX] 14 하드코딩 대신 폰트에 적용된 실제 렌더링 픽셀 높이를 그대로 추출하여 동기화
+	LOGFONT lfCombo = { 0 };
+	m_fontNormal.GetLogFont(&lfCombo);
+	int exactFontPx = abs(lfCombo.lfHeight);
+
+	m_comport1.SetTextPx(exactFontPx);
+	m_comport2.SetTextPx(exactFontPx);
+	m_search_date.SetTextPx(exactFontPx);
+
 	ApplyFontIfWindow(m_reader_init1, m_fontNormal);
 	ApplyFontIfWindow(m_status_check1, m_fontNormal);
 	ApplyFontIfWindow(m_keydown1, m_fontNormal);
@@ -979,18 +988,23 @@ void CReaderSetupDlg::InitToggleAndUnderlayColors()
 	const COLORREF cardBgDisabled = RGB(251, 252, 253);
 	const COLORREF infoCardBg = RGB(248, 249, 251);
 
-	// Setup text labels inside toggle controls (ShopSetupDlg style)
+	// [FIX] m_fontLabel의 실제 렌더링 픽셀 높이를 추출하여 토글 텍스트 크기 완벽 동기화
+	LOGFONT lfLabel = { 0 };
+	m_fontLabel.GetLogFont(&lfLabel);
+	int exactLabelPx = abs(lfLabel.lfHeight);
+
+	// Setup text labels inside toggle controls
 	m_togglePortOpen1.SetFont(&m_fontLabel);
 	m_togglePortOpen1.SetWindowText(_T("포트 열기"));
-	m_togglePortOpen1.SetTextSizePx(13);
+	m_togglePortOpen1.SetTextSizePx(exactLabelPx);
 	m_togglePortOpen1.SetNoWrapEllipsis(TRUE);
 	m_toggleMultipad1.SetFont(&m_fontLabel);
 	m_toggleMultipad1.SetWindowText(_T("멀티패드 여부"));
-	m_toggleMultipad1.SetTextSizePx(13);
+	m_toggleMultipad1.SetTextSizePx(exactLabelPx);
 	m_toggleMultipad1.SetNoWrapEllipsis(TRUE);
 	m_toggleMultipad2.SetFont(&m_fontLabel);
 	m_toggleMultipad2.SetWindowText(_T("멀티패드 여부"));
-	m_toggleMultipad2.SetTextSizePx(13);
+	m_toggleMultipad2.SetTextSizePx(exactLabelPx);
 	m_toggleMultipad2.SetNoWrapEllipsis(TRUE);
 
 	m_togglePortOpen1.SetUnderlayColor(cardBgEnabled);
@@ -1378,8 +1392,8 @@ void CReaderSetupDlg::OnPaint()
 			gPaint.FillPath(&shBrush, &shPath);
 		}
 	}
-	// 본체: 곡률 16px 적용 및 테두리 색상을 더 연하게(RGB 232, 235, 242) 변경
-	FillRoundRect(gPaint, mainCard, SX(16), RGB(255, 255, 255), RGB(232, 235, 242), 1);
+	// [FIX] 메인 카드 테두리 제거 (borderW = 0)
+	FillRoundRect(gPaint, mainCard, SX(16), RGB(255, 255, 255), RGB(255, 255, 255), 0);
 
 	const int iconSize = SX(44);
 	const int iconX    = mainCard.left + SX(14);
@@ -1424,23 +1438,25 @@ void CReaderSetupDlg::OnPaint()
 				GdipAddRoundRect(cp, (float)sc.left, (float)sc.top, (float)sc.Width(), (float)sc.Height(), scR);
 				// 배경색(#FAFBFD) 채우기
 				gPaint.FillPath(&Gdiplus::SolidBrush(Gdiplus::Color(255, 250, 251, 253)), &cp);
-				// 섹션 외곽선 추가 (더 깔끔한 경계선)
-				Gdiplus::Pen secPen(Gdiplus::Color(255, 238, 241, 247), 1.0f);
-				gPaint.DrawPath(&secPen, &cp);
-		};
+				// [FIX] ShopSetupDlg와 동일하게 섹션 카드 외곽선(Pen) 렌더링 삭제
+			};
 		drawSecCard(portSection);
 		drawSecCard(integritySection);
 	}
-	// 섹션 내부 구분선 색상을 더 연하게 변경
-	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + SX(43), portSection.Width() - SX(32), 1, RGB(242, 244, 247));
-	// 모든 내부 구분선을 연한 회색(RGB 242, 244, 247)으로 통일
-	memDC.FillSolidRect(integritySection.left + SX(16), integritySection.top + SX(43), integritySection.Width() - SX(32), 1, RGB(242, 244, 247));
-	DrawSectionTitle(memDC, sec1Pt, _T("포트 설정"));
-	DrawSectionTitle(memDC, sec2Pt, _T("무결성 체크 정보"));
+	int hdrH = SX(44); // ShopSetupDlg 기준 헤더 높이
+
+	// [FIX] 헤더 구분선을 정확히 헤더 하단에 위치시킵니다.
+	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + hdrH, portSection.Width() - SX(32), 1, RGB(242, 244, 247));
+	memDC.FillSolidRect(integritySection.left + SX(16), integritySection.top + hdrH, integritySection.Width() - SX(32), 1, RGB(242, 244, 247));
+
+	// [FIX] 개별 타이틀 좌표(sec1Pt) 대신 카드(Section)의 시작 좌표를 전달합니다.
+	DrawSectionTitle(memDC, CPoint(portSection.left, portSection.top), _T("포트 설정"));
+	DrawSectionTitle(memDC, CPoint(integritySection.left, integritySection.top), _T("무결성 체크 정보"));
 
 	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
 		{
 			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(252, 253, 255);
+			// [RESTORE] 리더기 내부 카드는 영역 구분을 위해 테두리(Border)를 다시 활성화합니다. (borderW = 1)
 			COLORREF br = enabled ? KFTC_BORDER : RGB(232, 237, 244);
 			FillRoundRect(gPaint, r, SX(10), bg, br, 1);
 
@@ -1455,7 +1471,8 @@ void CReaderSetupDlg::OnPaint()
 
 			CString label; label.Format(_T("리더기%d - COM 포트"), num);
 			memDC.SelectObject(&m_fontLabel);
-			memDC.SetTextColor(enabled ? RGB(107, 114, 128) : RGB(156, 163, 175));
+			// [FIX] ShopSetupDlg 라벨과 완벽하게 동일한 색상 톤 적용
+			memDC.SetTextColor(enabled ? RGB(115, 125, 142) : RGB(156, 163, 175));
 			memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
 
 			const int comboW = SX(178);
@@ -1757,7 +1774,8 @@ HBRUSH CReaderSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	if (nCtlColor == CTLCOLOR_STATIC && pWnd)
 	{
 		pDC->SetBkMode(TRANSPARENT);
-		pDC->SetTextColor(RGB(100, 112, 132));
+		// [FIX] ShopSetupDlg와 동일하게 시각적 무게감을 줄인 soft label gray 적용
+		pDC->SetTextColor(RGB(115, 125, 142));
 		return m_brushBg;
 	}
 	if (nCtlColor == CTLCOLOR_DLG)
@@ -1769,23 +1787,38 @@ HBRUSH CReaderSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 // ============================================================================
 void CReaderSetupDlg::DrawSectionTitle(CDC& dc, CPoint pt, LPCTSTR text)
 {
+	// pt는 이제 카드의 좌상단(Left, Top) 좌표입니다.
+	int hdrH = SX(44);
+
 	Gdiplus::Graphics gSec(dc.GetSafeHdc());
 	gSec.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 	gSec.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-	const float barW = 4.0f, barH = 14.0f, barR = 2.0f, bd = barR * 2.0f;
-	const float barX = (float)(pt.x - SX(10));
-	const float barY = (float)pt.y + ((float)SX(28) - barH) * 0.5f;
+
+	const float barW = 4.0f;
+	const float barH = 14.0f;
+	const float barR = 2.0f;
+	const float bd = barR * 2.0f;
+
+	// [FIX] ShopSetupDlg와 동일하게 Bar 여백 동기화 (좌측 16px, 수직 중앙 정렬)
+	const float barX = (float)pt.x + (float)SX(16);
+	const float barY = (float)pt.y + ((float)hdrH - barH) * 0.5f;
+
 	Gdiplus::GraphicsPath bp;
 	bp.AddArc(barX, barY, bd, bd, 180, 90);
 	bp.AddArc(barX + barW - bd, barY, bd, bd, 270, 90);
 	bp.AddArc(barX + barW - bd, barY + barH - bd, bd, bd, 0, 90);
 	bp.AddArc(barX, barY + barH - bd, bd, bd, 90, 90);
 	bp.CloseFigure();
-	Gdiplus::SolidBrush barBr(Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500)));
+
+	// [FIX] ShopSetupDlg의 메인 테마 파란색 바 색상(RGB 0, 96, 210)으로 통일
+	Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
 	gSec.FillPath(&barBr, &bp);
+
 	CFont* pOldSec = dc.SelectObject(&m_fontSection);
 	dc.SetTextColor(RGB(26, 32, 44));
-	CRect rcSec(pt.x, pt.y, pt.x + SX(300), pt.y + SX(28));
+
+	// [FIX] 텍스트 역시 Bar 우측 6px 부터 시작하고, hdrH 안에서 수직 중앙 정렬
+	CRect rcSec(pt.x + SX(16) + (int)barW + SX(6), pt.y, pt.x + SX(300), pt.y + hdrH);
 	dc.DrawText(text, rcSec, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 	dc.SelectObject(pOldSec);
 }
