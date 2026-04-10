@@ -189,7 +189,7 @@ namespace ModernUIHeader
               float bx, float by, float bsz, IconType iconType,
               LPCWSTR wTitle, LPCWSTR wSub,
               HFONT hFontTitle, HFONT hFontSub,
-              int divX1, int divY, int divX2);
+              int divX1, int divY, int divX2, float subOffsetY = 26.0f, float badgeOffsetY = 0.0f);
 }
 
 // DPI scaling helpers (per-monitor DPI aware)

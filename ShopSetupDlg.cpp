@@ -464,7 +464,7 @@ BOOL CShopSetupDlg::OnInitDialog()
         lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompactHdr ? 15 : 18);
         m_hFontHdrTitle = ::CreateFontIndirect(&lf);
         lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompactHdr ? 11 : 13);
-        lf.lfWeight = FW_NORMAL;
+        lf.lfWeight = FW_BOLD;
         m_hFontHdrSub = ::CreateFontIndirect(&lf);
     }
 
@@ -1864,7 +1864,7 @@ void CShopSetupDlg::OnPaint()
             ModernUIHeader::IconType::Store,
             L"가맹점 설정", L"가맹점 및 서버 연결 설정을 관리합니다",
             m_hFontHdrTitle, m_hFontHdrSub,
-            m_rcOuterCard.left + SX(14), m_rcOuterCard.top + SX(GetHdrDividerY() - 10), rc.Width() - (m_rcOuterCard.left + SX(14)));
+            m_rcOuterCard.left + SX(14), m_rcOuterCard.top + SX(GetHdrDividerY() - 10), rc.Width() - (m_rcOuterCard.left + SX(14)), IsCompactScreen() ? 23.0f : 26.0f, IsCompactScreen() ? 3.0f : 0.0f);
     }
     CFont* pOldFont = memDC.SelectObject(&m_fontTitle);
     CPen linePen(PS_SOLID, 1, RGB(228, 232, 240));

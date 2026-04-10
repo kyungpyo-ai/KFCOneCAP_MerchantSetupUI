@@ -4503,14 +4503,14 @@ void Draw(HDC hdc,
     float bx, float by, float bsz, IconType iconType,
     LPCWSTR wTitle, LPCWSTR wSub,
     HFONT hFontTitle, HFONT hFontSub,
-    int divX1, int divY, int divX2)
+    int divX1, int divY, int divX2, float subOffsetY, float badgeOffsetY)
 {
     ModernUIGfx::EnsureGdiplusStartup();
     Gdiplus::Graphics g(hdc);
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
     g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
-	float badgeY = by - 3.0f; // 아이콘만 10픽셀 위로 끌어올림!
+	float badgeY = by - 2.0f - badgeOffsetY;
 
 	// --- Badge gradient background ---
 	{
@@ -4589,7 +4589,7 @@ void Draw(HDC hdc,
         if (hFontSub && wSub) {
             HFONT hOld = (HFONT)::SelectObject(hdcT, hFontSub);
             ::SetTextColor(hdcT, RGB(130, 142, 162));
-            RECT rc = { (LONG)tx, (LONG)(titleY+26.f), (LONG)(tx+360.f), (LONG)(titleY+46.f) };
+            RECT rc = { (LONG)tx, (LONG)(titleY+subOffsetY), (LONG)(tx+360.f), (LONG)(titleY+46.f) };
             ::DrawTextW(hdcT, wSub, -1, &rc, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
             ::SelectObject(hdcT, hOld);
         }
