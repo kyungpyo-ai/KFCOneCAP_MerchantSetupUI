@@ -120,6 +120,8 @@ int CReaderSetupDlg::SX(int v) const
 	return ModernUIDpi::Scale(m_hWnd, v);
 }
 
+static BOOL IsCompactScreen() { return ::GetSystemMetrics(SM_CYSCREEN) <= 800; }
+
 void CReaderSetupDlg::EnsureFonts()
 {
 	if (m_fontTitle.GetSafeHandle())
@@ -130,35 +132,37 @@ void CReaderSetupDlg::EnsureFonts()
 
 	// [FIX] 폰트 페이스를 먼저 일괄 적용 (Pretendard 등)
 	ModernUIFont::ApplyUIFontFace(lf);
+	const BOOL bCF = IsCompactScreen();
 
 	// Title (메인 타이틀)
-	lf.lfHeight = -SX(18);
+	lf.lfHeight = -SX(bCF ? 15 : 18);
 	lf.lfWeight = FW_BOLD;
 	m_fontTitle.CreateFontIndirect(&lf);
 
 	// Sub (부제목 - ShopSetupDlg처럼 강조)
-	lf.lfHeight = -SX(13);
+	lf.lfHeight = -SX(bCF ? 11 : 13);
 	lf.lfWeight = FW_BOLD; // FW_NORMAL -> FW_BOLD
 	m_fontSub.CreateFontIndirect(&lf);
 
 	// Section title (섹션 제목 - 포트 설정, 무결성 등)
-	lf.lfHeight = -SX(15);
+	lf.lfHeight = -SX(bCF ? 13 : 15);
 	lf.lfWeight = FW_BOLD;
+	lf.lfQuality = CLEARTYPE_QUALITY; // [FIX] 카드 제목에도 ClearType 안티앨리어싱을 강제 적용하여 완벽하게 부드럽게 렌더링
 	m_fontSection.CreateFontIndirect(&lf);
 
 	// Normal (콤보박스, 버튼 등 본문)
-	lf.lfHeight = -SX(14);
+	lf.lfHeight = -SX(bCF ? 12 : 14);
 	lf.lfWeight = FW_MEDIUM; // FW_NORMAL -> FW_MEDIUM (약간 도톰하게)
 	m_fontNormal.CreateFontIndirect(&lf);
 
 	// Label (일반 라벨 및 토글 텍스트 - 깨짐 방지 완벽 세팅)
-	lf.lfHeight = -SX(14);
+	lf.lfHeight = -SX(bCF ? 12 : 14);
 	lf.lfWeight = FW_BOLD;                 // FW_NORMAL -> FW_BOLD
 	lf.lfQuality = CLEARTYPE_QUALITY;      // [FIX] GDI 렌더링 품질 안정화 (ShopSetupDlg 비법)
 	m_fontLabel.CreateFontIndirect(&lf);
 
 	// Small (리스트 데이터 등)
-	lf.lfHeight = -SX(12);
+	lf.lfHeight = -SX(bCF ? 10 : 12);
 	lf.lfWeight = FW_NORMAL;
 	m_fontSmall.CreateFontIndirect(&lf);
 
@@ -202,24 +206,25 @@ void CReaderSetupDlg::CalcLayoutRects(
 ) const
 {
 	CRect rc; GetClientRect(&rc);
+	const BOOL bC = IsCompactScreen();
 
 	const int margin = SX(20);
 	inner = CRect(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 
-	const int titleBlock = SX(84);
-	const int sectionTitleH = SX(28);
-	const int sectionTitleTop = SX(12);
+	const int titleBlock = SX(bC ? 68 : 84);
+	const int sectionTitleH = SX(bC ? 24 : 28);
+	const int sectionTitleTop = SX(bC ? 10 : 12);
 	const int infoSectionTitleTop = SX(2);
-	const int sectionTitleGap = SX(10);
+	const int sectionTitleGap = SX(bC ? 8 : 10);
 	const int infoTitleGap = -SX(10);
-	const int sectionBoxPad = SX(20);
-	const int cardH = SX(128);
-	const int cardGap = SX(16);
-	const int queryH = SX(56);
-	const int queryGap = SX(16);
-	const int infoBottomPad = SX(8);
-	const int bottomBtnH = SX(42);
-	const int bottomGap = SX(16);
+	const int sectionBoxPad = SX(bC ? 16 : 20);
+	const int cardH = SX(bC ? 96 : 128);
+	const int cardGap = SX(bC ? 12 : 16);
+	const int queryH = SX(bC ? 44 : 56);
+	const int queryGap = SX(bC ? 12 : 16);
+	const int infoBottomPad = SX(bC ? 6 : 8);
+	const int bottomBtnH = SX(bC ? 36 : 42);
+	const int bottomGap = SX(bC ? 12 : 16);
 	const int bottomArea = bottomBtnH + bottomGap + SX(8);
 
 	int y = inner.top + titleBlock;
@@ -234,7 +239,7 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 	card1 = CRect(cardLeft, sec1ContentTop, cardRight, sec1ContentTop + cardH);
 	card2 = CRect(cardLeft, card1.bottom + cardGap, cardRight, card1.bottom + cardGap + cardH);
-	y = card2.bottom + sectionBoxPad + SX(30);
+	y = card2.bottom + sectionBoxPad + SX(bC ? 28 : 30);
 
 	sec2TitlePt = CPoint(sectionLeft + SX(24), y + infoSectionTitleTop);
 	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + infoTitleGap;
@@ -246,18 +251,18 @@ void CReaderSetupDlg::CalcLayoutRects(
 	int listTop = y;
 	int listBottomLimit = inner.bottom - bottomArea - infoBottomPad - sectionBoxPad;
 	int listH = listBottomLimit - listTop;
-	if (listH < SX(166)) listH = SX(166);
-	if (listH > SX(166)) listH = SX(166);
+	if (listH < SX(bC ? 138 : 166)) listH = SX(bC ? 138 : 166);
+	if (listH > SX(bC ? 138 : 166)) listH = SX(bC ? 138 : 166);
 	listRc = CRect(sectionLeft + sectionBoxPad, listTop,
 		sectionRight - sectionBoxPad, listTop + listH);
 
 	// ShopSetupDlg 하단 버튼과 동일한 크기/간격/위치 규칙 적용
 	// ShopSetupDlg와 동일한 하단 버튼 규칙 적용
 	const int buttonW = SX(110);
-	const int buttonH = SX(36);
-	const int buttonGap = SX(8);
-	const int buttonBottom = SX(18);
-	const int dialogBottomPad = SX(22);
+	const int buttonH = SX(bC ? 32 : 36);
+	const int buttonGap = SX(12);
+	const int buttonBottom = SX(bC ? 14 : 18);
+	const int dialogBottomPad = SX(bC ? 18 : 22);
 	int totalW = buttonW * 2 + buttonGap;
 	int bx = (rc.Width() - totalW) / 2;
 	int by = rc.bottom - (dialogBottomPad + buttonBottom + buttonH);
@@ -477,16 +482,17 @@ void CReaderSetupDlg::LayoutControls()
 	CPoint sec1Pt, sec2Pt;
 	CalcLayoutRects(inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc, sec1Pt, sec2Pt);
 
-	const int padL = SX(64);
+	const BOOL bCL = IsCompactScreen();
+	const int padL = SX(bCL ? 52 : 64);
 	const int padR = SX(22);
-	const int comboW = SX(178);
+	const int comboW = SX(bCL ? 152 : 178);
 	const int btnW = SX(kReaderActionButtonWidth);
-	const int btnH = SX(37);
+	const int btnH = SX(bCL ? 30 : 37);
 	const int gap = SX(8);
-	const int toggleW = SX(52);
-	const int toggleH = SX(28);
-	const int rowComboY = SX(34);
-	const int rowBtnY = SX(84);
+	const int toggleW = SX(bCL ? 44 : 52);
+	const int toggleH = SX(bCL ? 24 : 28);
+	const int rowComboY = SX(bCL ? 28 : 34);
+	const int rowBtnY = SX(bCL ? 62 : 84);
 	const int openLabelW = SX(56);
 	const int multiLabelW = SX(92);
 	const int textGap = SX(8);
@@ -502,15 +508,15 @@ void CReaderSetupDlg::LayoutControls()
 			int x0 = card.left + padL;
 			int yCombo = card.top + rowComboY;
 			cb.SetWindowPos(NULL, x0, yCombo, comboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
-		cb.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(SX(37) - 2));
-		cb.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(SX(37) - 2));
+		cb.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(btnH - 2));
+		cb.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(btnH - 2));
 
 			int xTogglePad = card.right - padR - toggleW - SX(22);
 			int xTogglePadLabel = xTogglePad - textGap - multiLabelW;
 			int xToggleOpen = xTogglePadLabel - toggleBlockGap - (toggleW + textGap + openLabelW);
 			if (xToggleOpen < x0 + comboW + SX(16))
 				xToggleOpen = x0 + comboW + SX(16);
-			int yToggle = yCombo + (SX(37) - toggleH) / 2;
+			int yToggle = yCombo + (btnH - toggleH) / 2;
 			tgOpen.SetWindowPos(NULL, xToggleOpen, yToggle,
 				toggleW + textGap + openLabelW, toggleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -551,15 +557,15 @@ void CReaderSetupDlg::LayoutControls()
 	}
 
 	int qx = queryBox.left;
-	int qComboW = SX(120);
+	int qComboW = SX(bCL ? 100 : 120);
 	CRect rcSearchCombo;
 	m_search_date.GetWindowRect(&rcSearchCombo);
-	int qVisibleH = SX(37);
-	int qy = queryBox.top + (queryBox.Height() - qVisibleH) / 2 + SX(2);
+	int qVisibleH = btnH;
+	int qy = queryBox.top + SX(bCL ? 8 : 10);
 	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
-	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(SX(37) - 2));
-	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(SX(37) - 2));
-	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(78), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
+	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(btnH - 2));
+	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(btnH - 2));
+	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(bCL ? 64 : 78), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 커스텀 표는 OnPaint에서 직접 그리고, 실제 리스트는 데이터 저장용으로만 숨긴다.
 	m_integrity_list.SetWindowPos(NULL, -10000, -10000, 1, 1,
@@ -1277,24 +1283,25 @@ BOOL CReaderSetupDlg::OnInitDialog()
 
 CSize CReaderSetupDlg::CalcMinClientSize() const
 {
+	const BOOL bC = IsCompactScreen();
 	const int margin = SX(20);
-	const int innerW = SX(720);
-	const int titleArea = SX(92);
-	const int sectionPad = SX(24);
-	const int sectionTitleTop = SX(12);
+	const int innerW = SX(bC ? 660 : 720);
+	const int titleArea = SX(bC ? 68 : 92);
+	const int sectionPad = SX(bC ? 16 : 24);
+	const int sectionTitleTop = SX(bC ? 10 : 12);
 	const int infoSectionTitleTop = SX(2);
-	const int sectionTitleH = SX(28);
-	const int sectionTitleGap = SX(10);
+	const int sectionTitleH = SX(bC ? 24 : 28);
+	const int sectionTitleGap = SX(bC ? 8 : 10);
 	const int infoTitleGap = -SX(10);
-	const int cardH = SX(128);
-	const int cardGap = SX(16);
-	const int betweenSections = SX(26);
-	const int queryH = SX(62);
-	const int queryGap = SX(12);
-	const int listMinH = SX(152);
-	const int infoBottomPad = SX(18);
-	const int bottomBtnH = SX(42);
-	const int bottomGap = SX(16);
+	const int cardH = SX(bC ? 96 : 128);
+	const int cardGap = SX(bC ? 12 : 16);
+	const int betweenSections = SX(bC ? 28 : 26);
+	const int queryH = SX(bC ? 44 : 62);
+	const int queryGap = SX(bC ? 12 : 16);
+	const int listMinH = SX(bC ? 138 : 152);
+	const int infoBottomPad = SX(bC ? 6 : 18);
+	const int bottomBtnH = SX(bC ? 36 : 42);
+	const int bottomGap = SX(bC ? 12 : 16);
 	const int bottomArea = bottomBtnH + bottomGap + SX(8);
 
 	int clientW = innerW + margin * 2;
@@ -1322,9 +1329,10 @@ void CReaderSetupDlg::FitWindowToLayout()
 	CRect rcWnd(0, 0, needClient.cx, needClient.cy);
 	AdjustWindowRectEx(&rcWnd, GetStyle(), FALSE, GetExStyle());
 
-	SetWindowPos(NULL, 0, 0,
-		rcWnd.Width(), rcWnd.Height(),
-		SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	RECT rcWork; SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWork, 0);
+	int wW = min(rcWnd.Width(),  (int)(rcWork.right  - rcWork.left));
+	int wH = min(rcWnd.Height(), (int)(rcWork.bottom - rcWork.top));
+	SetWindowPos(NULL, 0, 0, wW, wH, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
 	CenterWindow();
 }
@@ -1368,6 +1376,7 @@ void CReaderSetupDlg::OnPaint()
 	Gdiplus::Graphics gPaint(memDC.GetSafeHdc());
 	gPaint.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 	gPaint.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+	const BOOL bCP = IsCompactScreen();
 
 	const int cardMarginL = SX(20);
 	const int cardMarginT = SX(10);
@@ -1395,7 +1404,7 @@ void CReaderSetupDlg::OnPaint()
 	// [FIX] 메인 카드 테두리 제거 (borderW = 0)
 	FillRoundRect(gPaint, mainCard, SX(16), RGB(255, 255, 255), RGB(255, 255, 255), 0);
 
-	const int iconSize = SX(44);
+	const int iconSize = SX(bCP ? 36 : 44);
 	const int iconX    = mainCard.left + SX(14);
 	const int iconY    = mainCard.top  + SX(16);
 
@@ -1409,7 +1418,7 @@ void CReaderSetupDlg::OnPaint()
 			wTitle, wSub,
 			(HFONT)m_fontTitle.GetSafeHandle(),
 			(HFONT)m_fontSub.GetSafeHandle(),
-			mainCard.left + SX(6), mainCard.top + SX(74), mainCard.right - SX(6));
+			mainCard.left + SX(6), mainCard.top + SX(bCP ? 60 : 74), mainCard.right - SX(6), bCP ? 23.0f : 26.0f, bCP ? 3.0f : 0.0f);
 	}
 
 	CRect inner, card1, card2, infoTitleArea, queryBox, listRc, okRc, cancelRc;
@@ -1443,7 +1452,7 @@ void CReaderSetupDlg::OnPaint()
 		drawSecCard(portSection);
 		drawSecCard(integritySection);
 	}
-	int hdrH = SX(44); // ShopSetupDlg 기준 헤더 높이
+	int hdrH = SX(bCP ? 36 : 44);
 
 	// [FIX] 헤더 구분선을 정확히 헤더 하단에 위치시킵니다.
 	memDC.FillSolidRect(portSection.left + SX(16), portSection.top + hdrH, portSection.Width() - SX(32), 1, RGB(242, 244, 247));
@@ -1461,7 +1470,7 @@ void CReaderSetupDlg::OnPaint()
 			FillRoundRect(gPaint, r, SX(10), bg, br, 1);
 
 			const int badgeSize = SX(34);
-			CRect badge(r.left + SX(16), r.top + SX(14), r.left + SX(16) + badgeSize, r.top + SX(14) + badgeSize);
+			CRect badge(r.left + SX(bCP ? 13 : 16), r.top + SX(bCP ? 11 : 14), r.left + SX(bCP ? 13 : 16) + badgeSize, r.top + SX(bCP ? 11 : 14) + badgeSize);
 			COLORREF badgeBg = enabled ? BLUE_500 : RGB(190, 199, 209);
 			FillRoundRect(gPaint, badge, SX(6), badgeBg, badgeBg, 1);
 			CString numText; numText.Format(_T("%d"), num);
@@ -1473,13 +1482,14 @@ void CReaderSetupDlg::OnPaint()
 			memDC.SelectObject(&m_fontLabel);
 			// [FIX] ShopSetupDlg 라벨과 완벽하게 동일한 색상 톤 적용
 			memDC.SetTextColor(enabled ? RGB(115, 125, 142) : RGB(156, 163, 175));
-			memDC.TextOut(r.left + SX(64), r.top + SX(14), label);
+				CRect rcLbl(r.left + SX(bCP ? 52 : 64), badge.top - SX(4), r.right - SX(8), r.top + SX(bCP ? 28 : 34) - SX(4));
+				memDC.DrawText(label, rcLbl, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
-			const int comboW = SX(178);
-			const int btnH = SX(37);
-			const int x0 = r.left + SX(64);
-			const int yCombo = r.top + SX(34);
-			const int toggleW = SX(52);
+			const int comboW = SX(bCP ? 152 : 178);
+			const int btnH = SX(bCP ? 30 : 37);
+			const int x0 = r.left + SX(bCP ? 52 : 64);
+			const int yCombo = r.top + SX(bCP ? 28 : 34);
+			const int toggleW = SX(bCP ? 44 : 52);
 			const int padR = SX(22);
 			const int textGap = SX(8);
 			const int openLabelW = SX(56);
@@ -1503,7 +1513,7 @@ void CReaderSetupDlg::OnPaint()
 	{
 		CRect tableOuter = listRc;
 		tableOuter.DeflateRect(1, 1);
-		tableOuter.OffsetRect(0, -SX(14));
+		tableOuter.OffsetRect(0, -SX(bCP ? 0 : 14));
 		const COLORREF tableBorder = KFTC_TBL_BORDER;
 		const COLORREF headerBg    = KFTC_TBL_HDR_BG;
 		const COLORREF headerLine  = KFTC_TBL_HDR_LINE;
@@ -1520,8 +1530,8 @@ void CReaderSetupDlg::OnPaint()
 
 		const int* ratios = kIntegrityColumnRatios;
 		const int colCount = kIntegrityColumnCount;
-		const int headerH = SX(36);
-		const int rowH = SX(38);
+		const int headerH = SX(bCP ? 30 : 36);
+		const int rowH = SX(bCP ? 32 : 38);
 		const int textPad = SX(10);
 		const int visibleRows = GetIntegrityVisibleRows();
 
@@ -1548,7 +1558,7 @@ void CReaderSetupDlg::OnPaint()
 		CRect bodyRc(tableOuter.left + 1, headerRc.bottom, tableOuter.right - 1, tableOuter.bottom - 1);
 		memDC.FillSolidRect(bodyRc, bodyBg);
 		CRect contentRc = bodyRc;
-		contentRc.DeflateRect(SX(6), SX(6));
+		contentRc.DeflateRect(SX(6), SX(bCP ? 2 : 6));
 		if (bNeedScroll)
 			contentRc.right -= (scrollW + SX(8) + scrollRightPad);
 
@@ -1788,7 +1798,7 @@ HBRUSH CReaderSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 void CReaderSetupDlg::DrawSectionTitle(CDC& dc, CPoint pt, LPCTSTR text)
 {
 	// pt는 이제 카드의 좌상단(Left, Top) 좌표입니다.
-	int hdrH = SX(44);
+	int hdrH = SX(IsCompactScreen() ? 36 : 44);
 
 	Gdiplus::Graphics gSec(dc.GetSafeHdc());
 	gSec.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
