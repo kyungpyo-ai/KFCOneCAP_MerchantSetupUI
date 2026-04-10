@@ -25,6 +25,8 @@ namespace
     Gdiplus::Color g_cardIconColor(255, 31, 114, 214);
 }
 
+static BOOL IsCompactScreen() { return ::GetSystemMetrics(SM_CYSCREEN) <= 800; }
+
 CHomeCardButton::CHomeCardButton()
     : m_bHover(FALSE)
     , m_bPressed(FALSE)
@@ -375,6 +377,17 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
         int w = min(rcWnd.Width(),  (int)(rcWork.right  - rcWork.left));
         int h = min(rcWnd.Height(), (int)(rcWork.bottom - rcWork.top));
         SetWindowPos(NULL, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
+        // Compact mode: shrink to smaller target size
+        if (IsCompactScreen()) {
+            CRect rcCl; GetClientRect(&rcCl);
+            CRect rcWn; GetWindowRect(&rcWn);
+            int bW = rcWn.Width()  - rcCl.Width();
+            int bH = rcWn.Height() - rcCl.Height();
+            int tgW = ModernUIDpi::Scale(m_hWnd, 840) + bW;
+            int tgH = ModernUIDpi::Scale(m_hWnd, 420) + bH;
+            w = min(tgW, w); h = min(tgH, h);
+            SetWindowPos(NULL, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
+        }
     }
     LoadLogoImage();
     LayoutControls();
@@ -406,31 +419,32 @@ void CKFTCOneCAPDlg::EnsureFonts()
 
     // 현재 창의 DPI 세팅을 가져옵니다.
     UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
+    const BOOL bCompact = IsCompactScreen();
 
     // --- (A) MFC CFont 객체 생성 섹션 ---
 
     // 1. 메인 타이틀 (KFTCOneCAP) - 18pt, Extra Bold(800)
-    lf.lfHeight = -MulDiv(19, dpi, 72);
+    lf.lfHeight = -MulDiv(bCompact ? 16 : 19, dpi, 72);
     lf.lfWeight = FW_EXTRABOLD;
     m_fontTitle.CreateFontIndirect(&lf);
 
     // 2. 서브 타이틀 (버전 정보 등) - 11pt, Normal
-    lf.lfHeight = -MulDiv(13, dpi, 72);
+    lf.lfHeight = -MulDiv(bCompact ? 10 : 13, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontSubtitle.CreateFontIndirect(&lf);
 
     // 3. 카드 제목 (리더기 설정 등) - 14pt, Bold
-    lf.lfHeight = -MulDiv(15, dpi, 72);
+    lf.lfHeight = -MulDiv(bCompact ? 12 : 15, dpi, 72);
     lf.lfWeight = FW_BOLD;
     m_fontCardTitle.CreateFontIndirect(&lf);
 
     // 4. 카드 설명 (두 줄 설명) - 10pt, Normal
-    lf.lfHeight = -MulDiv(11, dpi, 72);
+    lf.lfHeight = -MulDiv(bCompact ?  9 : 11, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontCardDesc.CreateFontIndirect(&lf);
 
     // 5. 푸터 버튼 및 기타 - 12pt, Normal
-    lf.lfHeight = -MulDiv(12, dpi, 72);
+    lf.lfHeight = -MulDiv(bCompact ? 10 : 12, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontFooter.CreateFontIndirect(&lf);
 
@@ -473,20 +487,21 @@ void CKFTCOneCAPDlg::LayoutControls()
     CRect rc;
     GetClientRect(&rc);
 
-    const int marginX = SX(50);
-    const int topCardsVisual = SX(135);    // 4개의 버튼 위치(y축)
-    const int cardGap = SX(18);
-    const int footerBtnW = SX(184);
-    const int footerBtnH = SX(40);
+    const BOOL bC = IsCompactScreen();
+    const int marginX        = SX(bC ? 36 : 50);
+    const int topCardsVisual = SX(bC ? 104 : 135);
+    const int cardGap        = SX(bC ? 12 : 18);
+    const int footerBtnW     = SX(bC ? 156 : 184);
+    const int footerBtnH     = SX(bC ? 34  : 40);
 
     int cardW = (rc.Width() - (marginX * 2) - (cardGap * 3));
     cardW /= 4;
-    const int cardVisualH = SX(260);
-    const int cardCtrlTop = topCardsVisual - SX(10);
-    const int cardCtrlH = cardVisualH + SX(18);
+    const int cardVisualH = SX(bC ? 210 : 260);
+    const int cardCtrlTop = topCardsVisual - SX(bC ? 8 : 10);
+    const int cardCtrlH   = cardVisualH + SX(bC ? 14 : 18);
 
-    m_nFooterDividerY = topCardsVisual + cardVisualH + SX(25);
-    int footerY = m_nFooterDividerY + SX(24);
+    m_nFooterDividerY = topCardsVisual + cardVisualH + SX(bC ? 20 : 25);
+    int footerY = m_nFooterDividerY + SX(bC ? 18 : 24);
 
     int x = marginX;
     if (GetDlgItem(IDC_READER_SETUP)) GetDlgItem(IDC_READER_SETUP)->MoveWindow(x, cardCtrlTop, cardW, cardCtrlH);
@@ -554,10 +569,11 @@ void CKFTCOneCAPDlg::DrawBackground(CDC& dc)
 // ==========================================
 void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
 {
-    const int left = SX(56);
-    const int top = SX(38);
-    const int logoBox = SX(54);
-    const int textLeft = left + logoBox + SX(15);
+    const BOOL bCH = IsCompactScreen();
+    const int left    = SX(bCH ? 40 : 56);
+    const int top     = SX(bCH ? 26 : 38);
+    const int logoBox = SX(bCH ? 42 : 54);
+    const int textLeft = left + logoBox + SX(bCH ? 10 : 15);
 
     Graphics g(dc.GetSafeHdc());
     // 최고 품질의 렌더링 설정
@@ -585,9 +601,9 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
 
     // 텍스트 출력
     if (pTitleFont != NULL)
-        g.DrawString(L"KFTCOneCAP", -1, pTitleFont, PointF((REAL)textLeft, (REAL)(top + SX(2))), &titleBrush);
+        g.DrawString(L"KFTCOneCAP", -1, pTitleFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 1 : 2))), &titleBrush);
     if (pSubFont != NULL)
-        g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(40))), &subBrush);
+        g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 28 : 40))), &subBrush);
 
 }
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
@@ -598,8 +614,8 @@ void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
     CPen pen(PS_SOLID, 1, kFooterDivider);
     CPen* pOld = dc.SelectObject(&pen);
     int y = (m_nFooterDividerY > 0) ? m_nFooterDividerY : (rc.bottom - SX(78));
-    dc.MoveTo(SX(40), y);
-    dc.LineTo(rc.right - SX(40), y);
+    dc.MoveTo(SX(IsCompactScreen() ? 28 : 40), y);
+    dc.LineTo(rc.right - SX(IsCompactScreen() ? 28 : 40), y);
     dc.SelectObject(pOld);
 }
 
@@ -884,6 +900,7 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
     // [2] 기준 사각형 고정
+    const BOOL bCC = IsCompactScreen();
     CRect rcPaint(0, SX(18), rc.Width(), rc.Height());
     rcPaint.DeflateRect(SX(2), SX(2));
     rcPaint.bottom -= SX(16);
@@ -955,7 +972,7 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
 
     RectF cardRect((REAL)rcPaint.left + 0.5f, (REAL)rcPaint.top + 0.5f, (REAL)rcPaint.Width() - 1.0f, (REAL)rcPaint.Height() - 1.0f);
     GraphicsPath path;
-    ModernUIGfx::AddRoundRect(path, cardRect, (REAL)SX(20));
+    ModernUIGfx::AddRoundRect(path, cardRect, (REAL)SX(bCC ? 16 : 20));
     SolidBrush fillBrush(Color(255, (BYTE)fillR, (BYTE)fillG, (BYTE)fillB));
     g.FillPath(&fillBrush, &path);
 
@@ -967,7 +984,8 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     }
 
     // --- 아이콘 ---
-    CRect rcIcon(rcPaint.left + SX(28), rcPaint.top + SX(28), rcPaint.left + SX(28) + SX(56), rcPaint.top + SX(28) + SX(56));
+    int iOff = SX(bCC ? 22 : 28); int iSz = SX(bCC ? 46 : 56);
+    CRect rcIcon(rcPaint.left + iOff, rcPaint.top + iOff, rcPaint.left + iOff + iSz, rcPaint.top + iOff + iSz);
     DrawCardIcon(g, rcIcon, type, nHoverProgress, nPressProgress);
 
     g.Restore(cardState); // 카드 축소 변환 종료
@@ -995,8 +1013,8 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     format.SetLineAlignment(StringAlignmentNear);
     format.SetTrimming(StringTrimmingEllipsisCharacter);
 
-    RectF layoutTitle((REAL)rcPaint.left + SX(28), (REAL)rcPaint.top + SX(104), (REAL)rcPaint.Width() - SX(56), (REAL)SX(24));
-    RectF layoutDesc((REAL)rcPaint.left + SX(28), (REAL)rcPaint.top + SX(136), (REAL)rcPaint.Width() - SX(56), (REAL)rcPaint.Height() - SX(150));
+    RectF layoutTitle((REAL)rcPaint.left + SX(bCC ? 22 : 28), (REAL)rcPaint.top + SX(bCC ? 84 : 104), (REAL)rcPaint.Width() - SX(bCC ? 44 : 56), (REAL)SX(24));
+    RectF layoutDesc((REAL)rcPaint.left + SX(bCC ? 22 : 28), (REAL)rcPaint.top + SX(bCC ? 108 : 136), (REAL)rcPaint.Width() - SX(bCC ? 44 : 56), (REAL)rcPaint.Height() - SX(bCC ? 120 : 150));
 
     // 캐싱된 폰트 포인터(*m_pGdiFontTitle)를 사용하여 그리기
     g.DrawString(CT2W(GetCardTitle(type)), -1, m_pGdiFontTitle, layoutTitle, &format, &titleBrush);
