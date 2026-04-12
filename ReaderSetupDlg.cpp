@@ -218,7 +218,7 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int sectionTitleGap = SX(bC ? 8 : 10);
 	const int infoTitleGap = -SX(10);
 	const int sectionBoxPad = SX(bC ? 16 : 20);
-	const int cardH = SX(bC ? 96 : 128);
+	const int cardH = SX(bC ? 102 : 128);
 	const int cardGap = SX(bC ? 12 : 16);
 	const int queryH = SX(bC ? 44 : 56);
 	const int queryGap = SX(bC ? 12 : 16);
@@ -274,12 +274,12 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2) const
 {
-	return CRect(card1.left - SX(24), card1.top - SX(56), card1.right + SX(24), card2.bottom + SX(18));
+	return CRect(card1.left - SX(24), card1.top - SX(IsCompactScreen() ? 46 : 56), card1.right + SX(24), card2.bottom + SX(IsCompactScreen() ? 12 : 18));
 }
 
 CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
 {
-	return CRect(queryBox.left - SX(24), queryBox.top - SX(48), queryBox.right + SX(24), listRc.bottom + SX(2));
+	return CRect(queryBox.left - SX(24), queryBox.top - SX(IsCompactScreen() ? 38 : 48), queryBox.right + SX(24), listRc.bottom + SX(2));
 }
 
 // 데이터 저장용 ListCtrl의 컬럼 폭도 커스텀 테이블 비율과 동일하게 맞춘다.
@@ -490,9 +490,9 @@ void CReaderSetupDlg::LayoutControls()
 	const int btnH = SX(bCL ? 30 : 37);
 	const int gap = SX(8);
 	const int toggleW = SX(bCL ? 44 : 52);
-	const int toggleH = SX(bCL ? 24 : 28);
+	const int toggleH = SX(28);
 	const int rowComboY = SX(bCL ? 28 : 34);
-	const int rowBtnY = SX(bCL ? 62 : 84);
+	const int rowBtnY = SX(bCL ? 68 : 84);
 	const int openLabelW = SX(56);
 	const int multiLabelW = SX(92);
 	const int textGap = SX(8);

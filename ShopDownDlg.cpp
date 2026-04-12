@@ -343,7 +343,7 @@ void CShopDownDlg::LayoutControls()
     const int padY  = ModernUIDpi::Scale(m_hWnd, bCmp ?  6 :  8);
     const int navH  = ModernUIDpi::Scale(m_hWnd, bCmp ? 36 : 44);
     const int rowGap= ModernUIDpi::Scale(m_hWnd, bCmp ?  8 : 12);
-    const int ctrlH = ModernUIDpi::Scale(m_hWnd, bCmp ? 30 : 38);
+    const int ctrlH = ModernUIDpi::Scale(m_hWnd, bCmp ? 32 : 40);
 
     // [1] 네비게이션 좌표 계산
     const int navY_bot = rc.Height() - padY - navH;

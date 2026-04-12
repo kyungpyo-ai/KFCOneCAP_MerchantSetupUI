@@ -941,7 +941,8 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 					: Gdiplus::Color(255, GetRValue(m_clrText), GetGValue(m_clrText), GetBValue(m_clrText)))));
 
 
-	const float footerFontSize = ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize + 4.8f);
+	const float footerFontBase = ::GetSystemMetrics(SM_CYSCREEN) <= 800 ? kBtnFontSize + 1.5f : kBtnFontSize + 4.8f;
+	const float footerFontSize = ModernUIDpi::ScaleF(m_hWnd, footerFontBase);
 	const float normalFontSize = (m_nTextPx > 0) ? ModernUIDpi::ScaleF(m_hWnd, (float)m_nTextPx) : ModernUIDpi::ScaleF(m_hWnd, kBtnFontSize);
 	const int wantedFontH = -(int)(isFooterAction ? footerFontSize : normalFontSize);
 	if (!m_hCachedFont || m_nCachedFontHeight != wantedFontH)
@@ -1494,8 +1495,9 @@ void CModernToggleSwitch::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	float pressY = pressed ? ModernUIDpi::ScaleF(m_hWnd, 1.2f) : 0.0f;
 
 	// 원래 스위치 트랙 크기
-	REAL origW = ModernUIDpi::ScaleF(m_hWnd, 44.0f);
-	REAL origH = ModernUIDpi::ScaleF(m_hWnd, 24.0f);
+	const BOOL bCmpTg = ::GetSystemMetrics(SM_CYSCREEN) <= 800;
+	REAL origW = ModernUIDpi::ScaleF(m_hWnd, bCmpTg ? 38.0f : 44.0f);
+	REAL origH = ModernUIDpi::ScaleF(m_hWnd, bCmpTg ? 20.0f : 24.0f);
 	REAL marginR = (float)ModernUIDpi::Scale(m_hWnd, 2);
 	REAL origX = (REAL)w - origW - marginR;
 	REAL origY = (h - origH) / 2.0f;

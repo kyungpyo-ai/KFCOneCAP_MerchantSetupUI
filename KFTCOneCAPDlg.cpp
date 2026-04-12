@@ -347,6 +347,9 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     m_btnMinimize.SubclassDlgItem(IDC_MINIMIZE, this);
     m_btnExit.SubclassDlgItem(IDC_EXIT, this);
 
+    m_btnMinimize.SetFont(&m_fontFooter);
+    m_btnExit.SetFont(&m_fontFooter);
+
     m_btnMinimize.SetButtonStyle(ButtonStyle::Auto);
     m_btnExit.SetButtonStyle(ButtonStyle::Auto);
     m_btnMinimize.SetUnderlayColor(kHomeBg);
