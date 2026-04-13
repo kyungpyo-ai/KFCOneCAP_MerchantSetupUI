@@ -340,16 +340,19 @@ void CShopDownDlg::LayoutControls()
 
     const BOOL bCmp = IsCompactScreen();
     const int padX  = ModernUIDpi::Scale(m_hWnd, bCmp ?  8 : 12);
-    const int padY  = ModernUIDpi::Scale(m_hWnd, bCmp ?  6 :  8);
-    const int navH  = ModernUIDpi::Scale(m_hWnd, bCmp ? 36 : 44);
-    const int rowGap= ModernUIDpi::Scale(m_hWnd, bCmp ?  8 : 12);
+    const int padY = ModernUIDpi::Scale(m_hWnd, bCmp ? 6 : 8);
+    const int navBtnS = ModernUIDpi::Scale(m_hWnd, bCmp ? 26 : 32);
+
+    // [FIX] 잔상(선)이 남지 않도록 버튼 크기보다 4px(위아래 2px씩) 여유 공간을 줍니다.
+    const int navH = navBtnS + ModernUIDpi::Scale(m_hWnd, 4);
+    const int rowGap = ModernUIDpi::Scale(m_hWnd, bCmp ? 8 : 12);
     const int ctrlH = ModernUIDpi::Scale(m_hWnd, bCmp ? 32 : 40);
 
-    // [1] 네비게이션 좌표 계산
-    const int navY_bot = rc.Height() - padY - navH;
+    // 네비게이션 좌표 계산
+    // [FIX] 동그라미 밑부분이 잘리지 않도록 맨 바닥에서 위로 8px(콤팩트 6px) 정도 띄워주는 안전 여백 추가
+    const int navSafeMargin = ModernUIDpi::Scale(m_hWnd, bCmp ? 6 : 8);
+    const int navY_bot = rc.bottom - navH - navSafeMargin;
     m_rcNavBar.SetRect(padX, navY_bot, rc.Width() - padX, navY_bot + navH);
-
-    const int navBtnS = ModernUIDpi::Scale(m_hWnd, bCmp ? 26 : 32);
     const int navGap  = ModernUIDpi::Scale(m_hWnd, 140);
     const int navCX = m_rcNavBar.CenterPoint().x;
     const int navCY = m_rcNavBar.CenterPoint().y;
@@ -357,8 +360,10 @@ void CShopDownDlg::LayoutControls()
     m_rcPrevBtn.SetRect(navCX - navGap / 2 - navBtnS, navCY - navBtnS / 2, navCX - navGap / 2, navCY + navBtnS / 2);
     m_rcNextBtn.SetRect(navCX + navGap / 2, navCY - navBtnS / 2, navCX + navGap / 2 + navBtnS, navCY + navBtnS / 2);
 
-    // [2] 행 높이 및 카드 배치
-    const int availH = max(0, navY_bot - padY - 6);
+    // 행 높이 및 카드 배치
+    // [FIX 4] 카드 아래쪽 끝과 페이지 네비게이션 버튼 사이의 여백을 넉넉히(일반 24px, 콤팩트 16px) 확보
+    const int navTopMargin = ModernUIDpi::Scale(m_hWnd, bCmp ? 16 : 24);
+    const int availH = max(0, navY_bot - padY - navTopMargin);
     int rowH = (availH - (kRowsPerPage - 1) * rowGap) / kRowsPerPage;
     m_card.Compute(rc.Width() - padX * 2, m_hWnd);
 
@@ -395,9 +400,14 @@ void CShopDownDlg::LayoutControls()
         const int y2Edit = y2Label + labelH + labelGap;
         m_rcPwd[slot].SetRect(xL, y2Edit, xL + m_card.leftW, y2Edit + ctrlH);
 
-        const int btnW   = ModernUIDpi::Scale(m_hWnd, bCmp ? 70 : 84);
-        const int btnGap = ModernUIDpi::Scale(m_hWnd, bCmp ?  6 :  8);
-        const int btnY = inner.bottom - ctrlH;
+        const int btnW = ModernUIDpi::Scale(m_hWnd, bCmp ? 70 : 84);
+        const int btnGap = ModernUIDpi::Scale(m_hWnd, bCmp ? 6 : 8);
+
+        // [FIX 3] 위쪽 글씨(비밀번호 등)와 겹치지 않도록, 카드 내부(inner) 대신 
+        // 카드의 제일 밑바닥 선(m_rcRow.bottom)을 기준으로 잡아 버튼을 확실하게 아래로 끌어내림
+        const int btnBottomPad = ModernUIDpi::Scale(m_hWnd, bCmp ? 6 : 10);
+        const int btnY = m_rcRow[slot].bottom - ctrlH - btnBottomPad;
+
         const int btnRight = inner.right - ModernUIDpi::Scale(m_hWnd, 4);
         m_rcDel[slot].SetRect(btnRight - btnW, btnY, btnRight, btnY + ctrlH);
         m_rcBtn[slot].SetRect(m_rcDel[slot].left - btnGap - btnW, btnY, m_rcDel[slot].left - btnGap, btnY + ctrlH);

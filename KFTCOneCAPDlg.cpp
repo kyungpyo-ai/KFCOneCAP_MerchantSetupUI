@@ -585,7 +585,7 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
     // --- 로고 그리기 ---
-    RectF rcLogo((REAL)left, (REAL)(top + SX(6)), (REAL)logoBox, (REAL)logoBox);
+    RectF rcLogo((REAL)left, (REAL)(top + SX(4)), (REAL)logoBox, (REAL)logoBox);
     if (m_pLogoBitmap != NULL) {
         const REAL pad = (REAL)SX(1);
         g.DrawImage(m_pLogoBitmap, RectF(rcLogo.X + pad, rcLogo.Y + pad, rcLogo.Width - pad * 2.0f, rcLogo.Height - pad * 2.0f));
@@ -606,7 +606,7 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     if (pTitleFont != NULL)
         g.DrawString(L"KFTCOneCAP", -1, pTitleFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 1 : 2))), &titleBrush);
     if (pSubFont != NULL)
-        g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 28 : 40))), &subBrush);
+        g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 30 : 40))), &subBrush);
 
 }
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)

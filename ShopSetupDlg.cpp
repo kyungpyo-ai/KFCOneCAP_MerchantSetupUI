@@ -597,7 +597,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
         int card1 = cPadY + cHdrH + oneRow() * 1 + cPadY;
         int card2 = cPadY + cHdrH + oneRow() * 2 + rG + cPadY;
         int card3 = cPadY + cHdrH + oneRow() + rG + FIELD_H + cPadY;
-        int h = cOutY + card1 + cGapY + card2 + cGapY + card3 + SX(10);
+        int h = cOutY + card1 + cGapY + card2 + cGapY + card3 ;
         maxTabH = max(maxTabH, h);
     }
     // Tab 2: 시스템 설정 (알림창 2행+체크1행 + 시스템 체크1행 + 단축키 1행)
@@ -619,7 +619,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
     const int PAD_TOP = SX(GetTabPadTop());
 
     // [FIX] 하단 컨트롤과 겹치지 않도록 다이얼로그 창의 전체 높이(여백 및 버튼영역)를 대폭 키움
-    const int PAD_BOTTOM = SX(bCompact ? 24 : 34);
+    const int PAD_BOTTOM = SX(bCompact ? 10 : 18);
     const int BUTTON_AREA = SX(bCompact ? 90 : 110);
 
     const int CARD_PAD = SX(bCompact ? 16 : 28);
@@ -1313,11 +1313,15 @@ void CShopSetupDlg::ApplyLayoutTab3()
         cardBot = cardTop + SX(bCompact ? 180 : 240);
 
     m_rcCardShopDown = CRect(cardLeft, cardTop, cardRight, cardBot);
+    // [FIX] 자식 창(ShopDownDlg)이 들어갈 컨테이너의 하단 여백을 대폭 줄여서 
+        // 페이지 네비게이션 버튼이 카드 맨 밑바닥 테두리에 더 바짝 붙도록 유도합니다.
+    const int hostBottomPad = bCompact ? 4 : 6; // 기존 (18~30px) -> (4~6px)로 축소
+
     CRect rcHost(
         cardLeft + SX(cPadX),
         cardTop + SX(cHdrH + cPadY),
         cardRight - SX(cPadX),
-        cardBot - SX(cPadY + hostGapBottom));
+        cardBot - SX(hostBottomPad));
 
     if (rcHost.Height() < SX(bCompact ? 150 : 200))
         rcHost.bottom = rcHost.top + SX(bCompact ? 150 : 200);
@@ -1980,9 +1984,9 @@ void CShopSetupDlg::DrawBackground(CDC* pDC)
         }
         Gdiplus::SolidBrush fillBrush(Gdiplus::Color(255, 255, 255, 255));
         g.FillPath(&fillBrush, &path);
-        Gdiplus::Pen borderPen(Gdiplus::Color(255, 220, 224, 234), 1.0f);
-        borderPen.SetLineJoin(Gdiplus::LineJoinRound);
-        g.DrawPath(&borderPen, &path);
+
+
+
         // ================================================================
         // 공용 헬퍼: RR + DrawMinCard (Tab 0/1/2 공통 사용)
         // ================================================================

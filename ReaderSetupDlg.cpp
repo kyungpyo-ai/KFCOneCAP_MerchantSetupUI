@@ -219,10 +219,10 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int infoTitleGap = -SX(10);
 	const int sectionBoxPad = SX(bC ? 16 : 20);
 	const int cardH = SX(bC ? 102 : 128);
-	const int cardGap = SX(bC ? 12 : 16);
+	const int cardGap = SX(bC ? 8 : 12);
 	const int queryH = SX(bC ? 44 : 56);
 	const int queryGap = SX(bC ? 12 : 16);
-	const int infoBottomPad = SX(bC ? 6 : 8);
+	const int infoBottomPad = SX(bC ? 14 : 8);
 	const int bottomBtnH = SX(bC ? 36 : 42);
 	const int bottomGap = SX(bC ? 12 : 16);
 	const int bottomArea = bottomBtnH + bottomGap + SX(8);
@@ -239,7 +239,7 @@ void CReaderSetupDlg::CalcLayoutRects(
 
 	card1 = CRect(cardLeft, sec1ContentTop, cardRight, sec1ContentTop + cardH);
 	card2 = CRect(cardLeft, card1.bottom + cardGap, cardRight, card1.bottom + cardGap + cardH);
-	y = card2.bottom + sectionBoxPad + SX(bC ? 28 : 30);
+	y = card2.bottom + sectionBoxPad + SX(bC ? 18 : 28);
 
 	sec2TitlePt = CPoint(sectionLeft + SX(24), y + infoSectionTitleTop);
 	int sec2ContentTop = y + sectionTitleTop + sectionTitleH + infoTitleGap;
@@ -261,11 +261,11 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int buttonW = SX(110);
 	const int buttonH = SX(bC ? 32 : 36);
 	const int buttonGap = SX(12);
-	const int buttonBottom = SX(bC ? 14 : 18);
-	const int dialogBottomPad = SX(bC ? 18 : 22);
+	const int BUTTON_BOTTOM = SX(bC ? 12 : 18);
+
 	int totalW = buttonW * 2 + buttonGap;
 	int bx = (rc.Width() - totalW) / 2;
-	int by = rc.bottom - (dialogBottomPad + buttonBottom + buttonH);
+	int by = rc.bottom - (SX(bC ? 10 : 22) + BUTTON_BOTTOM + buttonH);
 
 	okRc = CRect(bx, by, bx + buttonW, by + buttonH);
 	cancelRc = CRect(bx + buttonW + buttonGap, by, bx + buttonW + buttonGap + buttonW, by + buttonH);
@@ -279,7 +279,7 @@ CRect CReaderSetupDlg::CalcPortSectionBox(const CRect& card1, const CRect& card2
 
 CRect CReaderSetupDlg::CalcIntegritySectionBox(const CRect& queryBox, const CRect& listRc) const
 {
-	return CRect(queryBox.left - SX(24), queryBox.top - SX(IsCompactScreen() ? 38 : 48), queryBox.right + SX(24), listRc.bottom + SX(2));
+	return CRect(queryBox.left - SX(24), queryBox.top - SX(IsCompactScreen() ? 38 : 48), queryBox.right + SX(24), listRc.bottom + SX(IsCompactScreen() ? 10 : 2));
 }
 
 // 데이터 저장용 ListCtrl의 컬럼 폭도 커스텀 테이블 비율과 동일하게 맞춘다.
@@ -1220,6 +1220,8 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 BOOL CReaderSetupDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
+	ModifyStyle(WS_CAPTION | WS_SYSMENU | DS_MODALFRAME, 0, SWP_FRAMECHANGED);
+	ModifyStyleEx(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE, 0, SWP_FRAMECHANGED);
 
 	// --- 1) GDI+/윈도우 기본 스타일 준비 ---
 	ModernUIGfx::EnsureGdiplusStartup();
@@ -1294,12 +1296,12 @@ CSize CReaderSetupDlg::CalcMinClientSize() const
 	const int sectionTitleGap = SX(bC ? 8 : 10);
 	const int infoTitleGap = -SX(10);
 	const int cardH = SX(bC ? 96 : 128);
-	const int cardGap = SX(bC ? 12 : 16);
-	const int betweenSections = SX(bC ? 28 : 26);
+	const int cardGap = SX(bC ? 8 : 12);
+	const int betweenSections = SX(bC ? 18 : 26);
 	const int queryH = SX(bC ? 44 : 62);
 	const int queryGap = SX(bC ? 12 : 16);
 	const int listMinH = SX(bC ? 138 : 152);
-	const int infoBottomPad = SX(bC ? 6 : 18);
+	const int infoBottomPad = SX(bC ? 14 : 18);
 	const int bottomBtnH = SX(bC ? 36 : 42);
 	const int bottomGap = SX(bC ? 12 : 16);
 	const int bottomArea = bottomBtnH + bottomGap + SX(8);
@@ -1381,7 +1383,7 @@ void CReaderSetupDlg::OnPaint()
 	const int cardMarginL = SX(20);
 	const int cardMarginT = SX(10);
 	const int cardMarginR = SX(20);
-	const int cardMarginB = SX(20);
+	const int cardMarginB = SX(bCP ? 12 : 20);
 	CRect mainCard(rc.left + cardMarginL, rc.top + cardMarginT, rc.right - cardMarginR, rc.bottom - cardMarginB);
 	{
 		Gdiplus::Graphics gShad(memDC.GetSafeHdc());
