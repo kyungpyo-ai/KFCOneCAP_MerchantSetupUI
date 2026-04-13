@@ -1220,8 +1220,6 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 BOOL CReaderSetupDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
-	ModifyStyle(WS_CAPTION | WS_SYSMENU | DS_MODALFRAME, 0, SWP_FRAMECHANGED);
-	ModifyStyleEx(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE, 0, SWP_FRAMECHANGED);
 
 	// --- 1) GDI+/윈도우 기본 스타일 준비 ---
 	ModernUIGfx::EnsureGdiplusStartup();
