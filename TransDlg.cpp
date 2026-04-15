@@ -45,6 +45,10 @@ BEGIN_MESSAGE_MAP(CSegmentCtrl, CWnd)
     ON_WM_PAINT()
     ON_WM_ERASEBKGND()
     ON_WM_LBUTTONDOWN()
+    ON_WM_LBUTTONUP()
+    ON_WM_MOUSEMOVE()
+    ON_WM_MOUSELEAVE()
+    ON_WM_SETCURSOR()
 END_MESSAGE_MAP()
 
 BOOL CSegmentCtrl::Create(CWnd* pParent, UINT nID, const CRect& rc)
@@ -77,21 +81,64 @@ void CSegmentCtrl::NotifyParent()
     if (p && p->GetSafeHwnd())
         p->SendMessage(WM_NOTIFY, (WPARAM)GetDlgCtrlID(), (LPARAM)&nm);
 }
-void CSegmentCtrl::OnLButtonDown(UINT, CPoint pt)
+int CSegmentCtrl::HitTab(CPoint pt) const
 {
-    if (m_tabs.empty()) return;
-    CRect cl; GetClientRect(&cl);
+    if (m_tabs.empty()) return -1;
+    CRect cl; ::GetClientRect(m_hWnd, &cl);
     int n   = (int)m_tabs.size();
     int pad = Scale(3);
     float tw = (cl.Width() - 2*pad) / (float)n;
     for (int i = 0; i < n; i++) {
         int x1 = pad + (int)(i * tw);
         int x2 = pad + (int)((i+1) * tw);
-        if (pt.x >= x1 && pt.x < x2) {
-            if (i != m_nSel) SetCurSel(i);
-            return;
-        }
+        if (pt.x >= x1 && pt.x < x2) return i;
     }
+    return -1;
+}
+void CSegmentCtrl::OnLButtonDown(UINT nFlags, CPoint pt)
+{
+    int idx = HitTab(pt);
+    if (idx >= 0) {
+        m_nPress = idx;
+        Invalidate(FALSE); UpdateWindow();
+        if (idx != m_nSel) SetCurSel(idx);
+    }
+    CWnd::OnLButtonDown(nFlags, pt);
+}
+void CSegmentCtrl::OnLButtonUp(UINT nFlags, CPoint pt)
+{
+    if (m_nPress != -1) { m_nPress = -1; Invalidate(FALSE); }
+    CWnd::OnLButtonUp(nFlags, pt);
+}
+void CSegmentCtrl::OnMouseMove(UINT nFlags, CPoint pt)
+{
+    int newHover = HitTab(pt);
+    if (newHover != m_nHover) {
+        m_nHover = newHover;
+        Invalidate(FALSE);
+    }
+    TRACKMOUSEEVENT tme = {};
+    tme.cbSize    = sizeof(tme);
+    tme.dwFlags   = TME_LEAVE;
+    tme.hwndTrack = m_hWnd;
+    ::TrackMouseEvent(&tme);
+    CWnd::OnMouseMove(nFlags, pt);
+}
+void CSegmentCtrl::OnMouseLeave()
+{
+    if (m_nHover != -1 || m_nPress != -1) {
+        m_nHover = -1;
+        m_nPress = -1;
+        Invalidate(FALSE);
+    }
+}
+BOOL CSegmentCtrl::OnSetCursor(CWnd*, UINT nHitTest, UINT)
+{
+    if (nHitTest == HTCLIENT) {
+        ::SetCursor(::LoadCursor(NULL, IDC_HAND));
+        return TRUE;
+    }
+    return FALSE;
 }
 void CSegmentCtrl::OnPaint()
 {
@@ -133,6 +180,21 @@ void CSegmentCtrl::OnPaint()
     float tw = (cl.Width() - 2*pad) / (float)n;
     float th = (float)(cl.Height() - 2*pad);
 
+    // Hover / Press overlay for non-selected tabs
+    for (int i = 0; i < n; i++) {
+        if (i == m_nSel) continue;
+        BYTE alpha = 0;
+        if (i == m_nPress)      alpha = 45;
+        else if (i == m_nHover) alpha = 22;
+        if (alpha == 0) continue;
+        Gdiplus::GraphicsPath hp;
+        ModernUIGfx::AddRoundRect(hp,
+            Gdiplus::RectF(pad + i*tw, (float)pad, tw, th),
+            (Gdiplus::REAL)rI);
+        Gdiplus::SolidBrush hb(Gdiplus::Color(alpha, 0, 0, 0));
+        g.FillPath(&hb, &hp);
+    }
+
     // 선택된 탭 흰색 pill (그림자 포함)
     {
         float tx = pad + m_nSel * tw;
@@ -151,7 +213,10 @@ void CSegmentCtrl::OnPaint()
         Gdiplus::GraphicsPath fp;
         ModernUIGfx::AddRoundRect(fp,
             Gdiplus::RectF(tx, ty, tw, th), (Gdiplus::REAL)rI);
-        Gdiplus::SolidBrush fb(Gdiplus::Color(255, 255, 255, 255));
+        Gdiplus::Color pillClr(255, 255, 255, 255);
+        if (m_nSel == m_nPress)      pillClr = Gdiplus::Color(255, 232, 238, 252);
+        else if (m_nSel == m_nHover) pillClr = Gdiplus::Color(255, 245, 249, 255);
+        Gdiplus::SolidBrush fb(pillClr);
         g.FillPath(&fb, &fp);
     }
 
@@ -185,7 +250,11 @@ void CSegmentCtrl::OnPaint()
         int cx = (int)(tx + tw/2 - sz.cx/2);
         int cy2 = (int)(ty + th/2 - sz.cy/2);
         RECT rcT = { cx, cy2, cx + sz.cx + 2, cy2 + sz.cy };
-        ::SetTextColor(hdc, bActive ? kBlueText : RGB(140, 150, 165));
+        COLORREF crText = bActive       ? kBlueText :
+                          (i == m_nPress) ? RGB(55,  68,  90)  :
+                          (i == m_nHover) ? RGB(90, 102, 122)  :
+                                            RGB(140, 150, 165);
+        ::SetTextColor(hdc, crText);
         ::SetBkMode(hdc, TRANSPARENT);
         ::DrawTextW(hdc, wbuf.data(), wlen > 0 ? wlen-1 : 0, &rcT,
             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
@@ -228,11 +297,11 @@ void CTransDlg::EnsureFonts()
     lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
     ModernUIFont::ApplyUIFontFace(lf);
 #define MKF(px,wt,f) lf.lfHeight=-ModernUIDpi::Scale(m_hWnd,px); lf.lfWeight=wt; f.CreateFontIndirect(&lf)
-    MKF(20, FW_BOLD,      m_fontTitle);
-    MKF(11, FW_NORMAL,    m_fontSub);
+    MKF(18, FW_BOLD,      m_fontTitle);
+    MKF(13, FW_BOLD,      m_fontSub);
     MKF(13, FW_BOLD,      m_fontSection);
-    MKF(14, FW_NORMAL,    m_fontLabel);
-    MKF(14, FW_BOLD,      m_fontEdit);
+    MKF(14, FW_BOLD,      m_fontLabel);
+    MKF(14, FW_NORMAL,    m_fontEdit);
     // [FIX 1] 금액 폰트 크기를 다시 적당한 크기(24)로 줄입니다.
     MKF(24, FW_EXTRABOLD, m_fontAmount);
     MKF(11, FW_NORMAL, m_fontResultLabel);
@@ -292,7 +361,7 @@ BOOL CTransDlg::OnInitDialog()
     CDialog::OnInitDialog();
     ModernUIGfx::EnsureGdiplusStartup();
     EnsureFonts();
-    SetWindowText(_T("결제 요청 및 내역"));
+    SetWindowText(_T("결제"));
     CreateSegmentControl();
     CreateInputControls();
     CreateResultControls();
@@ -399,8 +468,10 @@ void CTransDlg::CreateBottomButton()
     DWORD s=WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW;
     m_btnClose.Create(_T("닫기"),s,CRect(0,0,0,0),this,IDC_TRANS_BTN_CLOSE);
     m_btnClose.SetButtonStyle(ButtonStyle::Default);
+    m_btnClose.SetUnderlayColor(kCardFill);
     m_btnRun.Create(_T("신용 승인 요청"),s,CRect(0,0,0,0),this,IDC_TRANS_BTN_RUN);
     m_btnRun.SetButtonStyle(ButtonStyle::Primary);
+    m_btnRun.SetUnderlayColor(kCardFill);
 }
 
 void CTransDlg::ApplyFonts()
@@ -409,8 +480,7 @@ void CTransDlg::ApplyFonts()
     for (int i=0; i<kNumFields; i++) {
         m_fieldLabels[i].SetFont(&m_fontLabel);
         if (m_fields[(size_t)i].pCtrl) {
-            CFont& f=(m_fields[(size_t)i].pCtrl==&m_edtSupply)?m_fontAmount:m_fontEdit;
-            m_fields[(size_t)i].pCtrl->SetFont(&f);
+            m_fields[(size_t)i].pCtrl->SetFont(&m_fontEdit);
         }
     }
     m_btnClose.SetFont(&m_fontEdit);
@@ -423,10 +493,39 @@ void CTransDlg::ApplyFonts()
 
 void CTransDlg::SetMode(ETransMode mode)
 {
-    m_eMode=mode;
-    if (m_segCtrl.GetCurSel()!=(int)mode) m_segCtrl.SetCurSelSilent((int)mode);
+    if (mode == m_eMode) return;
+
+    // 1. Save current tab values before switching
+    for (int i = 0; i < kNumFields; i++) {
+        CWnd* p = m_fields[(size_t)i].pCtrl;
+        if (!p) continue;
+        if (m_fields[(size_t)i].ctrlType == 2) {
+            // combo: save selected index as string
+            LRESULT sel = p->SendMessage(CB_GETCURSEL);
+            m_tabValues[(int)m_eMode][i].Format(_T("%d"), (int)sel);
+        } else {
+            p->GetWindowText(m_tabValues[(int)m_eMode][i]);
+        }
+    }
+
+    // 2. Switch mode
+    m_eMode = mode;
+    if (m_segCtrl.GetCurSel() != (int)mode) m_segCtrl.SetCurSelSilent((int)mode);
     m_btnRun.SetWindowText(GetModeButtonText());
     ShowFieldsForMode();
+
+    // 3. Restore new tab values
+    for (int i = 0; i < kNumFields; i++) {
+        CWnd* p = m_fields[(size_t)i].pCtrl;
+        if (!p) continue;
+        if (m_fields[(size_t)i].ctrlType == 2) {
+            int sel = _ttoi(m_tabValues[(int)mode][i]);
+            p->SendMessage(CB_SETCURSEL, (WPARAM)(sel >= 0 ? sel : 0));
+        } else {
+            p->SetWindowText(m_tabValues[(int)mode][i]);
+        }
+    }
+
     LayoutControls();
     RedrawWindow(NULL,NULL,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);
 }
@@ -459,7 +558,7 @@ void CTransDlg::ShowFieldsForMode()
     case MODE_CREDIT_APPROVAL:
         show[F_SUPPLY]=show[F_TAX]=show[F_TIP]=show[F_TAXFREE]=show[F_INSTALL]=show[F_QR]=TRUE; break;
     case MODE_CREDIT_CANCEL:
-        show[F_SUPPLY]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_INSTALL]=TRUE; break;
+        show[F_SUPPLY]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_INSTALL]=show[F_QR]=TRUE; break;
     case MODE_CASH_APPROVAL:
         show[F_SUPPLY]=show[F_TAX]=show[F_TIP]=show[F_TAXFREE]=show[F_CASHTYPE]=show[F_CASHNO]=TRUE; break;
     case MODE_CASH_CANCEL:
@@ -561,7 +660,7 @@ void CTransDlg::LayoutControls()
     const int segH = SX(CSegmentCtrl::kBarH + 6); // 탭 바 높이 증가
 
     // segment control near top of form card
-    int segX = rcForm.left + SX(20), segW = rcForm.Width() - SX(40), segY = rcForm.top + SX(20);
+    int segX = rcForm.left + SX(20), segW = rcForm.Width() - SX(40), segY = rcForm.top + SX(14);
     if (::IsWindow(m_segCtrl.GetSafeHwnd()))
         m_segCtrl.MoveWindow(segX,segY,segW,segH);
 
@@ -584,15 +683,25 @@ void CTransDlg::LayoutControls()
         }
     }
 
+    // mvField: combo(ctrlType==2) needs larger total height + CB_SETITEMHEIGHT for selection area
+    auto mvField = [&](int fi, int x, int y, int w, int h) {
+        FieldPair& fp = m_fields[(size_t)fi];
+        if (fp.ctrlType == 2) {
+            fp.pCtrl->MoveWindow(x, y, w, h + SX(120));
+            fp.pCtrl->SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, h - SX(4));
+        } else {
+            fp.pCtrl->MoveWindow(x, y, w, h);
+        }
+    };
     int curY = fieldsTop;
     for (int c=0; c<(int)vis.size(); c+=2) {
         int idx1=vis[(size_t)c];
         int idx2=(c+1<(int)vis.size())?vis[(size_t)(c+1)]:-1;
         m_fieldLabels[idx1].MoveWindow(fl,curY,colW,lH);
-        m_fields[(size_t)idx1].pCtrl->MoveWindow(fl,curY+lH+gLC,colW,cH);
+        mvField(idx1, fl, curY+lH+gLC, colW, cH);
         if (idx2>=0) {
             m_fieldLabels[idx2].MoveWindow(fl+colW+fGX,curY,colW,lH);
-            m_fields[(size_t)idx2].pCtrl->MoveWindow(fl+colW+fGX,curY+lH+gLC,colW,cH);
+            mvField(idx2, fl+colW+fGX, curY+lH+gLC, colW, cH);
         }
         curY+=lH+gLC+cH+fGY;
     }
@@ -615,8 +724,8 @@ void CTransDlg::LayoutControls()
     int rLW=SX(90), vW=rR2-rL-rLW;
     for (int i=0; i<kNumResults; i++) {
         int ry=rTY+rRowH*i;
-        m_resultLabels[i].MoveWindow(rL,ry+(rRowH-SX(12))/2,rLW,SX(12));
-        m_resultValues[i].MoveWindow(rL+rLW,ry+(rRowH-SX(13))/2,vW,SX(13));
+        m_resultLabels[i].MoveWindow(rL, ry + SX(5), rLW, rRowH - SX(10));
+        m_resultValues[i].MoveWindow(rL+rLW, ry + SX(5), vW, rRowH - SX(10));
     }
     Invalidate(TRUE);
 }
@@ -723,13 +832,13 @@ void CTransDlg::OnPaint()
     // header
     {
         wchar_t wT[64]={},wS[256]={};
-        ::MultiByteToWideChar(CP_ACP,0,_T("결제 요청 및 내역"),-1,wT,64);
-        ::MultiByteToWideChar(CP_ACP,0,_T("신용 및 현금영수증 거래를 실시간으로 테스트합니다."),-1,wS,256);
+        ::MultiByteToWideChar(CP_ACP,0,_T("결제"),-1,wT,64);
+        ::MultiByteToWideChar(CP_ACP,0,_T("신용 및 현금영수증 거래를 진행합니다"),-1,wS,256);
         ModernUIHeader::Draw(hRaw,
-            (float)(rcMain.left+SX(20)),(float)(rcMain.top+SX(16)),(float)SX(46),
-            ModernUIHeader::IconType::CardTerminal,wT,wS,
+            (float)(rcMain.left+SX(14)),(float)(rcMain.top+SX(16)),(float)SX(44),
+            ModernUIHeader::IconType::Transaction,wT,wS,
             (HFONT)m_fontTitle.GetSafeHandle(),(HFONT)m_fontSub.GetSafeHandle(),
-            rcMain.left+SX(12),rcMain.top+SX(78),rcMain.right-SX(12));
+            rcMain.left+SX(6),rcMain.top+SX(76),rcMain.right-SX(6));
     }
     // result section title
     {
@@ -775,9 +884,15 @@ void CTransDlg::OnPaint()
         ::SelectObject(hRaw, hOL);
 
         // 금액: 우측 세로 중앙 정렬
-        CString sAmt; m_edtSupply.GetWindowText(sAmt);
-        if (sAmt.IsEmpty()) sAmt = _T("0");
-        sAmt += _T(" 원");
+        bool bCancelMode=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
+        auto parseN=[](CWnd& e)->long long {
+            CString s; e.GetWindowText(s); s.Trim(); s.Remove(_T(','));
+            return s.IsEmpty()?0LL:(long long)_ttoi64(s);
+        };
+        long long nTotal=parseN(m_edtSupply);
+        if (!bCancelMode)
+            nTotal+=parseN(m_edtTax)+parseN(m_edtTip)+parseN(m_edtTaxFree);
+        CString sAmt; sAmt.Format(_T("%I64d"),nTotal); sAmt+=_T(" 원");
 
         HFONT hOA = (HFONT)::SelectObject(hRaw, m_fontAmount.GetSafeHandle());
         ::SetTextColor(hRaw, RGB(49, 130, 246)); // 토스 스타일 프라이머리 블루
@@ -878,6 +993,12 @@ BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
             m_strBadge=bCancel?_T("정상 취소"):_T("정상 승인"); m_bBadgeOk=TRUE;
             UpdateResultControls(); return TRUE;
         }
+    }
+    if (HIWORD(wParam)==EN_CHANGE) {
+        UINT cID=LOWORD(wParam);
+        if (cID==IDC_TRANS_EDIT_SUPPLY||cID==IDC_TRANS_EDIT_TAX||
+            cID==IDC_TRANS_EDIT_TIP||cID==IDC_TRANS_EDIT_TAXFREE)
+            Invalidate(FALSE);
     }
     return CDialog::OnCommand(wParam,lParam);
 }

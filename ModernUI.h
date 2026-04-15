@@ -181,7 +181,7 @@ namespace ModernUIWindow
 // Both CShopSetupDlg and CReaderSetupDlg use this to keep header rendering identical.
 namespace ModernUIHeader
 {
-    enum class IconType { CardTerminal, Store };
+    enum class IconType { CardTerminal, Store, Transaction };
     // bx, by, bsz : icon rect (already DPI-scaled pixels)
     // hFontTitle/hFontSub : GDI HFONT handles (may be NULL to skip)
     // divX1, divY, divX2 : divider line coords (pass divY=0 to skip)

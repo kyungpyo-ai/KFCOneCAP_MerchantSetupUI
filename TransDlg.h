@@ -11,7 +11,7 @@ class CSegmentCtrl : public CWnd
 {
 public:
     static const int kBarH = 46;
-    CSegmentCtrl() : m_nSel(0), m_crUnderlay(RGB(255,255,255)) {}
+    CSegmentCtrl() : m_nSel(0), m_nHover(-1), m_nPress(-1), m_crUnderlay(RGB(255,255,255)) {}
     BOOL Create(CWnd* pParent, UINT nID, const CRect& rc);
     void AddTab(LPCTSTR text);
     int  GetCurSel() const { return m_nSel; }
@@ -23,12 +23,19 @@ protected:
     afx_msg void OnPaint();
     afx_msg BOOL OnEraseBkgnd(CDC*) { return TRUE; }
     afx_msg void OnLButtonDown(UINT nFlags, CPoint pt);
+    afx_msg void OnLButtonUp(UINT nFlags, CPoint pt);
+    afx_msg void OnMouseMove(UINT nFlags, CPoint pt);
+    afx_msg void OnMouseLeave();
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     DECLARE_MESSAGE_MAP()
 private:
     int Scale(int v) const { return ModernUIDpi::Scale(m_hWnd, v); }
+    int HitTab(CPoint pt) const;
     void NotifyParent();
     std::vector<CString> m_tabs;
     int      m_nSel;
+    int      m_nHover;
+    int      m_nPress;
     COLORREF m_crUnderlay;
 };
 
@@ -131,6 +138,7 @@ private:
 
     std::vector<FieldPair>  m_fields;
     std::vector<ResultPair> m_results;
+    CString m_tabValues[4][kNumFields]; // per-tab saved values [mode][fieldIdx]
     CStatic m_fieldLabels[kNumFields];
     CStatic m_resultLabels[kNumResults];
     CStatic m_resultValues[kNumResults];

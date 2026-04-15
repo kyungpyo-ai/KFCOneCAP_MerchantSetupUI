@@ -4571,6 +4571,33 @@ void Draw(HDC hdc,
 		const float dW = iW * 0.26f, dH = bHh * 0.44f;
 		g.FillRectangle(&dBr, Gdiplus::RectF(cx - dW * 0.5f, iY + rH + bHh - dH, dW, dH));
 	}
+	else if (iconType == IconType::Transaction) {
+		// IC card: 56% wide x 38% tall, centered in badge (matches Store/CardTerminal proportions)
+		const float iW = bsz * 0.56f, iH = bsz * 0.38f;
+		const float iX = bx + (bsz - iW) * 0.5f;
+		const float iY = badgeY + (bsz - iH) * 0.5f;
+		const float sx = iW / 26.0f, sy = iH / 19.0f;
+		Gdiplus::SolidBrush wBr(Gdiplus::Color(255, 255, 255, 255));
+		// Card body + magnetic stripe + IC chip area cutout (FillModeAlternate)
+		{
+			Gdiplus::GraphicsPath card(Gdiplus::FillModeAlternate);
+			MRR(card, iX, iY, iW, iH, 2.5f*sx);                                       // card outline
+			card.AddRectangle(Gdiplus::RectF(iX, iY + 3.5f*sy, iW, 3.0f*sy));          // mag stripe
+			MRR(card, iX + 2.5f*sx, iY + 9.0f*sy, 9.0f*sx, 6.0f*sy, 1.0f*sx);        // chip cutout
+			g.FillPath(&wBr, &card);
+		}
+		// IC chip inner grid (3x2 cells)
+		{
+			Gdiplus::GraphicsPath chip(Gdiplus::FillModeAlternate);
+			MRR(chip, iX + 2.5f*sx, iY + 9.0f*sy, 9.0f*sx, 6.0f*sy, 1.0f*sx);
+			for (int ci = 0; ci < 3; ci++)
+				for (int ri = 0; ri < 2; ri++)
+					MRR(chip,
+						iX + (3.3f + ci*2.8f)*sx, iY + (9.7f + ri*2.4f)*sy,
+						1.8f*sx, 1.6f*sy, 0.3f);
+			g.FillPath(&wBr, &chip);
+		}
+	}
 
 	// --- Title + Subtitle ---
 	const float tx = bx + bsz + 12.0f;
