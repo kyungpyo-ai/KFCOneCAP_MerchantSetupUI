@@ -375,6 +375,7 @@ BOOL CTransDlg::OnInitDialog()
     LayoutControls();
     ResetSampleResult();
     CenterWindow();
+    ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     return TRUE;
 }
 
@@ -411,7 +412,7 @@ void CTransDlg::CreateInputControls()
 
     DWORD dwC = CBS_DROPDOWNLIST | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS | WS_VSCROLL | WS_CHILD | WS_TABSTOP;
     auto mkCmb = [&](CSkinnedComboBox& c, UINT id) {
-        HWND h = ::CreateWindowEx(0, _T("COMBOBOX"), _T(""), dwC, 0, 0, 100, 200,
+        HWND h = ::CreateWindowEx(0, _T("COMBOBOX"), _T(""), dwC, -2000, -2000, 100, 200,
             m_hWnd, (HMENU)(UINT_PTR)id, AfxGetInstanceHandle(), NULL);
         c.SubclassWindow(h); c.SetUnderlayColor(W);
         };
@@ -803,7 +804,7 @@ void CTransDlg::OnPaint()
         }
         // amount display bg
         {
-            int segY2 = rcForm.top + SX(20), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
+            int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
             CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52));
             Gdiplus::GraphicsPath ap; AddRRP(ap, rcAmt, SX(8));
 
@@ -872,11 +873,11 @@ void CTransDlg::OnPaint()
     }
     // amount display text (좌/우 1줄 슬림 배치)
     {
-        int segY2 = rcForm.top + SX(20), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
+        int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
         CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52)); // 52로 슬림하게 맞춤
 
         // 라벨: 진하고 큰 폰트(m_fontEdit) 적용, 좌측 세로 중앙 정렬
-        HFONT hOL = (HFONT)::SelectObject(hRaw, m_fontEdit.GetSafeHandle());
+        HFONT hOL = (HFONT)::SelectObject(hRaw, m_fontLabel.GetSafeHandle());
         ::SetTextColor(hRaw, RGB(51, 61, 75)); // 까맣고 진한 텍스트
         ::SetBkMode(hRaw, TRANSPARENT);
         RECT rcLbl = { rcAmt.left + SX(16), rcAmt.top, rcAmt.right, rcAmt.bottom };
