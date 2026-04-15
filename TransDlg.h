@@ -7,44 +7,31 @@
 #define IDD_TRANS_DIALOG 190
 #endif
 
-// ============================================================
-// CSegmentCtrl - 세그먼트 컨트롤 (결제창.png / transDlg.html 스타일)
-//   회색 pill 배경 + 선택된 탭은 흰색 pill + 파란 굵은 텍스트
-//   TCN_SELCHANGE 알림을 부모에게 WM_NOTIFY로 전송
-// ============================================================
 class CSegmentCtrl : public CWnd
 {
 public:
     static const int kBarH = 46;
-
     CSegmentCtrl() : m_nSel(0), m_crUnderlay(RGB(255,255,255)) {}
-
     BOOL Create(CWnd* pParent, UINT nID, const CRect& rc);
     void AddTab(LPCTSTR text);
     int  GetCurSel() const { return m_nSel; }
-    void SetCurSel(int n);   // 알림 포함 (사용자 클릭과 동일)
-    void SetCurSelSilent(int n); // 알림 없이 선택만 변경
-    int  GetCount()  const { return (int)m_tabs.size(); }
+    void SetCurSel(int n);
+    void SetCurSelSilent(int n);
+    int  GetCount() const { return (int)m_tabs.size(); }
     void SetUnderlayColor(COLORREF cr) { m_crUnderlay = cr; }
-
 protected:
     afx_msg void OnPaint();
     afx_msg BOOL OnEraseBkgnd(CDC*) { return TRUE; }
     afx_msg void OnLButtonDown(UINT nFlags, CPoint pt);
     DECLARE_MESSAGE_MAP()
-
 private:
     int Scale(int v) const { return ModernUIDpi::Scale(m_hWnd, v); }
     void NotifyParent();
-
     std::vector<CString> m_tabs;
     int      m_nSel;
     COLORREF m_crUnderlay;
 };
 
-// ============================================================
-// CTransDlg
-// ============================================================
 class CTransDlg : public CDialog
 {
 public:
@@ -53,8 +40,10 @@ public:
     virtual ~CTransDlg();
 
 protected:
-    enum ETransMode { MODE_CREDIT_APPROVAL=0, MODE_CREDIT_CANCEL, MODE_CASH_APPROVAL, MODE_CASH_CANCEL };
-
+    enum ETransMode {
+        MODE_CREDIT_APPROVAL = 0, MODE_CREDIT_CANCEL,
+        MODE_CASH_APPROVAL,       MODE_CASH_CANCEL
+    };
     struct ResultPair { LPCTSTR pszLabel; CString value; BOOL bBlue; BOOL bRed; };
     struct FieldPair  { CWnd* pCtrl; CString caption; BOOL bFullRow; UINT ctrlType; };
 
@@ -64,30 +53,26 @@ protected:
     void CreateSegmentControl();
     void CreateInputControls();
     void CreateResultControls();
-    void CreateBottomButtons();
+    void CreateBottomButton();
     void ApplyFonts();
     void SetMode(ETransMode mode);
     void ShowFieldsForMode();
     void UpdateResultControls();
     void ResetSampleResult();
-    void ResizeForCurrentMode();
+    void ResizeWindow();
     BOOL ValidateCurrentMode(CString& e);
-    CString BuildSampleMessage() const;
+    CString GetModeButtonText() const;
     CString GetCurrentModeName() const;
     void SetResultValue(int i, LPCTSTR v, BOOL bBlue=FALSE, BOOL bRed=FALSE);
-    void DrawSectionTitle(CDC& dc, const CRect& rc, LPCTSTR text);
     void DrawRoundedCard(Gdiplus::Graphics& g, const CRect& rc, int radius,
-                         COLORREF fill, COLORREF border, int shadowAlpha=8);
-    int  GetVisibleFieldRowCount() const;
-    int  GetSetupCardHeight() const;
-    int  GetResultCardHeight() const;
+                         COLORREF fill, COLORREF border, int shadowAlpha=0);
+    void GetContentRects(CRect& rcForm, CRect& rcResult) const;
 
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
     virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
     virtual void OnOK();
     virtual void OnCancel();
-
     afx_msg void OnPaint();
     afx_msg BOOL OnEraseBkgnd(CDC*);
     afx_msg void OnSize(UINT nType, int cx, int cy);
@@ -97,17 +82,27 @@ protected:
 
 private:
     enum {
-        IDC_TRANS_SEG = 49999,
-        IDC_TRANS_EDIT_AMOUNT, IDC_TRANS_EDIT_TAX, IDC_TRANS_EDIT_TIP,
-        IDC_TRANS_EDIT_TAXFREE, IDC_TRANS_COMBO_INSTALLMENT,
-        IDC_TRANS_EDIT_ORG_DATE, IDC_TRANS_EDIT_ORG_APPROVAL,
-        IDC_TRANS_EDIT_CASH_NO, IDC_TRANS_COMBO_CASH_TYPE,
-        IDC_TRANS_COMBO_CANCEL_REASON,
-        IDC_TRANS_BTN_CLOSE, IDC_TRANS_BTN_RUN,
+        IDC_TRANS_SEG             = 49999,
+        IDC_TRANS_EDIT_SUPPLY,
+        IDC_TRANS_EDIT_TAX,
+        IDC_TRANS_EDIT_TIP,
+        IDC_TRANS_EDIT_TAXFREE,
+        IDC_TRANS_CMB_INSTALLMENT,
+        IDC_TRANS_EDIT_QR,
+        IDC_TRANS_EDIT_ORG_DATE,
+        IDC_TRANS_EDIT_ORG_APPNO,
+        IDC_TRANS_CMB_CASH_TYPE,
+        IDC_TRANS_EDIT_CASH_NO,
+        IDC_TRANS_BTN_CLOSE,
+        IDC_TRANS_BTN_RUN,
         IDC_TRANS_LABEL_BASE      = 51000,
         IDC_TRANS_RESULT_LBL_BASE = 51100,
         IDC_TRANS_VALUE_BASE      = 51200
     };
+
+    static const int kNumFields  = 10;
+    static const int kNumResults = 15;
+    static const int kResRowH    = 30;
 
     ETransMode m_eMode;
     BOOL       m_bUiBuilt;
@@ -116,16 +111,27 @@ private:
     CFont      m_fontLabel, m_fontEdit, m_fontAmount;
     CFont      m_fontResultLabel, m_fontResultValue;
     CFont      m_fontResultBlue,  m_fontResultRed;
+    CFont      m_fontBadge;
+    CString    m_strBadge;
+    BOOL       m_bBadgeOk;
 
     CSegmentCtrl     m_segCtrl;
     CModernButton    m_btnClose, m_btnRun;
-    CSkinnedEdit     m_edtAmount, m_edtTax, m_edtTip, m_edtTaxFree;
-    CSkinnedEdit     m_edtOrgDate, m_edtOrgApproval, m_edtCashNo;
-    CSkinnedComboBox m_cmbInstallment, m_cmbCashType, m_cmbCancelReason;
+
+    CSkinnedEdit     m_edtSupply;
+    CSkinnedEdit     m_edtTax;
+    CSkinnedEdit     m_edtTip;
+    CSkinnedEdit     m_edtTaxFree;
+    CSkinnedComboBox m_cmbInstall;
+    CSkinnedEdit     m_edtQr;
+    CSkinnedEdit     m_edtOrgDate;
+    CSkinnedEdit     m_edtOrgAppNo;
+    CSkinnedComboBox m_cmbCashType;
+    CSkinnedEdit     m_edtCashNo;
 
     std::vector<FieldPair>  m_fields;
     std::vector<ResultPair> m_results;
-    CStatic m_fieldLabels[10];
-    CStatic m_resultLabels[10];
-    CStatic m_resultValues[10];
+    CStatic m_fieldLabels[kNumFields];
+    CStatic m_resultLabels[kNumResults];
+    CStatic m_resultValues[kNumResults];
 };
