@@ -122,7 +122,7 @@ private:
     CSkinnedEdit     m_edtTax;
     CSkinnedEdit     m_edtTip;
     CSkinnedEdit     m_edtTaxFree;
-    CSkinnedComboBox m_cmbInstall;
+    CSkinnedEdit     m_edtInstall; 
     CSkinnedEdit     m_edtQr;
     CSkinnedEdit     m_edtOrgDate;
     CSkinnedEdit     m_edtOrgAppNo;

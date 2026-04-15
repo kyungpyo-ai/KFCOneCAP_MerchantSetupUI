@@ -11,17 +11,21 @@ static char THIS_FILE[] = __FILE__;
 // ============================================================
 // 색상 팔레트
 // ============================================================
+// ============================================================
+// 색상 팔레트
+// ============================================================
 namespace {
-    static const COLORREF kDlgBg         = RGB(249, 250, 252);
-    static const COLORREF kMainCardBorder = RGB(218, 226, 240);
-    static const COLORREF kCardFill       = RGB(255, 255, 255);
-    static const COLORREF kCardBorder     = RGB(225, 232, 243);
-    static const COLORREF kDivider        = RGB(241, 244, 248);
-    static const COLORREF kLabelText      = RGB(140, 149, 163);
-    static const COLORREF kValueText      = RGB(24,  31,  40);
-    static const COLORREF kBlueText       = RGB(0,   100, 221);
-    static const COLORREF kRedText        = RGB(200, 38,  38);
-    static const COLORREF kSectionText    = RGB(0,   64,  160);
+    // [FIX 1] ShopSetupDlg와 완벽히 동일한 색상/명도 위계로 동기화
+    static const COLORREF kDlgBg = RGB(249, 250, 252);
+    static const COLORREF kMainCardBorder = RGB(228, 232, 240);
+    static const COLORREF kCardFill = RGB(250, 251, 253); // 내부 카드 배경 (살짝 회색)
+    static const COLORREF kCardBorder = RGB(228, 232, 240);
+    static const COLORREF kDivider = RGB(241, 244, 248);
+    static const COLORREF kLabelText = RGB(115, 125, 142); // 가맹점 설정 라벨 색상
+    static const COLORREF kValueText = RGB(26, 32, 44);  // 가맹점 설정 본문 색상
+    static const COLORREF kBlueText = RGB(0, 76, 168); // 가맹점 설정 포인트 블루
+    static const COLORREF kRedText = RGB(220, 53, 69);
+    static const COLORREF kSectionText = RGB(26, 32, 44);
 
     static void AddRRP(Gdiplus::GraphicsPath& p, const CRect& rc, float r) {
         ModernUIGfx::AddRoundRect(p,
@@ -242,9 +246,19 @@ void CTransDlg::EnsureFonts()
 void CTransDlg::GetContentRects(CRect& rcForm, CRect& rcResult) const
 {
     CRect cl; ::GetClientRect(m_hWnd, &cl);
-    const int om=ModernUIDpi::Scale(m_hWnd,10), cp=ModernUIDpi::Scale(m_hWnd,18);
-    const int hdrH=ModernUIDpi::Scale(m_hWnd,84), ig=ModernUIDpi::Scale(m_hWnd,12);
-    CRect rcMain(om, om, cl.right-om, cl.bottom-om);
+
+    // [FIX 1] ShopSetupDlg와 동일한 여백(Margin) 공식 적용
+    BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
+    const int mL = ModernUIDpi::Scale(m_hWnd, bCmp ? 12 : 20);
+    const int mT = ModernUIDpi::Scale(m_hWnd, bCmp ? 6 : 10);
+    const int mR = ModernUIDpi::Scale(m_hWnd, bCmp ? 12 : 20);
+    const int mB = ModernUIDpi::Scale(m_hWnd, bCmp ? 12 : 20);
+
+    const int cp = ModernUIDpi::Scale(m_hWnd, 18);
+    const int hdrH = ModernUIDpi::Scale(m_hWnd, 84), ig = ModernUIDpi::Scale(m_hWnd, 12);
+
+    // 새 여백을 적용하여 메인 카드 영역 도출
+    CRect rcMain(mL, mT, cl.right - mR, cl.bottom - mB);
     int cL=rcMain.left+cp, cR=rcMain.right-cp;
     int cTop=rcMain.top+hdrH+ig, cBot=rcMain.bottom-ig;
     int halfW=(cR-cL-ig)/2;
@@ -255,13 +269,22 @@ void CTransDlg::GetContentRects(CRect& rcForm, CRect& rcResult) const
 void CTransDlg::ResizeWindow()
 {
     if (!::IsWindow(m_hWnd)) return;
-    int kRCH = SX(44) + kNumResults*SX(kResRowH) + SX(14);
-    int clientH = SX(10)+SX(84)+SX(12)+kRCH+SX(12)+SX(10);
+    int kRCH = SX(44) + kNumResults * SX(kResRowH) + SX(14);
+
+    // [FIX 2] 여백이 커진 만큼 클라이언트 높이와 윈도우 폭을 확장
+    BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
+    int mT = SX(bCmp ? 6 : 10);
+    int mB = SX(bCmp ? 12 : 20);
+
+    int clientH = mT + SX(84) + SX(12) + kRCH + SX(12) + mB;
     RECT rcW, rcC;
     ::GetWindowRect(m_hWnd, &rcW); ::GetClientRect(m_hWnd, &rcC);
-    int ncH=(rcW.bottom-rcW.top)-(rcC.bottom-rcC.top);
-    int ncW=(rcW.right-rcW.left)-(rcC.right-rcC.left);
-    SetWindowPos(NULL,0,0,SX(900)+ncW,clientH+ncH,SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
+    int ncH = (rcW.bottom - rcW.top) - (rcC.bottom - rcC.top);
+    int ncW = (rcW.right - rcW.left) - (rcC.right - rcC.left);
+
+    // 창의 기본 가로 크기를 900 -> 920으로 늘려서 내부 내용물 공간은 그대로 보존!
+    int windowW = bCmp ? SX(900) : SX(920);
+    SetWindowPos(NULL, 0, 0, windowW + ncW, clientH + ncH, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 BOOL CTransDlg::OnInitDialog()
@@ -292,49 +315,51 @@ void CTransDlg::CreateSegmentControl()
     m_segCtrl.Create(this, IDC_TRANS_SEG, rc);
     m_segCtrl.AddTab(_T("신용승인"));
     m_segCtrl.AddTab(_T("신용취소"));
-    m_segCtrl.AddTab(_T("현금영수증 승인"));
-    m_segCtrl.AddTab(_T("현금영수증 취소"));
+    m_segCtrl.AddTab(_T("현금 승인"));
+    m_segCtrl.AddTab(_T("현금 취소"));
 }
 
 void CTransDlg::CreateInputControls()
 {
-    DWORD dwE=WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL;
-    const COLORREF W=RGB(255,255,255);
-    m_edtSupply.Create(dwE,   CRect(0,0,0,0),this,IDC_TRANS_EDIT_SUPPLY);
+    DWORD dwE = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL;
+    // [FIX 2] 입력 컨트롤 언더레이를 하얀색에서 내부 카드색(kCardFill)으로 통일
+    const COLORREF W = kCardFill;
+    m_edtSupply.Create(dwE, CRect(0, 0, 0, 0), this, IDC_TRANS_EDIT_SUPPLY);
     m_edtTax.Create(dwE,      CRect(0,0,0,0),this,IDC_TRANS_EDIT_TAX);
     m_edtTip.Create(dwE,      CRect(0,0,0,0),this,IDC_TRANS_EDIT_TIP);
     m_edtTaxFree.Create(dwE,  CRect(0,0,0,0),this,IDC_TRANS_EDIT_TAXFREE);
     m_edtQr.Create(dwE,       CRect(0,0,0,0),this,IDC_TRANS_EDIT_QR);
     m_edtOrgDate.Create(dwE,  CRect(0,0,0,0),this,IDC_TRANS_EDIT_ORG_DATE);
     m_edtOrgAppNo.Create(dwE, CRect(0,0,0,0),this,IDC_TRANS_EDIT_ORG_APPNO);
-    m_edtCashNo.Create(dwE,   CRect(0,0,0,0),this,IDC_TRANS_EDIT_CASH_NO);
-    CSkinnedEdit* ae[]={&m_edtSupply,&m_edtTax,&m_edtTip,&m_edtTaxFree,
-                        &m_edtQr,&m_edtOrgDate,&m_edtOrgAppNo,&m_edtCashNo};
-    for (int i=0; i<8; i++) ae[i]->SetUnderlayColor(W);
-    DWORD dwC=CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL|WS_CHILD|WS_TABSTOP;
-    auto mkCmb=[&](CSkinnedComboBox& c, UINT id){
-        HWND h=::CreateWindowEx(0,_T("COMBOBOX"),_T(""),dwC,0,0,100,200,
-            m_hWnd,(HMENU)(UINT_PTR)id,AfxGetInstanceHandle(),NULL);
+    m_edtCashNo.Create(dwE, CRect(0, 0, 0, 0), this, IDC_TRANS_EDIT_CASH_NO);
+    // [수정 1] 할부개월 Edit 컨트롤 생성 (기존 ID 재사용하여 오류 방지)
+    m_edtInstall.Create(dwE, CRect(0, 0, 0, 0), this, IDC_TRANS_CMB_INSTALLMENT);
+
+    // [수정 2] ae 배열에 m_edtInstall 추가 및 개수를 8에서 9로 변경
+    CSkinnedEdit* ae[] = { &m_edtSupply,&m_edtTax,&m_edtTip,&m_edtTaxFree,
+                        &m_edtQr,&m_edtOrgDate,&m_edtOrgAppNo,&m_edtCashNo, &m_edtInstall };
+    for (int i = 0; i < 9; i++) ae[i]->SetUnderlayColor(W);
+
+    DWORD dwC = CBS_DROPDOWNLIST | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS | WS_VSCROLL | WS_CHILD | WS_TABSTOP;
+    auto mkCmb = [&](CSkinnedComboBox& c, UINT id) {
+        HWND h = ::CreateWindowEx(0, _T("COMBOBOX"), _T(""), dwC, 0, 0, 100, 200,
+            m_hWnd, (HMENU)(UINT_PTR)id, AfxGetInstanceHandle(), NULL);
         c.SubclassWindow(h); c.SetUnderlayColor(W);
-    };
-    mkCmb(m_cmbInstall, IDC_TRANS_CMB_INSTALLMENT);
-    mkCmb(m_cmbCashType,IDC_TRANS_CMB_CASH_TYPE);
-    m_cmbInstall.AddString(_T("일시불"));
-    m_cmbInstall.AddString(_T("2개월"));
-    m_cmbInstall.AddString(_T("3개월"));
-    m_cmbInstall.AddString(_T("6개월"));
-    m_cmbInstall.AddString(_T("12개월"));
-    m_cmbInstall.SetCurSel(0);
+        };
+
+    // 할부개월 콤보박스 관련 코드 삭제됨. 현금영수증 종류 콤보박스만 남김.
+    mkCmb(m_cmbCashType, IDC_TRANS_CMB_CASH_TYPE);
     m_cmbCashType.AddString(_T("소득공제용"));
     m_cmbCashType.AddString(_T("지출증빙용"));
     m_cmbCashType.SetCurSel(0);
+
     struct FI { LPCTSTR cap; CWnd* ctrl; BOOL full; UINT ct; };
-    FI fi[kNumFields]={
+    FI fi[kNumFields] = {
         {_T("공급가액"),        &m_edtSupply,  FALSE,1},
         {_T("세금"),            &m_edtTax,     FALSE,1},
         {_T("봉사료"),          &m_edtTip,     FALSE,1},
         {_T("비과세"),          &m_edtTaxFree, FALSE,1},
-        {_T("할부개월"),        &m_cmbInstall, FALSE,2},
+        {_T("할부개월"),        &m_edtInstall, FALSE,1},
         {_T("QR/바코드"),       &m_edtQr,      FALSE,1},
         {_T("원거래 일자"),     &m_edtOrgDate, FALSE,1},
         {_T("원거래 승인번호"), &m_edtOrgAppNo,FALSE,1},
@@ -411,18 +436,18 @@ CString CTransDlg::GetModeButtonText() const
     switch (m_eMode) {
     case MODE_CREDIT_APPROVAL: return _T("신용 승인 요청");
     case MODE_CREDIT_CANCEL:   return _T("신용 취소 요청");
-    case MODE_CASH_APPROVAL:   return _T("현금영수증 승인 요청");
-    case MODE_CASH_CANCEL:     return _T("현금영수증 취소 요청");
+    case MODE_CASH_APPROVAL:   return _T("현금 승인 요청");
+    case MODE_CASH_CANCEL:     return _T("현금 취소 요청");
     } return _T("");
 }
 
 CString CTransDlg::GetCurrentModeName() const
 {
     switch (m_eMode) {
-    case MODE_CREDIT_APPROVAL: return _T("신용승인");
-    case MODE_CREDIT_CANCEL:   return _T("신용취소");
-    case MODE_CASH_APPROVAL:   return _T("현금영수증 승인");
-    case MODE_CASH_CANCEL:     return _T("현금영수증 취소");
+    case MODE_CREDIT_APPROVAL: return _T("신용 승인");
+    case MODE_CREDIT_CANCEL:   return _T("신용 취소");
+    case MODE_CASH_APPROVAL:   return _T("현금 승인");
+    case MODE_CASH_CANCEL:     return _T("현금 취소");
     } return _T("");
 }
 
@@ -573,10 +598,16 @@ void CTransDlg::LayoutControls()
     }
 
     // buttons pinned to bottom of form card
-    int btnY=rcForm.bottom-SX(14)-bH;
-    m_btnRun.MoveWindow(rcForm.right-SX(14)-bW2,btnY,bW2,bH);
-    m_btnClose.MoveWindow(rcForm.right-SX(14)-bW2-SX(8)-bW1,btnY,bW1,bH);
+    int btnY = rcForm.bottom - SX(14) - bH;
 
+    // 1. [닫기] 버튼을 오른쪽 끝에 먼저 배치
+    int closeX = rcForm.right - SX(14) - bW1;
+    m_btnClose.MoveWindow(closeX, btnY, bW1, bH);
+
+    // 2. [요청] 버튼을 [닫기] 버튼의 왼쪽(closeX)에서 8px 간격을 두고 배치
+    int runX = closeX - SX(8) - bW2;
+    m_btnRun.MoveWindow(runX, btnY, bW2, bH);
+    
     // result labels
     const int rRowH=SX(kResRowH);
     int rTY=rcResult.top+SX(44);
@@ -601,26 +632,56 @@ void CTransDlg::OnPaint()
     CBitmap* pOld=mem.SelectObject(&bmp);
     mem.FillSolidRect(cl,kDlgBg);
 
-    CRect rcForm,rcResult; GetContentRects(rcForm,rcResult);
-    const int om=SX(10);
-    CRect rcMain(om,om,cl.right-om,cl.bottom-om);
-    CRect rcHdr(rcMain.left,rcMain.top,rcMain.right,rcMain.top+SX(84));
+    CRect rcForm, rcResult; GetContentRects(rcForm, rcResult);
+
+    // [FIX 3] OnPaint에서도 새 여백 공식 적용
+    BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
+    int mL = SX(bCmp ? 12 : 20);
+    int mT = SX(bCmp ? 6 : 10);
+    int mR = SX(bCmp ? 12 : 20);
+    int mB = SX(bCmp ? 12 : 20);
+    CRect rcMain(mL, mT, cl.right - mR, cl.bottom - mB);
+    CRect rcHdr(rcMain.left, rcMain.top, rcMain.right, rcMain.top + SX(84));
 
     // --- Phase 1: GDI+ shapes ---
     {
         Gdiplus::Graphics g(mem.GetSafeHdc());
         g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
         g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
-        DrawRoundedCard(g,rcMain,SX(20),RGB(255,255,255),kMainCardBorder,12);
-        {
-            Gdiplus::GraphicsPath gp;
-            CRect bgRc(rcMain.left+SX(10),rcHdr.bottom+SX(6),rcMain.right-SX(10),rcMain.bottom-SX(8));
-            AddRRP(gp,bgRc,SX(14));
-            Gdiplus::SolidBrush gbg(Gdiplus::Color(255,247,249,252));
-            g.FillPath(&gbg,&gp);
+
+        // 1. 하얀색 메인 카드 배경 (테두리 선 제거 + 은은한 그림자 3단계)
+        Gdiplus::GraphicsPath path;
+        AddRRP(path, rcMain, (float)SX(12));
+
+        for (int sh = 3; sh >= 1; sh--) {
+            Gdiplus::GraphicsPath shPath;
+            CRect sr = rcMain; sr.OffsetRect(0, sh);
+            AddRRP(shPath, sr, (float)SX(12));
+            BYTE alpha = (BYTE)(sh == 3 ? 8 : sh == 2 ? 14 : 20);
+            Gdiplus::SolidBrush shBrush(Gdiplus::Color(alpha, 10, 30, 70));
+            g.FillPath(&shBrush, &shPath);
         }
-        DrawRoundedCard(g,rcForm,  SX(12),kCardFill,kCardBorder,0);
-        DrawRoundedCard(g,rcResult,SX(12),kCardFill,kCardBorder,0);
+
+        // 테두리선(DrawPath) 없이 하얀색 바탕(FillPath)만 칠합니다.
+        Gdiplus::SolidBrush fillBrush(Gdiplus::Color(255, 255, 255, 255));
+        g.FillPath(&fillBrush, &path);
+
+        // [FIX 3] 반전된 느낌을 주던 불필요한 회색 바탕(bgRc) 그리기 영역 완전히 제거
+    // 2. 옅은 회색(kCardFill) 내부 카드 영역 (테두리 선 그리기 없이 배경색만 칠함)
+        Gdiplus::SolidBrush cardBrush(Gdiplus::Color(255, GetRValue(kCardFill), GetGValue(kCardFill), GetBValue(kCardFill)));
+        Gdiplus::GraphicsPath pForm, pResult;
+        AddRRP(pForm, rcForm, (float)SX(12));
+        AddRRP(pResult, rcResult, (float)SX(12));
+        g.FillPath(&cardBrush, &pForm);
+        g.FillPath(&cardBrush, &pResult);
+
+        // ----------------------------------------------------
+        // [여기에 아래 두 줄을 추가해 보세요!]
+        // 오른쪽(응답 정보) 카드에만 아주 연한 경계선(kCardBorder)을 그려줍니다.
+        Gdiplus::Pen borderPen(Gdiplus::Color(255, GetRValue(kCardBorder), GetGValue(kCardBorder), GetBValue(kCardBorder)), 1.0f);
+        g.DrawPath(&borderPen, &pResult);
+
+
         // result section title bar (blue pill)
         {
             Gdiplus::GraphicsPath bp;
@@ -634,11 +695,12 @@ void CTransDlg::OnPaint()
         // amount display bg
         {
             int segY2 = rcForm.top + SX(20), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
-            // 높이를 88에서 52로 줄여서 슬림하게 변경
             CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52));
             Gdiplus::GraphicsPath ap; AddRRP(ap, rcAmt, SX(8));
-            // 너무 진한 파란색 대신 연하고 세련된 회/파랑 톤으로 변경
-            Gdiplus::SolidBrush amtBg(Gdiplus::Color(255, 245, 248, 252));
+
+            // [수정] 테두리(선)를 절대 그리지 않으며, 색상을 ShopSetupDlg처럼 
+            // 맑고 경계선이 안 보이는 플랫한 연한 파스텔 블루톤으로 변경합니다.
+            Gdiplus::SolidBrush amtBg(Gdiplus::Color(255, 240, 246, 255));
             g.FillPath(&amtBg, &ap);
         }
         // result dividers
@@ -735,33 +797,47 @@ void CTransDlg::OnSize(UINT t,int cx,int cy)
     if (m_bUiBuilt) LayoutControls();
 }
 
-HBRUSH CTransDlg::OnCtlColor(CDC* pDC,CWnd* pWnd,UINT nCtlColor)
+HBRUSH CTransDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
-    HBRUSH hbr=CDialog::OnCtlColor(pDC,pWnd,nCtlColor);
-    UINT id=pWnd?pWnd->GetDlgCtrlID():0;
-    if (nCtlColor==CTLCOLOR_STATIC) {
-        for (int i=0; i<kNumFields; i++)
-            if (id==IDC_TRANS_LABEL_BASE+(UINT)i) {
-                pDC->SetTextColor(RGB(90,100,115));
-                pDC->SetBkColor(RGB(255,255,255));
-                return (HBRUSH)GetStockObject(WHITE_BRUSH);
+    HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
+    UINT id = pWnd ? pWnd->GetDlgCtrlID() : 0;
+
+    // [FIX 4] 바뀐 회색 바탕(kCardFill)에 맞춘 전용 브러시 생성
+    static CBrush s_brCardFill;
+    if (s_brCardFill.GetSafeHandle() == NULL) {
+        s_brCardFill.CreateSolidBrush(kCardFill);
+    }
+
+    if (nCtlColor == CTLCOLOR_STATIC) {
+        // 입력 필드 라벨들
+        for (int i = 0; i < kNumFields; i++) {
+            if (id == IDC_TRANS_LABEL_BASE + (UINT)i) {
+                pDC->SetTextColor(kLabelText);
+                pDC->SetBkMode(OPAQUE);
+                pDC->SetBkColor(kCardFill);
+                return s_brCardFill;
             }
-        pDC->SetBkMode(TRANSPARENT);
-        // [FIX 1] 배경색을 덧칠해 지워주어 텍스트가 겹치거나 굵어지는 현상 해결
+        }
+
+        // 응답 결과 라벨 및 값들 (글자 겹침 방지를 위해 OPAQUE + 회색 브러시 처리)
         for (int i = 0; i < kNumResults; i++) {
             if (id == IDC_TRANS_RESULT_LBL_BASE + i) {
                 pDC->SetTextColor(kLabelText);
+                pDC->SetBkMode(OPAQUE);
                 pDC->SetBkColor(kCardFill);
-                return (HBRUSH)GetStockObject(WHITE_BRUSH);
+                return s_brCardFill;
             }
             if (id == IDC_TRANS_VALUE_BASE + i) {
                 if (i < (int)m_results.size() && m_results[(size_t)i].bBlue) pDC->SetTextColor(kBlueText);
                 else if (i < (int)m_results.size() && m_results[(size_t)i].bRed) pDC->SetTextColor(kRedText);
                 else pDC->SetTextColor(kValueText);
+
+                pDC->SetBkMode(OPAQUE);
                 pDC->SetBkColor(kCardFill);
-                return (HBRUSH)GetStockObject(WHITE_BRUSH);
+                return s_brCardFill;
             }
         }
+        pDC->SetBkMode(TRANSPARENT);
     }
     return hbr;
 }
