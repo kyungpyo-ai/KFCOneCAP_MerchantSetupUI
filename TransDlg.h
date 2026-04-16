@@ -68,6 +68,10 @@ protected:
     void ResetSampleResult();
     void ResizeWindow();
     BOOL ValidateCurrentMode(CString& e);
+    void OnRunCreditApproval();
+    void OnRunCreditCancel();
+    void OnRunCashApproval();
+    void OnRunCashCancel();
     CString GetModeButtonText() const;
     CString GetCurrentModeName() const;
     void SetResultValue(int i, LPCTSTR v, BOOL bBlue=FALSE, BOOL bRed=FALSE);

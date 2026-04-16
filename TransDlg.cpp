@@ -36,6 +36,26 @@ namespace {
         if (p && ::IsWindow(p->GetSafeHwnd()))
             p->ShowWindow(b ? SW_SHOW : SW_HIDE);
     }
+    static int ParseAmountText(const CString& s)
+    {
+        CString digits;
+        for (int i = 0; i < s.GetLength(); ++i)
+            if (_istdigit(s[i])) digits += s[i];
+        return digits.IsEmpty() ? 0 : _ttoi(digits);
+    }
+    static CString FormatAmountWithCommas(int n)
+    {
+        if (n < 0) n = 0;
+        CString s; s.Format(_T("%d"), n);
+        int len = s.GetLength();
+        CString result;
+        for (int i = 0; i < len; ++i) {
+            result += s[i];
+            int rem = len - 1 - i;
+            if (rem > 0 && rem % 3 == 0) result += _T(',');
+        }
+        return result;
+    }
 }
 
 // ============================================================
@@ -230,7 +250,8 @@ void CSegmentCtrl::OnPaint()
 
     for (int i = 0; i < n; i++) {
         bool bActive = (i == m_nSel);
-        lf.lfHeight = -MulDiv(10, dpi, 72);
+        const BOOL bCmpTab = ::GetSystemMetrics(SM_CYSCREEN) <= 800;
+        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCmpTab ? 13 : 14);
         lf.lfWeight = bActive ? FW_BOLD : FW_NORMAL;
         CFont font; font.CreateFontIndirect(&lf);
 
@@ -296,18 +317,18 @@ void CTransDlg::EnsureFonts()
     lf.lfQuality = CLEARTYPE_QUALITY;
     lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
     ModernUIFont::ApplyUIFontFace(lf);
+    const BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
 #define MKF(px,wt,f) lf.lfHeight=-ModernUIDpi::Scale(m_hWnd,px); lf.lfWeight=wt; f.CreateFontIndirect(&lf)
     MKF(18, FW_BOLD,      m_fontTitle);
     MKF(13, FW_BOLD,      m_fontSub);
-    MKF(13, FW_BOLD,      m_fontSection);
+    MKF((bCmp?13:15), FW_BOLD,      m_fontSection);
     MKF(14, FW_BOLD,      m_fontLabel);
     MKF(14, FW_NORMAL,    m_fontEdit);
-    // [FIX 1] 금액 폰트 크기를 다시 적당한 크기(24)로 줄입니다.
     MKF(24, FW_EXTRABOLD, m_fontAmount);
-    MKF(11, FW_NORMAL, m_fontResultLabel);
-    MKF(12, FW_BOLD,      m_fontResultValue);
-    MKF(13, FW_EXTRABOLD, m_fontResultBlue);
-    MKF(12, FW_BOLD,      m_fontResultRed);
+    MKF((bCmp?12:14), FW_NORMAL,    m_fontResultLabel);
+    MKF((bCmp?12:14), FW_BOLD,      m_fontResultValue);
+    MKF((bCmp?12:14), FW_EXTRABOLD, m_fontResultBlue);
+    MKF((bCmp?11:13), FW_BOLD,      m_fontResultRed);
     MKF(10, FW_BOLD,      m_fontBadge);
 #undef MKF
 }
@@ -370,13 +391,34 @@ BOOL CTransDlg::OnInitDialog()
     m_eMode = MODE_CREDIT_APPROVAL;
     m_segCtrl.SetCurSelSilent(0);
     ShowFieldsForMode();
+    m_edtSupply.SetNumericOnly(TRUE);
+    m_edtTax.SetNumericOnly(TRUE);
+    m_edtTip.SetNumericOnly(TRUE);
+    m_edtTaxFree.SetNumericOnly(TRUE);
+    m_edtInstall.SetNumericOnly(TRUE);
+    m_edtSupply.SetUnitText(_T("원"), 30);
+    m_edtTax.SetUnitText(_T("원"), 30);
+    m_edtTip.SetUnitText(_T("원"), 30);
+    m_edtTaxFree.SetUnitText(_T("원"), 30);
+    m_edtInstall.SetUnitText(_T("개월"), 40);
+    m_edtSupply.SetWindowText(FormatAmountWithCommas(1000));
+    m_edtTax.SetWindowText(FormatAmountWithCommas(100));
+    m_edtTip.SetWindowText(FormatAmountWithCommas(0));
+    m_edtTaxFree.SetWindowText(FormatAmountWithCommas(0));
+    m_edtInstall.SetWindowText(_T("00"));
+    m_tabValues[(int)MODE_CASH_APPROVAL][0] = FormatAmountWithCommas(1000);
+    m_tabValues[(int)MODE_CASH_APPROVAL][1] = FormatAmountWithCommas(100);
+    m_tabValues[(int)MODE_CASH_APPROVAL][2] = FormatAmountWithCommas(0);
+    m_tabValues[(int)MODE_CASH_APPROVAL][3] = FormatAmountWithCommas(0);
+    m_tabValues[(int)MODE_CASH_APPROVAL][4] = _T("00");
     m_bUiBuilt = TRUE;
     ResizeWindow();
     LayoutControls();
     ResetSampleResult();
     CenterWindow();
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
-    return TRUE;
+    m_segCtrl.SetFocus();
+    return FALSE;
 }
 
 void CTransDlg::CreateSegmentControl()
@@ -528,7 +570,7 @@ void CTransDlg::SetMode(ETransMode mode)
     }
 
     LayoutControls();
-    RedrawWindow(NULL,NULL,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);
+    RedrawWindow(NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
 }
 
 CString CTransDlg::GetModeButtonText() const
@@ -656,7 +698,8 @@ void CTransDlg::LayoutControls()
     CRect rcForm, rcResult; GetContentRects(rcForm, rcResult);
 
     // [FIX 5] lH(라벨 높이), cH(입력칸 높이), gLC(라벨-입력칸 간격), fGX/fGY(상하좌우 간격) 대폭 확대
-    const int lH = SX(16), cH = SX(40), gLC = SX(6), fGX = SX(16), fGY = SX(16);
+    const BOOL bCmpLayout = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
+    const int lH = SX(16), cH = SX(bCmpLayout ? 32 : 40), gLC = SX(6), fGX = SX(16), fGY = SX(16);
     const int bH = SX(52), bW1 = SX(80), bW2 = SX(160);
     const int segH = SX(CSegmentCtrl::kBarH + 6); // 탭 바 높이 증가
 
@@ -728,7 +771,7 @@ void CTransDlg::LayoutControls()
         m_resultLabels[i].MoveWindow(rL, ry + SX(5), rLW, rRowH - SX(10));
         m_resultValues[i].MoveWindow(rL+rLW, ry + SX(5), vW, rRowH - SX(10));
     }
-    Invalidate(TRUE);
+    Invalidate(FALSE);
 }
 
 BOOL CTransDlg::OnEraseBkgnd(CDC*) { return TRUE; }
@@ -893,7 +936,7 @@ void CTransDlg::OnPaint()
         long long nTotal=parseN(m_edtSupply);
         if (!bCancelMode)
             nTotal+=parseN(m_edtTax)+parseN(m_edtTip)+parseN(m_edtTaxFree);
-        CString sAmt; sAmt.Format(_T("%I64d"),nTotal); sAmt+=_T(" 원");
+        CString sAmt; sAmt = FormatAmountWithCommas((int)nTotal) + _T(" 원");
 
         HFONT hOA = (HFONT)::SelectObject(hRaw, m_fontAmount.GetSafeHandle());
         ::SetTextColor(hRaw, RGB(49, 130, 246)); // 토스 스타일 프라이머리 블루
@@ -965,6 +1008,50 @@ void CTransDlg::OnTabSelChange(NMHDR*,LRESULT* pResult)
     *pResult=0;
 }
 
+void CTransDlg::OnRunCreditApproval()
+{
+    CString msg;
+    msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
+    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[1].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[1].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[2].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[2].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[3].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[3].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[4].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[4].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[5].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[5].caption, (LPCTSTR)v); msg += ln; }
+    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+}
+void CTransDlg::OnRunCreditCancel()
+{
+    CString msg;
+    msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
+    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[6].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[6].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[7].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[7].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[4].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[4].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[5].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[5].caption, (LPCTSTR)v); msg += ln; }
+    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+}
+void CTransDlg::OnRunCashApproval()
+{
+    CString msg;
+    msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
+    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[1].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[1].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[2].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[2].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[3].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[3].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[8].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[8].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[9].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[9].caption, (LPCTSTR)v); msg += ln; }
+    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+}
+void CTransDlg::OnRunCashCancel()
+{
+    CString msg;
+    msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
+    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[6].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[6].caption, (LPCTSTR)v); msg += ln; }
+    { CString v; m_fields[7].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[7].caption, (LPCTSTR)v); msg += ln; }
+    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+}
 BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
 {
     UINT nID=LOWORD(wParam);
@@ -973,33 +1060,47 @@ BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
         if (nID==IDC_TRANS_BTN_RUN) {
             CString err;
             if (!ValidateCurrentMode(err)) { CModernMessageBox::Warning(err,this); return TRUE; }
-            CString amt; m_edtSupply.GetWindowText(amt); amt.Trim();
-            bool bCash=(m_eMode==MODE_CASH_APPROVAL||m_eMode==MODE_CASH_CANCEL);
-            bool bCancel=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
-            SetResultValue(0, _T("2026-04-15 14:30:05"));
-            SetResultValue(1, _T("0000"));
-            SetResultValue(2, bCancel?_T("정상취소"):_T("정상승인"),FALSE,TRUE);
-            SetResultValue(3, bCancel?_T("-"):_T("30018492"),TRUE);
-            SetResultValue(4, bCancel?_T("취소가 완료되었습니다."):_T("거래가 성공적으로 완료되었습니다."));
-            SetResultValue(5, _T("KFTC_T001"));
-            SetResultValue(6, bCash?_T("010-12**-****"):_T("9410-****-****-1234"));
-            SetResultValue(7, bCash?_T("-"):_T("신한카드"));
-            SetResultValue(8, _T("04"));
-            SetResultValue(9, bCash?_T("-"):_T("신한카드"));
-            SetResultValue(10,bCash?_T("-"):_T("신한카드"));
-            SetResultValue(11,_T("04"));
-            SetResultValue(12,bCash?_T("-"):_T("개인 / 신용"));
-            SetResultValue(13,bCash?_T("-"):_T("삼성페이"));
-            { CString n; n.Format(_T("[%s] %s"),(LPCTSTR)GetCurrentModeName(),(LPCTSTR)amt); SetResultValue(14,n); }
-            m_strBadge=bCancel?_T("정상 취소"):_T("정상 승인"); m_bBadgeOk=TRUE;
-            UpdateResultControls(); return TRUE;
+            switch (m_eMode) {
+            case MODE_CREDIT_APPROVAL: OnRunCreditApproval(); break;
+            case MODE_CREDIT_CANCEL:   OnRunCreditCancel();   break;
+            case MODE_CASH_APPROVAL:   OnRunCashApproval();   break;
+            case MODE_CASH_CANCEL:     OnRunCashCancel();     break;
+            }
+            return TRUE;
         }
     }
     if (HIWORD(wParam)==EN_CHANGE) {
         UINT cID=LOWORD(wParam);
-        if (cID==IDC_TRANS_EDIT_SUPPLY||cID==IDC_TRANS_EDIT_TAX||
-            cID==IDC_TRANS_EDIT_TIP||cID==IDC_TRANS_EDIT_TAXFREE)
+        static const UINT kAmtIDs[] = {
+            IDC_TRANS_EDIT_SUPPLY, IDC_TRANS_EDIT_TAX,
+            IDC_TRANS_EDIT_TIP,    IDC_TRANS_EDIT_TAXFREE };
+        CSkinnedEdit* kAmtEdits[] = {
+            &m_edtSupply, &m_edtTax, &m_edtTip, &m_edtTaxFree };
+        for (int _i = 0; _i < 4; _i++) {
+            if (cID != kAmtIDs[_i]) continue;
+            static BOOL s_bFmt = FALSE;
+            if (s_bFmt) break;
+            s_bFmt = TRUE;
+            CSkinnedEdit& edt = *kAmtEdits[_i];
+            CString raw; edt.GetWindowText(raw);
+            int nStart = 0, nEnd = 0; edt.GetSel(nStart, nEnd);
+            int digitsBefore = 0;
+            for (int j = 0; j < nStart && j < raw.GetLength(); ++j)
+                if (_istdigit(raw[j])) digitsBefore++;
+            CString formatted = FormatAmountWithCommas(ParseAmountText(raw));
+            if (formatted != raw) {
+                edt.SetWindowText(formatted);
+                int newPos = 0, dc = 0;
+                for (int j = 0; j < formatted.GetLength() && dc < digitsBefore; ++j) {
+                    if (_istdigit(formatted[j])) dc++;
+                    newPos = j + 1;
+                }
+                edt.SetSel(newPos, newPos);
+            }
+            s_bFmt = FALSE;
             Invalidate(FALSE);
+            break;
+        }
     }
     return CDialog::OnCommand(wParam,lParam);
 }

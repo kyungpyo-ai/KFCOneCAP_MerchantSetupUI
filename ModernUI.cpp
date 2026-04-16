@@ -4573,7 +4573,7 @@ void Draw(HDC hdc,
 	}
 	else if (iconType == IconType::Transaction) {
 		// IC card: 56% wide x 38% tall, centered in badge (matches Store/CardTerminal proportions)
-		const float iW = bsz * 0.56f, iH = bsz * 0.38f;
+		const float iW = bsz * 0.64f, iH = bsz * 0.44f;
 		const float iX = bx + (bsz - iW) * 0.5f;
 		const float iY = badgeY + (bsz - iH) * 0.5f;
 		const float sx = iW / 26.0f, sy = iH / 19.0f;
