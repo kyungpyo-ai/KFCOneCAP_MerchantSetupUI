@@ -803,7 +803,9 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	BOOL isReader = FALSE;
 	BOOL isMini = (t.Find(_T("최소")) >= 0) || (t.Find(_T("축소")) >= 0);
 	BOOL isProgramExit = (t.Find(_T("프로그램 종료")) >= 0);
-	BOOL isFooterAction = (isMini || isProgramExit);
+	// [추가] "로그 전송" 버튼임을 판별하고, 아이콘을 그리기 위해 FooterAction에도 포함시킵니다.
+	BOOL isLogTransfer = (t.Find(_T("로그 전송")) >= 0);
+	BOOL isFooterAction = (isMini || isProgramExit || isLogTransfer);
 
 	if (m_style != ButtonStyle::Auto) {
 		isPrimary = (m_style == ButtonStyle::Primary) ? TRUE : FALSE;
@@ -835,6 +837,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		newW, newH);
 	// --- [Sinking 피드백 추가 끝] ---
 
+	if (!isLogTransfer) // [수정] 로그 전송(투명 버튼)일 때는 그림자를 그리지 않습니다.
 	{
 		const int shadowA = pressed ? kBtnShadowAlphaPrs : kBtnShadowAlphaNrm;
 		const float shDy = 1.0f;
@@ -897,9 +900,19 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		pen.SetLineJoin(Gdiplus::LineJoinRound);
 		g.DrawPath(&pen, &bp);
 	}
+	// [추가] 로그 전송 버튼 전용 스타일 (평소엔 투명, 마우스 올릴 때만 파란 배경)
+	else if (isLogTransfer)
+	{
+		if (hover || pressed) {
+			COLORREF bg = pressed ? RGB(218, 233, 255) : RGB(232, 243, 255);
+			Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
+			g.FillPath(&br, &bp);
+		}
+	}
 	else if (m_style == ButtonStyle::Default)
 	{
 		COLORREF bg = pressed ? GRAY_100 : (hover ? GRAY_50 : RGB(255, 255, 255));
+
 		Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 		g.FillPath(&br, &bp);
 		COLORREF border = (pressed || hover) ? GRAY_300 : GRAY_200;
@@ -934,6 +947,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		? Gdiplus::Color(255, 255, 255, 255)
 		: (isDanger
 			? Gdiplus::Color(255, 185, 28, 28)
+			// [수정] isLogTransfer를 제거하여 텍스트가 가맹점 설정과 같은 기본 짙은 색을 따라가게 합니다.
 			: (isDownload || isReader
 				? Gdiplus::Color(255, GetRValue(BLUE_500), GetGValue(BLUE_500), GetBValue(BLUE_500))
 				: (m_bUseHoverText && hover
@@ -995,7 +1009,10 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		const Gdiplus::REAL centerY = rf.Y + rf.Height * 0.5f;
 		const Gdiplus::REAL iconY = centerY - iconSize * 0.5f;
 
-		Gdiplus::Pen iconPen(txtColor, ModernUIDpi::ScaleF(m_hWnd, 1.95f));
+		// [수정] 로그 전송 아이콘은 텍스트 색상과 별개로 항상 포인트 파란색(Toss Blue) 유지
+		Gdiplus::Color penColor = isLogTransfer ? Gdiplus::Color(255, 49, 130, 246) : txtColor;
+		Gdiplus::Pen iconPen(penColor, ModernUIDpi::ScaleF(m_hWnd, 1.95f));
+
 		iconPen.SetStartCap(Gdiplus::LineCapRound);
 		iconPen.SetEndCap(Gdiplus::LineCapRound);
 		iconPen.SetLineJoin(Gdiplus::LineJoinRound);
@@ -1009,6 +1026,26 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			const Gdiplus::REAL stemTop = iconY + ModernUIDpi::ScaleF(m_hWnd, 1.8f);
 			const Gdiplus::REAL stemBottom = iconY + iconSize * 0.47f;
 			g.DrawLine(&iconPen, Gdiplus::PointF(cx, stemTop), Gdiplus::PointF(cx, stemBottom));
+		}
+		// [추가] 다운로드(로그 전송) 아이콘: 아래 화살표 + 받침대
+		else if (isLogTransfer)
+		{
+			const Gdiplus::REAL cx = startX + iconSize * 0.5f;
+
+			// 1. 화살표 몸통
+			const Gdiplus::REAL stemTop = iconY + ModernUIDpi::ScaleF(m_hWnd, 1.0f);
+			const Gdiplus::REAL stemBottom = iconY + iconSize - ModernUIDpi::ScaleF(m_hWnd, 5.0f);
+			g.DrawLine(&iconPen, Gdiplus::PointF(cx, stemTop), Gdiplus::PointF(cx, stemBottom));
+
+			// 2. 화살촉
+			const Gdiplus::REAL arrowW = ModernUIDpi::ScaleF(m_hWnd, 3.5f);
+			g.DrawLine(&iconPen, Gdiplus::PointF(cx - arrowW, stemBottom - arrowW), Gdiplus::PointF(cx, stemBottom));
+			g.DrawLine(&iconPen, Gdiplus::PointF(cx + arrowW, stemBottom - arrowW), Gdiplus::PointF(cx, stemBottom));
+
+			// 3. 받침대
+			const Gdiplus::REAL baseLineY = iconY + iconSize - ModernUIDpi::ScaleF(m_hWnd, 1.0f);
+			const Gdiplus::REAL baseW = ModernUIDpi::ScaleF(m_hWnd, 5.0f);
+			g.DrawLine(&iconPen, Gdiplus::PointF(cx - baseW, baseLineY), Gdiplus::PointF(cx + baseW, baseLineY));
 		}
 		else
 		{

@@ -306,6 +306,7 @@ void CKFTCOneCAPDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
+    ON_BN_CLICKED(IDC_BTN_LOG_TRANSFER, OnLogTransfer)
     ON_BN_CLICKED(IDC_READER_SETUP, OnReaderSetup)
     ON_BN_CLICKED(IDC_SHOP_SETUP, OnShopSetup)
     ON_BN_CLICKED(IDC_TRANS, OnTrans)
@@ -362,6 +363,17 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
 
     m_btnMinimize.SetWindowText(_T("최소화"));
     m_btnExit.SetWindowText(_T("프로그램 종료"));
+
+    // [추가] 로그 전송 버튼 동적 생성 및 투명(Ghost) 스타일 적용
+    m_btnLogTransfer.Create(_T("로그 전송"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_BTN_LOG_TRANSFER);
+    m_btnLogTransfer.SetFont(&m_fontFooter);
+    m_btnLogTransfer.SetButtonStyle(ButtonStyle::Auto);
+    m_btnLogTransfer.SetUnderlayColor(kHomeBg);
+    // 평소엔 배경 투명(kHomeBg) + 텍스트는 짙은 회색(kTitleText) / 마우스 올리면 연한 파랑 배경 + 파란색 텍스트
+    m_btnLogTransfer.SetColors(kHomeBg, RGB(232, 243, 255), kTitleText);
+    m_btnLogTransfer.SetHoverTextColor(RGB(49, 130, 246));
+
+    if (GetDlgItem(IDC_READER_SETUP)) GetDlgItem(IDC_READER_SETUP)->ModifyStyle(WS_TABSTOP, 0);
 
     if (GetDlgItem(IDC_READER_SETUP)) GetDlgItem(IDC_READER_SETUP)->ModifyStyle(WS_TABSTOP, 0);
     if (GetDlgItem(IDC_SHOP_SETUP)) GetDlgItem(IDC_SHOP_SETUP)->ModifyStyle(WS_TABSTOP, 0);
@@ -505,6 +517,16 @@ void CKFTCOneCAPDlg::LayoutControls()
 
     m_nFooterDividerY = topCardsVisual + cardVisualH + SX(bC ? 20 : 25);
     int footerY = m_nFooterDividerY + SX(bC ? 18 : 24);
+
+    // [추가] 우측 상단 로그 전송 버튼 위치 계산 및 배치
+        // [수정] 아이콘과 글자가 모두 넉넉하게 들어가도록 버튼 가로 너비(Width)를 130으로 확장
+    const int logBtnW = SX(bC ? 110 : 130);
+    const int logBtnH = SX(bC ? 32 : 36);
+    // DrawHeader의 로고 Y 위치와 시각적인 수평을 맞춥니다.
+    const int topHeaderY = SX(bC ? 26 : 38) + SX(bC ? 6 : 8);
+    if (::IsWindow(m_btnLogTransfer.m_hWnd)) {
+        m_btnLogTransfer.MoveWindow(rc.right - marginX - logBtnW, topHeaderY, logBtnW, logBtnH);
+    }
 
     int x = marginX;
     if (GetDlgItem(IDC_READER_SETUP)) GetDlgItem(IDC_READER_SETUP)->MoveWindow(x, cardCtrlTop, cardW, cardCtrlH);
@@ -1167,6 +1189,12 @@ void CKFTCOneCAPDlg::OnClose()
     EndDialog(IDCANCEL);
 }
 
+// [추가] 우측 상단 로그 전송 버튼 클릭 이벤트
+void CKFTCOneCAPDlg::OnLogTransfer()
+{
+    // 나중에 이곳에 CDateTimeCtrl이 포함된 달력 다이얼로그(로그 전송 창)를 띄우시면 됩니다.
+    CModernMessageBox::Warning(_T("로그 전송 창을 엽니다."), this);
+}
 
 // ============================================================
 // Application entry point

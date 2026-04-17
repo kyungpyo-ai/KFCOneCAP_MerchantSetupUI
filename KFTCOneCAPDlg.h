@@ -69,6 +69,7 @@ protected:
     afx_msg void OnReceiptSetup();
     afx_msg void OnMinimize();
     afx_msg void OnExit();
+    afx_msg void OnLogTransfer();
     afx_msg void OnClose();
     afx_msg BOOL OnNcActivate(BOOL bActive);
     afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
@@ -118,6 +119,7 @@ private:
     CHomeCardButton m_btnReceiptCard;
     CModernButton  m_btnMinimize;
     CModernButton  m_btnExit;
+    CModernButton m_btnLogTransfer;
 
     CFont m_fontTitle;
     CFont m_fontSubtitle;

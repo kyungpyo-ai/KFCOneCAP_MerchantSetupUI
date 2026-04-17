@@ -19,6 +19,7 @@
 #define IDC_MINIMIZE                     174
 #define IDC_EXIT                         175
 #define IDC_RECEIPT_SETUP                176
+#define IDC_BTN_LOG_TRANSFER			 177
 #define IDCLOSE                          8
 #define IDC_BTN_START_SHOPSETUP          136
 #define IDC_BTN_START_READERSETUP        137

@@ -425,6 +425,7 @@ void CTransDlg::CreateSegmentControl()
 {
     CRect rc(0,0,100,CSegmentCtrl::kBarH);
     m_segCtrl.Create(this, IDC_TRANS_SEG, rc);
+    m_segCtrl.SetUnderlayColor(kDlgBg);
     m_segCtrl.AddTab(_T("신용승인"));
     m_segCtrl.AddTab(_T("신용취소"));
     m_segCtrl.AddTab(_T("현금 승인"));
