@@ -306,7 +306,7 @@ CShopSetupDlg::CShopSetupDlg(CWnd* pParent)
     m_intPort = 8002;
     m_intCardTimeout = 60;   // 생성자 초기값 (레지스트리 없을 때 기본값 100 적용)
     m_intNoSignAmount = 50000;
-    m_intTaxPercent = 10;
+    m_intTaxPercent = 0;
     m_strCardDetectParam = _T("KFTCOneCAP TEST");
     m_intSignPadPort = 56;
     m_intScannerPort = 0;
@@ -1485,7 +1485,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     if (GetRegisterData(SEC_TCP, TAX_SETTING_FIELD, s))
         m_intTaxPercent = _ttoi(s);
     else
-        m_intTaxPercent = 10; // 기본값
+        m_intTaxPercent = 0; // 기본값
     // -------------------------
     // SERIALPORT
     // -------------------------
