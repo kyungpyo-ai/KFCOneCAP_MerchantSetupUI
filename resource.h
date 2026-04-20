@@ -20,6 +20,12 @@
 #define IDC_EXIT                         175
 #define IDC_RECEIPT_SETUP                176
 #define IDC_BTN_LOG_TRANSFER			 177
+#define IDD_LOG_TRANSFER_DIALOG      192
+#define IDC_LOG_DATE_PICKER          193
+#define IDC_LOG_BTN_CANCEL_DLG       194
+#define IDC_LOG_BTN_SEND             195
+#define IDC_LOG_BTN_CLOSE            196
+
 #define IDCLOSE                          8
 #define IDC_BTN_START_SHOPSETUP          136
 #define IDC_BTN_START_READERSETUP        137

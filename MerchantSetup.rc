@@ -207,6 +207,13 @@ BEGIN
     PUSHBUTTON      "취소",IDCANCEL,230,95,80,30,BS_OWNERDRAW
 END
 
+
+IDD_LOG_TRANSFER_DIALOG DIALOGEX 0, 0, 300, 150
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE
+FONT 9, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+END
+
 #endif    // 한국어(대한민국) resources
 /////////////////////////////////////////////////////////////////////////////
 

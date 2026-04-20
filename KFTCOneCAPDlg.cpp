@@ -6,6 +6,7 @@
 #include "ShopSetupDlg.h"
 #include "TransDlg.h"
 #include "ModernMessageBox.h"
+#include "LogTransferDlg.h"
 
 // Release 쑴니메이의하 다이아로그 오핀 지연 메시지
 // Poll until the pressed card button finishes its release animation, then open
@@ -1192,8 +1193,8 @@ void CKFTCOneCAPDlg::OnClose()
 // [추가] 우측 상단 로그 전송 버튼 클릭 이벤트
 void CKFTCOneCAPDlg::OnLogTransfer()
 {
-    // 나중에 이곳에 CDateTimeCtrl이 포함된 달력 다이얼로그(로그 전송 창)를 띄우시면 됩니다.
-    CModernMessageBox::Warning(_T("로그 전송 창을 엽니다."), this);
+    CLogTransferDlg dlg(this);
+    dlg.DoModal();
 }
 
 // ============================================================
