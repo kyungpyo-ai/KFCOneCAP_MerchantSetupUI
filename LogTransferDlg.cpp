@@ -22,8 +22,12 @@ BEGIN_MESSAGE_MAP(CLogTransferDlg, CDialog)
     // [새로 추가해야 할 부분] 오너드로우 및 버튼 클릭, 달력 선택 이벤트 연결
     ON_WM_DRAWITEM()
     // [수정] 클릭 이벤트를 새로운 ID로 연결합니다!
+ // [수정] 클릭 이벤트를 새로운 ID로 연결합니다!
     ON_BN_CLICKED(IDC_MODERN_DATE_BTN, OnBtnDatePicker)
     ON_NOTIFY(MCN_SELECT, IDC_CAL_POPUP, OnCalSelect)
+
+    // [핵심 추가] 팝업 달력이 강제로 0번 ID로 이벤트를 보낼 때도 완벽하게 잡아냅니다!
+    ON_NOTIFY(MCN_SELECT, 0, OnCalSelect)
 END_MESSAGE_MAP()
 
 CLogTransferDlg::CLogTransferDlg(CWnd* pParent)
@@ -58,17 +62,18 @@ void CLogTransferDlg::SetClientSize(int cx, int cy)
 void CLogTransferDlg::EnsureFonts()
 {
     if (m_fontTitle.GetSafeHandle()) return;
-    ModernUIFont::EnsureFontsLoaded();
-
-    LOGFONT lf = {};
-    lf.lfCharSet        = HANGUL_CHARSET;
-    lf.lfQuality        = CLEARTYPE_QUALITY;
-    lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+    LOGFONT lf = { 0 };
+    ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     ModernUIFont::ApplyUIFontFace(lf);
 
-    lf.lfHeight = -SX(18); lf.lfWeight = FW_BOLD;     m_fontTitle.CreateFontIndirect(&lf);
-    lf.lfHeight = -SX(13); lf.lfWeight = FW_NORMAL;   m_fontDesc.CreateFontIndirect(&lf);
-    lf.lfHeight = -SX(13); lf.lfWeight = FW_SEMIBOLD; m_fontLabel.CreateFontIndirect(&lf);
+    lf.lfHeight = -SX(20); lf.lfWeight = FW_BOLD;
+    m_fontTitle.CreateFontIndirect(&lf);
+
+    lf.lfHeight = -SX(13); lf.lfWeight = FW_NORMAL;
+    m_fontDesc.CreateFontIndirect(&lf);
+
+    lf.lfHeight = -SX(14); lf.lfWeight = FW_BOLD; lf.lfQuality = CLEARTYPE_QUALITY;
+    m_fontLabel.CreateFontIndirect(&lf);
 }
 
 
@@ -155,8 +160,8 @@ void CLogTransferDlg::LayoutControls()
     int btnY    = SX(220);
     int sendW   = SX(116);
     int cancelW = SX(92);
-    int sendX   = cw - padR - sendW;
-    int cancelX = sendX - SX(10) - cancelW;
+    int cancelX = cw - padR - cancelW;
+    int sendX   = cancelX - SX(10) - sendW;
     m_btnCancel.MoveWindow(cancelX, btnY, cancelW, btnH);
     m_btnSend.MoveWindow(sendX,   btnY, sendW,   btnH);
 }
