@@ -260,6 +260,25 @@
 #define IDR_FONT_PRETENDARD_MEDIUM       9002
 #define IDR_FONT_PRETENDARD_BOLD         9003
 
+
+// 예시: resource.h 에 추가되어야 할 항목들
+#define IDC_SLIP_PRINT_ENABLE           7001
+#define IDC_SLIP_COMBO_PRINT_COUNT      7002
+#define IDC_SLIP_EDIT_PORT              7003
+#define IDC_SLIP_COMBO_SPEED            7004
+#define IDC_SLIP_BTN_PRINT_INFO         7005
+#define IDC_SLIP_BTN_PORT_INFO          7006
+#define IDC_SLIP_BTN_SPEED_INFO         7007
+#define IDC_SLIP_EDIT_MSG1              7011
+#define IDC_SLIP_EDIT_MSG2              7012
+#define IDC_SLIP_EDIT_MSG3              7013
+#define IDC_SLIP_EDIT_MSG4              7014
+#define IDC_SLIP_EDIT_MSG5              7015
+#define IDC_SLIP_EDIT_MSG6              7016
+#define IDC_SLIP_BTN_LAST_PRINT         7020
+#define IDC_SLIP_BTN_OK                 7021
+#define IDC_SLIP_BTN_CANCEL             7022
+
 // Next default values for new objects
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS

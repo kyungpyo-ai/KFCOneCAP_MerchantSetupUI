@@ -214,10 +214,18 @@ FONT 9, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
 END
 
-IDD_SLIP_SETUP_DLG DIALOGEX 0, 0, 300, 150
-STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE
-FONT 9, "MS Shell Dlg", 400, 0, 0x0
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_SLIP_SETUP_DLG DIALOGEX 0, 0, 480, 450
+STYLE 0x00000040 | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
+EXSTYLE WS_EX_DLGMODALFRAME | WS_EX_APPWINDOW
+CAPTION "전표 출력 설정"
+FONT 9, "Malgun Gothic", 0, 0, 0x1
 BEGIN
+
 END
 
 #endif    // 한국어(대한민국) resources
