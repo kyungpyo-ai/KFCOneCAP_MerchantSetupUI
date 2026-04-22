@@ -26,6 +26,7 @@ protected:
     afx_msg void OnBtnCancel();
     afx_msg void OnBtnLastPrint();
     afx_msg void OnInfoBtnClicked(UINT nID);
+    afx_msg void OnPrintEnableToggled();
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -39,6 +40,7 @@ private:
     CInfoIconButton     m_btnPrintInfo;
     CInfoIconButton     m_btnPortInfo;
     CInfoIconButton     m_btnSpeedInfo;
+    CInfoIconButton     m_btnMsgInfo;
 
     CModernButton       m_btnLastPrint;
     CModernButton       m_btnOk;
@@ -59,6 +61,7 @@ private:
     void LayoutControls();
     void DrawBackground(CDC* pDC);
     void UpdateInputHoverByCursor();
+    void UpdateControlsState();
     void ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody);
     void LoadFromRegistry();
     void SaveToRegistry();

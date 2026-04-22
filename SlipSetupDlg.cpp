@@ -23,8 +23,9 @@ BEGIN_MESSAGE_MAP(CSlipSetupDlg, CDialog)
     ON_WM_TIMER()
     ON_BN_CLICKED(IDC_SLIP_BTN_OK, OnBtnOk)
     ON_BN_CLICKED(IDC_SLIP_BTN_CANCEL, OnBtnCancel)
+    ON_BN_CLICKED(IDC_SLIP_PRINT_ENABLE, OnPrintEnableToggled)
     ON_BN_CLICKED(IDC_SLIP_BTN_LAST_PRINT, OnBtnLastPrint)
-    ON_CONTROL_RANGE(BN_CLICKED, IDC_SLIP_BTN_PRINT_INFO, IDC_SLIP_BTN_SPEED_INFO, OnInfoBtnClicked)
+    ON_CONTROL_RANGE(BN_CLICKED, IDC_SLIP_BTN_PRINT_INFO, IDC_SLIP_BTN_MSG_INFO, OnInfoBtnClicked)
 END_MESSAGE_MAP()
 
 CSlipSetupDlg::CSlipSetupDlg(CWnd* pParent)
@@ -63,7 +64,7 @@ static void CalcLayout(HWND hWnd, const CRect& rc, SlipLayoutData& out) {
     const int cOutX = bCmp ? 10 : 16;
     const int cPadX = bCmp ? 14 : 22;
     const int cPadY = bCmp ? 10 : 16;
-    const int cGapY = bCmp ? 8 : 16;
+    const int cGapY = bCmp ? 8 : 12;
     const int cHdrH = bCmp ? 36 : 44;
     out.capH = bCmp ? 16 : 18;
     out.capG = bCmp ? 4 : 7;
@@ -98,11 +99,11 @@ static void CalcLayout(HWND hWnd, const CRect& rc, SlipLayoutData& out) {
     // --- [수정할 부분] CalcLayout() 함수 안의 Card 3 블록 ---
         // Card 3: 전표 메시지
     int y3 = curY;
-    out.msgStartY = y3 + ScaleX(cPadY) + ScaleX(cHdrH) + ScaleX(4); // 라인 아래 약간의 여백 추가
+    out.msgStartY = y3 + ScaleX(cPadY) + ScaleX(cHdrH);
     // 한 줄의 높이 = 라벨 높이 + 간격 + 에딧박스 높이 + 줄바꿈 간격
     int msgRowH = ScaleX(out.capH) + ScaleX(out.capG) + ScaleX(out.FIELD_H) + ScaleX(out.rG);
     out.rcCard3 = CRect(cardLeft, y3, cardRight, out.msgStartY + 3 * msgRowH - ScaleX(out.rG) + ScaleX(cPadY));
-    curY = out.rcCard3.bottom + ScaleX(bCmp ? 10 : 22);
+    curY = out.rcCard3.bottom + ScaleX(bCmp ? 10 : 16);
 
     // Buttons Layout
     out.btnY = curY;
@@ -113,9 +114,9 @@ static void CalcLayout(HWND hWnd, const CRect& rc, SlipLayoutData& out) {
     int footerPadX = out.kCardMarginL + ScaleX(cOutX);
     out.rcBtnLastPrint = CRect(footerPadX, out.btnY, footerPadX + ScaleX(140), out.btnY + BUTTON_H);
 
-    int rightEdge = rc.Width() - out.kCardMarginR - ScaleX(cOutX);
-    out.rcBtnOk = CRect(rightEdge - BUTTON_W, out.btnY, rightEdge, out.btnY + BUTTON_H);
-    out.rcBtnCancel = CRect(rightEdge - BUTTON_W - BUTTON_GAP - BUTTON_W, out.btnY, rightEdge - BUTTON_W - BUTTON_GAP, out.btnY + BUTTON_H);
+    int btnCX = rc.Width() / 2;
+    out.rcBtnOk     = CRect(btnCX - BUTTON_W - BUTTON_GAP / 2, out.btnY, btnCX - BUTTON_GAP / 2,     out.btnY + BUTTON_H);
+    out.rcBtnCancel = CRect(btnCX + BUTTON_GAP / 2,             out.btnY, btnCX + BUTTON_GAP / 2 + BUTTON_W, out.btnY + BUTTON_H);
 }
 
 void CSlipSetupDlg::EnsureFonts()
@@ -166,7 +167,7 @@ BOOL CSlipSetupDlg::OnInitDialog()
 
         // 2. 실제 필요한 안쪽 높이 계산 (버튼 위치 + 버튼 높이 + 하단 여백)
         int btnH = SX(IsCompactScreen() ? 32 : 36);
-        int bottomMargin = SX(IsCompactScreen() ? 12 : 20); // 여백을 조금 더 줌
+        int bottomMargin = SX(IsCompactScreen() ? 22 : 40);
         int requiredClientH = d.btnY + btnH + bottomMargin;
 
         // 3. 타이틀바와 테두리 두께를 포함한 전체 창 크기로 변환
@@ -221,6 +222,7 @@ BOOL CSlipSetupDlg::OnInitDialog()
     CreateInfo(m_btnPrintInfo, IDC_SLIP_BTN_PRINT_INFO);
     CreateInfo(m_btnPortInfo, IDC_SLIP_BTN_PORT_INFO);
     CreateInfo(m_btnSpeedInfo, IDC_SLIP_BTN_SPEED_INFO);
+    CreateInfo(m_btnMsgInfo, IDC_SLIP_BTN_MSG_INFO);
 
     m_btnLastPrint.Create(_T("직전거래 전표출력"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_LAST_PRINT);
     m_btnLastPrint.SetButtonStyle(ButtonStyle::Auto);
@@ -236,6 +238,9 @@ BOOL CSlipSetupDlg::OnInitDialog()
 
     LoadFromRegistry();
     LayoutControls();
+    if (m_comboPrintCount.GetCurSel() == CB_ERR) m_comboPrintCount.SetCurSel(0);
+    if (m_comboSpeed.GetCurSel() == CB_ERR) m_comboSpeed.SetCurSel(2);
+    UpdateControlsState();
 
     m_bUiInitialized = TRUE;
     m_uHoverTimer = SetTimer(TIMER_HOVER, 16, nullptr);
@@ -253,10 +258,15 @@ void CSlipSetupDlg::LayoutControls()
         ::SendMessage(cb.GetSafeHwnd(), CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(h - 2));
         };
 
-    auto PlaceInfoBtn = [&](CInfoIconButton& btn, int lx, int ly) {
+    CClientDC measureDC(this);
+    auto PlaceInfoBtn = [&](CInfoIconButton& btn, int lx, int ly, LPCTSTR szLabel) {
         const int BtnSz = SX(18);
+        const int BtnGap = SX(4);
         int by = ly + (SX(d.capH) - BtnSz) / 2 - SX(IsCompactScreen() ? 4 : 2);
-        btn.SetWindowPos(nullptr, lx + SX(4), by, BtnSz, BtnSz, SWP_NOZORDER);
+        CFont* pOld = measureDC.SelectObject(&m_fontLabel);
+        CSize sz = measureDC.GetTextExtent(szLabel);
+        measureDC.SelectObject(pOld);
+        btn.SetWindowPos(nullptr, lx + sz.cx + BtnGap, by, BtnSz, BtnSz, SWP_NOZORDER);
         };
 
     m_chkPrintEnable.MoveWindow(d.inX, d.rcCard1.top + SX(IsCompactScreen() ? 46 : 60), d.inW, SX(d.FIELD_H));
@@ -265,9 +275,9 @@ void CSlipSetupDlg::LayoutControls()
     m_editPort.MoveWindow(d.inX + d.col2W + SX(d.cG), d.cY1, d.col2W, SX(d.FIELD_H));
     SetupCombo(m_comboSpeed, d.inX, d.cY2, d.col2W, SX(d.FIELD_H));
 
-    PlaceInfoBtn(m_btnPrintInfo, d.inX + SX(70), d.lY1);
-    PlaceInfoBtn(m_btnPortInfo, d.inX + d.col2W + SX(d.cG) + SX(100), d.lY1);
-    PlaceInfoBtn(m_btnSpeedInfo, d.inX + SX(70), d.lY2);
+    PlaceInfoBtn(m_btnPrintInfo, d.inX, d.lY1, _T("전표 매수"));
+    PlaceInfoBtn(m_btnPortInfo, d.inX + d.col2W + SX(d.cG), d.lY1, _T("프린터 포트번호"));
+    PlaceInfoBtn(m_btnSpeedInfo, d.inX, d.lY2, _T("프린터 속도"));
 
     // --- [수정할 부분] LayoutControls() 함수 안의 for문 ---
     for (int r = 0; r < 3; r++) {
@@ -278,6 +288,19 @@ void CSlipSetupDlg::LayoutControls()
 
         m_editMsg[r * 2].MoveWindow(d.inX, editY, d.col2W, SX(d.FIELD_H));
         m_editMsg[r * 2 + 1].MoveWindow(d.inX + d.col2W + SX(d.cG), editY, d.col2W, SX(d.FIELD_H));
+    }
+
+    // 전표 메시지 카드 타이틀 옆 인포 버튼 배치
+    {
+        const int BtnSz = SX(18);
+        int hdrH = SX(IsCompactScreen() ? 36 : 44);
+        int lx = d.rcCard3.left + SX(26);
+        HFONT hOld = (HFONT)::SelectObject(measureDC.GetSafeHdc(), m_hFontCardTitle);
+        CSize sz = measureDC.GetTextExtent(_T("전표 메시지"));
+        ::SelectObject(measureDC.GetSafeHdc(), hOld);
+        int bx = lx + sz.cx + SX(4);
+        int by = d.rcCard3.top + (hdrH - BtnSz) / 2;
+        m_btnMsgInfo.SetWindowPos(nullptr, bx, by, BtnSz, BtnSz, SWP_NOZORDER);
     }
 
     m_btnLastPrint.MoveWindow(d.rcBtnLastPrint);
@@ -423,8 +446,9 @@ void CSlipSetupDlg::OnInfoBtnClicked(UINT nID)
     if (nID == IDC_SLIP_BTN_PRINT_INFO) ShowInfoPopover(m_btnPrintInfo, _T("전표 출력 매수"), _T("1회 결제 시 출력할 전표 매수를 설정합니다."));
     else if (nID == IDC_SLIP_BTN_PORT_INFO) ShowInfoPopover(m_btnPortInfo, _T("프린터 포트번호"), _T("프린터가 연결된 COM 포트 번호를 입력합니다."));
     else if (nID == IDC_SLIP_BTN_SPEED_INFO) ShowInfoPopover(m_btnSpeedInfo, _T("프린터 속도"), _T("통신 속도를 설정합니다."));
+    else if (nID == IDC_SLIP_BTN_MSG_INFO)
+        ShowInfoPopover(m_btnMsgInfo, _T("전표 메시지"), _T("전표 하단에 출력할 광고/안내 메시지를 입력합니다."));
 }
-
 void CSlipSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody)
 {
     CRect rc; btn.GetWindowRect(&rc);
@@ -436,5 +460,14 @@ void CSlipSetupDlg::SaveToRegistry() { /* Registry 저장 로직 */ }
 void CSlipSetupDlg::OnBtnOk() { SaveToRegistry(); EndDialog(IDOK); }
 void CSlipSetupDlg::OnBtnCancel() { EndDialog(IDCANCEL); }
 void CSlipSetupDlg::OnBtnLastPrint() { AfxMessageBox(_T("직전거래 전표를 출력합니다.")); }
+void CSlipSetupDlg::UpdateControlsState()
+{
+    BOOL bOn = m_chkPrintEnable.IsToggled();
+    m_comboPrintCount.EnableWindow(bOn);
+    m_editPort.EnableWindow(bOn);
+    m_comboSpeed.EnableWindow(bOn);
+    for (int i = 0; i < 6; i++) m_editMsg[i].EnableWindow(bOn);
+}
+void CSlipSetupDlg::OnPrintEnableToggled() { UpdateControlsState(); }
 void CSlipSetupDlg::OnOK() {}
 void CSlipSetupDlg::OnCancel() { EndDialog(IDCANCEL); }
