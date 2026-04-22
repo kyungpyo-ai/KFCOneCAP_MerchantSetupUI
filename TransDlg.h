@@ -75,6 +75,7 @@ protected:
     CString GetModeButtonText() const;
     CString GetCurrentModeName() const;
     void SetResultValue(int i, LPCTSTR v, BOOL bBlue=FALSE, BOOL bRed=FALSE);
+    void ApplyResultColoring();
     void DrawRoundedCard(Gdiplus::Graphics& g, const CRect& rc, int radius,
                          COLORREF fill, COLORREF border, int shadowAlpha=0);
     void GetContentRects(CRect& rcForm, CRect& rcResult) const;

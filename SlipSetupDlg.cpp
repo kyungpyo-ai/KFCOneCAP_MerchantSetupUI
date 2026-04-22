@@ -149,7 +149,7 @@ void CSlipSetupDlg::EnsureFonts()
 BOOL CSlipSetupDlg::OnInitDialog()
 {
     CDialog::OnInitDialog();
-    ModifyStyle(WS_THICKFRAME, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+    ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
     ModernUIGfx::EnsureGdiplusStartup();
 
     m_brBg.CreateSolidBrush(RGB(249, 250, 252));
@@ -225,15 +225,18 @@ BOOL CSlipSetupDlg::OnInitDialog()
     CreateInfo(m_btnMsgInfo, IDC_SLIP_BTN_MSG_INFO);
 
     m_btnLastPrint.Create(_T("직전거래 전표출력"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_LAST_PRINT);
-    m_btnLastPrint.SetButtonStyle(ButtonStyle::Auto);
+    m_btnLastPrint.SetButtonStyle(ButtonStyle::Reader);
+    m_btnLastPrint.SetUnderlayColor(RGB(255, 255, 255));
     m_btnLastPrint.SetFont(&m_fontLabel);
 
     m_btnOk.Create(_T("확인"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_OK);
     m_btnOk.SetButtonStyle(ButtonStyle::Primary);
+    m_btnOk.SetUnderlayColor(RGB(255, 255, 255));
     m_btnOk.SetFont(&m_fontLabel);
 
     m_btnCancel.Create(_T("취소"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_CANCEL);
     m_btnCancel.SetButtonStyle(ButtonStyle::Default);
+    m_btnCancel.SetUnderlayColor(RGB(255, 255, 255));
     m_btnCancel.SetFont(&m_fontLabel);
 
     LoadFromRegistry();
@@ -244,6 +247,7 @@ BOOL CSlipSetupDlg::OnInitDialog()
 
     m_bUiInitialized = TRUE;
     m_uHoverTimer = SetTimer(TIMER_HOVER, 16, nullptr);
+    ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     return TRUE;
 }
 
@@ -271,13 +275,13 @@ void CSlipSetupDlg::LayoutControls()
 
     m_chkPrintEnable.MoveWindow(d.inX, d.rcCard1.top + SX(IsCompactScreen() ? 46 : 60), d.inW, SX(d.FIELD_H));
 
-    SetupCombo(m_comboPrintCount, d.inX, d.cY1, d.col2W, SX(d.FIELD_H));
+    SetupCombo(m_comboSpeed, d.inX, d.cY1, d.col2W, SX(d.FIELD_H));
     m_editPort.MoveWindow(d.inX + d.col2W + SX(d.cG), d.cY1, d.col2W, SX(d.FIELD_H));
-    SetupCombo(m_comboSpeed, d.inX, d.cY2, d.col2W, SX(d.FIELD_H));
+    SetupCombo(m_comboPrintCount, d.inX, d.cY2, d.col2W, SX(d.FIELD_H));
 
-    PlaceInfoBtn(m_btnPrintInfo, d.inX, d.lY1, _T("전표 매수"));
+    PlaceInfoBtn(m_btnSpeedInfo, d.inX, d.lY1, _T("프린터 속도"));
     PlaceInfoBtn(m_btnPortInfo, d.inX + d.col2W + SX(d.cG), d.lY1, _T("프린터 포트번호"));
-    PlaceInfoBtn(m_btnSpeedInfo, d.inX, d.lY2, _T("프린터 속도"));
+    PlaceInfoBtn(m_btnPrintInfo, d.inX, d.lY2, _T("전표 매수"));
 
     // --- [수정할 부분] LayoutControls() 함수 안의 for문 ---
     for (int r = 0; r < 3; r++) {
@@ -316,6 +320,7 @@ void CSlipSetupDlg::DrawBackground(CDC* pDC)
 
     Gdiplus::Graphics g(pDC->GetSafeHdc());
     g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
     auto RR = [](Gdiplus::GraphicsPath& path, const Gdiplus::RectF& r, float rad) {
         float d = rad * 2.0f;
@@ -329,6 +334,13 @@ void CSlipSetupDlg::DrawBackground(CDC* pDC)
     // 메인 카드 배경
     CRect contentRect(d.kCardMarginL, d.kCardMarginT, rc.Width() - d.kCardMarginR, rc.bottom - d.kCardMarginB);
     Gdiplus::RectF rf((float)contentRect.left, (float)contentRect.top, (float)contentRect.Width(), (float)contentRect.Height());
+    for (int sh = 3; sh >= 1; sh--) {
+        Gdiplus::RectF shRf(rf.X, rf.Y + (float)sh, rf.Width, rf.Height);
+        Gdiplus::GraphicsPath shPath; RR(shPath, shRf, 12.0f);
+        BYTE alpha = (BYTE)(sh == 3 ? 8 : sh == 2 ? 14 : 20);
+        Gdiplus::SolidBrush shBrush(Gdiplus::Color(alpha, 10, 30, 70));
+        g.FillPath(&shBrush, &shPath);
+    }
     Gdiplus::GraphicsPath outerPath; RR(outerPath, rf, 12.0f);
     Gdiplus::SolidBrush whiteBrush(Gdiplus::Color::White);
     g.FillPath(&whiteBrush, &outerPath);
@@ -337,6 +349,12 @@ void CSlipSetupDlg::DrawBackground(CDC* pDC)
     auto DrawCard = [&](const CRect& rcSec, const wchar_t* title) {
         if (rcSec.IsRectEmpty()) return;
         Gdiplus::RectF cr((float)rcSec.left, (float)rcSec.top, (float)rcSec.Width(), (float)rcSec.Height());
+        for (int sh = 1; sh <= 2; sh++) {
+            Gdiplus::RectF sr(cr.X, cr.Y + (float)sh * 1.5f, cr.Width, cr.Height);
+            Gdiplus::GraphicsPath sp; RR(sp, sr, 12.0f);
+            Gdiplus::SolidBrush sb(Gdiplus::Color(8, 0, 0, 0));
+            g.FillPath(&sb, &sp);
+        }
         Gdiplus::GraphicsPath cp; RR(cp, cr, 12.0f);
         Gdiplus::SolidBrush cardBr(Gdiplus::Color(255, 250, 251, 253));
         g.FillPath(&cardBr, &cp);
@@ -344,7 +362,18 @@ void CSlipSetupDlg::DrawBackground(CDC* pDC)
         // 타이틀 바 (파란색 세로선)
         float hdrH = (float)SX(IsCompactScreen() ? 36 : 44);
         Gdiplus::SolidBrush barBr(Gdiplus::Color(255, 0, 96, 210));
-        g.FillRectangle(&barBr, cr.X + 16.0f, cr.Y + (hdrH - 14.0f) / 2.0f, 4.0f, 14.0f);
+        {
+            const float barX = cr.X + 16.0f, barW = 4.0f, barH = 14.0f, barR = 2.0f;
+            const float barY = cr.Y + (hdrH - barH) * 0.5f;
+            const float bd = barR * 2.0f;
+            Gdiplus::GraphicsPath barPath;
+            barPath.AddArc(barX,          barY,          bd, bd, 180, 90);
+            barPath.AddArc(barX + barW - bd, barY,          bd, bd, 270, 90);
+            barPath.AddArc(barX + barW - bd, barY + barH - bd, bd, bd,   0, 90);
+            barPath.AddArc(barX,          barY + barH - bd, bd, bd,  90, 90);
+            barPath.CloseFigure();
+            g.FillPath(&barBr, &barPath);
+        }
 
         HDC hdc = g.GetHDC();
         ::SetBkMode(hdc, TRANSPARENT);
@@ -356,14 +385,14 @@ void CSlipSetupDlg::DrawBackground(CDC* pDC)
         g.ReleaseHDC(hdc);
 
         // --- [여기부터 추가] 카드 타이틀 아래 옅은 회색 가로선 그리기 ---
-        Gdiplus::Pen linePen(Gdiplus::Color(255, 230, 235, 240), 1.0f);
+        Gdiplus::Pen linePen(Gdiplus::Color(255, 238, 241, 247), 1.0f);
         float lineY = cr.Y + hdrH;
         g.DrawLine(&linePen, cr.X + 16.0f, lineY, cr.X + cr.Width - 16.0f, lineY);
         //
         };
 
-    DrawCard(d.rcCard1, L"인쇄 설정");
-    DrawCard(d.rcCard2, L"기본 설정");
+    DrawCard(d.rcCard1, L"출력 설정");
+    DrawCard(d.rcCard2, L"장치 설정");
     DrawCard(d.rcCard3, L"전표 메시지");
 }
 
@@ -383,20 +412,20 @@ void CSlipSetupDlg::OnPaint()
 
     // 헤더 그리기
     ModernUIHeader::Draw(mem.GetSafeHdc(), (float)(d.kCardMarginL + SX(14)), (float)(d.kCardMarginT + SX(16)), (float)SX(bCmp ? 36 : 44),
-        ModernUIHeader::IconType::CardTerminal, L"전표 출력 설정", L"단말기에서 전표 출력 옵션 및 메시지를 설정합니다",
-        m_hFontHdrTitle, m_hFontHdrSub, d.kCardMarginL + SX(14), d.kCardMarginT + SX(bCmp ? 64 : 84) - SX(10),
-        cl.Width() - (d.kCardMarginL + SX(14)), bCmp ? 23.0f : 26.0f);
+        ModernUIHeader::IconType::Receipt, L"전표 설정", L"전표 출력 옵션 및 메시지를 설정합니다",
+        m_hFontHdrTitle, m_hFontHdrSub, d.kCardMarginL + SX(6), d.kCardMarginT + SX(bCmp ? 60 : 74),
+        cl.Width() - d.kCardMarginR - SX(6), bCmp ? 23.0f : 26.0f, bCmp ? 3.0f : 0.0f);
 
     // 라벨 텍스트
     mem.SetBkMode(TRANSPARENT);
     mem.SetTextColor(RGB(115, 125, 142));
     mem.SelectObject(&m_fontLabel);
     CRect r1(d.inX, d.lY1, d.inX + d.col2W, d.lY1 + SX(d.capH));
-    mem.DrawText(_T("전표 매수"), &r1, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    mem.DrawText(_T("프린터 속도"), &r1, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     CRect r2(d.inX + d.col2W + SX(d.cG), d.lY1, d.inX + d.inW, d.lY1 + SX(d.capH));
     mem.DrawText(_T("프린터 포트번호"), &r2, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     CRect r3(d.inX, d.lY2, d.inX + d.col2W, d.lY2 + SX(d.capH));
-    mem.DrawText(_T("프린터 속도"), &r3, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    mem.DrawText(_T("전표 매수"), &r3, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
     // --- [추가할 부분] OnPaint() 함수 하단, dc.BitBlt(...) 바로 위쪽 ---
     // 전표 매수, 프린터 속도 등을 그렸던 코드 바로 밑에 이어서 작성하세요.

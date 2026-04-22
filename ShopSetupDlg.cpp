@@ -1868,7 +1868,7 @@ void CShopSetupDlg::OnPaint()
             ModernUIHeader::IconType::Store,
             L"가맹점 설정", L"가맹점 및 서버 연결 설정을 관리합니다",
             m_hFontHdrTitle, m_hFontHdrSub,
-            m_rcOuterCard.left + SX(14), m_rcOuterCard.top + SX(GetHdrDividerY() - 10), rc.Width() - (m_rcOuterCard.left + SX(14)), IsCompactScreen() ? 23.0f : 26.0f, IsCompactScreen() ? 3.0f : 0.0f);
+            m_rcOuterCard.left + SX(6), m_rcOuterCard.top + SX(IsCompactScreen() ? 60 : 74), m_rcOuterCard.right - SX(6), IsCompactScreen() ? 23.0f : 26.0f, IsCompactScreen() ? 3.0f : 0.0f);
     }
     CFont* pOldFont = memDC.SelectObject(&m_fontTitle);
     CPen linePen(PS_SOLID, 1, RGB(228, 232, 240));

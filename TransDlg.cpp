@@ -319,8 +319,8 @@ void CTransDlg::EnsureFonts()
     ModernUIFont::ApplyUIFontFace(lf);
     const BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
 #define MKF(px,wt,f) lf.lfHeight=-ModernUIDpi::Scale(m_hWnd,px); lf.lfWeight=wt; f.CreateFontIndirect(&lf)
-    MKF(18, FW_BOLD,      m_fontTitle);
-    MKF(13, FW_BOLD,      m_fontSub);
+    MKF((bCmp?15:18), FW_BOLD, m_fontTitle);
+    MKF((bCmp?11:13), FW_BOLD, m_fontSub);
     MKF((bCmp?13:15), FW_BOLD,      m_fontSection);
     MKF(14, FW_BOLD,      m_fontLabel);
     MKF(14, FW_NORMAL,    m_fontEdit);
@@ -621,9 +621,9 @@ void CTransDlg::ShowFieldsForMode()
 void CTransDlg::ResetSampleResult()
 {
     SetResultValue(0, _T("2026-04-15 14:30:05"));
-    SetResultValue(1, _T("0000"));
-    SetResultValue(2, _T("정상승인"),FALSE,TRUE);
-    SetResultValue(3, _T("30018492"),TRUE);
+    SetResultValue(1, _T("000"));
+    SetResultValue(2, _T("정상승인"));
+    SetResultValue(3, _T("30018492"));
     SetResultValue(4, _T("거래가 성공적으로 완료되었습니다."));
     SetResultValue(5, _T("KFTC_T001"));
     SetResultValue(6, _T("9410-****-****-1234"));
@@ -635,8 +635,20 @@ void CTransDlg::ResetSampleResult()
     SetResultValue(12,_T("개인 / 신용"));
     SetResultValue(13,_T("삼성페이"));
     SetResultValue(14,_T("20260415143005KF00182749"));
-    m_strBadge=_T("정상 승인"); m_bBadgeOk=TRUE;
+    ApplyResultColoring();
     UpdateResultControls();
+}
+
+void CTransDlg::ApplyResultColoring()
+{
+    if ((int)m_results.size() < 4) return;
+    // index 1: 응답코드, index 2: 응답내역, index 3: 승인번호
+    bool bOk = (m_results[1].value == _T("000"));
+    m_results[2].bBlue = bOk ? TRUE : FALSE;
+    m_results[2].bRed  = bOk ? FALSE : TRUE;
+    m_results[3].bBlue = FALSE; m_results[3].bRed = FALSE;
+    m_strBadge = m_results[2].value;
+    m_bBadgeOk = bOk ? TRUE : FALSE;
 }
 
 void CTransDlg::SetResultValue(int idx,LPCTSTR v,BOOL bBlue,BOOL bRed)
@@ -880,10 +892,11 @@ void CTransDlg::OnPaint()
         ::MultiByteToWideChar(CP_ACP,0,_T("결제"),-1,wT,64);
         ::MultiByteToWideChar(CP_ACP,0,_T("신용 및 현금영수증 거래를 진행합니다"),-1,wS,256);
         ModernUIHeader::Draw(hRaw,
-            (float)(rcMain.left+SX(14)),(float)(rcMain.top+SX(16)),(float)SX(44),
+            (float)(rcMain.left+SX(14)),(float)(rcMain.top+SX(16)),(float)SX(::GetSystemMetrics(SM_CYSCREEN)<=800?36:44),
             ModernUIHeader::IconType::Transaction,wT,wS,
             (HFONT)m_fontTitle.GetSafeHandle(),(HFONT)m_fontSub.GetSafeHandle(),
-            rcMain.left+SX(6),rcMain.top+SX(76),rcMain.right-SX(6));
+            rcMain.left+SX(6),rcMain.top+SX(::GetSystemMetrics(SM_CYSCREEN)<=800?60:74),rcMain.right-SX(6),
+            ::GetSystemMetrics(SM_CYSCREEN)<=800?23.0f:26.0f, ::GetSystemMetrics(SM_CYSCREEN)<=800?3.0f:0.0f);
     }
     // result section title
     {

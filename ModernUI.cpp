@@ -4635,6 +4635,30 @@ void Draw(HDC hdc,
 			g.FillPath(&wBr, &chip);
 		}
 	}
+	else if (iconType == IconType::Receipt) {
+		const float iW = bsz * 0.50f, iH = bsz * 0.64f;
+		const float iX = bx + (bsz - iW) * 0.5f;
+		const float iY = badgeY + (bsz - iH) * 0.5f;
+		const float sx = iW / 16.0f, sy = iH / 21.5f;
+		Gdiplus::SolidBrush wBr2(Gdiplus::Color(255, 255, 255, 255));
+		Gdiplus::GraphicsPath rp(Gdiplus::FillModeAlternate);
+		rp.StartFigure();
+		rp.AddLine(iX,              iY,                  iX + iW,            iY);
+		rp.AddLine(iX + iW,         iY,                  iX + iW,            iY + 18.5f*sy);
+		rp.AddLine(iX + iW,         iY + 18.5f*sy,       iX + 13.5f*sx,     iY + 21.5f*sy);
+		rp.AddLine(iX + 13.5f*sx,   iY + 21.5f*sy,       iX + 11.0f*sx,     iY + 18.5f*sy);
+		rp.AddLine(iX + 11.0f*sx,   iY + 18.5f*sy,       iX +  8.0f*sx,     iY + 21.5f*sy);
+		rp.AddLine(iX +  8.0f*sx,   iY + 21.5f*sy,       iX +  5.0f*sx,     iY + 18.5f*sy);
+		rp.AddLine(iX +  5.0f*sx,   iY + 18.5f*sy,       iX +  2.5f*sx,     iY + 21.5f*sy);
+		rp.AddLine(iX +  2.5f*sx,   iY + 21.5f*sy,       iX,                 iY + 18.5f*sy);
+		rp.AddLine(iX,              iY + 18.5f*sy,       iX,                 iY);
+		rp.CloseFigure();
+		rp.AddRectangle(Gdiplus::RectF(iX + 2.5f*sx, iY +  4.0f*sy, 10.0f*sx, 1.8f*sy));
+		rp.AddRectangle(Gdiplus::RectF(iX + 2.5f*sx, iY +  7.5f*sy, 10.0f*sx, 1.5f*sy));
+		rp.AddRectangle(Gdiplus::RectF(iX + 2.5f*sx, iY + 10.5f*sy,  8.0f*sx, 1.5f*sy));
+		rp.AddRectangle(Gdiplus::RectF(iX + 2.5f*sx, iY + 13.5f*sy,  6.5f*sx, 1.5f*sy));
+		g.FillPath(&wBr2, &rp);
+	}
 
 	// --- Title + Subtitle ---
 	const float tx = bx + bsz + 12.0f;
