@@ -1111,7 +1111,8 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
     {
         CHomeCardButton* pBtn = (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
             (m_ePendingOpen == PENDING_READER) ? &m_btnReaderCard :
-            (m_ePendingOpen == PENDING_TRANS) ? &m_btnTransCard : NULL;
+            (m_ePendingOpen == PENDING_TRANS) ? &m_btnTransCard :
+            (m_ePendingOpen == PENDING_RECEIPT) ? &m_btnReceiptCard : NULL;
 
         // [최적화 핵심] 12까지 기다리면 너무 답답합니다. 
         // 60 정도로 조건을 대폭 완화하여, 손을 떼고 카드가 절반쯤 올라오는 찰나에 즉시 창을 띄웁니다.
@@ -1134,6 +1135,10 @@ void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
             // [2] 모달 실행 (대기 시간이 확 줄어서 체감 속도가 엄청나게 빠릿해집니다)
             if (ePending == PENDING_SHOP) {
                 CShopSetupDlg dlg(this);
+                dlg.DoModal();
+            }
+            else if (ePending == PENDING_RECEIPT) {
+                CSlipSetupDlg dlg(this);
                 dlg.DoModal();
             }
             else if (ePending == PENDING_READER) {
@@ -1173,8 +1178,9 @@ void CKFTCOneCAPDlg::OnTrans()
 
 void CKFTCOneCAPDlg::OnReceiptSetup()
 {
-    CSlipSetupDlg dlg(this);
-    dlg.DoModal();
+    m_ePendingOpen = PENDING_RECEIPT;
+    m_btnReceiptCard.ForceFadeOut();
+    SetTimer(kTimerWaitRelease, 16, NULL);
 }
 
 void CKFTCOneCAPDlg::OnMinimize()
