@@ -290,3 +290,21 @@
 #define _APS_NEXT_SYMED_VALUE           3000
 #endif
 #endif
+
+// TransDlg control IDs (moved from private enum)
+#define IDC_TRANS_SEG               49999
+#define IDC_TRANS_EDIT_SUPPLY       50000
+#define IDC_TRANS_EDIT_TAX          50001
+#define IDC_TRANS_EDIT_TIP          50002
+#define IDC_TRANS_EDIT_TAXFREE      50003
+#define IDC_TRANS_CMB_INSTALLMENT   50004
+#define IDC_TRANS_EDIT_QR           50005
+#define IDC_TRANS_EDIT_ORG_DATE     50006
+#define IDC_TRANS_EDIT_ORG_APPNO    50007
+#define IDC_TRANS_BTN_CLOSE         50008
+#define IDC_TRANS_BTN_RUN           50009
+#define IDC_TRANS_CMB_CASH_TYPE     50010
+#define IDC_TRANS_EDIT_CASH_NO      50011
+#define IDC_TRANS_LABEL_BASE        51000
+#define IDC_TRANS_RESULT_LBL_BASE   51100
+#define IDC_TRANS_VALUE_BASE        51200

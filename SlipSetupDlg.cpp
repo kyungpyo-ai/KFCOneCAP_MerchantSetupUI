@@ -153,6 +153,7 @@ void CSlipSetupDlg::EnsureFonts()
 BOOL CSlipSetupDlg::OnInitDialog()
 {
     CDialog::OnInitDialog();
+    SetRedraw(FALSE);
     ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
     ModernUIGfx::EnsureGdiplusStartup();
 
@@ -192,63 +193,59 @@ BOOL CSlipSetupDlg::OnInitDialog()
     }
 
     // 컨트롤 생성 및 초기화
-    m_chkPrintEnable.Create(_T("전표 출력 사용"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_PRINT_ENABLE);
+    m_chkPrintEnable.SubclassDlgItem(IDC_SLIP_PRINT_ENABLE, this);
+    m_chkPrintEnable.SetWindowText(_T("전표 인쇄 사용"));
     m_chkPrintEnable.SetFont(&m_fontLabel);
 
-    auto CreateSafeCombo = [&](CSkinnedComboBox& combo, UINT id) {
-        HWND hCombo = ::CreateWindowEx(0, _T("COMBOBOX"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS, 0, 0, 0, 0, GetSafeHwnd(), (HMENU)(UINT_PTR)id, AfxGetInstanceHandle(), nullptr);
-        if (hCombo) combo.SubclassWindow(hCombo);
-        combo.SetFont(&m_fontCombo);
-        combo.SetUnderlayColor(RGB(250, 251, 253));
-        };
-
-    CreateSafeCombo(m_comboPrintCount, IDC_SLIP_COMBO_PRINT_COUNT);
+    m_comboPrintCount.SubclassDlgItem(IDC_SLIP_COMBO_PRINT_COUNT, this);
+    m_comboPrintCount.SetFont(&m_fontCombo);
+    m_comboPrintCount.SetUnderlayColor(RGB(250, 251, 253));
     m_comboPrintCount.AddString(_T("1장"));
     m_comboPrintCount.AddString(_T("2장"));
 
-    CreateSafeCombo(m_comboSpeed, IDC_SLIP_COMBO_SPEED);
+    m_comboSpeed.SubclassDlgItem(IDC_SLIP_COMBO_SPEED, this);
+    m_comboSpeed.SetFont(&m_fontCombo);
+    m_comboSpeed.SetUnderlayColor(RGB(250, 251, 253));
     m_comboSpeed.AddString(_T("9600bps"));
     m_comboSpeed.AddString(_T("38400bps"));
     m_comboSpeed.AddString(_T("57600bps"));
     m_comboSpeed.AddString(_T("115200bps"));
 
-    m_editPort.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT, CRect(0, 0, 0, 0), this, IDC_SLIP_EDIT_PORT);
+    m_editPort.SubclassDlgItem(IDC_SLIP_EDIT_PORT, this);
     m_editPort.SetFont(&m_fontCombo);
     m_editPort.SetUnderlayColor(RGB(250, 251, 253));
 
     for (int i = 0; i < 6; i++) {
-        m_editMsg[i].Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT, CRect(0, 0, 0, 0), this, IDC_SLIP_EDIT_MSG1 + i);
+        m_editMsg[i].SubclassDlgItem(IDC_SLIP_EDIT_MSG1 + i, this);
         m_editMsg[i].SetFont(&m_fontCombo);
         m_editMsg[i].SetUnderlayColor(RGB(250, 251, 253));
     }
 
-    auto CreateInfo = [&](CInfoIconButton& btn, UINT id) { btn.Create(_T(""), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW, CRect(0, 0, SX(20), SX(20)), this, id); };
-    CreateInfo(m_btnPrintInfo, IDC_SLIP_BTN_PRINT_INFO);
-    CreateInfo(m_btnPortInfo, IDC_SLIP_BTN_PORT_INFO);
-    CreateInfo(m_btnSpeedInfo, IDC_SLIP_BTN_SPEED_INFO);
-    CreateInfo(m_btnMsgInfo, IDC_SLIP_BTN_MSG_INFO);
+    m_btnPrintInfo.SubclassDlgItem(IDC_SLIP_BTN_PRINT_INFO, this);
+    m_btnPortInfo.SubclassDlgItem(IDC_SLIP_BTN_PORT_INFO, this);
+    m_btnSpeedInfo.SubclassDlgItem(IDC_SLIP_BTN_SPEED_INFO, this);
+    m_btnMsgInfo.SubclassDlgItem(IDC_SLIP_BTN_MSG_INFO, this);
 
     // 포트번호 유효성 에러 Static
     {
-        HWND hErr = ::CreateWindowEx(0, _T("STATIC"), _T(""), WS_CHILD | SS_RIGHT,
-            0, 0, 0, 0, GetSafeHwnd(), (HMENU)IDC_SLIP_STATIC_ERR_PORT, AfxGetInstanceHandle(), NULL);
-        if (hErr) {
-            ::SendMessage(hErr, WM_SETFONT, (WPARAM)(HFONT)m_fontValidation.GetSafeHandle(), TRUE);
-            ::ShowWindow(hErr, SW_HIDE);
-        }
+        HWND hErr = ::GetDlgItem(GetSafeHwnd(), IDC_SLIP_STATIC_ERR_PORT);
+        if (hErr) ::SendMessage(hErr, WM_SETFONT, (WPARAM)(HFONT)m_fontValidation.GetSafeHandle(), TRUE);
     }
 
-    m_btnLastPrint.Create(_T("직전거래 전표출력"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_LAST_PRINT);
+    m_btnLastPrint.SubclassDlgItem(IDC_SLIP_BTN_LAST_PRINT, this);
+    m_btnLastPrint.SetWindowText(_T("직전거래 전표출력"));
     m_btnLastPrint.SetButtonStyle(ButtonStyle::Reader);
     m_btnLastPrint.SetUnderlayColor(RGB(255, 255, 255));
     m_btnLastPrint.SetFont(&m_fontLabel);
 
-    m_btnOk.Create(_T("확인"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_OK);
+    m_btnOk.SubclassDlgItem(IDC_SLIP_BTN_OK, this);
+    m_btnOk.SetWindowText(_T("확인"));
     m_btnOk.SetButtonStyle(ButtonStyle::Primary);
     m_btnOk.SetUnderlayColor(RGB(255, 255, 255));
     m_btnOk.SetFont(&m_fontLabel);
 
-    m_btnCancel.Create(_T("취소"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_CANCEL);
+    m_btnCancel.SubclassDlgItem(IDC_SLIP_BTN_CANCEL, this);
+    m_btnCancel.SetWindowText(_T("취소"));
     m_btnCancel.SetButtonStyle(ButtonStyle::Default);
     m_btnCancel.SetUnderlayColor(RGB(255, 255, 255));
     m_btnCancel.SetFont(&m_fontLabel);
@@ -258,6 +255,8 @@ BOOL CSlipSetupDlg::OnInitDialog()
     if (m_comboPrintCount.GetCurSel() == CB_ERR) m_comboPrintCount.SetCurSel(0);
     if (m_comboSpeed.GetCurSel() == CB_ERR) m_comboSpeed.SetCurSel(2);
     UpdateControlsState();
+    SetRedraw(TRUE);
+    RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 
     m_bUiInitialized = TRUE;
     m_uHoverTimer = SetTimer(TIMER_HOVER, 16, nullptr);
@@ -466,8 +465,6 @@ void CSlipSetupDlg::OnPaint()
         mem.DrawText(sRight, &rRight, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     }
 
-    dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY); // 원래 있던 코드
-    mem.SelectObject(pOld); // 원래 있던 코드
 
     dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
     mem.SelectObject(pOld);

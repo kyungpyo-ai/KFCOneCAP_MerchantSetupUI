@@ -96,24 +96,6 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    enum {
-        IDC_TRANS_SEG             = 49999,
-        IDC_TRANS_EDIT_SUPPLY,
-        IDC_TRANS_EDIT_TAX,
-        IDC_TRANS_EDIT_TIP,
-        IDC_TRANS_EDIT_TAXFREE,
-        IDC_TRANS_CMB_INSTALLMENT,
-        IDC_TRANS_EDIT_QR,
-        IDC_TRANS_EDIT_ORG_DATE,
-        IDC_TRANS_EDIT_ORG_APPNO,
-        IDC_TRANS_CMB_CASH_TYPE,
-        IDC_TRANS_EDIT_CASH_NO,
-        IDC_TRANS_BTN_CLOSE,
-        IDC_TRANS_BTN_RUN,
-        IDC_TRANS_LABEL_BASE      = 51000,
-        IDC_TRANS_RESULT_LBL_BASE = 51100,
-        IDC_TRANS_VALUE_BASE      = 51200
-    };
 
     static const int kNumFields  = 10;
     static const int kNumResults = 15;

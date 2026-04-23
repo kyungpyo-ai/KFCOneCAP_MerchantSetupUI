@@ -361,7 +361,6 @@ void CTransDlg::ResizeWindow()
     if (!::IsWindow(m_hWnd)) return;
     int kRCH = SX(44) + kNumResults * SX(kResRowH) + SX(14);
 
-    // [FIX 2] 여백이 커진 만큼 클라이언트 높이와 윈도우 폭을 확장
     BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
     int mT = SX(bCmp ? 6 : 10);
     int mB = SX(bCmp ? 12 : 20);
@@ -380,6 +379,7 @@ void CTransDlg::ResizeWindow()
 BOOL CTransDlg::OnInitDialog()
 {
     CDialog::OnInitDialog();
+    SetRedraw(FALSE);
     ModernUIGfx::EnsureGdiplusStartup();
     EnsureFonts();
     SetWindowText(_T("결제"));
@@ -416,6 +416,8 @@ BOOL CTransDlg::OnInitDialog()
     LayoutControls();
     ResetSampleResult();
     CenterWindow();
+    SetRedraw(TRUE);
+    Invalidate(FALSE);
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     m_segCtrl.SetFocus();
     return FALSE;
@@ -434,34 +436,25 @@ void CTransDlg::CreateSegmentControl()
 
 void CTransDlg::CreateInputControls()
 {
-    DWORD dwE = WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL;
     // [FIX 2] 입력 컨트롤 언더레이를 하얀색에서 내부 카드색(kCardFill)으로 통일
     const COLORREF W = kCardFill;
-    m_edtSupply.Create(dwE, CRect(0, 0, 0, 0), this, IDC_TRANS_EDIT_SUPPLY);
-    m_edtTax.Create(dwE,      CRect(0,0,0,0),this,IDC_TRANS_EDIT_TAX);
-    m_edtTip.Create(dwE,      CRect(0,0,0,0),this,IDC_TRANS_EDIT_TIP);
-    m_edtTaxFree.Create(dwE,  CRect(0,0,0,0),this,IDC_TRANS_EDIT_TAXFREE);
-    m_edtQr.Create(dwE,       CRect(0,0,0,0),this,IDC_TRANS_EDIT_QR);
-    m_edtOrgDate.Create(dwE,  CRect(0,0,0,0),this,IDC_TRANS_EDIT_ORG_DATE);
-    m_edtOrgAppNo.Create(dwE, CRect(0,0,0,0),this,IDC_TRANS_EDIT_ORG_APPNO);
-    m_edtCashNo.Create(dwE, CRect(0, 0, 0, 0), this, IDC_TRANS_EDIT_CASH_NO);
+    m_edtSupply.SubclassDlgItem(IDC_TRANS_EDIT_SUPPLY, this);      m_edtSupply.SetUnderlayColor(W);
+    m_edtTax.SubclassDlgItem(IDC_TRANS_EDIT_TAX, this);            m_edtTax.SetUnderlayColor(W);
+    m_edtTip.SubclassDlgItem(IDC_TRANS_EDIT_TIP, this);            m_edtTip.SetUnderlayColor(W);
+    m_edtTaxFree.SubclassDlgItem(IDC_TRANS_EDIT_TAXFREE, this);    m_edtTaxFree.SetUnderlayColor(W);
+    m_edtQr.SubclassDlgItem(IDC_TRANS_EDIT_QR, this);              m_edtQr.SetUnderlayColor(W);
+    m_edtOrgDate.SubclassDlgItem(IDC_TRANS_EDIT_ORG_DATE, this);   m_edtOrgDate.SetUnderlayColor(W);
+    m_edtOrgAppNo.SubclassDlgItem(IDC_TRANS_EDIT_ORG_APPNO, this); m_edtOrgAppNo.SetUnderlayColor(W);
+    m_edtCashNo.SubclassDlgItem(IDC_TRANS_EDIT_CASH_NO, this);     m_edtCashNo.SetUnderlayColor(W);
     // [수정 1] 할부개월 Edit 컨트롤 생성 (기존 ID 재사용하여 오류 방지)
-    m_edtInstall.Create(dwE, CRect(0, 0, 0, 0), this, IDC_TRANS_CMB_INSTALLMENT);
+    m_edtInstall.SubclassDlgItem(IDC_TRANS_CMB_INSTALLMENT, this); m_edtInstall.SetUnderlayColor(W);
 
     // [수정 2] ae 배열에 m_edtInstall 추가 및 개수를 8에서 9로 변경
-    CSkinnedEdit* ae[] = { &m_edtSupply,&m_edtTax,&m_edtTip,&m_edtTaxFree,
-                        &m_edtQr,&m_edtOrgDate,&m_edtOrgAppNo,&m_edtCashNo, &m_edtInstall };
-    for (int i = 0; i < 9; i++) ae[i]->SetUnderlayColor(W);
 
-    DWORD dwC = CBS_DROPDOWNLIST | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS | WS_VSCROLL | WS_CHILD | WS_TABSTOP;
-    auto mkCmb = [&](CSkinnedComboBox& c, UINT id) {
-        HWND h = ::CreateWindowEx(0, _T("COMBOBOX"), _T(""), dwC, -2000, -2000, 100, 200,
-            m_hWnd, (HMENU)(UINT_PTR)id, AfxGetInstanceHandle(), NULL);
-        c.SubclassWindow(h); c.SetUnderlayColor(W);
-        };
 
-    // 할부개월 콤보박스 관련 코드 삭제됨. 현금영수증 종류 콤보박스만 남김.
-    mkCmb(m_cmbCashType, IDC_TRANS_CMB_CASH_TYPE);
+
+    m_cmbCashType.SubclassDlgItem(IDC_TRANS_CMB_CASH_TYPE, this);
+    m_cmbCashType.SetUnderlayColor(W);
     m_cmbCashType.AddString(_T("소득공제용"));
     m_cmbCashType.AddString(_T("지출증빙용"));
     m_cmbCashType.SetCurSel(0);
@@ -484,8 +477,8 @@ void CTransDlg::CreateInputControls()
         FieldPair fp; fp.caption=fi[i].cap; fp.pCtrl=fi[i].ctrl;
         fp.bFullRow=fi[i].full; fp.ctrlType=fi[i].ct;
         m_fields.push_back(fp);
-        m_fieldLabels[i].Create(fi[i].cap,WS_CHILD|WS_VISIBLE,
-            CRect(0,0,0,0),this,IDC_TRANS_LABEL_BASE+(UINT)i);
+        m_fieldLabels[i].SubclassDlgItem(IDC_TRANS_LABEL_BASE+i, this);
+        m_fieldLabels[i].SetWindowText(fi[i].cap);
     }
 }
 
@@ -500,21 +493,20 @@ void CTransDlg::CreateResultControls()
     for (int i=0; i<kNumResults; i++) {
         ResultPair rp={lbl[i],_T("-"),FALSE,FALSE};
         m_results.push_back(rp);
-        m_resultLabels[i].Create(lbl[i],WS_CHILD|WS_VISIBLE,
-            CRect(0,0,0,0),this,IDC_TRANS_RESULT_LBL_BASE+i);
-        m_resultValues[i].Create(WS_CHILD|WS_VISIBLE|ES_READONLY|ES_RIGHT|ES_AUTOHSCROLL,
-            CRect(0,0,0,0),this,IDC_TRANS_VALUE_BASE+i);
+        m_resultLabels[i].SubclassDlgItem(IDC_TRANS_RESULT_LBL_BASE+i, this);
+        m_resultValues[i].SubclassDlgItem(IDC_TRANS_VALUE_BASE+i, this);
         m_resultValues[i].SetWindowText(_T("-"));
     }
 }
 
 void CTransDlg::CreateBottomButton()
 {
-    DWORD s=WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW;
-    m_btnClose.Create(_T("닫기"),s,CRect(0,0,0,0),this,IDC_TRANS_BTN_CLOSE);
+    m_btnClose.SubclassDlgItem(IDC_TRANS_BTN_CLOSE, this);
+    m_btnClose.SetWindowText(_T("닫기"));
     m_btnClose.SetButtonStyle(ButtonStyle::Default);
     m_btnClose.SetUnderlayColor(kCardFill);
-    m_btnRun.Create(_T("신용 승인 요청"),s,CRect(0,0,0,0),this,IDC_TRANS_BTN_RUN);
+    m_btnRun.SubclassDlgItem(IDC_TRANS_BTN_RUN, this);
+    m_btnRun.SetWindowText(GetModeButtonText());
     m_btnRun.SetButtonStyle(ButtonStyle::Primary);
     m_btnRun.SetUnderlayColor(kCardFill);
 }
