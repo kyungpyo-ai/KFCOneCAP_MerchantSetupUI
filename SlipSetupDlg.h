@@ -27,6 +27,7 @@ protected:
     afx_msg void OnBtnLastPrint();
     afx_msg void OnInfoBtnClicked(UINT nID);
     afx_msg void OnPrintEnableToggled();
+    afx_msg void OnSlipPortChanged();
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -49,7 +50,7 @@ private:
     CModernPopover      m_popover;
 
     // 리소스 (폰트/브러시)
-    CFont   m_fontTitle, m_fontSubtitle, m_fontSection, m_fontLabel, m_fontCombo;
+    CFont   m_fontTitle, m_fontSubtitle, m_fontSection, m_fontLabel, m_fontCombo, m_fontValidation;
     HFONT   m_hFontCardTitle, m_hFontHdrTitle, m_hFontHdrSub;
     CBrush  m_brBg, m_brWhite;
 
@@ -67,6 +68,9 @@ private:
     void SaveToRegistry();
     int  SX(int px) const;
 
+    BOOL ValidateInputs();
+    void UpdatePortValidationUI();
+    BOOL HasChanges();
     virtual void OnOK() override;
     virtual void OnCancel() override;
 };

@@ -3068,7 +3068,7 @@ void CSkinnedEdit::OnPaint()
 		::SelectClipRgn(memDC.m_hDC, hrgn);
 		::DeleteObject(hrgn);
 
-		if (enabled) ::SendMessage(m_hWnd, WM_PRINTCLIENT, (WPARAM)memDC.m_hDC, (LPARAM)(PRF_CLIENT));
+		::SendMessage(m_hWnd, WM_PRINTCLIENT, (WPARAM)memDC.m_hDC, (LPARAM)(PRF_CLIENT));
 	}
 	memDC.RestoreDC(save);
 

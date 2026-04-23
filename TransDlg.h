@@ -47,6 +47,9 @@ public:
     virtual ~CTransDlg();
 
 protected:
+    enum EFieldIndex {
+        F_SUPPLY=0,F_TAX,F_TIP,F_TAXFREE,F_INSTALL,F_QR,F_ORGDATE,F_ORGAPPNO,F_CASHTYPE,F_CASHNO
+    };
     enum ETransMode {
         MODE_CREDIT_APPROVAL = 0, MODE_CREDIT_CANCEL,
         MODE_CASH_APPROVAL,       MODE_CASH_CANCEL
@@ -146,5 +149,5 @@ private:
     CString m_tabValues[4][kNumFields]; // per-tab saved values [mode][fieldIdx]
     CStatic m_fieldLabels[kNumFields];
     CStatic m_resultLabels[kNumResults];
-    CStatic m_resultValues[kNumResults];
+    CEdit   m_resultValues[kNumResults];
 };

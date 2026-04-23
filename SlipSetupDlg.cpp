@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "SlipSetupDlg.h"
 #include "Resource.h"
+#include "ModernMessageBox.h"
 #include <gdiplus.h>
 
 #ifdef _DEBUG
@@ -25,6 +26,7 @@ BEGIN_MESSAGE_MAP(CSlipSetupDlg, CDialog)
     ON_BN_CLICKED(IDC_SLIP_BTN_CANCEL, OnBtnCancel)
     ON_BN_CLICKED(IDC_SLIP_PRINT_ENABLE, OnPrintEnableToggled)
     ON_BN_CLICKED(IDC_SLIP_BTN_LAST_PRINT, OnBtnLastPrint)
+    ON_EN_CHANGE(IDC_SLIP_EDIT_PORT, OnSlipPortChanged)
     ON_CONTROL_RANGE(BN_CLICKED, IDC_SLIP_BTN_PRINT_INFO, IDC_SLIP_BTN_MSG_INFO, OnInfoBtnClicked)
 END_MESSAGE_MAP()
 
@@ -73,7 +75,7 @@ static void CalcLayout(HWND hWnd, const CRect& rc, SlipLayoutData& out) {
     out.FIELD_H = bCmp ? 32 : 40;
 
     int divY0 = out.kCardMarginT + ScaleX(bCmp ? 64 : 84);
-    int curY = divY0 + ScaleX(bCmp ? 8 : 12);
+    int curY = out.kCardMarginT + ScaleX(bCmp ? 72 : 86);
 
     int cardLeft = out.kCardMarginL + ScaleX(cOutX);
     int cardRight = rc.Width() - out.kCardMarginR - ScaleX(cOutX);
@@ -144,6 +146,8 @@ void CSlipSetupDlg::EnsureFonts()
     m_hFontHdrSub = ::CreateFontIndirect(&lf);
     lf.lfHeight = -SX(bCmp ? 13 : 15); lf.lfWeight = FW_BOLD;
     m_hFontCardTitle = ::CreateFontIndirect(&lf);
+    lf.lfHeight = -SX(bCmp ? 12 : 13); lf.lfWeight = FW_BOLD;
+    m_fontValidation.CreateFontIndirect(&lf);
 }
 
 BOOL CSlipSetupDlg::OnInitDialog()
@@ -188,7 +192,7 @@ BOOL CSlipSetupDlg::OnInitDialog()
     }
 
     // 컨트롤 생성 및 초기화
-    m_chkPrintEnable.Create(_T("출력 활성화 됨"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_PRINT_ENABLE);
+    m_chkPrintEnable.Create(_T("전표 출력 사용"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_PRINT_ENABLE);
     m_chkPrintEnable.SetFont(&m_fontLabel);
 
     auto CreateSafeCombo = [&](CSkinnedComboBox& combo, UINT id) {
@@ -223,6 +227,16 @@ BOOL CSlipSetupDlg::OnInitDialog()
     CreateInfo(m_btnPortInfo, IDC_SLIP_BTN_PORT_INFO);
     CreateInfo(m_btnSpeedInfo, IDC_SLIP_BTN_SPEED_INFO);
     CreateInfo(m_btnMsgInfo, IDC_SLIP_BTN_MSG_INFO);
+
+    // 포트번호 유효성 에러 Static
+    {
+        HWND hErr = ::CreateWindowEx(0, _T("STATIC"), _T(""), WS_CHILD | SS_RIGHT,
+            0, 0, 0, 0, GetSafeHwnd(), (HMENU)IDC_SLIP_STATIC_ERR_PORT, AfxGetInstanceHandle(), NULL);
+        if (hErr) {
+            ::SendMessage(hErr, WM_SETFONT, (WPARAM)(HFONT)m_fontValidation.GetSafeHandle(), TRUE);
+            ::ShowWindow(hErr, SW_HIDE);
+        }
+    }
 
     m_btnLastPrint.Create(_T("직전거래 전표출력"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_SLIP_BTN_LAST_PRINT);
     m_btnLastPrint.SetButtonStyle(ButtonStyle::Reader);
@@ -266,14 +280,14 @@ void CSlipSetupDlg::LayoutControls()
     auto PlaceInfoBtn = [&](CInfoIconButton& btn, int lx, int ly, LPCTSTR szLabel) {
         const int BtnSz = SX(18);
         const int BtnGap = SX(4);
-        int by = ly + (SX(d.capH) - BtnSz) / 2 - SX(IsCompactScreen() ? 4 : 2);
+        int by = ly + (SX(d.capH) - BtnSz) / 2;
         CFont* pOld = measureDC.SelectObject(&m_fontLabel);
         CSize sz = measureDC.GetTextExtent(szLabel);
         measureDC.SelectObject(pOld);
         btn.SetWindowPos(nullptr, lx + sz.cx + BtnGap, by, BtnSz, BtnSz, SWP_NOZORDER);
         };
 
-    m_chkPrintEnable.MoveWindow(d.inX, d.rcCard1.top + SX(IsCompactScreen() ? 46 : 60), d.inW, SX(d.FIELD_H));
+    m_chkPrintEnable.MoveWindow(d.inX, d.rcCard1.top + SX(IsCompactScreen() ? 46 : 60), d.col2W, SX(d.FIELD_H));
 
     SetupCombo(m_comboSpeed, d.inX, d.cY1, d.col2W, SX(d.FIELD_H));
     m_editPort.MoveWindow(d.inX + d.col2W + SX(d.cG), d.cY1, d.col2W, SX(d.FIELD_H));
@@ -281,6 +295,13 @@ void CSlipSetupDlg::LayoutControls()
 
     PlaceInfoBtn(m_btnSpeedInfo, d.inX, d.lY1, _T("프린터 속도"));
     PlaceInfoBtn(m_btnPortInfo, d.inX + d.col2W + SX(d.cG), d.lY1, _T("프린터 포트번호"));
+    // 에러 Static: 포트번호 라벨 우측 정렬
+    { CWnd* pErr = GetDlgItem(IDC_SLIP_STATIC_ERR_PORT);
+      if (pErr && pErr->GetSafeHwnd()) {
+          int errW = SX(72);
+          int errX = d.inX + d.col2W + SX(d.cG) + d.col2W - errW;
+          pErr->SetWindowPos(nullptr, errX, d.lY1, errW, SX(d.capH), SWP_NOZORDER | SWP_NOACTIVATE);
+      } }
     PlaceInfoBtn(m_btnPrintInfo, d.inX, d.lY2, _T("전표 매수"));
 
     // --- [수정할 부분] LayoutControls() 함수 안의 for문 ---
@@ -456,11 +477,17 @@ BOOL CSlipSetupDlg::OnEraseBkgnd(CDC*) { return TRUE; }
 
 HBRUSH CSlipSetupDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
+    static CBrush s_brCard(RGB(250, 251, 253));
     if (nCtlColor == CTLCOLOR_DLG) return m_brBg;
+    if (pWnd && pWnd->GetDlgCtrlID() == IDC_SLIP_STATIC_ERR_PORT) {
+        pDC->SetTextColor(RGB(220, 53, 69));
+        pDC->SetBkMode(OPAQUE);
+        pDC->SetBkColor(RGB(250, 251, 253));
+        return s_brCard;
+    }
     if (nCtlColor == CTLCOLOR_STATIC || nCtlColor == CTLCOLOR_EDIT) {
         pDC->SetBkMode(TRANSPARENT);
         pDC->SetTextColor(RGB(80, 90, 100));
-        static CBrush s_brCard(RGB(250, 251, 253));
         return s_brCard;
     }
     return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
@@ -472,11 +499,10 @@ void CSlipSetupDlg::UpdateInputHoverByCursor() { /* Hover 효과 필요 시 구현 */ }
 
 void CSlipSetupDlg::OnInfoBtnClicked(UINT nID)
 {
-    if (nID == IDC_SLIP_BTN_PRINT_INFO) ShowInfoPopover(m_btnPrintInfo, _T("전표 출력 매수"), _T("1회 결제 시 출력할 전표 매수를 설정합니다."));
-    else if (nID == IDC_SLIP_BTN_PORT_INFO) ShowInfoPopover(m_btnPortInfo, _T("프린터 포트번호"), _T("프린터가 연결된 COM 포트 번호를 입력합니다."));
-    else if (nID == IDC_SLIP_BTN_SPEED_INFO) ShowInfoPopover(m_btnSpeedInfo, _T("프린터 속도"), _T("통신 속도를 설정합니다."));
-    else if (nID == IDC_SLIP_BTN_MSG_INFO)
-        ShowInfoPopover(m_btnMsgInfo, _T("전표 메시지"), _T("전표 하단에 출력할 광고/안내 메시지를 입력합니다."));
+    if (nID == IDC_SLIP_BTN_PRINT_INFO) ShowInfoPopover(m_btnPrintInfo, _T("전표 출력 매수"), _T("결제 시 출력할 전표 매수를 설정"));
+    else if (nID == IDC_SLIP_BTN_PORT_INFO) ShowInfoPopover(m_btnPortInfo, _T("프린터 포트번호"), _T("프린터가 연결된 COM 포트 번호를 입력"));
+    else if (nID == IDC_SLIP_BTN_SPEED_INFO) ShowInfoPopover(m_btnSpeedInfo, _T("프린터 속도"), _T("프린터 통신 속도 선택"));
+    else if (nID == IDC_SLIP_BTN_MSG_INFO) ShowInfoPopover(m_btnMsgInfo, _T("전표 메시지"), _T("전표 하단에 출력할 안내 메시지 입력\n※MSG당 최대 48bytes"));
 }
 void CSlipSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTSTR szBody)
 {
@@ -484,10 +510,115 @@ void CSlipSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTS
     m_popover.ShowAt(rc, szTitle, szBody, this);
 }
 
-void CSlipSetupDlg::LoadFromRegistry() { /* Registry 로드 로직 */ }
-void CSlipSetupDlg::SaveToRegistry() { /* Registry 저장 로직 */ }
-void CSlipSetupDlg::OnBtnOk() { SaveToRegistry(); EndDialog(IDOK); }
-void CSlipSetupDlg::OnBtnCancel() { EndDialog(IDCANCEL); }
+void CSlipSetupDlg::LoadFromRegistry()
+{
+    static LPCTSTR SEC = _T("SERIALPORT");
+    CString s;
+
+    // 전표 출력 활성화
+    s = AfxGetApp()->GetProfileString(SEC, _T("PRINTER_CHECK"), _T("0"));
+    m_chkPrintEnable.SetToggled(s == _T("1"));
+
+    // 프린터 포트번호
+    s = AfxGetApp()->GetProfileString(SEC, _T("PRINTER"), _T(""));
+    m_editPort.SetWindowText(s);
+
+    // 전표 매수 (1장=index 0, 2장=index 1)
+    s = AfxGetApp()->GetProfileString(SEC, _T("PRINTER_SLIP_NUM"), _T("1"));
+    {
+        CString target = s + _T("장");
+        int found = -1;
+        for (int i = 0; i < m_comboPrintCount.GetCount(); i++) {
+            CString item; m_comboPrintCount.GetLBText(i, item);
+            if (item.CompareNoCase(target) == 0) { found = i; break; }
+        }
+        m_comboPrintCount.SetCurSel(found >= 0 ? found : 0);
+    }
+
+    // 프린터 속도: 저장값(숫자)에 "bps" 붙여 콤보 항목과 비교 후 선택
+    s = AfxGetApp()->GetProfileString(SEC, _T("PRINTER_SPEED"), _T("57600"));
+    {
+        CString target = s + _T("bps");
+        int found = -1;
+        for (int i = 0; i < m_comboSpeed.GetCount(); i++) {
+            CString item; m_comboSpeed.GetLBText(i, item);
+            if (item.CompareNoCase(target) == 0) { found = i; break; }
+        }
+        m_comboSpeed.SetCurSel(found >= 0 ? found : 2); // 기본값 57600bps(index 2)
+    }
+
+    // 전표 메시지 MSG1~MSG6
+    static LPCTSTR msgFields[] = {
+        _T("PRINTER_MSG1"), _T("PRINTER_MSG2"), _T("PRINTER_MSG3"),
+        _T("PRINTER_MSG4"), _T("PRINTER_MSG5"), _T("PRINTER_MSG6")
+    };
+    for (int i = 0; i < 6; i++) {
+        s = AfxGetApp()->GetProfileString(SEC, msgFields[i], _T(""));
+        m_editMsg[i].SetWindowText(s);
+    }
+}
+void CSlipSetupDlg::SaveToRegistry()
+{
+    static LPCTSTR SEC = _T("SERIALPORT");
+    CString s;
+
+    // 전표 출력 활성화: ON="1", OFF="0"
+    AfxGetApp()->WriteProfileString(SEC, _T("PRINTER_CHECK"),
+        m_chkPrintEnable.IsToggled() ? _T("1") : _T("0"));
+
+    // 프린터 포트번호
+    m_editPort.GetWindowText(s);
+    AfxGetApp()->WriteProfileString(SEC, _T("PRINTER"), s);
+
+    // 전표 매수
+    // 전표 매수: 콤보 텍스트에서 "장" 제거 후 숫자만 저장
+    {
+        int idx = m_comboPrintCount.GetCurSel();
+        if (idx >= 0) {
+            m_comboPrintCount.GetLBText(idx, s);
+            s.Replace(_T("장"), _T(""));
+            s.TrimRight();
+        } else { s = _T("1"); }
+        AfxGetApp()->WriteProfileString(SEC, _T("PRINTER_SLIP_NUM"), s);
+    }
+
+    // 프린터 속도: 콤보 텍스트에서 "bps" 제거 후 숫자만 저장
+    {
+        int idx = m_comboSpeed.GetCurSel();
+        if (idx >= 0) {
+            m_comboSpeed.GetLBText(idx, s);
+            s.Replace(_T("bps"), _T(""));
+            s.TrimRight();
+        } else { s = _T("57600"); }
+        AfxGetApp()->WriteProfileString(SEC, _T("PRINTER_SPEED"), s);
+    }
+
+    // 전표 메시지 MSG1~MSG6
+    static LPCTSTR msgFields[] = {
+        _T("PRINTER_MSG1"), _T("PRINTER_MSG2"), _T("PRINTER_MSG3"),
+        _T("PRINTER_MSG4"), _T("PRINTER_MSG5"), _T("PRINTER_MSG6")
+    };
+    for (int i = 0; i < 6; i++) {
+        m_editMsg[i].GetWindowText(s);
+        AfxGetApp()->WriteProfileString(SEC, msgFields[i], s);
+    }
+}
+void CSlipSetupDlg::OnBtnOk()
+{
+    if (m_popover.GetSafeHwnd()) m_popover.Hide();
+    if (!ValidateInputs()) return;
+    SaveToRegistry();
+    EndDialog(IDOK);
+}
+void CSlipSetupDlg::OnBtnCancel()
+{
+    if (m_popover.GetSafeHwnd()) m_popover.Hide();
+    if (HasChanges()) {
+        int ret = CModernMessageBox::Question(_T("변경사항이 있습니다.\n저장하지 않고 닫으시겠습니까?"), this);
+        if (ret != IDYES) return;
+    }
+    EndDialog(IDCANCEL);
+}
 void CSlipSetupDlg::OnBtnLastPrint() { AfxMessageBox(_T("직전거래 전표를 출력합니다.")); }
 void CSlipSetupDlg::UpdateControlsState()
 {
@@ -496,7 +627,88 @@ void CSlipSetupDlg::UpdateControlsState()
     m_editPort.EnableWindow(bOn);
     m_comboSpeed.EnableWindow(bOn);
     for (int i = 0; i < 6; i++) m_editMsg[i].EnableWindow(bOn);
+    UpdatePortValidationUI();
 }
 void CSlipSetupDlg::OnPrintEnableToggled() { UpdateControlsState(); }
 void CSlipSetupDlg::OnOK() {}
 void CSlipSetupDlg::OnCancel() { EndDialog(IDCANCEL); }
+
+BOOL CSlipSetupDlg::ValidateInputs()
+{
+    if (m_chkPrintEnable.IsToggled()) {
+        CString sPort;
+        m_editPort.GetWindowText(sPort);
+        sPort.Trim();
+        if (sPort.IsEmpty()) {
+            UpdatePortValidationUI();
+            CModernMessageBox::Warning(_T("입력값을 확인해주세요."), this);
+            m_editPort.SetFocus();
+            ((CEdit*)GetDlgItem(IDC_SLIP_EDIT_PORT))->SetSel(0, -1);
+            return FALSE;
+        }
+    }
+    UpdatePortValidationUI();
+    return TRUE;
+}
+
+void CSlipSetupDlg::OnSlipPortChanged()
+{
+    if (!m_bUiInitialized) return;
+    UpdatePortValidationUI();
+}
+
+void CSlipSetupDlg::UpdatePortValidationUI()
+{
+    if (!m_bUiInitialized) return;
+    BOOL bShowError = FALSE;
+    if (m_chkPrintEnable.IsToggled()) {
+        CString s; m_editPort.GetWindowText(s); s.Trim();
+        bShowError = s.IsEmpty();
+    }
+    CWnd* pErr = GetDlgItem(IDC_SLIP_STATIC_ERR_PORT);
+    if (!pErr || !pErr->GetSafeHwnd()) return;
+    CString cur; pErr->GetWindowText(cur);
+    BOOL bVisNow = pErr->IsWindowVisible();
+    if (bShowError) {
+        if (cur != _T("입력 필요")) pErr->SetWindowText(_T("입력 필요"));
+        if (!bVisNow) { pErr->ShowWindow(SW_SHOW); pErr->Invalidate(FALSE); }
+    } else {
+        if (!cur.IsEmpty()) pErr->SetWindowText(_T(""));
+        if (bVisNow) pErr->ShowWindow(SW_HIDE);
+    }
+}
+
+BOOL CSlipSetupDlg::HasChanges()
+{
+    static LPCTSTR SEC = _T("SERIALPORT");
+    CString sReg, sCur;
+
+    sReg = AfxGetApp()->GetProfileString(SEC, _T("PRINTER_CHECK"), _T("0"));
+    sCur = m_chkPrintEnable.IsToggled() ? _T("1") : _T("0");
+    if (sReg != sCur) return TRUE;
+
+    sReg = AfxGetApp()->GetProfileString(SEC, _T("PRINTER"), _T(""));
+    m_editPort.GetWindowText(sCur);
+    if (sReg != sCur) return TRUE;
+
+    sReg = AfxGetApp()->GetProfileString(SEC, _T("PRINTER_SLIP_NUM"), _T("1"));
+    { int idx = m_comboPrintCount.GetCurSel();
+      if (idx >= 0) { m_comboPrintCount.GetLBText(idx, sCur); sCur.Replace(_T("장"), _T("")); sCur.TrimRight(); }
+      else { sCur = _T("1"); }
+      if (sReg != sCur) return TRUE; }
+
+    sReg = AfxGetApp()->GetProfileString(SEC, _T("PRINTER_SPEED"), _T("57600"));
+    { int idx = m_comboSpeed.GetCurSel();
+      if (idx >= 0) { m_comboSpeed.GetLBText(idx, sCur); sCur.Replace(_T("bps"), _T("")); sCur.TrimRight(); }
+      else { sCur = _T("57600"); }
+      if (sReg != sCur) return TRUE; }
+
+    static LPCTSTR msgFields[] = { _T("PRINTER_MSG1"), _T("PRINTER_MSG2"), _T("PRINTER_MSG3"),
+        _T("PRINTER_MSG4"), _T("PRINTER_MSG5"), _T("PRINTER_MSG6") };
+    for (int i = 0; i < 6; i++) {
+        sReg = AfxGetApp()->GetProfileString(SEC, msgFields[i], _T(""));
+        m_editMsg[i].GetWindowText(sCur);
+        if (sReg != sCur) return TRUE;
+    }
+    return FALSE;
+}

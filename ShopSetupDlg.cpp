@@ -248,7 +248,7 @@ static int GetHdrDividerY() { return IsCompactScreen() ? 64 : 84; }
 // ── 탭 컨트롤 ────────────────────────────────────────────────────────────────
 static int GetTabBarTop() { return GetHdrDividerY() + 6; }
 static int GetTabBarH() { return IsCompactScreen() ? 28 : 34; }
-static int GetTabPadTop() { return IsCompactScreen() ? 8 : 12; }
+static int GetTabPadTop() { return 12; }
 static int GetTabPadLeft() { return 40; }
 
 // ── 그룹/카드 공통 ───────────────────────────────────────────────────────────
@@ -589,7 +589,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
     int maxTabH = 0;
     // Tab 0: 결제 설정 (서버카드 2행 + 결제카드 3행)
     {
-        int h = cOutY + cardH(2) + cGapY + cardH(3) + 8;
+        int h = cardH(2) + cGapY + cardH(3) + 8;
         maxTabH = max(maxTabH, h);
     }
     // Tab 1: 장치 정보 (리더기 2행 + 서명패드 2행 + 기타 체크1행)
@@ -597,7 +597,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
         int card1 = cPadY + cHdrH + oneRow() * 1 + cPadY;
         int card2 = cPadY + cHdrH + oneRow() * 2 + rG + cPadY;
         int card3 = cPadY + cHdrH + oneRow() + rG + FIELD_H + cPadY;
-        int h = cOutY + card1 + cGapY + card2 + cGapY + card3 ;
+        int h = card1 + cGapY + card2 + cGapY + card3 ;
         maxTabH = max(maxTabH, h);
     }
     // Tab 2: 시스템 설정 (알림창 2행+체크1행 + 시스템 체크1행 + 단축키 1행)
@@ -605,7 +605,7 @@ int CShopSetupDlg::CalculateRequiredHeight()
         int card1 = cPadY + cHdrH + oneRow() * 2 + rG + FIELD_H + cPadY;
         int card2 = cPadY + cHdrH + FIELD_H + cPadY;
         int card3 = cPadY + cHdrH + oneRow() + cPadY;
-        int h = cOutY + card1 + cGapY + card2 + cGapY + card3;
+        int h = card1 + cGapY + card2 + cGapY + card3;
         maxTabH = max(maxTabH, h);
     }
     // Tab 3: 가맹점 다운로드
@@ -925,7 +925,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
         const int BtnGap = SX(4);
         int bx = lx + BtnGap;
         // [FIX] 글자 베이스라인에 맞춰 시각적으로 중앙이 되도록 Y좌표를 4px 위로 끌어올림
-        int by = ly + (lcapH - BtnSz) / 2 - SX(IsCompactScreen() ? 4 : 2);
+        int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
             CFont* pFont = pLbl->GetFont();
@@ -957,7 +957,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
     int cardLeft = m_rcTabContent.left + cardOuterPadX;
     int cardRight = m_rcTabContent.right - cardOuterPadX;
     int cardW = cardRight - cardLeft;
-    int curY = y + cardOuterPadY;
+    int curY = y;
     // -------------------------
     // 카드 1) 서버 설정
     // -------------------------
@@ -1015,7 +1015,7 @@ void CShopSetupDlg::ApplyLayoutTab0()
             int ibX = rightX + toggleW + BtnGap;
             // (변경 전) int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                         // (변경 후) 아래와 같이 수정
-            int ibY = toggleY + (FIELD_H - BtnSz) / 2 - SX(IsCompactScreen() ? 5 : 2);
+            int ibY = toggleY + (FIELD_H - BtnSz) / 2;
             m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
         }
     }
@@ -1056,7 +1056,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
         const int BtnGap = SX(4);
         int bx = lx + BtnGap;
         // [FIX] 글자 베이스라인에 맞춰 시각적으로 중앙이 되도록 Y좌표를 4px 위로 끌어올림
-        int by = ly + (lcapH - BtnSz) / 2 - SX(IsCompactScreen() ? 4 : 2);
+        int by = ly + (lcapH - BtnSz) / 2;
         CWnd* pLbl = GetDlgItem(labelId);
         if (pLbl && pLbl->GetSafeHwnd()) {
             CFont* pFont = pLbl->GetFont();
@@ -1089,7 +1089,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
     int cLeft = m_rcTabContent.left + cOutX;
     int cRight = m_rcTabContent.right - cOutX;
     int cW = cRight - cLeft;
-    int curY = y + cOutY;
+    int curY = y;
     int inX = cLeft + cPadX;
     int inW = cW - cPadX * 2;
     int col2W = (inW - cG) / 2;  // 2열 분할 폭
@@ -1155,7 +1155,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
                 int ibX = leftX + toggleW + BtnGap;
                 // (변경 전) int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                                 // (변경 후) 아래와 같이 수정
-                int ibY = toggleY + (FIELD_H - BtnSz) / 2 - SX(IsCompactScreen() ? 5 : 2);
+                int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                 m_btnScannerUseInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
         }
@@ -1170,7 +1170,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
                 int ibX = rightX + mvW + BtnGap;
                 // (변경 전) int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                                 // (변경 후) 아래와 같이 수정
-                int ibY = toggleY + (FIELD_H - BtnSz) / 2 - SX(IsCompactScreen() ? 5 : 2);
+                int ibY = toggleY + (FIELD_H - BtnSz) / 2;
                 m_btnMultiVoiceInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
         }
@@ -1186,7 +1186,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
     // =================================================================
         // Tab 2: 시스템 설정
         // =================================================================
-    curY = y + cOutY;
+    curY = y;
     // ── 카드 1: 알림창 설정 ─────────────────────────
     {
         int fy = curY + cPadY + cHdrH;
@@ -1217,7 +1217,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
                 // 여기는 toggleY 대신 fy 변수를 사용합니다.
                                 // (변경 전) int ibY = fy + (FIELD_H - BtnSz) / 2;
                                 // (변경 후) 아래와 같이 수정
-                int ibY = fy + (FIELD_H - BtnSz) / 2 - SX(IsCompactScreen() ? 5 : 2);
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
                 m_btnAlarmGraphInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
             Move(IDC_CHECK_ALARM_DUAL, xR, fy, wR, FIELD_H);
@@ -1227,7 +1227,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
                 // 여기는 toggleY 대신 fy 변수를 사용합니다.
                                 // (변경 전) int ibY = fy + (FIELD_H - BtnSz) / 2;
                                 // (변경 후) 아래와 같이 수정
-                int ibY = fy + (FIELD_H - BtnSz) / 2 - SX(IsCompactScreen() ? 5 : 2);
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
                 m_btnAlarmDualInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
         }
@@ -1253,7 +1253,7 @@ void CShopSetupDlg::ApplyLayoutTab1()
                 // 여기는 toggleY 대신 fy 변수를 사용합니다.
                                 // (변경 전) int ibY = fy + (FIELD_H - BtnSz) / 2;
                                 // (변경 후) 아래와 같이 수정
-                int ibY = fy + (FIELD_H - BtnSz) / 2 - SX(IsCompactScreen() ? 5 : 2);
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
                 m_btnAutoRebootInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
         }
@@ -1306,7 +1306,7 @@ void CShopSetupDlg::ApplyLayoutTab3()
     int btnY = rc.bottom - (cardBottomPad + BUTTON_BOTTOM + BUTTON_H);
     int cardLeft = m_rcTabContent.left + SX(cOutX);
     int cardRight = m_rcTabContent.right - SX(cOutX);
-    int cardTop = y + SX(cOutY);
+    int cardTop = y;
     int cardBot = btnY - SX(cardBottomPad);
 
     if (cardBot < cardTop + SX(bCompact ? 180 : 240))

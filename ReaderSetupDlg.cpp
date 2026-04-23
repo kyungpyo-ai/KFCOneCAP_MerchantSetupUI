@@ -211,11 +211,11 @@ void CReaderSetupDlg::CalcLayoutRects(
 	const int margin = SX(20);
 	inner = CRect(rc.left + margin, rc.top + margin, rc.right - margin, rc.bottom - margin);
 
-	const int titleBlock = SX(bC ? 68 : 84);
+	const int titleBlock = SX(bC ? 62 : 80);
 	const int sectionTitleH = SX(bC ? 24 : 28);
 	const int sectionTitleTop = SX(bC ? 10 : 12);
 	const int infoSectionTitleTop = SX(2);
-	const int sectionTitleGap = SX(bC ? 8 : 10);
+	const int sectionTitleGap = SX(12);
 	const int infoTitleGap = -SX(10);
 	const int sectionBoxPad = SX(bC ? 16 : 20);
 	const int cardH = SX(bC ? 102 : 128);
@@ -1291,7 +1291,7 @@ CSize CReaderSetupDlg::CalcMinClientSize() const
 	const int sectionTitleTop = SX(bC ? 10 : 12);
 	const int infoSectionTitleTop = SX(2);
 	const int sectionTitleH = SX(bC ? 24 : 28);
-	const int sectionTitleGap = SX(bC ? 8 : 10);
+	const int sectionTitleGap = SX(12);
 	const int infoTitleGap = -SX(10);
 	const int cardH = SX(bC ? 96 : 128);
 	const int cardGap = SX(bC ? 8 : 12);

@@ -345,7 +345,7 @@ void CTransDlg::GetContentRects(CRect& rcForm, CRect& rcResult) const
     const int mB = ModernUIDpi::Scale(m_hWnd, bCmp ? 12 : 20);
 
     const int cp = ModernUIDpi::Scale(m_hWnd, 18);
-    const int hdrH = ModernUIDpi::Scale(m_hWnd, 84), ig = ModernUIDpi::Scale(m_hWnd, 12);
+    const int hdrH = ModernUIDpi::Scale(m_hWnd, bCmp ? 60 : 74), ig = ModernUIDpi::Scale(m_hWnd, 12);
 
     // 새 여백을 적용하여 메인 카드 영역 도출
     CRect rcMain(mL, mT, cl.right - mR, cl.bottom - mB);
@@ -366,7 +366,7 @@ void CTransDlg::ResizeWindow()
     int mT = SX(bCmp ? 6 : 10);
     int mB = SX(bCmp ? 12 : 20);
 
-    int clientH = mT + SX(84) + SX(12) + kRCH + SX(12) + mB;
+    int clientH = mT + SX(bCmp ? 60 : 74) + SX(12) + kRCH + SX(12) + mB;
     RECT rcW, rcC;
     ::GetWindowRect(m_hWnd, &rcW); ::GetClientRect(m_hWnd, &rcC);
     int ncH = (rcW.bottom - rcW.top) - (rcC.bottom - rcC.top);
@@ -502,8 +502,9 @@ void CTransDlg::CreateResultControls()
         m_results.push_back(rp);
         m_resultLabels[i].Create(lbl[i],WS_CHILD|WS_VISIBLE,
             CRect(0,0,0,0),this,IDC_TRANS_RESULT_LBL_BASE+i);
-        m_resultValues[i].Create(_T("-"),WS_CHILD|WS_VISIBLE|SS_RIGHT,
+        m_resultValues[i].Create(WS_CHILD|WS_VISIBLE|ES_READONLY|ES_RIGHT|ES_AUTOHSCROLL,
             CRect(0,0,0,0),this,IDC_TRANS_VALUE_BASE+i);
+        m_resultValues[i].SetWindowText(_T("-"));
     }
 }
 
@@ -596,7 +597,6 @@ CString CTransDlg::GetCurrentModeName() const
 
 void CTransDlg::ShowFieldsForMode()
 {
-    enum{F_SUPPLY=0,F_TAX,F_TIP,F_TAXFREE,F_INSTALL,F_QR,F_ORGDATE,F_ORGAPPNO,F_CASHTYPE,F_CASHNO};
     BOOL show[kNumFields]={};
     switch (m_eMode) {
     case MODE_CREDIT_APPROVAL:
@@ -606,7 +606,7 @@ void CTransDlg::ShowFieldsForMode()
     case MODE_CASH_APPROVAL:
         show[F_SUPPLY]=show[F_TAX]=show[F_TIP]=show[F_TAXFREE]=show[F_CASHTYPE]=show[F_CASHNO]=TRUE; break;
     case MODE_CASH_CANCEL:
-        show[F_SUPPLY]=show[F_ORGDATE]=show[F_ORGAPPNO]=TRUE; break;
+        show[F_SUPPLY]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_CASHNO]=TRUE; break;
     }
     for (int i=0; i<kNumFields; i++) {
         SafeShow(&m_fieldLabels[i], show[i]);
@@ -644,6 +644,8 @@ void CTransDlg::ApplyResultColoring()
     if ((int)m_results.size() < 4) return;
     // index 1: 응답코드, index 2: 응답내역, index 3: 승인번호
     bool bOk = (m_results[1].value == _T("000"));
+    m_results[1].bBlue = bOk ? TRUE : FALSE;
+    m_results[1].bRed  = bOk ? FALSE : TRUE;
     m_results[2].bBlue = bOk ? TRUE : FALSE;
     m_results[2].bRed  = bOk ? FALSE : TRUE;
     m_results[3].bBlue = FALSE; m_results[3].bRed = FALSE;
@@ -680,10 +682,6 @@ BOOL CTransDlg::ValidateCurrentMode(CString& e)
         if (s.IsEmpty()) { e=_T("원거래 일자를 입력하세요."); m_edtOrgDate.SetFocus(); return FALSE; }
         m_edtOrgAppNo.GetWindowText(s); s.Trim();
         if (s.IsEmpty()) { e=_T("원거래 승인번호를 입력하세요."); m_edtOrgAppNo.SetFocus(); return FALSE; }
-    }
-    if (m_eMode==MODE_CASH_APPROVAL) {
-        m_edtCashNo.GetWindowText(s); s.Trim();
-        if (s.IsEmpty()) { e=_T("현금영수증 번호를 입력하세요."); m_edtCashNo.SetFocus(); return FALSE; }
     }
     return TRUE;
 }
@@ -724,7 +722,7 @@ void CTransDlg::LayoutControls()
     // input fields (below amount display area)
 // input fields (below amount display area)
     int amtAreaH = SX(52); // [FIX 2] 파란색 배경 박스 높이를 52로 확 줄여서 슬림하게 만듭니다.
-    int fieldsTop = segY + segH + SX(16) + amtAreaH + SX(16);
+    int fieldsTop = segY + segH + SX(12) + amtAreaH + SX(12);
     int fl=rcForm.left+SX(14), fw=rcForm.Width()-SX(28);
     int colW = (fw - fGX) / 2;
 
@@ -838,6 +836,15 @@ void CTransDlg::OnPaint()
         Gdiplus::GraphicsPath pForm, pResult;
         AddRRP(pForm, rcForm, (float)SX(12));
         AddRRP(pResult, rcResult, (float)SX(12));
+        // ???? ??? ?????
+        for (int sh = 1; sh <= 2; sh++) {
+            Gdiplus::GraphicsPath sp;
+            Gdiplus::RectF sr((Gdiplus::REAL)rcForm.left, (Gdiplus::REAL)rcForm.top + sh * 1.5f,
+                              (Gdiplus::REAL)rcForm.Width(), (Gdiplus::REAL)rcForm.Height());
+            ModernUIGfx::AddRoundRect(sp, sr, (float)SX(12));
+            Gdiplus::SolidBrush sb(Gdiplus::Color(8, 0, 0, 0));
+            g.FillPath(&sb, &sp);
+        }
         g.FillPath(&cardBrush, &pForm);
         g.FillPath(&cardBrush, &pResult);
 
@@ -860,7 +867,7 @@ void CTransDlg::OnPaint()
         }
         // amount display bg
         {
-            int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
+            int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(12);
             CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52));
             Gdiplus::GraphicsPath ap; AddRRP(ap, rcAmt, SX(8));
 
@@ -930,7 +937,7 @@ void CTransDlg::OnPaint()
     }
     // amount display text (좌/우 1줄 슬림 배치)
     {
-        int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(16);
+        int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(12);
         CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52)); // 52로 슬림하게 맞춤
 
         // 라벨: 진하고 큰 폰트(m_fontEdit) 적용, 좌측 세로 중앙 정렬
@@ -993,6 +1000,7 @@ HBRUSH CTransDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
         }
 
         // 응답 결과 라벨 및 값들 (글자 겹침 방지를 위해 OPAQUE + 회색 브러시 처리)
+        // ???? ??? ?? ?? ???? (ES_READONLY CEdit?? CTLCOLOR_STATIC?? ???)
         for (int i = 0; i < kNumResults; i++) {
             if (id == IDC_TRANS_RESULT_LBL_BASE + i) {
                 pDC->SetTextColor(kLabelText);
@@ -1004,7 +1012,6 @@ HBRUSH CTransDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
                 if (i < (int)m_results.size() && m_results[(size_t)i].bBlue) pDC->SetTextColor(kBlueText);
                 else if (i < (int)m_results.size() && m_results[(size_t)i].bRed) pDC->SetTextColor(kRedText);
                 else pDC->SetTextColor(kValueText);
-
                 pDC->SetBkMode(OPAQUE);
                 pDC->SetBkColor(kCardFill);
                 return s_brCardFill;
@@ -1024,46 +1031,74 @@ void CTransDlg::OnTabSelChange(NMHDR*,LRESULT* pResult)
 
 void CTransDlg::OnRunCreditApproval()
 {
-    CString msg;
+    CString vSupply, vTax, vTip, vTaxFree, vInstall, vQr;
+    m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);   vSupply.Trim();
+    m_fields[F_TAX].pCtrl->GetWindowText(vTax);         vTax.Trim();
+    m_fields[F_TIP].pCtrl->GetWindowText(vTip);         vTip.Trim();
+    m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree); vTaxFree.Trim();
+    m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall); vInstall.Trim();
+    m_fields[F_QR].pCtrl->GetWindowText(vQr);           vQr.Trim();
+
+    CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[1].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[1].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[2].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[2].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[3].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[3].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[4].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[4].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[5].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[5].caption, (LPCTSTR)v); msg += ln; }
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAX].caption,     (LPCTSTR)vTax);     msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TIP].caption,     (LPCTSTR)vTip);     msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption, (LPCTSTR)vTaxFree); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);      msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
 }
 void CTransDlg::OnRunCreditCancel()
 {
-    CString msg;
+    CString vSupply, vOrgDate, vOrgAppNo, vInstall, vQr;
+    m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
+    m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
+    m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
+    m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall);   vInstall.Trim();
+    m_fields[F_QR].pCtrl->GetWindowText(vQr);             vQr.Trim();
+
+    CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[6].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[6].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[7].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[7].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[4].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[4].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[5].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[5].caption, (LPCTSTR)v); msg += ln; }
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGDATE].caption, (LPCTSTR)vOrgDate);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption,(LPCTSTR)vOrgAppNo); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);       msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
 }
 void CTransDlg::OnRunCashApproval()
 {
-    CString msg;
+    CString vSupply, vTax, vTip, vTaxFree, vCashType, vCashNo;
+    m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
+    m_fields[F_TAX].pCtrl->GetWindowText(vTax);           vTax.Trim();
+    m_fields[F_TIP].pCtrl->GetWindowText(vTip);           vTip.Trim();
+    m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree);   vTaxFree.Trim();
+    m_fields[F_CASHTYPE].pCtrl->GetWindowText(vCashType); vCashType.Trim();
+    m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
+
+    CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[1].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[1].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[2].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[2].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[3].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[3].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[8].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[8].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[9].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[9].caption, (LPCTSTR)v); msg += ln; }
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,   (LPCTSTR)vSupply);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAX].caption,      (LPCTSTR)vTax);      msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TIP].caption,      (LPCTSTR)vTip);      msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption,  (LPCTSTR)vTaxFree);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHTYPE].caption, (LPCTSTR)vCashType); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,   (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
 }
 void CTransDlg::OnRunCashCancel()
 {
-    CString msg;
+    CString vSupply, vOrgDate, vOrgAppNo;
+    m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
+    m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
+    m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
+
+    CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    { CString v; m_fields[0].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[0].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[6].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[6].caption, (LPCTSTR)v); msg += ln; }
-    { CString v; m_fields[7].pCtrl->GetWindowText(v); v.Trim(); CString ln; ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[7].caption, (LPCTSTR)v); msg += ln; }
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGDATE].caption, (LPCTSTR)vOrgDate);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption,(LPCTSTR)vOrgAppNo); msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
 }
 BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)

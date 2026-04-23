@@ -270,6 +270,7 @@
 #define IDC_SLIP_BTN_PORT_INFO          7006
 #define IDC_SLIP_BTN_SPEED_INFO         7007
 #define IDC_SLIP_BTN_MSG_INFO           7008
+#define IDC_SLIP_STATIC_ERR_PORT        7009
 #define IDC_SLIP_EDIT_MSG1              7011
 #define IDC_SLIP_EDIT_MSG2              7012
 #define IDC_SLIP_EDIT_MSG3              7013
