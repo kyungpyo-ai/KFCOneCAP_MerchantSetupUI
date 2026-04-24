@@ -37,6 +37,7 @@ private:
     int      m_nHover;
     int      m_nPress;
     COLORREF m_crUnderlay;
+    CFont    m_fontNormal, m_fontBold;
 };
 
 class CTransDlg : public CDialog

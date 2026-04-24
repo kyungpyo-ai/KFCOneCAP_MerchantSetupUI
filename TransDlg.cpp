@@ -241,19 +241,22 @@ void CSegmentCtrl::OnPaint()
     }
 
     // 각 탭 텍스트
-    UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
-    LOGFONT lf = {};
-    lf.lfCharSet = HANGUL_CHARSET;
-    lf.lfQuality = CLEARTYPE_QUALITY;
-    lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-    ModernUIFont::ApplyUIFontFace(lf);
+    if (!m_fontNormal.GetSafeHandle()) {
+        const BOOL bCmpTab = ::GetSystemMetrics(SM_CYSCREEN) <= 800;
+        LOGFONT lf = {};
+        lf.lfCharSet = HANGUL_CHARSET;
+        lf.lfQuality = CLEARTYPE_QUALITY;
+        lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+        ModernUIFont::ApplyUIFontFace(lf);
+        int fH = -ModernUIDpi::Scale(m_hWnd, bCmpTab ? 13 : 14);
+        lf.lfHeight = fH; lf.lfWeight = FW_NORMAL; m_fontNormal.CreateFontIndirect(&lf);
+        lf.lfHeight = fH; lf.lfWeight = FW_BOLD;   m_fontBold.CreateFontIndirect(&lf);
+    }
 
+    HDC hdc = g.GetHDC();
+    ::SetBkMode(hdc, TRANSPARENT);
     for (int i = 0; i < n; i++) {
         bool bActive = (i == m_nSel);
-        const BOOL bCmpTab = ::GetSystemMetrics(SM_CYSCREEN) <= 800;
-        lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCmpTab ? 13 : 14);
-        lf.lfWeight = bActive ? FW_BOLD : FW_NORMAL;
-        CFont font; font.CreateFontIndirect(&lf);
 
         float tx = pad + i * tw;
         float ty = (float)pad;
@@ -263,8 +266,8 @@ void CSegmentCtrl::OnPaint()
         std::vector<wchar_t> wbuf((size_t)wlen, 0);
         ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, wbuf.data(), wlen);
 
-        HDC hdc = g.GetHDC();
-        HFONT hOld = (HFONT)::SelectObject(hdc, (HFONT)font.GetSafeHandle());
+        HFONT hFont = (HFONT)(bActive ? m_fontBold : m_fontNormal).GetSafeHandle();
+        HFONT hOld = (HFONT)::SelectObject(hdc, hFont);
         SIZE sz = {};
         ::GetTextExtentPoint32W(hdc, wbuf.data(), wlen > 0 ? wlen-1 : 0, &sz);
 
@@ -276,12 +279,11 @@ void CSegmentCtrl::OnPaint()
                           (i == m_nHover) ? RGB(90, 102, 122)  :
                                             RGB(140, 150, 165);
         ::SetTextColor(hdc, crText);
-        ::SetBkMode(hdc, TRANSPARENT);
         ::DrawTextW(hdc, wbuf.data(), wlen > 0 ? wlen-1 : 0, &rcT,
             DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         ::SelectObject(hdc, hOld);
-        g.ReleaseHDC(hdc);
     }
+    g.ReleaseHDC(hdc);
 
     dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
     mem.SelectObject(pOld);
@@ -379,6 +381,7 @@ void CTransDlg::ResizeWindow()
 BOOL CTransDlg::OnInitDialog()
 {
     CDialog::OnInitDialog();
+    ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
     SetRedraw(FALSE);
     ModernUIGfx::EnsureGdiplusStartup();
     EnsureFonts();
@@ -416,17 +419,16 @@ BOOL CTransDlg::OnInitDialog()
     LayoutControls();
     ResetSampleResult();
     CenterWindow();
-    SetRedraw(TRUE);
-    Invalidate(FALSE);
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
+    SetRedraw(TRUE);
+    RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     m_segCtrl.SetFocus();
     return FALSE;
 }
 
 void CTransDlg::CreateSegmentControl()
 {
-    CRect rc(0,0,100,CSegmentCtrl::kBarH);
-    m_segCtrl.Create(this, IDC_TRANS_SEG, rc);
+    m_segCtrl.SubclassDlgItem(IDC_TRANS_SEG, this);
     m_segCtrl.SetUnderlayColor(kDlgBg);
     m_segCtrl.AddTab(_T("신용승인"));
     m_segCtrl.AddTab(_T("신용취소"));
@@ -487,7 +489,7 @@ void CTransDlg::CreateResultControls()
     static LPCTSTR lbl[15]={
         _T("거래 일시"),_T("응답코드"),_T("응답내역"),_T("승인번호"),_T("알림"),
         _T("단말기ID"),_T("카드번호"),_T("카드사명"),_T("매입사 코드"),_T("매입사명"),
-        _T("발급사명"),_T("발급사 코드"),_T("카드구분"),_T("간편결제구분자"),_T("거래고유번호")
+        _T("발급사 코드"),_T("발급사명"),_T("카드구분"),_T("간편결제구분자"),_T("거래고유번호")
     };
     m_results.clear();
     for (int i=0; i<kNumResults; i++) {
@@ -549,6 +551,7 @@ void CTransDlg::SetMode(ETransMode mode)
     m_eMode = mode;
     if (m_segCtrl.GetCurSel() != (int)mode) m_segCtrl.SetCurSelSilent((int)mode);
     m_btnRun.SetWindowText(GetModeButtonText());
+    SetRedraw(FALSE);
     ShowFieldsForMode();
 
     // 3. Restore new tab values
@@ -564,7 +567,8 @@ void CTransDlg::SetMode(ETransMode mode)
     }
 
     LayoutControls();
-    RedrawWindow(NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
+    SetRedraw(TRUE);
+    RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
 CString CTransDlg::GetModeButtonText() const
@@ -622,8 +626,8 @@ void CTransDlg::ResetSampleResult()
     SetResultValue(7, _T("신한카드"));
     SetResultValue(8, _T("04"));
     SetResultValue(9, _T("신한카드"));
-    SetResultValue(10,_T("신한카드"));
-    SetResultValue(11,_T("04"));
+    SetResultValue(10,_T("04"));
+    SetResultValue(11,_T("신한카드"));
     SetResultValue(12,_T("개인 / 신용"));
     SetResultValue(13,_T("삼성페이"));
     SetResultValue(14,_T("20260415143005KF00182749"));
