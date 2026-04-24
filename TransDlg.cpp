@@ -1044,6 +1044,17 @@ void CTransDlg::OnRunCreditApproval()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);      msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    if (m_results[1].value == _T("000")) {
+        long long nTotal = (long long)ParseAmountText(vSupply)
+                         + (long long)ParseAmountText(vTax)
+                         + (long long)ParseAmountText(vTip)
+                         + (long long)ParseAmountText(vTaxFree);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY]  = FormatAmountWithCommas((int)nTotal);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_INSTALL] = vInstall;
+        CString dateStr = m_results[0].value;
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGAPPNO] = m_results[3].value;
+    }
 }
 void CTransDlg::OnRunCreditCancel()
 {
