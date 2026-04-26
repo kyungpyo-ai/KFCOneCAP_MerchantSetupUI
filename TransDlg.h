@@ -69,6 +69,7 @@ protected:
     void SetMode(ETransMode mode);
     void ShowFieldsForMode();
     void UpdateResultControls();
+    void ClearResult();
     void ResetSampleResult();
     void ResizeWindow();
     BOOL ValidateCurrentMode(CString& e);

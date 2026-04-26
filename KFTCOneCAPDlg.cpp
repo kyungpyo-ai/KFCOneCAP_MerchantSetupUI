@@ -336,7 +336,7 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
 
     EnsureFonts();
 
-    SetWindowText(_T("KFTCOneCAP3001"));
+    SetWindowText(_T("KFTCOneCAP Plus")); // 타이틀바 이름 모던화 반영
 
     if (m_brBackground.GetSafeHandle() != NULL)
         m_brBackground.DeleteObject();
@@ -628,10 +628,72 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
 
     // 텍스트 출력
     if (pTitleFont != NULL)
-        g.DrawString(L"KFTCOneCAP", -1, pTitleFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 1 : 2))), &titleBrush);
-    if (pSubFont != NULL)
-        g.DrawString(L"금융결제원 결제 솔루션 프로그램 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 30 : 40))), &subBrush);
+    {
+        PointF ptTitle((REAL)textLeft, (REAL)(top + SX(bCH ? 1 : 2)));
 
+        // 1. "KFTCOneCAP" 메인 텍스트 (다크 그레이)
+        g.DrawString(L"KFTCOneCAP", -1, pTitleFont, ptTitle, &titleBrush);
+
+        // 2. 텍스트 너비 측정 (뱃지 위치를 잡기 위함)
+        RectF boundRect;
+        g.MeasureString(L"KFTCOneCAP", -1, pTitleFont, PointF(0, 0), &boundRect);
+        // 3. "Plus" 배지(Badge) 그리기 (컴팩트 모드 완벽 대응 버전)
+        if (pSubFont != NULL)
+        {
+            // [포인트 1] 모드에 따라 배지 크기를 가변적으로 설정 (SX로 스케일링)
+            REAL badgeW = (REAL)SX(bCH ? 42 : 50);
+            REAL badgeH = (REAL)SX(bCH ? 18 : 22);
+
+            // [포인트 2] 수학적 중앙에서 아주 살짝(-2px) 위로 올려 '시각적 중앙(Optical Center)'을 맞춥니다.
+            REAL badgeY = ptTitle.Y + (boundRect.Height - badgeH) / 2.0f - SX(bCH ? 1 : 2);
+            // 글자와의 간격도 컴팩트 모드에선 살짝 좁힘
+            REAL badgeX = ptTitle.X + boundRect.Width + SX(bCH ? 4 : 6);
+
+            // 배지 배경 그리기
+            GraphicsPath badgePath;
+            ModernUIGfx::AddRoundRect(badgePath, RectF(badgeX, badgeY, badgeW, badgeH), (REAL)SX(bCH ? 5 : 6));
+            // KFTC 홈 화면 공식 테마 색상(g_cardIconColor)으로 동기화하여 일체감 형성!
+            SolidBrush badgeBg(Color(255, 31, 114, 214));
+            g.FillPath(&badgeBg, &badgePath);
+
+            // 배지 내부 텍스트 "Plus" 설정
+            SolidBrush whiteBrush(Color(255, 255, 255, 255));
+            StringFormat sf;
+            sf.SetAlignment(StringAlignmentCenter);
+            sf.SetLineAlignment(StringAlignmentCenter);
+
+            // [포인트 3] 메모리 안전 및 모드 전환 대응 폰트 캐싱
+            static Gdiplus::Font* s_pGoldenPlusFont = NULL;
+            static BOOL s_bLastMode = -1; // 이전 모드 저장 (일반/컴팩트)
+
+            // 모드가 바뀌었거나 폰트가 없으면 새로 생성 (죽지 않는 안전한 방식)
+            if (s_pGoldenPlusFont == NULL || s_bLastMode != bCH) {
+                if (s_pGoldenPlusFont) { delete s_pGoldenPlusFont; s_pGoldenPlusFont = NULL; }
+
+                LOGFONT lf;
+                m_fontSubtitle.GetLogFont(&lf); // 이미 모드에 맞게 크기가 조절된 서브폰트 정보 가져옴
+                lf.lfWeight = FW_BOLD;
+
+                // [해결] 컴팩트 모드일 때는 96%(조금 더 크게), 일반 모드일 때는 90%로 스케일을 다르게 줍니다.
+                float fontScale = bCH ? 0.96f : 0.90f;
+                lf.lfHeight = (LONG)(lf.lfHeight * fontScale);
+
+                s_pGoldenPlusFont = ModernUIFont::CreateGdipFontFromLogFont(lf);
+                s_bLastMode = bCH;
+            }
+
+            if (s_pGoldenPlusFont != NULL) {
+                // 시각적 보정을 위해 Y축 +1px 이동하여 출력
+                g.DrawString(L"Plus", -1, s_pGoldenPlusFont, RectF(badgeX, badgeY + SX(1), badgeW, badgeH), &sf, &whiteBrush);
+            }
+        }
+    }
+
+    if (pSubFont != NULL)
+    {
+        // 중복되는 앱 이름을 제거하고 깔끔하고 전문적인 설명으로 교체
+        g.DrawString(L"금융결제원 차세대 결제 솔루션 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 30 : 40))), &subBrush);
+    }
 }
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
 {

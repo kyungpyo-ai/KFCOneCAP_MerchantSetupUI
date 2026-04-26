@@ -422,7 +422,7 @@ BOOL CTransDlg::OnInitDialog()
     m_bUiBuilt = TRUE;
     ResizeWindow();
     LayoutControls();
-    ResetSampleResult();
+
     CenterWindow();
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     SetRedraw(TRUE);
@@ -502,6 +502,7 @@ void CTransDlg::CreateResultControls()
         m_results.push_back(rp);
         m_resultLabels[i].SubclassDlgItem(IDC_TRANS_RESULT_LBL_BASE+i, this);
         m_resultValues[i].SubclassDlgItem(IDC_TRANS_VALUE_BASE+i, this);
+        m_resultLabels[i].SetWindowText(lbl[i]);
         m_resultValues[i].SetWindowText(_T("-"));
     }
 }
@@ -607,7 +608,7 @@ void CTransDlg::ShowFieldsForMode()
     case MODE_CASH_APPROVAL:
         show[F_SUPPLY]=show[F_TAX]=show[F_TIP]=show[F_TAXFREE]=show[F_CASHTYPE]=show[F_CASHNO]=TRUE; break;
     case MODE_CASH_CANCEL:
-        show[F_SUPPLY]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_CASHNO]=TRUE; break;
+        show[F_SUPPLY]=show[F_CASHTYPE]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_CASHNO]=TRUE; break;
     }
     for (int i=0; i<kNumFields; i++) {
         SafeShow(&m_fieldLabels[i], show[i]);
@@ -621,10 +622,11 @@ void CTransDlg::ShowFieldsForMode()
 
 void CTransDlg::ResetSampleResult()
 {
+    bool bOk = (m_eMode != MODE_CASH_APPROVAL);
     SetResultValue(0, _T("260415153005"));
-    SetResultValue(1, _T("000"));
+    SetResultValue(1, bOk ? _T("000") : _T("101"));
     SetResultValue(2, _T("정상승인"));
-    SetResultValue(3, _T("30018492"));
+    SetResultValue(3, bOk ? _T("30018492") : _T(""));
     SetResultValue(4, _T("거래가 성공적으로 완료되었습니다."));
     SetResultValue(5, _T("KFTC_T001"));
     SetResultValue(6, _T("9410-****-****-1234"));
@@ -636,6 +638,10 @@ void CTransDlg::ResetSampleResult()
     SetResultValue(12,_T("개인 / 신용"));
     SetResultValue(13,_T("삼성페이"));
     SetResultValue(14,_T("20260415143005KF00182749"));
+    if (!bOk) {
+        SetResultValue(2, _T("한도초과"));
+        SetResultValue(4, _T("한도를 초과한 거래입니다."));
+    }
     ApplyResultColoring();
     UpdateResultControls();
 }
@@ -660,6 +666,15 @@ void CTransDlg::SetResultValue(int idx,LPCTSTR v,BOOL bBlue,BOOL bRed)
     m_results[(size_t)idx].value=v;
     m_results[(size_t)idx].bBlue=bBlue;
     m_results[(size_t)idx].bRed=bRed;
+}
+
+void CTransDlg::ClearResult()
+{
+    for (auto& r : m_results) { r.value = _T(""); r.bBlue = FALSE; r.bRed = FALSE; }
+    m_strBadge = _T("");
+    m_bBadgeOk = FALSE;
+    UpdateResultControls();
+    UpdateWindow();
 }
 
 void CTransDlg::UpdateResultControls()
@@ -731,7 +746,7 @@ void CTransDlg::LayoutControls()
         { F_SUPPLY, F_TAX,     F_TIP,      F_TAXFREE,   F_INSTALL, F_QR,      -1, -1, -1, -1 },
         { F_SUPPLY, F_INSTALL, F_ORGDATE,  F_ORGAPPNO,  F_QR,      -1,        -1, -1, -1, -1 },
         { F_SUPPLY, F_TAX,     F_TIP,      F_TAXFREE,   F_CASHTYPE,F_CASHNO,  -1, -1, -1, -1 },
-        { F_SUPPLY, F_ORGDATE, F_ORGAPPNO, F_CASHNO,    -1,        -1,        -1, -1, -1, -1 },
+        { F_SUPPLY, F_CASHTYPE, F_ORGDATE,  F_ORGAPPNO,  F_CASHNO,  -1,        -1, -1, -1, -1 },
     };
     std::vector<int> vis;
     for (int i = 0; i < kNumFields; i++) {
@@ -854,7 +869,8 @@ void CTransDlg::OnPaint()
         // ----------------------------------------------------
         // [여기에 아래 두 줄을 추가해 보세요!]
         // 오른쪽(응답 정보) 카드에만 아주 연한 경계선(kCardBorder)을 그려줍니다.
-        Gdiplus::Pen borderPen(Gdiplus::Color(255, GetRValue(kCardBorder), GetGValue(kCardBorder), GetBValue(kCardBorder)), 1.0f);
+        COLORREF cBorder = m_strBadge.IsEmpty() ? kCardBorder : (m_bBadgeOk ? RGB(34,139,34) : RGB(200,50,50));
+        Gdiplus::Pen borderPen(Gdiplus::Color(255, GetRValue(cBorder), GetGValue(cBorder), GetBValue(cBorder)), m_strBadge.IsEmpty() ? 1.0f : 1.5f);
         g.DrawPath(&borderPen, &pResult);
 
 
@@ -865,7 +881,8 @@ void CTransDlg::OnPaint()
                 Gdiplus::RectF((Gdiplus::REAL)(rcResult.left+SX(14)),
                                (Gdiplus::REAL)(rcResult.top+SX(15)),
                                (Gdiplus::REAL)SX(4),(Gdiplus::REAL)SX(14)),SX(2));
-            Gdiplus::SolidBrush bb(Gdiplus::Color(255,GetRValue(kBlueText),GetGValue(kBlueText),GetBValue(kBlueText)));
+            COLORREF cPill = m_strBadge.IsEmpty() ? kBlueText : (m_bBadgeOk ? RGB(34,139,34) : RGB(200,50,50));
+            Gdiplus::SolidBrush bb(Gdiplus::Color(255,GetRValue(cPill),GetGValue(cPill),GetBValue(cPill)));
             g.FillPath(&bb,&bp);
         }
         // amount display bg
@@ -1035,6 +1052,7 @@ void CTransDlg::OnTabSelChange(NMHDR*,LRESULT* pResult)
 
 void CTransDlg::OnRunCreditApproval()
 {
+    ClearResult();
     CString vSupply, vTax, vTip, vTaxFree, vInstall, vQr;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);   vSupply.Trim();
     m_fields[F_TAX].pCtrl->GetWindowText(vTax);         vTax.Trim();
@@ -1056,6 +1074,7 @@ void CTransDlg::OnRunCreditApproval()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);      msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    ResetSampleResult();
     if (m_results[1].value == _T("000")) {
         long long nTotal = (long long)ParseAmountText(vSupply)
                          + (long long)ParseAmountText(vTax)
@@ -1070,8 +1089,10 @@ void CTransDlg::OnRunCreditApproval()
 }
 void CTransDlg::OnRunCreditCancel()
 {
+    ClearResult();
     CString vSupply, vOrgDate, vOrgAppNo, vInstall, vQr;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
+
     m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
     m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall);   vInstall.Trim();
@@ -1086,9 +1107,11 @@ void CTransDlg::OnRunCreditCancel()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall);  msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);       msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    ResetSampleResult();
 }
 void CTransDlg::OnRunCashApproval()
 {
+    ClearResult();
     CString vSupply, vTax, vTip, vTaxFree, vCashType, vCashNo;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
     m_fields[F_TAX].pCtrl->GetWindowText(vTax);           vTax.Trim();
@@ -1110,6 +1133,7 @@ void CTransDlg::OnRunCashApproval()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHTYPE].caption, (LPCTSTR)vCashType); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,   (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    ResetSampleResult();
     if (m_results[1].value == _T("000")) {
         long long nTotal = (long long)ParseAmountText(vSupply)
                          + (long long)ParseAmountText(vTax)
@@ -1119,13 +1143,16 @@ void CTransDlg::OnRunCashApproval()
         CString dateStr = m_results[0].value;
         m_tabValues[(int)MODE_CASH_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
         m_tabValues[(int)MODE_CASH_CANCEL][F_ORGAPPNO] = m_results[3].value;
+        { LRESULT s = m_fields[F_CASHTYPE].pCtrl->SendMessage(CB_GETCURSEL); m_tabValues[(int)MODE_CASH_CANCEL][F_CASHTYPE].Format(_T("%d"), (int)s); }
         m_tabValues[(int)MODE_CASH_CANCEL][F_CASHNO]   = vCashNo;
     }
 }
 void CTransDlg::OnRunCashCancel()
 {
-    CString vSupply, vOrgDate, vOrgAppNo, vCashNo;
+    ClearResult();
+    CString vSupply, vCashType, vOrgDate, vOrgAppNo, vCashNo;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
+    m_fields[F_CASHTYPE].pCtrl->GetWindowText(vCashType); vCashType.Trim();
     m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
     m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
@@ -1138,6 +1165,7 @@ void CTransDlg::OnRunCashCancel()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption,(LPCTSTR)vOrgAppNo); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,  (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    ResetSampleResult();
 }
 BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
 {
