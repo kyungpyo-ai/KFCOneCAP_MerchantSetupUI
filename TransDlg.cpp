@@ -671,7 +671,7 @@ void CTransDlg::UpdateResultControls()
         else if (m_results[(size_t)i].bRed)  m_resultValues[i].SetFont(&m_fontResultRed);
         else                                  m_resultValues[i].SetFont(&m_fontResultValue);
     }
-    Invalidate(TRUE);
+    Invalidate(FALSE);
 }
 
 BOOL CTransDlg::ValidateCurrentMode(CString& e)
@@ -727,35 +727,20 @@ void CTransDlg::LayoutControls()
     int fl=rcForm.left+SX(14), fw=rcForm.Width()-SX(28);
     int colW = (fw - fGX) / 2;
 
+    static const int kOrder[4][kNumFields] = {
+        { F_SUPPLY, F_TAX,     F_TIP,      F_TAXFREE,   F_INSTALL, F_QR,      -1, -1, -1, -1 },
+        { F_SUPPLY, F_INSTALL, F_ORGDATE,  F_ORGAPPNO,  F_QR,      -1,        -1, -1, -1, -1 },
+        { F_SUPPLY, F_TAX,     F_TIP,      F_TAXFREE,   F_CASHTYPE,F_CASHNO,  -1, -1, -1, -1 },
+        { F_SUPPLY, F_ORGDATE, F_ORGAPPNO, F_CASHNO,    -1,        -1,        -1, -1, -1, -1 },
+    };
     std::vector<int> vis;
     for (int i = 0; i < kNumFields; i++) {
-        if (m_fields[(size_t)i].pCtrl) {
-            // [FIX] ::IsWindowVisible 대신 컨트롤 자체의 속성(WS_VISIBLE)만 직접 검사
-            // (OnInitDialog 실행 시점에는 부모 다이얼로그가 아직 화면에 뜨지 않아 FALSE가 나오는 현상 방지)
-            DWORD dwStyle = ::GetWindowLong(m_fields[(size_t)i].pCtrl->GetSafeHwnd(), GWL_STYLE);
-            if (dwStyle & WS_VISIBLE) {
-                vis.push_back(i);
-            }
+        int fi = kOrder[(int)m_eMode][i];
+        if (fi < 0) break;
+        if (m_fields[(size_t)fi].pCtrl) {
+            DWORD dwStyle = ::GetWindowLong(m_fields[(size_t)fi].pCtrl->GetSafeHwnd(), GWL_STYLE);
+            if (dwStyle & WS_VISIBLE) vis.push_back(fi);
         }
-    }
-
-    // mvField: combo(ctrlType==2) needs larger total height + CB_SETITEMHEIGHT for selection area
-    if (m_eMode == MODE_CREDIT_CANCEL) {
-        int _iA = -1, _iB = -1;
-        int fA = F_QR;
-        for (int _v = 0; _v < (int)vis.size(); _v++) {
-            if (vis[(size_t)_v] == fA)          _iA = _v;
-            if (vis[(size_t)_v] == F_ORGAPPNO)  _iB = _v;
-        }
-        if (_iA >= 0 && _iB >= 0) { int _tmp = vis[(size_t)_iA]; vis[(size_t)_iA] = vis[(size_t)_iB]; vis[(size_t)_iB] = _tmp; }
-    }
-    if (m_eMode == MODE_CREDIT_CANCEL) {
-        int _iDate = -1, _iApp = -1;
-        for (int _v = 0; _v < (int)vis.size(); _v++) {
-            if (vis[(size_t)_v] == F_ORGDATE)   _iDate = _v;
-            if (vis[(size_t)_v] == F_ORGAPPNO)  _iApp  = _v;
-        }
-        if (_iDate >= 0 && _iApp >= 0) { int _tmp = vis[(size_t)_iDate]; vis[(size_t)_iDate] = vis[(size_t)_iApp]; vis[(size_t)_iApp] = _tmp; }
     }
     auto mvField = [&](int fi, int x, int y, int w, int h) {
         FieldPair& fp = m_fields[(size_t)fi];
@@ -992,6 +977,7 @@ void CTransDlg::OnPaint()
 void CTransDlg::OnSize(UINT t,int cx,int cy)
 {
     CDialog::OnSize(t,cx,cy);
+    if (t == SIZE_MINIMIZED || cx == 0 || cy == 0) return;
     if (m_bUiBuilt) LayoutControls();
 }
 
@@ -1056,6 +1042,10 @@ void CTransDlg::OnRunCreditApproval()
     m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree); vTaxFree.Trim();
     m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall); vInstall.Trim();
     m_fields[F_QR].pCtrl->GetWindowText(vQr);           vQr.Trim();
+    int nSupply  = ParseAmountText(vSupply);
+    int nTax     = ParseAmountText(vTax);
+    int nTip     = ParseAmountText(vTip);
+    int nTaxFree = ParseAmountText(vTaxFree);
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
@@ -1086,6 +1076,7 @@ void CTransDlg::OnRunCreditCancel()
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
     m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall);   vInstall.Trim();
     m_fields[F_QR].pCtrl->GetWindowText(vQr);             vQr.Trim();
+    int nSupply = ParseAmountText(vSupply);
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
@@ -1105,6 +1096,10 @@ void CTransDlg::OnRunCashApproval()
     m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree);   vTaxFree.Trim();
     m_fields[F_CASHTYPE].pCtrl->GetWindowText(vCashType); vCashType.Trim();
     m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
+    int nSupply  = ParseAmountText(vSupply);
+    int nTax     = ParseAmountText(vTax);
+    int nTip     = ParseAmountText(vTip);
+    int nTaxFree = ParseAmountText(vTaxFree);
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
@@ -1134,6 +1129,7 @@ void CTransDlg::OnRunCashCancel()
     m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
     m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
+    int nSupply = ParseAmountText(vSupply);
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
