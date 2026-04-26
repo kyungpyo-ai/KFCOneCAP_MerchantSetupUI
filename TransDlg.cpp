@@ -43,10 +43,10 @@ namespace {
             if (_istdigit(s[i])) digits += s[i];
         return digits.IsEmpty() ? 0 : _ttoi(digits);
     }
-    static CString FormatAmountWithCommas(int n)
+    static CString FormatAmountWithCommas(long long n)
     {
         if (n < 0) n = 0;
-        CString s; s.Format(_T("%d"), n);
+        CString s; s.Format(_T("%I64d"), n);
         int len = s.GetLength();
         CString result;
         for (int i = 0; i < len; ++i) {
@@ -403,7 +403,12 @@ BOOL CTransDlg::OnInitDialog()
     m_edtTax.SetUnitText(_T("원"), 30);
     m_edtTip.SetUnitText(_T("원"), 30);
     m_edtTaxFree.SetUnitText(_T("원"), 30);
+    m_edtSupply.LimitText(11);
+    m_edtTax.LimitText(11);
+    m_edtTip.LimitText(11);
+    m_edtTaxFree.LimitText(11);
     m_edtInstall.SetUnitText(_T("개월"), 40);
+    m_edtInstall.LimitText(2);
     m_edtSupply.SetWindowText(FormatAmountWithCommas(1000));
     m_edtTax.SetWindowText(FormatAmountWithCommas(100));
     m_edtTip.SetWindowText(FormatAmountWithCommas(0));
@@ -616,7 +621,7 @@ void CTransDlg::ShowFieldsForMode()
 
 void CTransDlg::ResetSampleResult()
 {
-    SetResultValue(0, _T("2026-04-15 14:30:05"));
+    SetResultValue(0, _T("260415153005"));
     SetResultValue(1, _T("000"));
     SetResultValue(2, _T("정상승인"));
     SetResultValue(3, _T("30018492"));
@@ -735,6 +740,23 @@ void CTransDlg::LayoutControls()
     }
 
     // mvField: combo(ctrlType==2) needs larger total height + CB_SETITEMHEIGHT for selection area
+    if (m_eMode == MODE_CREDIT_CANCEL) {
+        int _iA = -1, _iB = -1;
+        int fA = F_QR;
+        for (int _v = 0; _v < (int)vis.size(); _v++) {
+            if (vis[(size_t)_v] == fA)          _iA = _v;
+            if (vis[(size_t)_v] == F_ORGAPPNO)  _iB = _v;
+        }
+        if (_iA >= 0 && _iB >= 0) { int _tmp = vis[(size_t)_iA]; vis[(size_t)_iA] = vis[(size_t)_iB]; vis[(size_t)_iB] = _tmp; }
+    }
+    if (m_eMode == MODE_CREDIT_CANCEL) {
+        int _iDate = -1, _iApp = -1;
+        for (int _v = 0; _v < (int)vis.size(); _v++) {
+            if (vis[(size_t)_v] == F_ORGDATE)   _iDate = _v;
+            if (vis[(size_t)_v] == F_ORGAPPNO)  _iApp  = _v;
+        }
+        if (_iDate >= 0 && _iApp >= 0) { int _tmp = vis[(size_t)_iDate]; vis[(size_t)_iDate] = vis[(size_t)_iApp]; vis[(size_t)_iApp] = _tmp; }
+    }
     auto mvField = [&](int fi, int x, int y, int w, int h) {
         FieldPair& fp = m_fields[(size_t)fi];
         if (fp.ctrlType == 2) {
@@ -953,7 +975,7 @@ void CTransDlg::OnPaint()
         long long nTotal=parseN(m_edtSupply);
         if (!bCancelMode)
             nTotal+=parseN(m_edtTax)+parseN(m_edtTip)+parseN(m_edtTaxFree);
-        CString sAmt; sAmt = FormatAmountWithCommas((int)nTotal) + _T(" 원");
+        CString sAmt; sAmt = FormatAmountWithCommas(nTotal) + _T(" 원");
 
         HFONT hOA = (HFONT)::SelectObject(hRaw, m_fontAmount.GetSafeHandle());
         ::SetTextColor(hRaw, RGB(49, 130, 246)); // 토스 스타일 프라이머리 블루
@@ -1049,7 +1071,7 @@ void CTransDlg::OnRunCreditApproval()
                          + (long long)ParseAmountText(vTax)
                          + (long long)ParseAmountText(vTip)
                          + (long long)ParseAmountText(vTaxFree);
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY]  = FormatAmountWithCommas((int)nTotal);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY]  = FormatAmountWithCommas(nTotal);
         m_tabValues[(int)MODE_CREDIT_CANCEL][F_INSTALL] = vInstall;
         CString dateStr = m_results[0].value;
         m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
@@ -1093,19 +1115,32 @@ void CTransDlg::OnRunCashApproval()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHTYPE].caption, (LPCTSTR)vCashType); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,   (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
+    if (m_results[1].value == _T("000")) {
+        long long nTotal = (long long)ParseAmountText(vSupply)
+                         + (long long)ParseAmountText(vTax)
+                         + (long long)ParseAmountText(vTip)
+                         + (long long)ParseAmountText(vTaxFree);
+        m_tabValues[(int)MODE_CASH_CANCEL][F_SUPPLY]  = FormatAmountWithCommas(nTotal);
+        CString dateStr = m_results[0].value;
+        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
+        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGAPPNO] = m_results[3].value;
+        m_tabValues[(int)MODE_CASH_CANCEL][F_CASHNO]   = vCashNo;
+    }
 }
 void CTransDlg::OnRunCashCancel()
 {
-    CString vSupply, vOrgDate, vOrgAppNo;
+    CString vSupply, vOrgDate, vOrgAppNo, vCashNo;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
     m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
+    m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);   msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGDATE].caption, (LPCTSTR)vOrgDate);  msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption,(LPCTSTR)vOrgAppNo); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,  (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
 }
 BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
@@ -1143,7 +1178,9 @@ BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
             int digitsBefore = 0;
             for (int j = 0; j < nStart && j < raw.GetLength(); ++j)
                 if (_istdigit(raw[j])) digitsBefore++;
-            CString formatted = FormatAmountWithCommas(ParseAmountText(raw));
+            int nAmt = ParseAmountText(raw);
+            if (nAmt > 999999999) nAmt = 999999999;
+            CString formatted = FormatAmountWithCommas(nAmt);
             if (formatted != raw) {
                 edt.SetWindowText(formatted);
                 int newPos = 0, dc = 0;
