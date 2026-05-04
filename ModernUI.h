@@ -833,3 +833,80 @@ void RefreshLayered();
     static const int kShadowBlurPad = 12; // extra blur room for layered shadow
     static const int kShadowOffY = 8;
 };
+
+
+// ========================================
+// CTrayPopupItem - menu item descriptor for CTrayPopup
+// ========================================
+struct CTrayPopupItem
+{
+    int     nCmd;
+    CString strText;
+    BOOL    bSeparator;
+    BOOL    bDanger;
+    CTrayPopupItem() : nCmd(0), bSeparator(FALSE), bDanger(FALSE) {}
+    CTrayPopupItem(int cmd, LPCTSTR text, BOOL sep = FALSE, BOOL danger = FALSE)
+        : nCmd(cmd), strText(text), bSeparator(sep), bDanger(danger) {}
+};
+
+// ========================================
+// CTrayPopup - custom tray icon popup (Kakao/Toss style)
+// ========================================
+class CTrayPopup : public CWnd
+{
+public:
+    CTrayPopup();
+    virtual ~CTrayPopup();
+
+    void Show(HWND hOwner, const std::vector<CTrayPopupItem>& items, CPoint ptScreen);
+    void Hide();
+    BOOL IsVisible() const { return m_bVisible; }
+
+protected:
+    afx_msg void OnPaint();
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+    afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+    afx_msg void OnMouseLeave();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+    DECLARE_MESSAGE_MAP()
+
+private:
+    static void RegisterPopupClass();
+    void        RefreshLayered();
+    int         HitTestItem(CPoint ptClient) const;
+
+    static LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
+    static HHOOK       s_hHook;
+    static CTrayPopup* s_pInst;
+
+    HWND   m_hOwner;
+    std::vector<CTrayPopupItem> m_items;
+    int    m_nHover;
+    BOOL   m_bVisible;
+    BOOL   m_bTracking;
+
+    BYTE     m_nFadeAlpha;
+    UINT_PTR m_uFadeTimer;
+
+    int m_nItemH;
+    int m_nSepH;
+    int m_nPadX;
+    int m_nRadius;
+    int m_nShadowPad;
+    int m_nCardW;
+    int m_nCardH;
+
+    Gdiplus::FontFamily* m_pFontFamily;
+    HFONT m_hFont;
+    int   m_nCachedFontDpi;
+
+    static const int kBaseCardW    = 190;
+    static const int kBaseItemH    = 36;
+    static const int kBaseSepH     = 9;
+    static const int kBasePadX     = 16;
+    static const int kBaseRadius   = 12;
+    static const int kBaseShadPad  = 12;
+    static const int kBaseShadOffY = 6;
+};

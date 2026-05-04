@@ -325,6 +325,10 @@ BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
     ON_WM_NCACTIVATE()
     ON_WM_TIMER()
     ON_MESSAGE(WM_TRAYNOTIFY, OnTrayNotify)
+    ON_COMMAND(ID_TRAY_OPEN,   &CKFTCOneCAPDlg::OnTrayOpen)
+    ON_COMMAND(ID_TRAY_READER, &CKFTCOneCAPDlg::OnTrayReader)
+    ON_COMMAND(ID_TRAY_SHOP,   &CKFTCOneCAPDlg::OnTrayShop)
+    ON_COMMAND(ID_TRAY_EXIT,   &CKFTCOneCAPDlg::OnExit)
 END_MESSAGE_MAP()
 
 BOOL CKFTCOneCAPDlg::OnInitDialog()
@@ -413,15 +417,22 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     ShowWindow(SW_SHOWMINIMIZED);
     // Tray icon setup
-    ::ZeroMemory(&m_nid, sizeof(m_nid));
-    m_nid.cbSize           = sizeof(m_nid);
-    m_nid.hWnd             = GetSafeHwnd();
-    m_nid.uID              = 1;
-    m_nid.uFlags           = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-    m_nid.uCallbackMessage = WM_TRAYNOTIFY;
-    m_nid.hIcon            = (HICON)::LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_ICON, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON), LR_SHARED);
-    ::lstrcpy(m_nid.szTip, _T("KFTCOneCAP"));
-    ::Shell_NotifyIcon(NIM_ADD, &m_nid);
+    {
+        int cx = ::GetSystemMetrics(SM_CXSMICON);
+        int cy = ::GetSystemMetrics(SM_CYSMICON);
+        HICON hIco = (HICON)::LoadImage(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR);
+        if (!hIco) hIco = ::LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
+        ::ZeroMemory(&m_nid, sizeof(m_nid));
+        m_nid.cbSize           = sizeof(m_nid);
+        m_nid.hWnd             = GetSafeHwnd();
+        m_nid.uID              = 1;
+        m_nid.uFlags           = NIF_ICON | NIF_TIP | NIF_MESSAGE;
+        m_nid.uCallbackMessage = WM_TRAYNOTIFY;
+        m_nid.hIcon            = hIco;
+        ::lstrcpy(m_nid.szTip, _T("KFTCOneCAP"));
+        BOOL bOk = ::Shell_NotifyIcon(NIM_ADD, &m_nid);
+        UNREFERENCED_PARAMETER(bOk);
+    }
     return TRUE;
 }
 
@@ -1426,47 +1437,40 @@ public:
 
 CKFTCOneCAPApp theApp;
 
+void CKFTCOneCAPDlg::OnTrayOpen()
+{
+    ShowWindow(SW_RESTORE);
+    SetForegroundWindow();
+}
+
+void CKFTCOneCAPDlg::OnTrayReader()
+{
+    ShowWindow(SW_RESTORE);
+    SetForegroundWindow();
+    OnReaderSetup();
+}
+
+void CKFTCOneCAPDlg::OnTrayShop()
+{
+    ShowWindow(SW_RESTORE);
+    SetForegroundWindow();
+    OnShopSetup();
+}
+
 LRESULT CKFTCOneCAPDlg::OnTrayNotify(WPARAM wParam, LPARAM lParam)
 {
     if (wParam != 1) return 0;
     if (lParam == WM_RBUTTONUP)
     {
-        CMenu menu;
-        menu.CreatePopupMenu();
-        menu.AppendMenu(MF_STRING, ID_TRAY_OPEN,   _T("KFTCOneCAP 열기"));
-        menu.AppendMenu(MF_STRING, ID_TRAY_READER,  _T("리더기 설정"));
-        menu.AppendMenu(MF_STRING, ID_TRAY_SHOP,    _T("가맹점 설정"));
-        menu.AppendMenu(MF_SEPARATOR, 0, (LPCTSTR)NULL);
-        menu.AppendMenu(MF_STRING, ID_TRAY_EXIT,    _T("프로그램 종료"));
-
+        std::vector<CTrayPopupItem> menuItems;
+        menuItems.push_back(CTrayPopupItem(ID_TRAY_OPEN,   _T("KFTCOneCAP 열기"),   FALSE, FALSE));
+        menuItems.push_back(CTrayPopupItem(ID_TRAY_READER, _T("리더기 설정"), FALSE, FALSE));
+        menuItems.push_back(CTrayPopupItem(ID_TRAY_SHOP,   _T("상점정보 설정"), FALSE, FALSE));
+        menuItems.push_back(CTrayPopupItem(0, _T(""), TRUE, FALSE));
+        menuItems.push_back(CTrayPopupItem(ID_TRAY_EXIT,   _T("프로그램 종료"),   FALSE, TRUE));
         POINT pt;
         ::GetCursorPos(&pt);
-        ::SetForegroundWindow(GetSafeHwnd());
-        int nCmd = (int)menu.TrackPopupMenu(
-            TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_RIGHTALIGN,
-            pt.x, pt.y, this);
-        ::PostMessage(GetSafeHwnd(), WM_NULL, 0, 0);
-
-        switch (nCmd)
-        {
-        case ID_TRAY_OPEN:
-            ShowWindow(SW_RESTORE);
-            SetForegroundWindow();
-            break;
-        case ID_TRAY_READER:
-            ShowWindow(SW_RESTORE);
-            SetForegroundWindow();
-            OnReaderSetup();
-            break;
-        case ID_TRAY_SHOP:
-            ShowWindow(SW_RESTORE);
-            SetForegroundWindow();
-            OnShopSetup();
-            break;
-        case ID_TRAY_EXIT:
-            OnExit();
-            break;
-        }
+        m_trayPopup.Show(GetSafeHwnd(), menuItems, CPoint(pt));
     }
     else if (lParam == WM_LBUTTONDBLCLK)
     {

@@ -3668,7 +3668,7 @@ void CInfoText::OnPaint()
 		if (pFont && pFont->GetLogFont(&lf))
 		{
 			ModernUIFont::ApplyUIFontFace(lf);
-			lf.lfWeight = FW_SEMIBOLD; //  β 
+			lf.lfWeight = FW_BOLD; //  β 
 			boldFont.CreateFontIndirect(&lf);
 			pOldFont = dc.SelectObject(&boldFont);
 		}
@@ -4696,3 +4696,395 @@ void Draw(HDC hdc,
 }
 
 } // namespace ModernUIHeader
+
+
+// ============================================================================
+// CTrayPopup - custom tray icon popup menu (Kakao/Toss style)
+// ============================================================================
+
+BEGIN_MESSAGE_MAP(CTrayPopup, CWnd)
+	ON_WM_PAINT()
+	ON_WM_ERASEBKGND()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
+	ON_WM_MOUSELEAVE()
+	ON_WM_TIMER()
+	ON_WM_SETCURSOR()
+END_MESSAGE_MAP()
+
+HHOOK       CTrayPopup::s_hHook = NULL;
+CTrayPopup* CTrayPopup::s_pInst = NULL;
+
+CTrayPopup::CTrayPopup()
+	: m_hOwner(NULL), m_nHover(-1), m_bVisible(FALSE), m_bTracking(FALSE)
+	, m_nFadeAlpha(255), m_uFadeTimer(0)
+	, m_nItemH(0), m_nSepH(0), m_nPadX(0), m_nRadius(0)
+	, m_nShadowPad(0), m_nCardW(0), m_nCardH(0)
+	, m_pFontFamily(nullptr), m_hFont(NULL), m_nCachedFontDpi(0)
+{
+}
+
+CTrayPopup::~CTrayPopup()
+{
+	if (s_hHook && s_pInst == this) { ::UnhookWindowsHookEx(s_hHook); s_hHook = NULL; s_pInst = NULL; }
+	if (m_uFadeTimer && GetSafeHwnd()) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+	if (m_hFont) { ::DeleteObject(m_hFont); m_hFont = NULL; }
+	delete m_pFontFamily; m_pFontFamily = nullptr;
+	if (GetSafeHwnd()) DestroyWindow();
+}
+
+/*static*/ void CTrayPopup::RegisterPopupClass()
+{
+	static bool s_reg = false;
+	if (s_reg) return;
+	s_reg = true;
+	WNDCLASSEX wc = { sizeof(WNDCLASSEX) };
+	wc.style         = CS_HREDRAW | CS_VREDRAW;
+	wc.lpfnWndProc   = ::DefWindowProc;
+	wc.hInstance     = AfxGetInstanceHandle();
+	wc.hCursor       = ::LoadCursor(NULL, IDC_ARROW);
+	wc.hbrBackground = (HBRUSH)::GetStockObject(NULL_BRUSH);
+	wc.lpszClassName = _T("KFTCTrayPopup");
+	::RegisterClassEx(&wc);
+}
+
+int CTrayPopup::HitTestItem(CPoint ptClient) const
+{
+	int x = ptClient.x - m_nShadowPad;
+	int y = ptClient.y - m_nShadowPad;
+	if (x < 0 || x >= m_nCardW || y < 0 || y >= m_nCardH) return -1;
+	int iy = 0;
+	for (int i = 0; i < (int)m_items.size(); i++) {
+		int h = m_items[i].bSeparator ? m_nSepH : m_nItemH;
+		if (y >= iy && y < iy + h)
+			return m_items[i].bSeparator ? -1 : i;
+		iy += h;
+	}
+	return -1;
+}
+
+void CTrayPopup::Show(HWND hOwner, const std::vector<CTrayPopupItem>& items, CPoint ptScreen)
+{
+	m_hOwner = hOwner;
+	m_items  = items;
+	m_nHover = -1;
+
+	delete m_pFontFamily;
+	m_pFontFamily = ModernUIFont::CreateGdipFontFamily();
+
+	RegisterPopupClass();
+
+	HWND hRef = hOwner ? hOwner : ::GetDesktopWindow();
+
+	m_nItemH     = ModernUIDpi::Scale(hRef, kBaseItemH);
+	m_nSepH      = ModernUIDpi::Scale(hRef, kBaseSepH);
+	m_nPadX      = ModernUIDpi::Scale(hRef, kBasePadX);
+	m_nRadius    = ModernUIDpi::Scale(hRef, kBaseRadius);
+	m_nShadowPad = ModernUIDpi::Scale(hRef, kBaseShadPad);
+	m_nCardW     = ModernUIDpi::Scale(hRef, kBaseCardW);
+
+	m_nCardH = 0;
+	for (const auto& it : m_items)
+		m_nCardH += it.bSeparator ? m_nSepH : m_nItemH;
+
+	int shadowOffY = ModernUIDpi::Scale(hRef, kBaseShadOffY);
+	int popW = m_nCardW + 2 * m_nShadowPad;
+	int popH = m_nCardH + 2 * m_nShadowPad + shadowOffY;
+
+	if (!GetSafeHwnd()) {
+		CreateEx(WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_LAYERED,
+			_T("KFTCTrayPopup"), _T(""), WS_POPUP,
+			0, 0, popW, popH, hOwner, NULL);
+		m_nFadeAlpha = 0;
+		RefreshLayered();
+	}
+
+	// Position above the cursor, centered horizontally
+	int px = ptScreen.x - popW / 2;
+	int py = ptScreen.y - popH;
+
+	int screenW = ::GetSystemMetrics(SM_CXSCREEN);
+	int screenH = ::GetSystemMetrics(SM_CYSCREEN);
+	if (px + popW > screenW - 4) px = screenW - 4 - popW;
+	if (px < 4) px = 4;
+	if (py < 4) py = 4;
+	if (py + popH > screenH - 4) py = screenH - 4 - popH;
+
+	if (IsWindowVisible()) ShowWindow(SW_HIDE);
+	SetWindowPos(&wndTopMost, px, py, popW, popH, SWP_NOACTIVATE);
+
+	m_nFadeAlpha = 0;
+	RefreshLayered();
+	ShowWindow(SW_SHOWNOACTIVATE);
+	m_bVisible = TRUE;
+
+	if (m_uFadeTimer) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+	m_uFadeTimer = SetTimer(2, 16, NULL);
+
+	if (!s_hHook) {
+		s_hHook = ::SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, NULL, 0);
+		if (s_hHook) s_pInst = this;
+	}
+}
+
+void CTrayPopup::Hide()
+{
+	m_bVisible = FALSE;
+	if (s_hHook) { ::UnhookWindowsHookEx(s_hHook); s_hHook = NULL; s_pInst = NULL; }
+	if (m_uFadeTimer) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+	if (GetSafeHwnd() && ::IsWindowVisible(m_hWnd))
+		m_uFadeTimer = SetTimer(3, 16, NULL);
+	else
+		if (GetSafeHwnd()) ShowWindow(SW_HIDE);
+}
+
+BOOL CTrayPopup::OnEraseBkgnd(CDC* pDC) { return TRUE; }
+
+void CTrayPopup::OnPaint()
+{
+	CPaintDC dc(this);
+	UNREFERENCED_PARAMETER(dc);
+}
+
+void CTrayPopup::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	int idx = HitTestItem(point);
+	int nCmd = (idx >= 0 && idx < (int)m_items.size()) ? m_items[idx].nCmd : 0;
+	Hide();
+	if (m_hOwner && nCmd)
+		::PostMessage(m_hOwner, WM_COMMAND, MAKEWPARAM(nCmd, 0), 0);
+}
+
+void CTrayPopup::OnMouseMove(UINT nFlags, CPoint point)
+{
+	if (!m_bTracking) {
+		TRACKMOUSEEVENT tme = {};
+		tme.cbSize    = sizeof(tme);
+		tme.dwFlags   = TME_LEAVE;
+		tme.hwndTrack = m_hWnd;
+		if (::TrackMouseEvent(&tme)) m_bTracking = TRUE;
+	}
+	int idx = HitTestItem(point);
+	if (idx != m_nHover) {
+		m_nHover = idx;
+		RefreshLayered();
+	}
+}
+
+void CTrayPopup::OnMouseLeave()
+{
+	m_bTracking = FALSE;
+	if (m_nHover != -1) {
+		m_nHover = -1;
+		RefreshLayered();
+	}
+}
+
+void CTrayPopup::OnTimer(UINT_PTR nIDEvent)
+{
+	if (m_uFadeTimer && nIDEvent == m_uFadeTimer) {
+		if (m_bVisible) {
+			m_nFadeAlpha = (BYTE)min(255, (int)m_nFadeAlpha + 52);
+			RefreshLayered();
+			if (m_nFadeAlpha >= 255) { KillTimer(m_uFadeTimer); m_uFadeTimer = 0; }
+		} else {
+			if (m_nFadeAlpha <= 52) {
+				m_nFadeAlpha = 0;
+				KillTimer(m_uFadeTimer); m_uFadeTimer = 0;
+				if (GetSafeHwnd()) ShowWindow(SW_HIDE);
+			} else {
+				m_nFadeAlpha -= 52;
+				RefreshLayered();
+			}
+		}
+		return;
+	}
+	CWnd::OnTimer(nIDEvent);
+}
+
+BOOL CTrayPopup::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	::SetCursor(::LoadCursor(NULL, IDC_ARROW));
+	return TRUE;
+}
+
+void CTrayPopup::RefreshLayered()
+{
+	if (!GetSafeHwnd()) return;
+	CRect rcWin;
+	GetWindowRect(&rcWin);
+	const int W = rcWin.Width();
+	const int H = rcWin.Height();
+	if (W <= 0 || H <= 0) return;
+
+	HDC hdcScreen = ::GetDC(NULL);
+	HDC hdcMem = ::CreateCompatibleDC(hdcScreen);
+
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = W;
+	bmi.bmiHeader.biHeight = -H;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+
+	BYTE* pvBits = NULL;
+	HBITMAP hBmp = ::CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS, (void**)&pvBits, NULL, 0);
+	if (!hBmp) { ::DeleteDC(hdcMem); ::ReleaseDC(NULL, hdcScreen); return; }
+	HBITMAP hOldBmp = (HBITMAP)::SelectObject(hdcMem, hBmp);
+
+	::ZeroMemory(pvBits, W * H * 4);
+	ModernUIGfx::EnsureGdiplusStartup();
+
+	const float sp = (float)m_nShadowPad;
+	const float cW = (float)m_nCardW;
+	const float cH = (float)m_nCardH;
+	const float r = (float)m_nRadius;
+
+	struct DrawText_ { RECT rc; std::wstring text; COLORREF clr; };
+	std::vector<DrawText_> textCalls;
+
+	{
+		Gdiplus::Bitmap bmpGdi(W, H, W * 4, PixelFormat32bppPARGB, pvBits);
+		Gdiplus::Graphics g(&bmpGdi);
+		g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+
+		// Card rounded rect (테두리 곡률을 8px 정도로 주면 더 예쁩니다)
+		Gdiplus::GraphicsPath cardPath;
+		ModernUIGfx::AddRoundRect(cardPath, Gdiplus::RectF(sp, sp, cW, cH), r);
+
+		// 1. 에어리얼 섀도우 (그림자는 부드럽게 유지)
+		{
+			Gdiplus::GraphicsPath shadowPath;
+			shadowPath.AddPath(&cardPath, FALSE);
+			Gdiplus::Matrix mx;
+			mx.Translate(0.0f, (float)ModernUIDpi::Scale(m_hWnd, kBaseShadOffY));
+			shadowPath.Transform(&mx);
+
+			Gdiplus::SolidBrush brFill(Gdiplus::Color(15, 0, 0, 0));
+			g.FillPath(&brFill, &shadowPath);
+
+			const int ws[] = { 20, 14, 8, 4 };
+			const int as[] = { 3, 6, 9, 12 };
+			for (int i = 0; i < 4; i++) {
+				Gdiplus::Pen pen(Gdiplus::Color(as[i], 0, 0, 0), ModernUIDpi::ScaleF(m_hWnd, (float)ws[i]));
+				pen.SetLineJoin(Gdiplus::LineJoinRound);
+				g.DrawPath(&pen, &shadowPath);
+			}
+		}
+
+		// 2. 팝업 베이스 (완벽한 순백색으로 통일하여 확장감 부여)
+		{
+			Gdiplus::SolidBrush brBase(Gdiplus::Color(255, 255, 255, 255));
+			g.FillPath(&brBase, &cardPath);
+
+			// 테두리 선은 아예 없거나, 거의 안 보이는 수준의 극연한 회색으로만 덮기
+			Gdiplus::Pen borderPen(Gdiplus::Color(255, 238, 240, 242), 1.0f);
+			g.DrawPath(&borderPen, &cardPath);
+		}
+
+		// 3. Items (심플 이즈 베스트: 텍스트와 부드러운 배경 하이라이트만)
+		float iy = sp;
+		for (int i = 0; i < (int)m_items.size(); i++) {
+			const auto& item = m_items[i];
+
+			if (item.bSeparator) {
+				// 구분선: 양옆 여백을 넉넉히(12px) 주고 아주 연한 선으로 처리
+				float midY = iy + m_nSepH * 0.5f;
+				Gdiplus::Pen sepPen(Gdiplus::Color(255, 240, 242, 245), 1.0f);
+				g.DrawLine(&sepPen, Gdiplus::PointF(sp + 12.0f, midY), Gdiplus::PointF(sp + cW - 12.0f, midY));
+				iy += (float)m_nSepH;
+			}
+			else {
+				// Hover 상태: macOS처럼 텍스트를 감싸는 둥글고 부드러운 연회색 배경만 은은하게 띄움
+				if (i == m_nHover) {
+					Gdiplus::GraphicsPath hoverPath;
+					// 좌우 6px, 상하 2px 정도의 여백을 둔 알약 모양 하이라이트
+					ModernUIGfx::AddRoundRect(hoverPath,
+						Gdiplus::RectF(sp + 6.0f, iy + 2.0f, cW - 12.0f, (float)(m_nItemH - 4)), 6.0f);
+					Gdiplus::SolidBrush brHov(Gdiplus::Color(255, 242, 244, 246)); // 눈이 편안한 라이트 쿨그레이
+					g.FillPath(&brHov, &hoverPath);
+				}
+
+				COLORREF clr = item.bDanger ? RGB(255, 110, 110) : RGB(90, 97, 112);
+
+				// 텍스트 위치 (기존의 정갈한 위치 그대로)
+				RECT rcText = {
+					(LONG)(sp + m_nPadX),
+					(LONG)iy,
+					(LONG)(sp + cW - m_nPadX),
+					(LONG)(iy + m_nItemH)
+				};
+				textCalls.push_back({ rcText, kftc_to_wide(item.strText), clr });
+				iy += (float)m_nItemH;
+			}
+		}
+	} // GDI+ scope
+
+	// GDI text pass
+	{
+		const int dpi = (int)ModernUIDpi::GetDpiForHwnd(m_hWnd);
+		if (m_nCachedFontDpi != dpi || !m_hFont) {
+			if (m_hFont) { ::DeleteObject(m_hFont); m_hFont = NULL; }
+			LOGFONT lf = {};
+			lf.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 13);
+			// 5. 텍스트 선명도 업그레이드: 플랫 디자인에서는 글씨가 너무 얇으면 가독성이 떨어짐
+			// FW_NORMAL(400) 대신 FW_MEDIUM(500)에 해당하는 굵기를 사용하여 프리텐다드 폰트의 가독성 극대화
+			lf.lfWeight = FW_BOLD;
+			lf.lfQuality = CLEARTYPE_QUALITY;
+			ModernUIFont::ApplyUIFontFace(lf);
+			m_hFont = ::CreateFontIndirect(&lf);
+			m_nCachedFontDpi = dpi;
+		}
+		HFONT hOldFont = (HFONT)::SelectObject(hdcMem, m_hFont);
+		::SetBkMode(hdcMem, TRANSPARENT);
+		for (const auto& tc : textCalls) {
+			::SetTextColor(hdcMem, tc.clr);
+			RECT rcD = tc.rc;
+			::DrawTextW(hdcMem, tc.text.c_str(), -1, &rcD,
+				DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+		}
+		::SelectObject(hdcMem, hOldFont);
+
+		// Fix alpha=0 pixels in card area so white background is opaque
+		int ay0 = (int)sp, ay1 = min(H, (int)(sp + cH));
+		int ax0 = (int)sp, ax1 = min(W, (int)(sp + cW));
+		if (ay0 < 0) ay0 = 0; if (ax0 < 0) ax0 = 0;
+		for (int fy = ay0; fy < ay1; fy++) {
+			BYTE* row = pvBits + fy * W * 4;
+			for (int fx = ax0; fx < ax1; fx++) {
+				if (row[fx * 4 + 3] == 0)
+					row[fx * 4 + 3] = 255;
+			}
+		}
+	}
+
+	POINT ptDst = { rcWin.left, rcWin.top };
+	SIZE  szWnd = { W, H };
+	POINT ptSrc = { 0, 0 };
+	BLENDFUNCTION bf = { AC_SRC_OVER, 0, m_nFadeAlpha, AC_SRC_ALPHA };
+	::UpdateLayeredWindow(m_hWnd, hdcScreen, &ptDst, &szWnd, hdcMem, &ptSrc, 0, &bf, ULW_ALPHA);
+
+	::SelectObject(hdcMem, hOldBmp);
+	::DeleteObject(hBmp);
+	::DeleteDC(hdcMem);
+	::ReleaseDC(NULL, hdcScreen);
+}
+
+/*static*/ LRESULT CALLBACK CTrayPopup::MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+	HHOOK hSave = s_hHook;
+	if (nCode == HC_ACTION &&
+		(wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN ||
+		 wParam == WM_NCLBUTTONDOWN || wParam == WM_NCRBUTTONDOWN) &&
+		s_pInst != NULL && s_pInst->IsVisible())
+	{
+		MSLLHOOKSTRUCT* p = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+		CRect rcWin;
+		s_pInst->GetWindowRect(&rcWin);
+		if (!rcWin.PtInRect(p->pt))
+			s_pInst->Hide();
+	}
+	return ::CallNextHookEx(hSave, nCode, wParam, lParam);
+}

@@ -73,6 +73,9 @@ protected:
     afx_msg void OnLogTransfer();
     afx_msg void OnClose();
     afx_msg LRESULT OnTrayNotify(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnTrayOpen();
+    afx_msg void OnTrayReader();
+    afx_msg void OnTrayShop();
     afx_msg BOOL OnNcActivate(BOOL bActive);
     afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     DECLARE_MESSAGE_MAP()
@@ -143,6 +146,7 @@ private:
     EPendingOpen m_ePendingOpen;
     CBrush m_brBackground;
     NOTIFYICONDATA m_nid;
+    CTrayPopup m_trayPopup;
 
     Gdiplus::Bitmap* m_pLogoBitmap;
     int m_nFooterDividerY;
