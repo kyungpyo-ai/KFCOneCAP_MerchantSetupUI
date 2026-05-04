@@ -4,6 +4,7 @@
 #include "resource.h"
 #include "ModernUI.h"
 #include <gdiplus.h>
+#include <shellapi.h>
 
 class CHomeCardButton : public CButton
 {
@@ -71,6 +72,7 @@ protected:
     afx_msg void OnExit();
     afx_msg void OnLogTransfer();
     afx_msg void OnClose();
+    afx_msg LRESULT OnTrayNotify(WPARAM wParam, LPARAM lParam);
     afx_msg BOOL OnNcActivate(BOOL bActive);
     afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
     DECLARE_MESSAGE_MAP()
@@ -140,6 +142,7 @@ private:
     BOOL         m_bFontsReady;
     EPendingOpen m_ePendingOpen;
     CBrush m_brBackground;
+    NOTIFYICONDATA m_nid;
 
     Gdiplus::Bitmap* m_pLogoBitmap;
     int m_nFooterDividerY;

@@ -256,6 +256,7 @@
 #define IDC_BTN_MULTIPAD2_INFO           5145
 #define IDC_MANAGE_LINK                  1592
 
+#define IDR_MAINFRAME                   128
 #define IDR_FONT_PRETENDARD_REGULAR      9001
 #define IDR_FONT_PRETENDARD_MEDIUM       9002
 #define IDR_FONT_PRETENDARD_BOLD         9003
@@ -308,3 +309,8 @@
 #define IDC_TRANS_LABEL_BASE        51000
 #define IDC_TRANS_RESULT_LBL_BASE   51100
 #define IDC_TRANS_VALUE_BASE        51200
+#define WM_TRAYNOTIFY         (WM_APP + 100)
+#define ID_TRAY_OPEN          61001
+#define ID_TRAY_READER        61002
+#define ID_TRAY_SHOP          61003
+#define ID_TRAY_EXIT          61004

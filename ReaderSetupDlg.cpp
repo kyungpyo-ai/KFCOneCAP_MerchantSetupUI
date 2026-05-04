@@ -591,6 +591,8 @@ CReaderSetupDlg::CReaderSetupDlg(CWnd* pParent /*=NULL*/)
 	m_nLoadingTimerID = 0;
 	m_nLoadingAnimTimerID = 0;
 	m_nPortOpenTimerID = 0;
+	m_nComport1PrevSel = -1;
+	m_nComport2PrevSel = -1;
 	m_nBusyReaderIndex = 0;
 	m_bBusySearch = FALSE;
 	m_rcIntegrityScrollBar.SetRectEmpty();
@@ -850,6 +852,8 @@ void CReaderSetupDlg::LoadSavedPortSelections()
 
 	applySelection(m_comport1, com_port1);
 	applySelection(m_comport2, com_port2);
+	m_nComport1PrevSel = m_comport1.GetCurSel();
+	m_nComport2PrevSel = m_comport2.GetCurSel();
 
 	// Load port always open state: "0" = ON, "1" = OFF (default)
 	CString portAlwaysOpen = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, PORT_ALWAYS_OPEN, _T("1"));
@@ -1732,6 +1736,13 @@ BOOL CReaderSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 
 void CReaderSetupDlg::OnSelchangeComport1()
 {
+	int newSel = m_comport1.GetCurSel();
+	if (m_togglePortOpen1.IsToggled() && newSel != m_nComport1PrevSel) {
+		if (m_nComport1PrevSel >= 0) m_comport1.SetCurSel(m_nComport1PrevSel);
+		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	m_nComport1PrevSel = m_comport1.GetCurSel();
 	CString value;
 	m_comport1.GetWindowText(value);
 	UpdateReaderEnableState(1);
@@ -1740,6 +1751,13 @@ void CReaderSetupDlg::OnSelchangeComport1()
 
 void CReaderSetupDlg::OnSelchangeComport2()
 {
+	int newSel = m_comport2.GetCurSel();
+	if (m_togglePortOpen1.IsToggled() && newSel != m_nComport2PrevSel) {
+		if (m_nComport2PrevSel >= 0) m_comport2.SetCurSel(m_nComport2PrevSel);
+		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
+		return;
+	}
+	m_nComport2PrevSel = m_comport2.GetCurSel();
 	CString value;
 	m_comport2.GetWindowText(value);
 	UpdateReaderEnableState(2);

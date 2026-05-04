@@ -324,6 +324,7 @@ BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
     ON_WM_ACTIVATE()
     ON_WM_NCACTIVATE()
     ON_WM_TIMER()
+    ON_MESSAGE(WM_TRAYNOTIFY, OnTrayNotify)
 END_MESSAGE_MAP()
 
 BOOL CKFTCOneCAPDlg::OnInitDialog()
@@ -411,6 +412,16 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     CenterWindow();
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     ShowWindow(SW_SHOWMINIMIZED);
+    // Tray icon setup
+    ::ZeroMemory(&m_nid, sizeof(m_nid));
+    m_nid.cbSize           = sizeof(m_nid);
+    m_nid.hWnd             = GetSafeHwnd();
+    m_nid.uID              = 1;
+    m_nid.uFlags           = NIF_ICON | NIF_TIP | NIF_MESSAGE;
+    m_nid.uCallbackMessage = WM_TRAYNOTIFY;
+    m_nid.hIcon            = (HICON)::LoadImage(AfxGetResourceHandle(), MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_ICON, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON), LR_SHARED);
+    ::lstrcpy(m_nid.szTip, _T("KFTCOneCAP"));
+    ::Shell_NotifyIcon(NIM_ADD, &m_nid);
     return TRUE;
 }
 
@@ -1257,6 +1268,7 @@ void CKFTCOneCAPDlg::OnExit()
 
 void CKFTCOneCAPDlg::OnClose()
 {
+    ::Shell_NotifyIcon(NIM_DELETE, &m_nid);
     EndDialog(IDCANCEL);
 }
 
@@ -1413,3 +1425,53 @@ public:
 };
 
 CKFTCOneCAPApp theApp;
+
+LRESULT CKFTCOneCAPDlg::OnTrayNotify(WPARAM wParam, LPARAM lParam)
+{
+    if (wParam != 1) return 0;
+    if (lParam == WM_RBUTTONUP)
+    {
+        CMenu menu;
+        menu.CreatePopupMenu();
+        menu.AppendMenu(MF_STRING, ID_TRAY_OPEN,   _T("KFTCOneCAP 열기"));
+        menu.AppendMenu(MF_STRING, ID_TRAY_READER,  _T("리더기 설정"));
+        menu.AppendMenu(MF_STRING, ID_TRAY_SHOP,    _T("가맹점 설정"));
+        menu.AppendMenu(MF_SEPARATOR, 0, (LPCTSTR)NULL);
+        menu.AppendMenu(MF_STRING, ID_TRAY_EXIT,    _T("프로그램 종료"));
+
+        POINT pt;
+        ::GetCursorPos(&pt);
+        ::SetForegroundWindow(GetSafeHwnd());
+        int nCmd = (int)menu.TrackPopupMenu(
+            TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_RIGHTALIGN,
+            pt.x, pt.y, this);
+        ::PostMessage(GetSafeHwnd(), WM_NULL, 0, 0);
+
+        switch (nCmd)
+        {
+        case ID_TRAY_OPEN:
+            ShowWindow(SW_RESTORE);
+            SetForegroundWindow();
+            break;
+        case ID_TRAY_READER:
+            ShowWindow(SW_RESTORE);
+            SetForegroundWindow();
+            OnReaderSetup();
+            break;
+        case ID_TRAY_SHOP:
+            ShowWindow(SW_RESTORE);
+            SetForegroundWindow();
+            OnShopSetup();
+            break;
+        case ID_TRAY_EXIT:
+            OnExit();
+            break;
+        }
+    }
+    else if (lParam == WM_LBUTTONDBLCLK)
+    {
+        ShowWindow(SW_RESTORE);
+        SetForegroundWindow();
+    }
+    return 0;
+}

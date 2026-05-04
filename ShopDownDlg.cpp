@@ -590,7 +590,7 @@ void CShopDownDlg::FinishLoadingOperation(BOOL bRefresh)
     m_nLoadingRowIdx = -1;
     // Restore buttons -- RebindSlots will re-enable based on data state
     RebindSlots();
-    if (bRefresh) Invalidate(FALSE);
+    if (bRefresh) { Invalidate(FALSE); UpdateWindow(); }
 }
 
 // Called on main thread when DownloadWorkerThread posts WM_SHOPDOWN_DOWNLOAD_DONE
@@ -603,10 +603,10 @@ LRESULT CShopDownDlg::OnDownloadDone(WPARAM wParam, LPARAM lParam)
     if (bSuccess && rowIdx >= 0 && rowIdx < kRowCount)
     {
         // retail_name / second_name come from download result (stub)
-        if (m_rowData[rowIdx].retail_name.IsEmpty())
-            m_rowData[rowIdx].retail_name = _T("TEST");
-        if (m_rowData[rowIdx].second_name.IsEmpty())
-            m_rowData[rowIdx].second_name = _T("TEST");
+        m_rowData[rowIdx].retail_name = _T("TEST");
+        m_rowData[rowIdx].second_name = _T("TEST");
+
+
 
         // Write all fields to registry
         {
