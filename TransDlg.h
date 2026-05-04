@@ -11,7 +11,8 @@ class CSegmentCtrl : public CWnd
 {
 public:
     static const int kBarH = 46;
-    CSegmentCtrl() : m_nSel(0), m_nHover(-1), m_nPress(-1), m_crUnderlay(RGB(255,255,255)) {}
+    CSegmentCtrl() : m_nSel(0), m_nHover(-1), m_nPress(-1), m_crUnderlay(RGB(255,255,255)), m_pGdipNormal(NULL), m_pGdipBold(NULL) {}
+    ~CSegmentCtrl();
     BOOL Create(CWnd* pParent, UINT nID, const CRect& rc);
     void AddTab(LPCTSTR text);
     int  GetCurSel() const { return m_nSel; }
@@ -38,6 +39,8 @@ private:
     int      m_nPress;
     COLORREF m_crUnderlay;
     CFont    m_fontNormal, m_fontBold;
+    Gdiplus::Font* m_pGdipNormal;
+    Gdiplus::Font* m_pGdipBold;
 };
 
 class CTransDlg : public CDialog
@@ -111,6 +114,16 @@ private:
     CFont      m_fontResultLabel, m_fontResultValue;
     CFont      m_fontResultBlue,  m_fontResultRed;
     CFont      m_fontBadge;
+    Gdiplus::Font* m_pGdiFontSection;
+    Gdiplus::Font* m_pGdiFontTitle;
+    Gdiplus::Font* m_pGdiFontSub;
+    Gdiplus::Font* m_pGdiFontResultLabel;
+    Gdiplus::Font* m_pGdiFontResultValue;
+    Gdiplus::Font* m_pGdiFontResultBlue;
+    Gdiplus::Font* m_pGdiFontResultRed;
+    Gdiplus::Font* m_pGdiFontBadge;
+    Gdiplus::Font* m_pGdiFontLabel;
+    Gdiplus::Font* m_pGdiFontAmount;
     CString    m_strBadge;
     BOOL       m_bBadgeOk;
 

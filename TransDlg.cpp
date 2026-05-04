@@ -71,6 +71,12 @@ BEGIN_MESSAGE_MAP(CSegmentCtrl, CWnd)
     ON_WM_SETCURSOR()
 END_MESSAGE_MAP()
 
+CSegmentCtrl::~CSegmentCtrl()
+{
+    delete m_pGdipNormal; m_pGdipNormal = NULL;
+    delete m_pGdipBold;   m_pGdipBold   = NULL;
+}
+
 BOOL CSegmentCtrl::Create(CWnd* pParent, UINT nID, const CRect& rc)
 {
     return CWnd::Create(NULL, NULL,
@@ -251,39 +257,33 @@ void CSegmentCtrl::OnPaint()
         int fH = -ModernUIDpi::Scale(m_hWnd, bCmpTab ? 13 : 14);
         lf.lfHeight = fH; lf.lfWeight = FW_NORMAL; m_fontNormal.CreateFontIndirect(&lf);
         lf.lfHeight = fH; lf.lfWeight = FW_BOLD;   m_fontBold.CreateFontIndirect(&lf);
+        lf.lfWeight = FW_NORMAL; delete m_pGdipNormal; m_pGdipNormal = ModernUIFont::CreateGdipFontFromLogFont(lf);
+        lf.lfWeight = FW_BOLD;   delete m_pGdipBold;   m_pGdipBold   = ModernUIFont::CreateGdipFontFromLogFont(lf);
     }
 
-    HDC hdc = g.GetHDC();
-    ::SetBkMode(hdc, TRANSPARENT);
-    for (int i = 0; i < n; i++) {
-        bool bActive = (i == m_nSel);
-
-        float tx = pad + i * tw;
-        float ty = (float)pad;
-
-        // 유니코드 변환 (CP949 → UTF-16)
-        int wlen = ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, NULL, 0);
-        std::vector<wchar_t> wbuf((size_t)wlen, 0);
-        ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, wbuf.data(), wlen);
-
-        HFONT hFont = (HFONT)(bActive ? m_fontBold : m_fontNormal).GetSafeHandle();
-        HFONT hOld = (HFONT)::SelectObject(hdc, hFont);
-        SIZE sz = {};
-        ::GetTextExtentPoint32W(hdc, wbuf.data(), wlen > 0 ? wlen-1 : 0, &sz);
-
-        int cx = (int)(tx + tw/2 - sz.cx/2);
-        int cy2 = (int)(ty + th/2 - sz.cy/2);
-        RECT rcT = { cx, cy2, cx + sz.cx + 2, cy2 + sz.cy };
-        COLORREF crText = bActive       ? kBlueText :
-                          (i == m_nPress) ? RGB(55,  68,  90)  :
-                          (i == m_nHover) ? RGB(90, 102, 122)  :
-                                            RGB(140, 150, 165);
-        ::SetTextColor(hdc, crText);
-        ::DrawTextW(hdc, wbuf.data(), wlen > 0 ? wlen-1 : 0, &rcT,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-        ::SelectObject(hdc, hOld);
+    // GDI+ DrawString (TextRenderingHintAntiAlias - monitor-independent)
+    g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
+    {
+        Gdiplus::StringFormat sfTab;
+        sfTab.SetAlignment(Gdiplus::StringAlignmentCenter);
+        sfTab.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+        for (int i = 0; i < n; i++) {
+            bool bActive = (i == m_nSel);
+            float tx = pad + i * tw;
+            Gdiplus::RectF rcTab(tx, (float)pad, tw, (float)th);
+            int wlen = ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, NULL, 0);
+            std::vector<wchar_t> wbuf((size_t)wlen, 0);
+            ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, wbuf.data(), wlen);
+            COLORREF crT = bActive         ? kBlueText       :
+                           (i == m_nPress) ? RGB(55,  68,  90)  :
+                           (i == m_nHover) ? RGB(90, 102, 122)  :
+                                             RGB(140, 150, 165);
+            Gdiplus::SolidBrush brT(Gdiplus::Color(255, GetRValue(crT), GetGValue(crT), GetBValue(crT)));
+            Gdiplus::Font* pF = bActive ? m_pGdipBold : m_pGdipNormal;
+            if (pF && wlen > 1)
+                g.DrawString(wbuf.data(), wlen - 1, pF, rcTab, &sfTab, &brT);
+        }
     }
-    g.ReleaseHDC(hdc);
 
     dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
     mem.SelectObject(pOld);
@@ -303,8 +303,22 @@ CTransDlg::CTransDlg(CWnd* pParent)
     : CDialog(CTransDlg::IDD, pParent)
     , m_eMode(MODE_CREDIT_APPROVAL), m_bUiBuilt(FALSE)
     , m_brBack(kDlgBg), m_bBadgeOk(FALSE)
+    , m_pGdiFontSection(NULL), m_pGdiFontBadge(NULL), m_pGdiFontTitle(NULL), m_pGdiFontSub(NULL), m_pGdiFontLabel(NULL), m_pGdiFontAmount(NULL)
+    , m_pGdiFontResultLabel(NULL), m_pGdiFontResultValue(NULL), m_pGdiFontResultBlue(NULL), m_pGdiFontResultRed(NULL)
 {}
-CTransDlg::~CTransDlg() {}
+CTransDlg::~CTransDlg()
+{
+    delete m_pGdiFontSection; m_pGdiFontSection = NULL;
+    delete m_pGdiFontBadge;   m_pGdiFontBadge   = NULL;
+    delete m_pGdiFontTitle;   m_pGdiFontTitle   = NULL;
+    delete m_pGdiFontSub;     m_pGdiFontSub     = NULL;
+    delete m_pGdiFontLabel;   m_pGdiFontLabel   = NULL;
+    delete m_pGdiFontAmount;  m_pGdiFontAmount  = NULL;
+    delete m_pGdiFontResultLabel; m_pGdiFontResultLabel = NULL;
+    delete m_pGdiFontResultValue; m_pGdiFontResultValue = NULL;
+    delete m_pGdiFontResultBlue;  m_pGdiFontResultBlue  = NULL;
+    delete m_pGdiFontResultRed;   m_pGdiFontResultRed   = NULL;
+}
 void CTransDlg::DoDataExchange(CDataExchange* pDX) { CDialog::DoDataExchange(pDX); }
 void CTransDlg::OnOK()     {}
 void CTransDlg::OnCancel() { EndDialog(IDCANCEL); }
@@ -333,6 +347,20 @@ void CTransDlg::EnsureFonts()
     MKF((bCmp?11:13), FW_BOLD,      m_fontResultRed);
     MKF(10, FW_BOLD,      m_fontBadge);
 #undef MKF
+    // GDI+ fonts for Phase 2 text rendering (AntiAlias)
+    {
+        LOGFONT lfTmp;
+        m_fontSection.GetLogFont(&lfTmp); delete m_pGdiFontSection; m_pGdiFontSection = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontTitle.GetLogFont(&lfTmp);   delete m_pGdiFontTitle;   m_pGdiFontTitle   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontSub.GetLogFont(&lfTmp);     delete m_pGdiFontSub;     m_pGdiFontSub     = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontBadge.GetLogFont(&lfTmp);   delete m_pGdiFontBadge;   m_pGdiFontBadge   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontLabel.GetLogFont(&lfTmp);   delete m_pGdiFontLabel;   m_pGdiFontLabel   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontAmount.GetLogFont(&lfTmp);  delete m_pGdiFontAmount;  m_pGdiFontAmount  = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontResultLabel.GetLogFont(&lfTmp); delete m_pGdiFontResultLabel; m_pGdiFontResultLabel = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontResultValue.GetLogFont(&lfTmp); delete m_pGdiFontResultValue; m_pGdiFontResultValue = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontResultBlue.GetLogFont(&lfTmp);  delete m_pGdiFontResultBlue;  m_pGdiFontResultBlue  = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+        m_fontResultRed.GetLogFont(&lfTmp);   delete m_pGdiFontResultRed;   m_pGdiFontResultRed   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
+    }
 }
 
 void CTransDlg::GetContentRects(CRect& rcForm, CRect& rcResult) const
@@ -486,6 +514,7 @@ void CTransDlg::CreateInputControls()
         m_fields.push_back(fp);
         m_fieldLabels[i].SubclassDlgItem(IDC_TRANS_LABEL_BASE+i, this);
         m_fieldLabels[i].SetWindowText(fi[i].cap);
+        m_fieldLabels[i].ShowWindow(SW_HIDE);
     }
 }
 
@@ -504,6 +533,8 @@ void CTransDlg::CreateResultControls()
         m_resultValues[i].SubclassDlgItem(IDC_TRANS_VALUE_BASE+i, this);
         m_resultLabels[i].SetWindowText(lbl[i]);
         m_resultValues[i].SetWindowText(_T("-"));
+        m_resultLabels[i].ShowWindow(SW_HIDE);
+        m_resultValues[i].ShowWindow(SW_HIDE);
     }
 }
 
@@ -611,7 +642,6 @@ void CTransDlg::ShowFieldsForMode()
         show[F_SUPPLY]=show[F_CASHTYPE]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_CASHNO]=TRUE; break;
     }
     for (int i=0; i<kNumFields; i++) {
-        SafeShow(&m_fieldLabels[i], show[i]);
         SafeShow(m_fields[(size_t)i].pCtrl, show[i]);
     }
     bool bCancel=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
@@ -885,7 +915,8 @@ void CTransDlg::OnPaint()
             Gdiplus::SolidBrush bb(Gdiplus::Color(255,GetRValue(cPill),GetGValue(cPill),GetBValue(cPill)));
             g.FillPath(&bb,&bp);
         }
-        // amount display bg
+
+        // amount display
         {
             int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(12);
             CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52));
@@ -909,12 +940,11 @@ void CTransDlg::OnPaint()
         }
     } // GDI+ scope ends, flushed to mem
 
-    // --- Phase 2: GDI text ---
-    HDC hRaw=mem.GetSafeHdc();
-    ::SetBkMode(hRaw,TRANSPARENT);
 
-    // header
+    // --- Phase 2: text rendering ---
+    // Header (GDI+ AntiAlias via ModernUIHeader::Draw)
     {
+        HDC hRaw = mem.GetSafeHdc();
         wchar_t wT[64]={},wS[256]={};
         ::MultiByteToWideChar(CP_ACP,0,_T("결제"),-1,wT,64);
         ::MultiByteToWideChar(CP_ACP,0,_T("신용 및 현금영수증 거래를 진행합니다"),-1,wS,256);
@@ -925,66 +955,116 @@ void CTransDlg::OnPaint()
             rcMain.left+SX(6),rcMain.top+SX(::GetSystemMetrics(SM_CYSCREEN)<=800?60:74),rcMain.right-SX(6),
             ::GetSystemMetrics(SM_CYSCREEN)<=800?23.0f:26.0f, ::GetSystemMetrics(SM_CYSCREEN)<=800?3.0f:0.0f);
     }
-    // result section title
+    // GDI+ scope: section title, badge, amount text (TextRenderingHintAntiAlias)
     {
-        HFONT hO=(HFONT)::SelectObject(hRaw,m_fontSection.GetSafeHandle());
-        ::SetTextColor(hRaw,kSectionText);
-        ::SetBkMode(hRaw,TRANSPARENT);
-        ::TextOut(hRaw,rcResult.left+SX(26),rcResult.top+SX(14),_T("응답 정보"),lstrlen(_T("응답 정보")));
-        ::SelectObject(hRaw,hO);
-    }
-    // badge
-    if (!m_strBadge.IsEmpty()) {
-        HFONT hOB=(HFONT)::SelectObject(hRaw,m_fontBadge.GetSafeHandle());
-        SIZE sz={}; ::GetTextExtentPoint32(hRaw,m_strBadge,m_strBadge.GetLength(),&sz);
-        ::SelectObject(hRaw,hOB);
-        int bw=sz.cx+SX(16), bh=SX(20);
-        int bx=rcResult.right-SX(14)-bw, by2=rcResult.top+SX(12);
-        {
-            Gdiplus::Graphics g2(hRaw);
-            g2.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        Gdiplus::Graphics g2(mem.GetSafeHdc());
+        g2.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
+        g2.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        // result section title: 응답 정보
+        if (m_pGdiFontSection) {
+            wchar_t wSec[32] = {}; ::MultiByteToWideChar(CP_ACP,0,_T("응답 정보"),-1,wSec,32);
+            Gdiplus::SolidBrush brSec(Gdiplus::Color(255,GetRValue(kSectionText),GetGValue(kSectionText),GetBValue(kSectionText)));
+            Gdiplus::StringFormat sfSec; sfSec.SetAlignment(Gdiplus::StringAlignmentNear); sfSec.SetLineAlignment(Gdiplus::StringAlignmentNear);
+            Gdiplus::PointF ptSec((Gdiplus::REAL)(rcResult.left+SX(26)),(Gdiplus::REAL)(rcResult.top+SX(14)));
+            g2.DrawString(wSec,-1,m_pGdiFontSection,ptSec,&sfSec,&brSec);
+        }
+        // badge
+        if (!m_strBadge.IsEmpty() && m_pGdiFontBadge) {
+            int wlen=::MultiByteToWideChar(CP_ACP,0,m_strBadge,-1,NULL,0);
+            std::vector<wchar_t> wbuf((size_t)wlen,0);
+            ::MultiByteToWideChar(CP_ACP,0,m_strBadge,-1,wbuf.data(),wlen);
+            Gdiplus::StringFormat sfC; sfC.SetAlignment(Gdiplus::StringAlignmentCenter); sfC.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            Gdiplus::RectF rcMeasure(0,0,2000,1000),rcBnd;
+            g2.MeasureString(wbuf.data(),wlen>0?wlen-1:0,m_pGdiFontBadge,rcMeasure,&sfC,&rcBnd);
+            int bw=(int)rcBnd.Width+SX(16),bh=SX(20);
+            int bx=rcResult.right-SX(14)-bw,by2=rcResult.top+SX(12);
             COLORREF bFill=m_bBadgeOk?RGB(230,245,235):RGB(255,235,235);
             Gdiplus::GraphicsPath bPath; AddRRP(bPath,CRect(bx,by2,bx+bw,by2+bh),SX(6));
             Gdiplus::SolidBrush bBr(Gdiplus::Color(255,GetRValue(bFill),GetGValue(bFill),GetBValue(bFill)));
             g2.FillPath(&bBr,&bPath);
+            COLORREF bText=m_bBadgeOk?RGB(30,130,60):kRedText;
+            Gdiplus::SolidBrush brBT(Gdiplus::Color(255,GetRValue(bText),GetGValue(bText),GetBValue(bText)));
+            Gdiplus::RectF rcBT2((Gdiplus::REAL)bx,(Gdiplus::REAL)by2,(Gdiplus::REAL)bw,(Gdiplus::REAL)bh);
+            g2.DrawString(wbuf.data(),wlen>0?wlen-1:0,m_pGdiFontBadge,rcBT2,&sfC,&brBT);
         }
-        COLORREF bText=m_bBadgeOk?RGB(30,130,60):kRedText;
-        hOB=(HFONT)::SelectObject(hRaw,m_fontBadge.GetSafeHandle());
-        ::SetTextColor(hRaw,bText); ::SetBkMode(hRaw,TRANSPARENT);
-        RECT rcBT={bx,by2,bx+bw,by2+bh};
-        ::DrawText(hRaw,m_strBadge,m_strBadge.GetLength(),&rcBT,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        ::SelectObject(hRaw,hOB);
-    }
-    // amount display text (좌/우 1줄 슬림 배치)
-    {
-        int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(12);
-        CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52)); // 52로 슬림하게 맞춤
-
-        // 라벨: 진하고 큰 폰트(m_fontEdit) 적용, 좌측 세로 중앙 정렬
-        HFONT hOL = (HFONT)::SelectObject(hRaw, m_fontLabel.GetSafeHandle());
-        ::SetTextColor(hRaw, RGB(51, 61, 75)); // 까맣고 진한 텍스트
-        ::SetBkMode(hRaw, TRANSPARENT);
-        RECT rcLbl = { rcAmt.left + SX(16), rcAmt.top, rcAmt.right, rcAmt.bottom };
-        ::DrawText(hRaw, _T("최종 결제 예정 금액"), -1, &rcLbl, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-        ::SelectObject(hRaw, hOL);
-
-        // 금액: 우측 세로 중앙 정렬
-        bool bCancelMode=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
-        auto parseN=[](CWnd& e)->long long {
-            CString s; e.GetWindowText(s); s.Trim(); s.Remove(_T(','));
-            return s.IsEmpty()?0LL:(long long)_ttoi64(s);
-        };
-        long long nTotal=parseN(m_edtSupply);
-        if (!bCancelMode)
-            nTotal+=parseN(m_edtTax)+parseN(m_edtTip)+parseN(m_edtTaxFree);
-        CString sAmt; sAmt = FormatAmountWithCommas(nTotal) + _T(" 원");
-
-        HFONT hOA = (HFONT)::SelectObject(hRaw, m_fontAmount.GetSafeHandle());
-        ::SetTextColor(hRaw, RGB(49, 130, 246)); // 토스 스타일 프라이머리 블루
-        ::SetBkMode(hRaw, TRANSPARENT);
-        RECT rcAV = { rcAmt.left, rcAmt.top, rcAmt.right - SX(16), rcAmt.bottom };
-        ::DrawText(hRaw, sAmt, sAmt.GetLength(), &rcAV, DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-        ::SelectObject(hRaw, hOA);
+        // result grid labels and values
+        if (m_pGdiFontResultLabel && m_pGdiFontResultValue && !m_results.empty()) {
+            const int rRowH3 = SX(kResRowH);
+            const int rTY3   = rcResult.top + SX(44);
+            const int rL3    = rcResult.left + SX(14);
+            const int rLW3   = SX(90);
+            const int vW3    = (rcResult.right - SX(14)) - rL3 - rLW3;
+            Gdiplus::StringFormat sfNear; sfNear.SetAlignment(Gdiplus::StringAlignmentNear); sfNear.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            Gdiplus::StringFormat sfFar;  sfFar.SetAlignment(Gdiplus::StringAlignmentFar);  sfFar.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            for (int i = 0; i < kNumResults && i < (int)m_results.size(); i++) {
+                int ry = rTY3 + rRowH3 * i;
+                Gdiplus::RectF rcLbl((Gdiplus::REAL)rL3, (Gdiplus::REAL)(ry+SX(5)), (Gdiplus::REAL)rLW3, (Gdiplus::REAL)(rRowH3-SX(10)));
+                Gdiplus::RectF rcVal((Gdiplus::REAL)(rL3+rLW3), (Gdiplus::REAL)(ry+SX(5)), (Gdiplus::REAL)vW3, (Gdiplus::REAL)(rRowH3-SX(10)));
+                // label
+                if (m_results[(size_t)i].pszLabel) {
+                    int wl=::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].pszLabel,-1,NULL,0);
+                    std::vector<wchar_t> wb((size_t)wl,0);
+                    ::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].pszLabel,-1,wb.data(),wl);
+                    Gdiplus::SolidBrush brLbl(Gdiplus::Color(255,GetRValue(kLabelText),GetGValue(kLabelText),GetBValue(kLabelText)));
+                    g2.DrawString(wb.data(),wl>0?wl-1:0,m_pGdiFontResultLabel,rcLbl,&sfNear,&brLbl);
+                }
+                // value
+                {
+                    int wl=::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].value,-1,NULL,0);
+                    std::vector<wchar_t> wb((size_t)wl,0);
+                    ::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].value,-1,wb.data(),wl);
+                    COLORREF vc = m_results[(size_t)i].bBlue ? kBlueText :
+                                  m_results[(size_t)i].bRed  ? kRedText  : kValueText;
+                    Gdiplus::Font* pVF = m_results[(size_t)i].bBlue ? m_pGdiFontResultBlue :
+                                        m_results[(size_t)i].bRed  ? m_pGdiFontResultRed  : m_pGdiFontResultValue;
+                    Gdiplus::SolidBrush brVal(Gdiplus::Color(255,GetRValue(vc),GetGValue(vc),GetBValue(vc)));
+                    if (pVF) g2.DrawString(wb.data(),wl>0?wl-1:0,pVF,rcVal,&sfFar,&brVal);
+                }
+            }
+        }
+        // input field labels via GDI+ AntiAlias
+        if (m_pGdiFontLabel && !m_fields.empty()) {
+            Gdiplus::StringFormat sfFL; sfFL.SetAlignment(Gdiplus::StringAlignmentNear); sfFL.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            Gdiplus::SolidBrush brFL(Gdiplus::Color(255,GetRValue(kLabelText),GetGValue(kLabelText),GetBValue(kLabelText)));
+            for (int i=0; i<kNumFields; i++) {
+                if (!m_fields[(size_t)i].pCtrl || !::IsWindowVisible(m_fields[(size_t)i].pCtrl->GetSafeHwnd())) continue;
+                CRect rcFL; m_fieldLabels[i].GetWindowRect(&rcFL); ScreenToClient(&rcFL);
+                int wl=::MultiByteToWideChar(CP_ACP,0,(LPCTSTR)m_fields[(size_t)i].caption,-1,NULL,0);
+                std::vector<wchar_t> wbFL((size_t)wl,0);
+                ::MultiByteToWideChar(CP_ACP,0,(LPCTSTR)m_fields[(size_t)i].caption,-1,wbFL.data(),wl);
+                Gdiplus::RectF rcF((Gdiplus::REAL)rcFL.left,(Gdiplus::REAL)rcFL.top,(Gdiplus::REAL)rcFL.Width(),(Gdiplus::REAL)rcFL.Height());
+                g2.DrawString(wbFL.data(),wl>0?wl-1:0,m_pGdiFontLabel,rcF,&sfFL,&brFL);
+            }
+        }
+        // amount display
+        {
+            int segY2=rcForm.top+SX(14),amtY=segY2+SX(CSegmentCtrl::kBarH+6)+SX(12);
+            CRect rcAmt(rcForm.left+SX(20),amtY,rcForm.right-SX(20),amtY+SX(52));
+            if (m_pGdiFontLabel) {
+                wchar_t wLbl[64]={}; ::MultiByteToWideChar(CP_ACP,0,_T("최종 결제 예정 금액"),-1,wLbl,64);
+                Gdiplus::SolidBrush brL(Gdiplus::Color(255,51,61,75));
+                Gdiplus::StringFormat sfL; sfL.SetAlignment(Gdiplus::StringAlignmentNear); sfL.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+                Gdiplus::RectF rcLbl((Gdiplus::REAL)(rcAmt.left+SX(16)),(Gdiplus::REAL)rcAmt.top,(Gdiplus::REAL)(rcAmt.Width()-SX(16)),(Gdiplus::REAL)rcAmt.Height());
+                g2.DrawString(wLbl,-1,m_pGdiFontLabel,rcLbl,&sfL,&brL);
+            }
+            if (m_pGdiFontAmount) {
+                bool bCancelMode=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
+                auto parseN=[](CWnd& e)->long long {
+                    CString s; e.GetWindowText(s); s.Trim(); s.Remove(_T(','));
+                    return s.IsEmpty()?0LL:(long long)_ttoi64(s);
+                };
+                long long nTotal=parseN(m_edtSupply);
+                if (!bCancelMode) nTotal+=parseN(m_edtTax)+parseN(m_edtTip)+parseN(m_edtTaxFree);
+                CString sAmt=FormatAmountWithCommas(nTotal)+_T(" 원");
+                int wlen=::MultiByteToWideChar(CP_ACP,0,sAmt,-1,NULL,0);
+                std::vector<wchar_t> wbuf((size_t)wlen,0);
+                ::MultiByteToWideChar(CP_ACP,0,sAmt,-1,wbuf.data(),wlen);
+                Gdiplus::SolidBrush brA(Gdiplus::Color(255,49,130,246));
+                Gdiplus::StringFormat sfR; sfR.SetAlignment(Gdiplus::StringAlignmentFar); sfR.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+                Gdiplus::RectF rcAV((Gdiplus::REAL)rcAmt.left,(Gdiplus::REAL)rcAmt.top,(Gdiplus::REAL)(rcAmt.Width()-SX(16)),(Gdiplus::REAL)rcAmt.Height());
+                g2.DrawString(wbuf.data(),wlen>0?wlen-1:0,m_pGdiFontAmount,rcAV,&sfR,&brA);
+            }
+        }
     }
 
     dc.BitBlt(0,0,cl.Width(),cl.Height(),&mem,0,0,SRCCOPY);

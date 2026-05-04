@@ -4667,23 +4667,28 @@ void Draw(HDC hdc,
 	// ------------------------------------------------------------------------
 	const float titleY = by + bsz * 0.5f - 22.0f;
     {
-        HDC hdcT = g.GetHDC();
-        ::SetBkMode(hdcT, TRANSPARENT);
+        g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
+        Gdiplus::StringFormat sfN; sfN.SetAlignment(Gdiplus::StringAlignmentNear); sfN.SetLineAlignment(Gdiplus::StringAlignmentNear);
         if (hFontTitle && wTitle) {
-            HFONT hOld = (HFONT)::SelectObject(hdcT, hFontTitle);
-            ::SetTextColor(hdcT, RGB(18, 24, 40));
-            RECT rc = { (LONG)tx, (LONG)titleY, (LONG)(tx+300.f), (LONG)(titleY+28.f) };
-            ::DrawTextW(hdcT, wTitle, -1, &rc, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
-            ::SelectObject(hdcT, hOld);
+            LOGFONT lf = {}; ::GetObject(hFontTitle, sizeof(lf), &lf);
+            Gdiplus::Font* pF = ModernUIFont::CreateGdipFontFromLogFont(lf);
+            if (pF) {
+                Gdiplus::SolidBrush br(Gdiplus::Color(255, 18, 24, 40));
+                Gdiplus::RectF rc(tx, titleY, 300.0f, 28.0f);
+                g.DrawString(wTitle, -1, pF, rc, &sfN, &br);
+                delete pF;
+            }
         }
         if (hFontSub && wSub) {
-            HFONT hOld = (HFONT)::SelectObject(hdcT, hFontSub);
-            ::SetTextColor(hdcT, RGB(130, 142, 162));
-            RECT rc = { (LONG)tx, (LONG)(titleY+subOffsetY), (LONG)(tx+360.f), (LONG)(titleY+46.f) };
-            ::DrawTextW(hdcT, wSub, -1, &rc, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
-            ::SelectObject(hdcT, hOld);
+            LOGFONT lf = {}; ::GetObject(hFontSub, sizeof(lf), &lf);
+            Gdiplus::Font* pF = ModernUIFont::CreateGdipFontFromLogFont(lf);
+            if (pF) {
+                Gdiplus::SolidBrush br(Gdiplus::Color(255, 130, 142, 162));
+                Gdiplus::RectF rc(tx, titleY + subOffsetY, 360.0f, 22.0f);
+                g.DrawString(wSub, -1, pF, rc, &sfN, &br);
+                delete pF;
+            }
         }
-        g.ReleaseHDC(hdcT);
     }
 
     // --- Divider ---
@@ -4783,7 +4788,8 @@ void CTrayPopup::Show(HWND hOwner, const std::vector<CTrayPopupItem>& items, CPo
 	m_nShadowPad = ModernUIDpi::Scale(hRef, kBaseShadPad);
 	m_nCardW     = ModernUIDpi::Scale(hRef, kBaseCardW);
 
-	m_nCardH = 0;
+	// [모던 UI 개선] 팝업 내부 상하 여백 (Top 8px, Bottom 8px = 총 16px) 추가
+	m_nCardH = ModernUIDpi::Scale(hRef, 16);
 	for (const auto& it : m_items)
 		m_nCardH += it.bSeparator ? m_nSepH : m_nItemH;
 
@@ -4939,7 +4945,9 @@ void CTrayPopup::RefreshLayered()
 	const float sp = (float)m_nShadowPad;
 	const float cW = (float)m_nCardW;
 	const float cH = (float)m_nCardH;
-	const float r = (float)m_nRadius;
+
+	// [디자인 포인트 1] 모서리 곡률을 12px로 키워 훨씬 부드러운 둥근 사각형 구현
+	const float r = 12.0f;
 
 	struct DrawText_ { RECT rc; std::wstring text; COLORREF clr; };
 	std::vector<DrawText_> textCalls;
@@ -4947,73 +4955,81 @@ void CTrayPopup::RefreshLayered()
 	{
 		Gdiplus::Bitmap bmpGdi(W, H, W * 4, PixelFormat32bppPARGB, pvBits);
 		Gdiplus::Graphics g(&bmpGdi);
-		g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		g.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
 		g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
-		// Card rounded rect (테두리 곡률을 8px 정도로 주면 더 예쁩니다)
 		Gdiplus::GraphicsPath cardPath;
 		ModernUIGfx::AddRoundRect(cardPath, Gdiplus::RectF(sp, sp, cW, cH), r);
 
-		// 1. 에어리얼 섀도우 (그림자는 부드럽게 유지)
+		// [디자인 포인트 2] 에어리얼 섀도우 (크고, 부드럽고, 투명하게 퍼지는 그림자)
 		{
 			Gdiplus::GraphicsPath shadowPath;
 			shadowPath.AddPath(&cardPath, FALSE);
 			Gdiplus::Matrix mx;
-			mx.Translate(0.0f, (float)ModernUIDpi::Scale(m_hWnd, kBaseShadOffY));
+			mx.Translate(0.0f, 4.0f); // 그림자를 살짝 아래로 떨어뜨려 입체감 부여
 			shadowPath.Transform(&mx);
 
-			Gdiplus::SolidBrush brFill(Gdiplus::Color(15, 0, 0, 0));
+			Gdiplus::SolidBrush brFill(Gdiplus::Color(4, 0, 0, 0));
 			g.FillPath(&brFill, &shadowPath);
 
-			const int ws[] = { 20, 14, 8, 4 };
-			const int as[] = { 3, 6, 9, 12 };
-			for (int i = 0; i < 4; i++) {
+			const int ws[] = { 32, 24, 16, 8, 2 };
+			const int as[] = { 1, 2, 3, 4, 6 };
+			for (int i = 0; i < 5; i++) {
 				Gdiplus::Pen pen(Gdiplus::Color(as[i], 0, 0, 0), ModernUIDpi::ScaleF(m_hWnd, (float)ws[i]));
 				pen.SetLineJoin(Gdiplus::LineJoinRound);
 				g.DrawPath(&pen, &shadowPath);
 			}
 		}
 
-		// 2. 팝업 베이스 (완벽한 순백색으로 통일하여 확장감 부여)
+		// 팝업 배경 (순백색 배경에 아주 얇고 미세한 회색 테두리)
 		{
 			Gdiplus::SolidBrush brBase(Gdiplus::Color(255, 255, 255, 255));
 			g.FillPath(&brBase, &cardPath);
 
-			// 테두리 선은 아예 없거나, 거의 안 보이는 수준의 극연한 회색으로만 덮기
-			Gdiplus::Pen borderPen(Gdiplus::Color(255, 238, 240, 242), 1.0f);
+			Gdiplus::Pen borderPen(Gdiplus::Color(255, 233, 236, 239), 1.0f);
 			g.DrawPath(&borderPen, &cardPath);
 		}
 
-		// 3. Items (심플 이즈 베스트: 텍스트와 부드러운 배경 하이라이트만)
-		float iy = sp;
+		// [디자인 포인트 3] Y좌표 시작점을 상단 여백 8px만큼 내려서 시작
+		float iy = sp + 8.0f;
 		for (int i = 0; i < (int)m_items.size(); i++) {
 			const auto& item = m_items[i];
 
 			if (item.bSeparator) {
-				// 구분선: 양옆 여백을 넉넉히(12px) 주고 아주 연한 선으로 처리
 				float midY = iy + m_nSepH * 0.5f;
-				Gdiplus::Pen sepPen(Gdiplus::Color(255, 240, 242, 245), 1.0f);
-				g.DrawLine(&sepPen, Gdiplus::PointF(sp + 12.0f, midY), Gdiplus::PointF(sp + cW - 12.0f, midY));
+				// 구분선은 양옆 여백을 크게(20px) 주어 꽉 차지 않게 미니멀하게 그림
+				Gdiplus::Pen sepPen(Gdiplus::Color(255, 242, 244, 246), 1.0f);
+				g.DrawLine(&sepPen, Gdiplus::PointF(sp + 20.0f, midY), Gdiplus::PointF(sp + cW - 20.0f, midY));
 				iy += (float)m_nSepH;
 			}
 			else {
-				// Hover 상태: macOS처럼 텍스트를 감싸는 둥글고 부드러운 연회색 배경만 은은하게 띄움
+				// [디자인 포인트 4] Inset Hover (안쪽으로 여백을 둔 알약 형태의 호버)
 				if (i == m_nHover) {
 					Gdiplus::GraphicsPath hoverPath;
-					// 좌우 6px, 상하 2px 정도의 여백을 둔 알약 모양 하이라이트
+					// 좌우 8px, 상하 2px씩 여백을 줘서 둥근 모서리(8px) 하이라이트 박스를 그림
 					ModernUIGfx::AddRoundRect(hoverPath,
-						Gdiplus::RectF(sp + 6.0f, iy + 2.0f, cW - 12.0f, (float)(m_nItemH - 4)), 6.0f);
-					Gdiplus::SolidBrush brHov(Gdiplus::Color(255, 242, 244, 246)); // 눈이 편안한 라이트 쿨그레이
-					g.FillPath(&brHov, &hoverPath);
+						Gdiplus::RectF(sp + 8.0f, iy + 2.0f, cW - 16.0f, (float)(m_nItemH - 4)), 8.0f);
+
+					if (item.bDanger) {
+						// 종료 등 위험 버튼 호버 시 연한 핑크색 바탕
+						Gdiplus::SolidBrush brHov(Gdiplus::Color(255, 255, 238, 240));
+						g.FillPath(&brHov, &hoverPath);
+					}
+					else {
+						// 일반 메뉴 호버 시 세련된 연회색 바탕
+						Gdiplus::SolidBrush brHov(Gdiplus::Color(255, 242, 244, 246));
+						g.FillPath(&brHov, &hoverPath);
+					}
 				}
 
-				COLORREF clr = item.bDanger ? RGB(255, 110, 110) : RGB(90, 97, 112);
+				// [디자인 포인트 5] 텍스트 컬러 대비를 낮춰서 모던하게 (새까만 색 사용 안함)
+				COLORREF clr = item.bDanger ? RGB(240, 68, 82) : RGB(51, 61, 75);
 
-				// 텍스트 위치 (기존의 정갈한 위치 그대로)
+				// 텍스트 위치 (호버 박스 안쪽으로 텍스트도 살짝 들여쓰기)
 				RECT rcText = {
-					(LONG)(sp + m_nPadX),
+					(LONG)(sp + m_nPadX + 4),
 					(LONG)iy,
-					(LONG)(sp + cW - m_nPadX),
+					(LONG)(sp + cW - m_nPadX - 4),
 					(LONG)(iy + m_nItemH)
 				};
 				textCalls.push_back({ rcText, kftc_to_wide(item.strText), clr });
@@ -5029,9 +5045,8 @@ void CTrayPopup::RefreshLayered()
 			if (m_hFont) { ::DeleteObject(m_hFont); m_hFont = NULL; }
 			LOGFONT lf = {};
 			lf.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 13);
-			// 5. 텍스트 선명도 업그레이드: 플랫 디자인에서는 글씨가 너무 얇으면 가독성이 떨어짐
-			// FW_NORMAL(400) 대신 FW_MEDIUM(500)에 해당하는 굵기를 사용하여 프리텐다드 폰트의 가독성 극대화
-			lf.lfWeight = FW_BOLD;
+			// 폰트가 뭉개지지 않도록 FW_BOLD 대신 FW_MEDIUM(500) 수준의 굵기로 깔끔하게 렌더링
+			lf.lfWeight = 500;
 			lf.lfQuality = CLEARTYPE_QUALITY;
 			ModernUIFont::ApplyUIFontFace(lf);
 			m_hFont = ::CreateFontIndirect(&lf);
@@ -5047,7 +5062,7 @@ void CTrayPopup::RefreshLayered()
 		}
 		::SelectObject(hdcMem, hOldFont);
 
-		// Fix alpha=0 pixels in card area so white background is opaque
+		// 바탕의 투명도(Alpha) 0 픽셀을 255로 보정 (카드 영역 내부 흰색 보존)
 		int ay0 = (int)sp, ay1 = min(H, (int)(sp + cH));
 		int ax0 = (int)sp, ax1 = min(W, (int)(sp + cW));
 		if (ay0 < 0) ay0 = 0; if (ax0 < 0) ax0 = 0;
