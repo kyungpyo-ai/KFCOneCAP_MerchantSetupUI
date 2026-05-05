@@ -459,6 +459,7 @@ void CKFTCOneCAPDlg::EnsureFonts()
     // 현재 창의 DPI 세팅을 가져옵니다.
     UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
     const BOOL bCompact = IsCompactScreen();
+    if (bCompact) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
     // --- (A) MFC CFont 객체 생성 섹션 ---
 
@@ -478,7 +479,7 @@ void CKFTCOneCAPDlg::EnsureFonts()
     m_fontCardTitle.CreateFontIndirect(&lf);
 
     // 4. 카드 설명 (두 줄 설명) - 10pt, Normal
-    lf.lfHeight = -MulDiv(bCompact ?  9 : 11, dpi, 72);
+    lf.lfHeight = -MulDiv(bCompact ?  8 : 11, dpi, 72);
     lf.lfWeight = FW_NORMAL;
     m_fontCardDesc.CreateFontIndirect(&lf);
 
@@ -544,7 +545,7 @@ void CKFTCOneCAPDlg::LayoutControls()
 
     // [추가] 우측 상단 로그 전송 버튼 위치 계산 및 배치
         // [수정] 아이콘과 글자가 모두 넉넉하게 들어가도록 버튼 가로 너비(Width)를 130으로 확장
-    const int logBtnW = SX(bC ? 110 : 130);
+    const int logBtnW = SX(bC ? 125 : 130);
     const int logBtnH = SX(bC ? 32 : 36);
     // DrawHeader의 로고 Y 위치와 시각적인 수평을 맞춥니다.
     const int topHeaderY = SX(bC ? 26 : 38) + SX(bC ? 6 : 8);
@@ -1124,8 +1125,8 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     format.SetLineAlignment(StringAlignmentNear);
     format.SetTrimming(StringTrimmingEllipsisCharacter);
 
-    RectF layoutTitle((REAL)rcPaint.left + SX(bCC ? 22 : 28), (REAL)rcPaint.top + SX(bCC ? 84 : 104), (REAL)rcPaint.Width() - SX(bCC ? 44 : 56), (REAL)SX(24));
-    RectF layoutDesc((REAL)rcPaint.left + SX(bCC ? 22 : 28), (REAL)rcPaint.top + SX(bCC ? 108 : 136), (REAL)rcPaint.Width() - SX(bCC ? 44 : 56), (REAL)rcPaint.Height() - SX(bCC ? 120 : 150));
+    RectF layoutTitle((REAL)rcPaint.left + SX(bCC ? 12 : 28), (REAL)rcPaint.top + SX(bCC ? 84 : 104), (REAL)rcPaint.Width() - SX(bCC ? 24 : 56), (REAL)SX(24));
+    RectF layoutDesc((REAL)rcPaint.left + SX(bCC ? 12 : 28), (REAL)rcPaint.top + SX(bCC ? 108 : 136), (REAL)rcPaint.Width() - SX(bCC ? 24 : 56), (REAL)rcPaint.Height() - SX(bCC ? 120 : 150));
 
     // 캐싱된 폰트 포인터(*m_pGdiFontTitle)를 사용하여 그리기
     g.DrawString(CT2W(GetCardTitle(type)), -1, m_pGdiFontTitle, layoutTitle, &format, &titleBrush);

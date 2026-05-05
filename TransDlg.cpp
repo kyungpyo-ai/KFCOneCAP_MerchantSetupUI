@@ -248,6 +248,7 @@ void CSegmentCtrl::OnPaint()
         lf.lfQuality = CLEARTYPE_QUALITY;
         lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
         ModernUIFont::ApplyUIFontFace(lf);
+        if (bCmpTab) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("¸¼Àº °íµñ"));
         int fH = -ModernUIDpi::Scale(m_hWnd, bCmpTab ? 13 : 14);
         lf.lfHeight = fH; lf.lfWeight = FW_NORMAL; m_fontNormal.CreateFontIndirect(&lf);
         lf.lfHeight = fH; lf.lfWeight = FW_BOLD;   m_fontBold.CreateFontIndirect(&lf);
@@ -320,6 +321,7 @@ void CTransDlg::EnsureFonts()
     lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
     ModernUIFont::ApplyUIFontFace(lf);
     const BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
+    if (bCmp) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("¸¼Àº °íµñ"));
 #define MKF(px,wt,f) lf.lfHeight=-ModernUIDpi::Scale(m_hWnd,px); lf.lfWeight=wt; f.CreateFontIndirect(&lf)
     MKF((bCmp?15:18), FW_BOLD, m_fontTitle);
     MKF((bCmp?11:13), FW_BOLD, m_fontSub);

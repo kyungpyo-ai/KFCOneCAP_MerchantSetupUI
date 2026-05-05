@@ -215,6 +215,7 @@ namespace ModernUIFont
 	LPCTSTR GetUIFontFace()
 	{
 		EnsureFontsLoaded();
+		if (::GetSystemMetrics(SM_CYSCREEN) <= 800) return _T("Malgun Gothic");
 		return s_loaded ? _T("Pretendard") : _T("Malgun Gothic");
 	}
 
@@ -227,6 +228,9 @@ namespace ModernUIFont
 	Gdiplus::FontFamily* CreateGdipFontFamily()
 	{
 		EnsureFontsLoaded();
+
+		if (::GetSystemMetrics(SM_CYSCREEN) <= 800)
+			return new Gdiplus::FontFamily(L"Malgun Gothic");
 
 		// Fast path: cached family name (avoids full enum every render call)
 		if (!s_cachedFamilyName.empty())
