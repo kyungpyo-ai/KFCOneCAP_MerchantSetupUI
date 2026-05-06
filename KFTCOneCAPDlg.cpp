@@ -1451,7 +1451,7 @@ LRESULT CKFTCOneCAPDlg::OnTrayNotify(WPARAM wParam, LPARAM lParam)
         std::vector<CTrayPopupItem> menuItems;
         menuItems.push_back(CTrayPopupItem(ID_TRAY_OPEN,   _T("KFTCOneCAP 열기"),   FALSE, FALSE));
         menuItems.push_back(CTrayPopupItem(ID_TRAY_READER, _T("리더기 설정"), FALSE, FALSE));
-        menuItems.push_back(CTrayPopupItem(ID_TRAY_SHOP,   _T("상점정보 설정"), FALSE, FALSE));
+        menuItems.push_back(CTrayPopupItem(ID_TRAY_SHOP,   _T("가맹점 설정"), FALSE, FALSE));
         menuItems.push_back(CTrayPopupItem(0, _T(""), TRUE, FALSE));
         menuItems.push_back(CTrayPopupItem(ID_TRAY_EXIT,   _T("프로그램 종료"),   FALSE, TRUE));
         POINT pt;

@@ -5022,7 +5022,7 @@ void CTrayPopup::RefreshLayered()
 				}
 
 				// [디자인 포인트 5] 텍스트 컬러 대비를 낮춰서 모던하게 (새까만 색 사용 안함)
-				COLORREF clr = item.bDanger ? RGB(240, 68, 82) : RGB(51, 61, 75);
+					COLORREF clr = item.bDanger ? RGB(240, 68, 82) : RGB(90, 100, 115);
 
 				// 텍스트 위치 (호버 박스 안쪽으로 텍스트도 살짝 들여쓰기)
 				RECT rcText = {
@@ -5045,7 +5045,7 @@ void CTrayPopup::RefreshLayered()
 			LOGFONT lf = {};
 			lf.lfHeight = -(int)ModernUIDpi::Scale(m_hWnd, 13);
 			// 폰트가 뭉개지지 않도록 FW_BOLD 대신 FW_MEDIUM(500) 수준의 굵기로 깔끔하게 렌더링
-			lf.lfWeight = 500;
+			lf.lfWeight = FW_BOLD;
 			lf.lfQuality = CLEARTYPE_QUALITY;
 			ModernUIFont::ApplyUIFontFace(lf);
 			m_hFont = ::CreateFontIndirect(&lf);
