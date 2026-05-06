@@ -133,7 +133,6 @@ void CReaderSetupDlg::EnsureFonts()
 	// [FIX] 폰트 페이스를 먼저 일괄 적용 (Pretendard 등)
 	ModernUIFont::ApplyUIFontFace(lf);
 	const BOOL bCF = IsCompactScreen();
-	if (bCF) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
 	// Title (메인 타이틀)
 	lf.lfHeight = -SX(bCF ? 15 : 18);
@@ -559,14 +558,15 @@ void CReaderSetupDlg::LayoutControls()
 
 	int qx = queryBox.left;
 	int qComboW = SX(bCL ? 100 : 120);
-	CRect rcSearchCombo;
-	m_search_date.GetWindowRect(&rcSearchCombo);
-	int qVisibleH = btnH;
 	int qy = queryBox.top + SX(bCL ? 8 : 10);
 	m_search_date.SetWindowPos(NULL, qx, qy, qComboW, SX(220), SWP_NOZORDER | SWP_NOACTIVATE);
 	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)(btnH - 2));
 	m_search_date.SendMessage(CB_SETITEMHEIGHT, (WPARAM)0,  (LPARAM)(btnH - 2));
-	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qy, SX(bCL ? 64 : 78), qVisibleH, SWP_NOZORDER | SWP_NOACTIVATE);
+	CRect rcSearchCombo; m_search_date.GetWindowRect(&rcSearchCombo); ScreenToClient(&rcSearchCombo);
+	int comboH = rcSearchCombo.Height();
+	int qBtnH = btnH;
+	int qBtnY = qy + (comboH - qBtnH) / 2;
+	m_btnSearch.SetWindowPos(NULL, qx + qComboW + SX(12), qBtnY, SX(bCL ? 64 : 78), qBtnH, SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// 커스텀 표는 OnPaint에서 직접 그리고, 실제 리스트는 데이터 저장용으로만 숨긴다.
 	m_integrity_list.SetWindowPos(NULL, -10000, -10000, 1, 1,
@@ -1743,6 +1743,8 @@ void CReaderSetupDlg::OnSelchangeComport1()
 		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
 		return;
 	}
+	if (newSel != m_nComport1PrevSel && m_nComport1PrevSel >= 0)
+		CModernMessageBox::Info(_T("리더기 1번 포트가 변경되었습니다."), this);
 	m_nComport1PrevSel = m_comport1.GetCurSel();
 	CString value;
 	m_comport1.GetWindowText(value);
@@ -1758,6 +1760,8 @@ void CReaderSetupDlg::OnSelchangeComport2()
 		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
 		return;
 	}
+	if (newSel != m_nComport2PrevSel && m_nComport2PrevSel >= 0)
+		CModernMessageBox::Info(_T("리더기 2번 포트가 변경되었습니다."), this);
 	m_nComport2PrevSel = m_comport2.GetCurSel();
 	CString value;
 	m_comport2.GetWindowText(value);

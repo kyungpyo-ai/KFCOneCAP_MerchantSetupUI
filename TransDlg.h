@@ -11,7 +11,7 @@ class CSegmentCtrl : public CWnd
 {
 public:
     static const int kBarH = 46;
-    CSegmentCtrl() : m_nSel(0), m_nHover(-1), m_nPress(-1), m_crUnderlay(RGB(255,255,255)) {}
+    CSegmentCtrl() : m_nSel(0), m_nHover(-1), m_nPress(-1), m_crUnderlay(RGB(255, 255, 255)) {}
     BOOL Create(CWnd* pParent, UINT nID, const CRect& rc);
     void AddTab(LPCTSTR text);
     int  GetCurSel() const { return m_nSel; }
@@ -49,14 +49,14 @@ public:
 
 protected:
     enum EFieldIndex {
-        F_SUPPLY=0,F_TAX,F_TIP,F_TAXFREE,F_INSTALL,F_QR,F_ORGDATE,F_ORGAPPNO,F_CASHTYPE,F_CASHNO
+        F_SUPPLY = 0, F_TAX, F_TIP, F_TAXFREE, F_INSTALL, F_QR, F_ORGDATE, F_ORGAPPNO, F_CASHTYPE, F_CASHNO
     };
     enum ETransMode {
         MODE_CREDIT_APPROVAL = 0, MODE_CREDIT_CANCEL,
-        MODE_CASH_APPROVAL,       MODE_CASH_CANCEL
+        MODE_CASH_APPROVAL, MODE_CASH_CANCEL
     };
     struct ResultPair { LPCTSTR pszLabel; CString value; BOOL bBlue; BOOL bRed; };
-    struct FieldPair  { CWnd* pCtrl; CString caption; BOOL bFullRow; UINT ctrlType; };
+    struct FieldPair { CWnd* pCtrl; CString caption; BOOL bFullRow; UINT ctrlType; };
 
     void EnsureFonts();
     int  SX(int v) const;
@@ -79,10 +79,10 @@ protected:
     void OnRunCashCancel();
     CString GetModeButtonText() const;
     CString GetCurrentModeName() const;
-    void SetResultValue(int i, LPCTSTR v, BOOL bBlue=FALSE, BOOL bRed=FALSE);
+    void SetResultValue(int i, LPCTSTR v, BOOL bBlue = FALSE, BOOL bRed = FALSE);
     void ApplyResultColoring();
     void DrawRoundedCard(Gdiplus::Graphics& g, const CRect& rc, int radius,
-                         COLORREF fill, COLORREF border, int shadowAlpha=0);
+        COLORREF fill, COLORREF border, int shadowAlpha = 0);
     void GetContentRects(CRect& rcForm, CRect& rcResult) const;
 
     virtual void DoDataExchange(CDataExchange* pDX);
@@ -99,9 +99,9 @@ protected:
 
 private:
 
-    static const int kNumFields  = 10;
+    static const int kNumFields = 10;
     static const int kNumResults = 15;
-    static const int kResRowH    = 30;
+    static const int kResRowH = 30;
 
     ETransMode m_eMode;
     BOOL       m_bUiBuilt;
@@ -109,7 +109,7 @@ private:
     CFont      m_fontTitle, m_fontSub, m_fontSection;
     CFont      m_fontLabel, m_fontEdit, m_fontAmount;
     CFont      m_fontResultLabel, m_fontResultValue;
-    CFont      m_fontResultBlue,  m_fontResultRed;
+    CFont      m_fontResultBlue, m_fontResultRed;
     CFont      m_fontBadge;
     CString    m_strBadge;
     BOOL       m_bBadgeOk;
@@ -121,7 +121,7 @@ private:
     CSkinnedEdit     m_edtTax;
     CSkinnedEdit     m_edtTip;
     CSkinnedEdit     m_edtTaxFree;
-    CSkinnedEdit     m_edtInstall; 
+    CSkinnedEdit     m_edtInstall;
     CSkinnedEdit     m_edtQr;
     CSkinnedEdit     m_edtOrgDate;
     CSkinnedEdit     m_edtOrgAppNo;

@@ -273,7 +273,6 @@ void CShopDownDlg::ApplyFonts()
     LOGFONT lf = {};
     ::GetObject((HFONT)::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
     ModernUIFont::ApplyUIFontFace(lf);
-    if (IsCompactScreen()) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("¸¼Àº °íµñ"));
 
     const int fontPx = IsCompactScreen() ? 12 : 14;
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, fontPx);
@@ -317,7 +316,6 @@ void CShopDownDlg::ApplyFonts()
             LOGFONT lf = {};
             lf.lfCharSet = DEFAULT_CHARSET;
             ModernUIFont::ApplyUIFontFace(lf);
-            if (IsCompactScreen()) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("¸¼Àº °íµñ"));
             lf.lfHeight = -lblPx;
             lf.lfWeight = FW_BOLD;
             lf.lfQuality = CLEARTYPE_QUALITY;

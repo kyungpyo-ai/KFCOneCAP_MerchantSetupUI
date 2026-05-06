@@ -459,7 +459,6 @@ void CKFTCOneCAPDlg::EnsureFonts()
     // 현재 창의 DPI 세팅을 가져옵니다.
     UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
     const BOOL bCompact = IsCompactScreen();
-    if (bCompact) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
     // --- (A) MFC CFont 객체 생성 섹션 ---
 
@@ -628,7 +627,7 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
     Graphics g(dc.GetSafeHdc());
     // 최고 품질의 렌더링 설정
     g.SetSmoothingMode(SmoothingModeAntiAlias);
-    g.SetTextRenderingHint(TextRenderingHintAntiAlias);
+    g.SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
     g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
 
     // --- 로고 그리기 ---
@@ -642,80 +641,72 @@ void CKFTCOneCAPDlg::DrawHeader(CDC& dc)
         g.FillEllipse(&fillBrush, RectF(rcLogo.X + SX(10), rcLogo.Y + SX(10), rcLogo.Width - SX(20), rcLogo.Height - SX(20)));
     }
 
-    // --- 타이틀/서브타이틀 그리기 (GDI+ 방식으로 교체) ---
-    Gdiplus::Font* pTitleFont = m_pGdiFontHeader;
-    Gdiplus::Font* pSubFont = m_pGdiFontSub;
-
-    SolidBrush titleBrush(Color(255, GetRValue(kTitleText), GetGValue(kTitleText), GetBValue(kTitleText)));
-    SolidBrush subBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
-
-    // 텍스트 출력
-    if (pTitleFont != NULL)
+    // --- Title, badge, subtitle via GDI ClearType ---
+    if (m_fontTitle.GetSafeHandle())
     {
-        PointF ptTitle((REAL)textLeft, (REAL)(top + SX(bCH ? 1 : 2)));
+        HDC hdc = g.GetHDC();
+        ::SetBkMode(hdc, TRANSPARENT);
+        HFONT hOldTitle = (HFONT)::SelectObject(hdc, m_fontTitle.GetSafeHandle());
+        ::SetTextColor(hdc, kTitleText);
+        SIZE szTitle = {};
+        ::GetTextExtentPoint32W(hdc, L"KFTCOneCAP", 10, &szTitle);
+        TEXTMETRIC tm = {};
+        ::GetTextMetrics(hdc, &tm);
+        int titleTop = top + SX(bCH ? 1 : 2);
+        RECT rcTitle = { textLeft, titleTop, textLeft + szTitle.cx + SX(4), titleTop + tm.tmHeight };
+        ::DrawTextW(hdc, L"KFTCOneCAP", -1, &rcTitle, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
+        ::SelectObject(hdc, hOldTitle);
 
-        // 1. "KFTCOneCAP" 메인 텍스트 (다크 그레이)
-        g.DrawString(L"KFTCOneCAP", -1, pTitleFont, ptTitle, &titleBrush);
-
-        // 2. 텍스트 너비 측정 (뱃지 위치를 잡기 위함)
-        RectF boundRect;
-        g.MeasureString(L"KFTCOneCAP", -1, pTitleFont, PointF(0, 0), &boundRect);
-        // 3. "Plus" 배지(Badge) 그리기 (컴팩트 모드 완벽 대응 버전)
-        if (pSubFont != NULL)
+        // "Plus" badge
+        if (m_fontSubtitle.GetSafeHandle())
         {
-            // [포인트 1] 모드에 따라 배지 크기를 가변적으로 설정 (SX로 스케일링)
             REAL badgeW = (REAL)SX(bCH ? 42 : 50);
             REAL badgeH = (REAL)SX(bCH ? 18 : 22);
+            REAL badgeY = (REAL)titleTop + ((REAL)tm.tmHeight - badgeH) / 2.0f - SX(bCH ? 1 : 2);
+            REAL badgeX = (REAL)textLeft + (REAL)szTitle.cx + SX(bCH ? 4 : 6);
 
-            // [포인트 2] 수학적 중앙에서 아주 살짝(-2px) 위로 올려 '시각적 중앙(Optical Center)'을 맞춥니다.
-            REAL badgeY = ptTitle.Y + (boundRect.Height - badgeH) / 2.0f - SX(bCH ? 1 : 2);
-            // 글자와의 간격도 컴팩트 모드에선 살짝 좁힘
-            REAL badgeX = ptTitle.X + boundRect.Width + SX(bCH ? 4 : 6);
+            // Badge background (rounded rect - GDI+ only)
+            g.ReleaseHDC(hdc);
+            {
+                GraphicsPath badgePath;
+                ModernUIGfx::AddRoundRect(badgePath, RectF(badgeX, badgeY, badgeW, badgeH), (REAL)SX(bCH ? 5 : 6));
+                SolidBrush badgeBg(Color(255, 31, 114, 214));
+                g.FillPath(&badgeBg, &badgePath);
+            }
+            hdc = g.GetHDC();
+            ::SetBkMode(hdc, TRANSPARENT);
 
-            // 배지 배경 그리기
-            GraphicsPath badgePath;
-            ModernUIGfx::AddRoundRect(badgePath, RectF(badgeX, badgeY, badgeW, badgeH), (REAL)SX(bCH ? 5 : 6));
-            // KFTC 홈 화면 공식 테마 색상(g_cardIconColor)으로 동기화하여 일체감 형성!
-            SolidBrush badgeBg(Color(255, 31, 114, 214));
-            g.FillPath(&badgeBg, &badgePath);
-
-            // 배지 내부 텍스트 "Plus" 설정
-            SolidBrush whiteBrush(Color(255, 255, 255, 255));
-            StringFormat sf;
-            sf.SetAlignment(StringAlignmentCenter);
-            sf.SetLineAlignment(StringAlignmentCenter);
-
-            // [포인트 3] 메모리 안전 및 모드 전환 대응 폰트 캐싱
-            static Gdiplus::Font* s_pGoldenPlusFont = NULL;
-            static BOOL s_bLastMode = -1; // 이전 모드 저장 (일반/컴팩트)
-
-            // 모드가 바뀌었거나 폰트가 없으면 새로 생성 (죽지 않는 안전한 방식)
-            if (s_pGoldenPlusFont == NULL || s_bLastMode != bCH) {
-                if (s_pGoldenPlusFont) { delete s_pGoldenPlusFont; s_pGoldenPlusFont = NULL; }
-
-                LOGFONT lf;
-                m_fontSubtitle.GetLogFont(&lf); // 이미 모드에 맞게 크기가 조절된 서브폰트 정보 가져옴
+            static CFont s_fontPlus;
+            static BOOL s_bPlusLastMode = -1;
+            if (!s_fontPlus.GetSafeHandle() || s_bPlusLastMode != bCH) {
+                s_fontPlus.DeleteObject();
+                LOGFONT lf; m_fontSubtitle.GetLogFont(&lf);
                 lf.lfWeight = FW_BOLD;
-
-                // [해결] 컴팩트 모드일 때는 96%(조금 더 크게), 일반 모드일 때는 90%로 스케일을 다르게 줍니다.
-                float fontScale = bCH ? 0.96f : 0.90f;
-                lf.lfHeight = (LONG)(lf.lfHeight * fontScale);
-
-                s_pGoldenPlusFont = ModernUIFont::CreateGdipFontFromLogFont(lf);
-                s_bLastMode = bCH;
+                lf.lfHeight = (LONG)(lf.lfHeight * (bCH ? 0.96f : 0.90f));
+                s_fontPlus.CreateFontIndirect(&lf);
+                s_bPlusLastMode = bCH;
             }
-
-            if (s_pGoldenPlusFont != NULL) {
-                // 시각적 보정을 위해 Y축 +1px 이동하여 출력
-                g.DrawString(L"Plus", -1, s_pGoldenPlusFont, RectF(badgeX, badgeY + SX(1), badgeW, badgeH), &sf, &whiteBrush);
-            }
+            HFONT hOldP = (HFONT)::SelectObject(hdc, s_fontPlus.GetSafeHandle());
+            ::SetTextColor(hdc, RGB(255, 255, 255));
+            RECT rcPlus = { (int)badgeX, (int)(badgeY + SX(1)), (int)(badgeX + badgeW), (int)(badgeY + SX(1) + badgeH) };
+            ::DrawTextW(hdc, L"Plus", -1, &rcPlus, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            ::SelectObject(hdc, hOldP);
         }
+        g.ReleaseHDC(hdc);
     }
 
-    if (pSubFont != NULL)
+    // Subtitle
+    if (m_fontSubtitle.GetSafeHandle())
     {
-        // 중복되는 앱 이름을 제거하고 깔끔하고 전문적인 설명으로 교체
-        g.DrawString(L"금융결제원 차세대 결제 솔루션 v1.0.0.1", -1, pSubFont, PointF((REAL)textLeft, (REAL)(top + SX(bCH ? 30 : 40))), &subBrush);
+        HDC hdc = g.GetHDC();
+        ::SetBkMode(hdc, TRANSPARENT);
+        HFONT hOldSub = (HFONT)::SelectObject(hdc, m_fontSubtitle.GetSafeHandle());
+        ::SetTextColor(hdc, kSubText);
+        int subTop = top + SX(bCH ? 30 : 40);
+        RECT rcSub = { textLeft, subTop, textLeft + SX(500), subTop + SX(20) };
+        ::DrawTextW(hdc, L"금융결제원 차세대 결제 솔루션 v1.0.0.1", -1, &rcSub, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX);
+        ::SelectObject(hdc, hOldSub);
+        g.ReleaseHDC(hdc);
     }
 }
 void CKFTCOneCAPDlg::DrawFooterDivider(CDC& dc)
@@ -1105,34 +1096,28 @@ void CKFTCOneCAPDlg::DrawHomeCard(LPDRAWITEMSTRUCT lpDIS, HomeCardType type)
     // ---------------------------------------------------------
     // [5] 텍스트 그리기 (2%만 축소하여 선명도와 눌림감 모두 확보)
     // ---------------------------------------------------------
-    GraphicsState textState = g.Save();
-
-    // 텍스트는 카드보다 아주 미세하게 더 아래로 내려가게 해서 깊이감을 줍니다. (Parallax)
-    REAL textOffsetY = totalOffsetY + (pushY * 0.2f);
-    g.TranslateTransform(cardCenter.X, cardCenter.Y + textOffsetY);
-    g.ScaleTransform(textScale, textScale);
-    g.TranslateTransform(-cardCenter.X, -cardCenter.Y);
-
-    g.SetTextRenderingHint(TextRenderingHintAntiAlias);
-    if (m_pGdiFontTitle == NULL || m_pGdiFontDesc == NULL)
-        EnsureFonts(); // 혹시
-
-    SolidBrush titleBrush(Color(255, GetRValue(kCardTitleText), GetGValue(kCardTitleText), GetBValue(kCardTitleText)));
-    SolidBrush descBrush(Color(255, GetRValue(kSubText), GetGValue(kSubText), GetBValue(kSubText)));
-
-    StringFormat format;
-    format.SetAlignment(StringAlignmentNear);
-    format.SetLineAlignment(StringAlignmentNear);
-    format.SetTrimming(StringTrimmingEllipsisCharacter);
-
-    RectF layoutTitle((REAL)rcPaint.left + SX(bCC ? 12 : 28), (REAL)rcPaint.top + SX(bCC ? 84 : 104), (REAL)rcPaint.Width() - SX(bCC ? 24 : 56), (REAL)SX(24));
-    RectF layoutDesc((REAL)rcPaint.left + SX(bCC ? 12 : 28), (REAL)rcPaint.top + SX(bCC ? 108 : 136), (REAL)rcPaint.Width() - SX(bCC ? 24 : 56), (REAL)rcPaint.Height() - SX(bCC ? 120 : 150));
-
-    // 캐싱된 폰트 포인터(*m_pGdiFontTitle)를 사용하여 그리기
-    g.DrawString(CT2W(GetCardTitle(type)), -1, m_pGdiFontTitle, layoutTitle, &format, &titleBrush);
-    g.DrawString(CT2W(GetCardDescription(type)), -1, m_pGdiFontDesc, layoutDesc, &format, &descBrush);
-
-    g.Restore(textState);
+    // [5] Text via GDI ClearType (Y-offset only; scale +/-2% omitted - imperceptible)
+    {
+        REAL textOffsetY = totalOffsetY + (pushY * 0.2f);
+        int yOff = (int)textOffsetY;
+        int txL = rcPaint.left + SX(bCC ? 12 : 28);
+        int txR = rcPaint.right - SX(bCC ? 12 : 28);
+        RECT rcT = { txL, rcPaint.top + SX(bCC ? 84 : 104) + yOff,
+                     txR, rcPaint.top + SX(bCC ? 84 : 104) + yOff + SX(24) };
+        RECT rcD = { txL, rcPaint.top + SX(bCC ? 108 : 136) + yOff,
+                     txR, rcPaint.bottom - SX(bCC ? 12 : 14) + yOff };
+        HDC hdc = g.GetHDC();
+        ::SetBkMode(hdc, TRANSPARENT);
+        HFONT hOldT = (HFONT)::SelectObject(hdc, m_fontCardTitle.GetSafeHandle());
+        ::SetTextColor(hdc, kCardTitleText);
+        ::DrawTextW(hdc, CT2W(GetCardTitle(type)), -1, &rcT, DT_LEFT|DT_TOP|DT_SINGLELINE|DT_NOPREFIX|DT_END_ELLIPSIS);
+        ::SelectObject(hdc, hOldT);
+        HFONT hOldD = (HFONT)::SelectObject(hdc, m_fontCardDesc.GetSafeHandle());
+        ::SetTextColor(hdc, kSubText);
+        ::DrawTextW(hdc, CT2W(GetCardDescription(type)), -1, &rcD, DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX|DT_END_ELLIPSIS);
+        ::SelectObject(hdc, hOldD);
+        g.ReleaseHDC(hdc);
+    }
 
     // [6] 최종 출력
     dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
@@ -1466,7 +1451,7 @@ LRESULT CKFTCOneCAPDlg::OnTrayNotify(WPARAM wParam, LPARAM lParam)
         std::vector<CTrayPopupItem> menuItems;
         menuItems.push_back(CTrayPopupItem(ID_TRAY_OPEN,   _T("KFTCOneCAP 열기"),   FALSE, FALSE));
         menuItems.push_back(CTrayPopupItem(ID_TRAY_READER, _T("리더기 설정"), FALSE, FALSE));
-        menuItems.push_back(CTrayPopupItem(ID_TRAY_SHOP,   _T("상점정보 설정"), FALSE, FALSE));
+        menuItems.push_back(CTrayPopupItem(ID_TRAY_SHOP,   _T("가맹점 설정"), FALSE, FALSE));
         menuItems.push_back(CTrayPopupItem(0, _T(""), TRUE, FALSE));
         menuItems.push_back(CTrayPopupItem(ID_TRAY_EXIT,   _T("프로그램 종료"),   FALSE, TRUE));
         POINT pt;
