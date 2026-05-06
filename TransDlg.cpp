@@ -30,7 +30,7 @@ namespace {
     static void AddRRP(Gdiplus::GraphicsPath& p, const CRect& rc, float r) {
         ModernUIGfx::AddRoundRect(p,
             Gdiplus::RectF((Gdiplus::REAL)rc.left, (Gdiplus::REAL)rc.top,
-                           (Gdiplus::REAL)rc.Width(), (Gdiplus::REAL)rc.Height()), r);
+                (Gdiplus::REAL)rc.Width(), (Gdiplus::REAL)rc.Height()), r);
     }
     static void SafeShow(CWnd* p, BOOL b) {
         if (p && ::IsWindow(p->GetSafeHwnd()))
@@ -71,12 +71,6 @@ BEGIN_MESSAGE_MAP(CSegmentCtrl, CWnd)
     ON_WM_SETCURSOR()
 END_MESSAGE_MAP()
 
-CSegmentCtrl::~CSegmentCtrl()
-{
-    delete m_pGdipNormal; m_pGdipNormal = NULL;
-    delete m_pGdipBold;   m_pGdipBold   = NULL;
-}
-
 BOOL CSegmentCtrl::Create(CWnd* pParent, UINT nID, const CRect& rc)
 {
     return CWnd::Create(NULL, NULL,
@@ -101,8 +95,8 @@ void CSegmentCtrl::NotifyParent()
 {
     NMHDR nm = {};
     nm.hwndFrom = GetSafeHwnd();
-    nm.idFrom   = (UINT_PTR)GetDlgCtrlID();
-    nm.code     = TCN_SELCHANGE;
+    nm.idFrom = (UINT_PTR)GetDlgCtrlID();
+    nm.code = TCN_SELCHANGE;
     CWnd* p = GetParent();
     if (p && p->GetSafeHwnd())
         p->SendMessage(WM_NOTIFY, (WPARAM)GetDlgCtrlID(), (LPARAM)&nm);
@@ -111,12 +105,12 @@ int CSegmentCtrl::HitTab(CPoint pt) const
 {
     if (m_tabs.empty()) return -1;
     CRect cl; ::GetClientRect(m_hWnd, &cl);
-    int n   = (int)m_tabs.size();
+    int n = (int)m_tabs.size();
     int pad = Scale(3);
-    float tw = (cl.Width() - 2*pad) / (float)n;
+    float tw = (cl.Width() - 2 * pad) / (float)n;
     for (int i = 0; i < n; i++) {
         int x1 = pad + (int)(i * tw);
-        int x2 = pad + (int)((i+1) * tw);
+        int x2 = pad + (int)((i + 1) * tw);
         if (pt.x >= x1 && pt.x < x2) return i;
     }
     return -1;
@@ -144,8 +138,8 @@ void CSegmentCtrl::OnMouseMove(UINT nFlags, CPoint pt)
         Invalidate(FALSE);
     }
     TRACKMOUSEEVENT tme = {};
-    tme.cbSize    = sizeof(tme);
-    tme.dwFlags   = TME_LEAVE;
+    tme.cbSize = sizeof(tme);
+    tme.dwFlags = TME_LEAVE;
     tme.hwndTrack = m_hWnd;
     ::TrackMouseEvent(&tme);
     CWnd::OnMouseMove(nFlags, pt);
@@ -183,11 +177,11 @@ void CSegmentCtrl::OnPaint()
     g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
     if (m_tabs.empty()) {
-        dc.BitBlt(0,0,cl.Width(),cl.Height(),&mem,0,0,SRCCOPY);
+        dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
         mem.SelectObject(pOld); return;
     }
 
-    int n   = (int)m_tabs.size();
+    int n = (int)m_tabs.size();
     int pad = Scale(3);
     // [FIX 3] 탭 모서리를 조금 더 둥글게 처리
     int rO = Scale(12);  // 외부 pill radius
@@ -197,14 +191,14 @@ void CSegmentCtrl::OnPaint()
     {
         Gdiplus::GraphicsPath bgP;
         ModernUIGfx::AddRoundRect(bgP,
-            Gdiplus::RectF(0,0,(Gdiplus::REAL)cl.Width(),(Gdiplus::REAL)cl.Height()),
+            Gdiplus::RectF(0, 0, (Gdiplus::REAL)cl.Width(), (Gdiplus::REAL)cl.Height()),
             (Gdiplus::REAL)rO);
         Gdiplus::SolidBrush bgBr(Gdiplus::Color(255, 238, 239, 241));
         g.FillPath(&bgBr, &bgP);
     }
 
-    float tw = (cl.Width() - 2*pad) / (float)n;
-    float th = (float)(cl.Height() - 2*pad);
+    float tw = (cl.Width() - 2 * pad) / (float)n;
+    float th = (float)(cl.Height() - 2 * pad);
 
     // Hover / Press overlay for non-selected tabs
     for (int i = 0; i < n; i++) {
@@ -215,7 +209,7 @@ void CSegmentCtrl::OnPaint()
         if (alpha == 0) continue;
         Gdiplus::GraphicsPath hp;
         ModernUIGfx::AddRoundRect(hp,
-            Gdiplus::RectF(pad + i*tw, (float)pad, tw, th),
+            Gdiplus::RectF(pad + i * tw, (float)pad, tw, th),
             (Gdiplus::REAL)rI);
         Gdiplus::SolidBrush hb(Gdiplus::Color(alpha, 0, 0, 0));
         g.FillPath(&hb, &hp);
@@ -258,33 +252,39 @@ void CSegmentCtrl::OnPaint()
         int fH = -ModernUIDpi::Scale(m_hWnd, bCmpTab ? 13 : 14);
         lf.lfHeight = fH; lf.lfWeight = FW_NORMAL; m_fontNormal.CreateFontIndirect(&lf);
         lf.lfHeight = fH; lf.lfWeight = FW_BOLD;   m_fontBold.CreateFontIndirect(&lf);
-        lf.lfWeight = FW_NORMAL; delete m_pGdipNormal; m_pGdipNormal = ModernUIFont::CreateGdipFontFromLogFont(lf);
-        lf.lfWeight = FW_BOLD;   delete m_pGdipBold;   m_pGdipBold   = ModernUIFont::CreateGdipFontFromLogFont(lf);
     }
 
-    // GDI+ DrawString (TextRenderingHintAntiAlias - monitor-independent)
-    g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
-    {
-        Gdiplus::StringFormat sfTab;
-        sfTab.SetAlignment(Gdiplus::StringAlignmentCenter);
-        sfTab.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        for (int i = 0; i < n; i++) {
-            bool bActive = (i == m_nSel);
-            float tx = pad + i * tw;
-            Gdiplus::RectF rcTab(tx, (float)pad, tw, (float)th);
-            int wlen = ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, NULL, 0);
-            std::vector<wchar_t> wbuf((size_t)wlen, 0);
-            ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, wbuf.data(), wlen);
-            COLORREF crT = bActive         ? kBlueText       :
-                           (i == m_nPress) ? RGB(55,  68,  90)  :
-                           (i == m_nHover) ? RGB(90, 102, 122)  :
-                                             RGB(140, 150, 165);
-            Gdiplus::SolidBrush brT(Gdiplus::Color(255, GetRValue(crT), GetGValue(crT), GetBValue(crT)));
-            Gdiplus::Font* pF = bActive ? m_pGdipBold : m_pGdipNormal;
-            if (pF && wlen > 1)
-                g.DrawString(wbuf.data(), wlen - 1, pF, rcTab, &sfTab, &brT);
-        }
+    HDC hdc = g.GetHDC();
+    ::SetBkMode(hdc, TRANSPARENT);
+    for (int i = 0; i < n; i++) {
+        bool bActive = (i == m_nSel);
+
+        float tx = pad + i * tw;
+        float ty = (float)pad;
+
+        // 유니코드 변환 (CP949 → UTF-16)
+        int wlen = ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, NULL, 0);
+        std::vector<wchar_t> wbuf((size_t)wlen, 0);
+        ::MultiByteToWideChar(CP_ACP, 0, (LPCTSTR)m_tabs[(size_t)i], -1, wbuf.data(), wlen);
+
+        HFONT hFont = (HFONT)(bActive ? m_fontBold : m_fontNormal).GetSafeHandle();
+        HFONT hOld = (HFONT)::SelectObject(hdc, hFont);
+        SIZE sz = {};
+        ::GetTextExtentPoint32W(hdc, wbuf.data(), wlen > 0 ? wlen - 1 : 0, &sz);
+
+        int cx = (int)(tx + tw / 2 - sz.cx / 2);
+        int cy2 = (int)(ty + th / 2 - sz.cy / 2);
+        RECT rcT = { cx, cy2, cx + sz.cx + 2, cy2 + sz.cy };
+        COLORREF crText = bActive ? kBlueText :
+            (i == m_nPress) ? RGB(55, 68, 90) :
+            (i == m_nHover) ? RGB(90, 102, 122) :
+            RGB(140, 150, 165);
+        ::SetTextColor(hdc, crText);
+        ::DrawTextW(hdc, wbuf.data(), wlen > 0 ? wlen - 1 : 0, &rcT,
+            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        ::SelectObject(hdc, hOld);
     }
+    g.ReleaseHDC(hdc);
 
     dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
     mem.SelectObject(pOld);
@@ -304,24 +304,11 @@ CTransDlg::CTransDlg(CWnd* pParent)
     : CDialog(CTransDlg::IDD, pParent)
     , m_eMode(MODE_CREDIT_APPROVAL), m_bUiBuilt(FALSE)
     , m_brBack(kDlgBg), m_bBadgeOk(FALSE)
-    , m_pGdiFontSection(NULL), m_pGdiFontBadge(NULL), m_pGdiFontTitle(NULL), m_pGdiFontSub(NULL), m_pGdiFontLabel(NULL), m_pGdiFontAmount(NULL)
-    , m_pGdiFontResultLabel(NULL), m_pGdiFontResultValue(NULL), m_pGdiFontResultBlue(NULL), m_pGdiFontResultRed(NULL)
-{}
-CTransDlg::~CTransDlg()
 {
-    delete m_pGdiFontSection; m_pGdiFontSection = NULL;
-    delete m_pGdiFontBadge;   m_pGdiFontBadge   = NULL;
-    delete m_pGdiFontTitle;   m_pGdiFontTitle   = NULL;
-    delete m_pGdiFontSub;     m_pGdiFontSub     = NULL;
-    delete m_pGdiFontLabel;   m_pGdiFontLabel   = NULL;
-    delete m_pGdiFontAmount;  m_pGdiFontAmount  = NULL;
-    delete m_pGdiFontResultLabel; m_pGdiFontResultLabel = NULL;
-    delete m_pGdiFontResultValue; m_pGdiFontResultValue = NULL;
-    delete m_pGdiFontResultBlue;  m_pGdiFontResultBlue  = NULL;
-    delete m_pGdiFontResultRed;   m_pGdiFontResultRed   = NULL;
 }
+CTransDlg::~CTransDlg() {}
 void CTransDlg::DoDataExchange(CDataExchange* pDX) { CDialog::DoDataExchange(pDX); }
-void CTransDlg::OnOK()     {}
+void CTransDlg::OnOK() {}
 void CTransDlg::OnCancel() { EndDialog(IDCANCEL); }
 int  CTransDlg::SX(int v) const { return ModernUIDpi::Scale(m_hWnd, v); }
 
@@ -337,32 +324,18 @@ void CTransDlg::EnsureFonts()
     const BOOL bCmp = (::GetSystemMetrics(SM_CYSCREEN) <= 800);
     if (bCmp) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 #define MKF(px,wt,f) lf.lfHeight=-ModernUIDpi::Scale(m_hWnd,px); lf.lfWeight=wt; f.CreateFontIndirect(&lf)
-    MKF((bCmp?15:18), FW_BOLD, m_fontTitle);
-    MKF((bCmp?11:13), FW_BOLD, m_fontSub);
-    MKF((bCmp?13:15), FW_BOLD,      m_fontSection);
-    MKF(14, FW_BOLD,      m_fontLabel);
-    MKF(14, FW_NORMAL,    m_fontEdit);
+    MKF((bCmp ? 15 : 18), FW_BOLD, m_fontTitle);
+    MKF((bCmp ? 11 : 13), FW_BOLD, m_fontSub);
+    MKF((bCmp ? 13 : 15), FW_BOLD, m_fontSection);
+    MKF(14, FW_BOLD, m_fontLabel);
+    MKF(14, FW_NORMAL, m_fontEdit);
     MKF(24, FW_EXTRABOLD, m_fontAmount);
-    MKF((bCmp?12:14), FW_NORMAL,    m_fontResultLabel);
-    MKF((bCmp?12:14), FW_BOLD,      m_fontResultValue);
-    MKF((bCmp?12:14), FW_EXTRABOLD, m_fontResultBlue);
-    MKF((bCmp?11:13), FW_BOLD,      m_fontResultRed);
-    MKF(10, FW_BOLD,      m_fontBadge);
+    MKF((bCmp ? 12 : 14), FW_NORMAL, m_fontResultLabel);
+    MKF((bCmp ? 12 : 14), FW_BOLD, m_fontResultValue);
+    MKF((bCmp ? 12 : 14), FW_EXTRABOLD, m_fontResultBlue);
+    MKF((bCmp ? 11 : 13), FW_BOLD, m_fontResultRed);
+    MKF(10, FW_BOLD, m_fontBadge);
 #undef MKF
-    // GDI+ fonts for Phase 2 text rendering (AntiAlias)
-    {
-        LOGFONT lfTmp;
-        m_fontSection.GetLogFont(&lfTmp); delete m_pGdiFontSection; m_pGdiFontSection = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontTitle.GetLogFont(&lfTmp);   delete m_pGdiFontTitle;   m_pGdiFontTitle   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontSub.GetLogFont(&lfTmp);     delete m_pGdiFontSub;     m_pGdiFontSub     = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontBadge.GetLogFont(&lfTmp);   delete m_pGdiFontBadge;   m_pGdiFontBadge   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontLabel.GetLogFont(&lfTmp);   delete m_pGdiFontLabel;   m_pGdiFontLabel   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontAmount.GetLogFont(&lfTmp);  delete m_pGdiFontAmount;  m_pGdiFontAmount  = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontResultLabel.GetLogFont(&lfTmp); delete m_pGdiFontResultLabel; m_pGdiFontResultLabel = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontResultValue.GetLogFont(&lfTmp); delete m_pGdiFontResultValue; m_pGdiFontResultValue = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontResultBlue.GetLogFont(&lfTmp);  delete m_pGdiFontResultBlue;  m_pGdiFontResultBlue  = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-        m_fontResultRed.GetLogFont(&lfTmp);   delete m_pGdiFontResultRed;   m_pGdiFontResultRed   = ModernUIFont::CreateGdipFontFromLogFont(lfTmp);
-    }
 }
 
 void CTransDlg::GetContentRects(CRect& rcForm, CRect& rcResult) const
@@ -381,11 +354,11 @@ void CTransDlg::GetContentRects(CRect& rcForm, CRect& rcResult) const
 
     // 새 여백을 적용하여 메인 카드 영역 도출
     CRect rcMain(mL, mT, cl.right - mR, cl.bottom - mB);
-    int cL=rcMain.left+cp, cR=rcMain.right-cp;
-    int cTop=rcMain.top+hdrH+ig, cBot=rcMain.bottom-ig;
-    int halfW=(cR-cL-ig)/2;
-    rcForm   = CRect(cL, cTop, cL+halfW, cBot);
-    rcResult = CRect(cL+halfW+ig, cTop, cR, cBot);
+    int cL = rcMain.left + cp, cR = rcMain.right - cp;
+    int cTop = rcMain.top + hdrH + ig, cBot = rcMain.bottom - ig;
+    int halfW = (cR - cL - ig) / 2;
+    rcForm = CRect(cL, cTop, cL + halfW, cBot);
+    rcResult = CRect(cL + halfW + ig, cTop, cR, cBot);
 }
 
 void CTransDlg::ResizeWindow()
@@ -510,33 +483,30 @@ void CTransDlg::CreateInputControls()
         {_T("현금영수증 번호"), &m_edtCashNo,  FALSE,1},
     };
     m_fields.clear();
-    for (int i=0; i<kNumFields; i++) {
-        FieldPair fp; fp.caption=fi[i].cap; fp.pCtrl=fi[i].ctrl;
-        fp.bFullRow=fi[i].full; fp.ctrlType=fi[i].ct;
+    for (int i = 0; i < kNumFields; i++) {
+        FieldPair fp; fp.caption = fi[i].cap; fp.pCtrl = fi[i].ctrl;
+        fp.bFullRow = fi[i].full; fp.ctrlType = fi[i].ct;
         m_fields.push_back(fp);
-        m_fieldLabels[i].SubclassDlgItem(IDC_TRANS_LABEL_BASE+i, this);
+        m_fieldLabels[i].SubclassDlgItem(IDC_TRANS_LABEL_BASE + i, this);
         m_fieldLabels[i].SetWindowText(fi[i].cap);
-        m_fieldLabels[i].ShowWindow(SW_HIDE);
     }
 }
 
 void CTransDlg::CreateResultControls()
 {
-    static LPCTSTR lbl[15]={
+    static LPCTSTR lbl[15] = {
         _T("거래 일시"),_T("응답코드"),_T("응답내역"),_T("승인번호"),_T("알림"),
         _T("단말기ID"),_T("카드번호"),_T("카드사명"),_T("매입사 코드"),_T("매입사명"),
         _T("발급사 코드"),_T("발급사명"),_T("카드구분"),_T("간편결제구분자"),_T("거래고유번호")
     };
     m_results.clear();
-    for (int i=0; i<kNumResults; i++) {
-        ResultPair rp={lbl[i],_T("-"),FALSE,FALSE};
+    for (int i = 0; i < kNumResults; i++) {
+        ResultPair rp = { lbl[i],_T("-"),FALSE,FALSE };
         m_results.push_back(rp);
-        m_resultLabels[i].SubclassDlgItem(IDC_TRANS_RESULT_LBL_BASE+i, this);
-        m_resultValues[i].SubclassDlgItem(IDC_TRANS_VALUE_BASE+i, this);
+        m_resultLabels[i].SubclassDlgItem(IDC_TRANS_RESULT_LBL_BASE + i, this);
+        m_resultValues[i].SubclassDlgItem(IDC_TRANS_VALUE_BASE + i, this);
         m_resultLabels[i].SetWindowText(lbl[i]);
         m_resultValues[i].SetWindowText(_T("-"));
-        m_resultLabels[i].ShowWindow(SW_HIDE);
-        m_resultValues[i].ShowWindow(SW_HIDE);
     }
 }
 
@@ -555,7 +525,7 @@ void CTransDlg::CreateBottomButton()
 void CTransDlg::ApplyFonts()
 {
     m_segCtrl.SetFont(&m_fontLabel);
-    for (int i=0; i<kNumFields; i++) {
+    for (int i = 0; i < kNumFields; i++) {
         m_fieldLabels[i].SetFont(&m_fontLabel);
         if (m_fields[(size_t)i].pCtrl) {
             m_fields[(size_t)i].pCtrl->SetFont(&m_fontEdit);
@@ -563,7 +533,7 @@ void CTransDlg::ApplyFonts()
     }
     m_btnClose.SetFont(&m_fontEdit);
     m_btnRun.SetFont(&m_fontEdit);
-    for (int i=0; i<kNumResults; i++) {
+    for (int i = 0; i < kNumResults; i++) {
         m_resultLabels[i].SetFont(&m_fontResultLabel);
         m_resultValues[i].SetFont(&m_fontResultValue);
     }
@@ -581,7 +551,8 @@ void CTransDlg::SetMode(ETransMode mode)
             // combo: save selected index as string
             LRESULT sel = p->SendMessage(CB_GETCURSEL);
             m_tabValues[(int)m_eMode][i].Format(_T("%d"), (int)sel);
-        } else {
+        }
+        else {
             p->GetWindowText(m_tabValues[(int)m_eMode][i]);
         }
     }
@@ -600,7 +571,8 @@ void CTransDlg::SetMode(ETransMode mode)
         if (m_fields[(size_t)i].ctrlType == 2) {
             int sel = _ttoi(m_tabValues[(int)mode][i]);
             p->SendMessage(CB_SETCURSEL, (WPARAM)(sel >= 0 ? sel : 0));
-        } else {
+        }
+        else {
             p->SetWindowText(m_tabValues[(int)mode][i]);
         }
     }
@@ -632,24 +604,25 @@ CString CTransDlg::GetCurrentModeName() const
 
 void CTransDlg::ShowFieldsForMode()
 {
-    BOOL show[kNumFields]={};
+    BOOL show[kNumFields] = {};
     switch (m_eMode) {
     case MODE_CREDIT_APPROVAL:
-        show[F_SUPPLY]=show[F_TAX]=show[F_TIP]=show[F_TAXFREE]=show[F_INSTALL]=show[F_QR]=TRUE; break;
+        show[F_SUPPLY] = show[F_TAX] = show[F_TIP] = show[F_TAXFREE] = show[F_INSTALL] = show[F_QR] = TRUE; break;
     case MODE_CREDIT_CANCEL:
-        show[F_SUPPLY]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_INSTALL]=show[F_QR]=TRUE; break;
+        show[F_SUPPLY] = show[F_ORGDATE] = show[F_ORGAPPNO] = show[F_INSTALL] = show[F_QR] = TRUE; break;
     case MODE_CASH_APPROVAL:
-        show[F_SUPPLY]=show[F_TAX]=show[F_TIP]=show[F_TAXFREE]=show[F_CASHTYPE]=show[F_CASHNO]=TRUE; break;
+        show[F_SUPPLY] = show[F_TAX] = show[F_TIP] = show[F_TAXFREE] = show[F_CASHTYPE] = show[F_CASHNO] = TRUE; break;
     case MODE_CASH_CANCEL:
-        show[F_SUPPLY]=show[F_CASHTYPE]=show[F_ORGDATE]=show[F_ORGAPPNO]=show[F_CASHNO]=TRUE; break;
+        show[F_SUPPLY] = show[F_CASHTYPE] = show[F_ORGDATE] = show[F_ORGAPPNO] = show[F_CASHNO] = TRUE; break;
     }
-    for (int i=0; i<kNumFields; i++) {
+    for (int i = 0; i < kNumFields; i++) {
+        SafeShow(&m_fieldLabels[i], show[i]);
         SafeShow(m_fields[(size_t)i].pCtrl, show[i]);
     }
-    bool bCancel=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
-    CString supLbl=bCancel?_T("금액"):_T("공급가액");
+    bool bCancel = (m_eMode == MODE_CREDIT_CANCEL || m_eMode == MODE_CASH_CANCEL);
+    CString supLbl = bCancel ? _T("금액") : _T("공급가액");
     m_fieldLabels[F_SUPPLY].SetWindowText(supLbl);
-    m_fields[F_SUPPLY].caption=supLbl;
+    m_fields[F_SUPPLY].caption = supLbl;
 }
 
 void CTransDlg::ResetSampleResult()
@@ -665,11 +638,11 @@ void CTransDlg::ResetSampleResult()
     SetResultValue(7, _T("신한카드"));
     SetResultValue(8, _T("04"));
     SetResultValue(9, _T("신한카드"));
-    SetResultValue(10,_T("04"));
-    SetResultValue(11,_T("신한카드"));
-    SetResultValue(12,_T("개인 / 신용"));
-    SetResultValue(13,_T("삼성페이"));
-    SetResultValue(14,_T("20260415143005KF00182749"));
+    SetResultValue(10, _T("04"));
+    SetResultValue(11, _T("신한카드"));
+    SetResultValue(12, _T("개인 / 신용"));
+    SetResultValue(13, _T("삼성페이"));
+    SetResultValue(14, _T("20260415143005KF00182749"));
     if (!bOk) {
         SetResultValue(2, _T("한도초과"));
         SetResultValue(4, _T("한도를 초과한 거래입니다."));
@@ -684,20 +657,20 @@ void CTransDlg::ApplyResultColoring()
     // index 1: 응답코드, index 2: 응답내역, index 3: 승인번호
     bool bOk = (m_results[1].value == _T("000"));
     m_results[1].bBlue = bOk ? TRUE : FALSE;
-    m_results[1].bRed  = bOk ? FALSE : TRUE;
+    m_results[1].bRed = bOk ? FALSE : TRUE;
     m_results[2].bBlue = bOk ? TRUE : FALSE;
-    m_results[2].bRed  = bOk ? FALSE : TRUE;
+    m_results[2].bRed = bOk ? FALSE : TRUE;
     m_results[3].bBlue = FALSE; m_results[3].bRed = FALSE;
     m_strBadge = m_results[2].value;
     m_bBadgeOk = bOk ? TRUE : FALSE;
 }
 
-void CTransDlg::SetResultValue(int idx,LPCTSTR v,BOOL bBlue,BOOL bRed)
+void CTransDlg::SetResultValue(int idx, LPCTSTR v, BOOL bBlue, BOOL bRed)
 {
-    if (idx<0||idx>=(int)m_results.size()) return;
-    m_results[(size_t)idx].value=v;
-    m_results[(size_t)idx].bBlue=bBlue;
-    m_results[(size_t)idx].bRed=bRed;
+    if (idx < 0 || idx >= (int)m_results.size()) return;
+    m_results[(size_t)idx].value = v;
+    m_results[(size_t)idx].bBlue = bBlue;
+    m_results[(size_t)idx].bRed = bRed;
 }
 
 void CTransDlg::ClearResult()
@@ -711,10 +684,10 @@ void CTransDlg::ClearResult()
 
 void CTransDlg::UpdateResultControls()
 {
-    for (int i=0; i<(int)m_results.size(); i++) {
+    for (int i = 0; i < (int)m_results.size(); i++) {
         m_resultLabels[i].SetWindowText(m_results[(size_t)i].pszLabel);
         m_resultValues[i].SetWindowText(m_results[(size_t)i].value);
-        if      (m_results[(size_t)i].bBlue) m_resultValues[i].SetFont(&m_fontResultBlue);
+        if (m_results[(size_t)i].bBlue) m_resultValues[i].SetFont(&m_fontResultBlue);
         else if (m_results[(size_t)i].bRed)  m_resultValues[i].SetFont(&m_fontResultRed);
         else                                  m_resultValues[i].SetFont(&m_fontResultValue);
     }
@@ -724,31 +697,31 @@ void CTransDlg::UpdateResultControls()
 BOOL CTransDlg::ValidateCurrentMode(CString& e)
 {
     CString s; m_edtSupply.GetWindowText(s); s.Trim();
-    if (s.IsEmpty()) { e=_T("금액을 입력하세요."); m_edtSupply.SetFocus(); return FALSE; }
-    if (m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL) {
+    if (s.IsEmpty()) { e = _T("금액을 입력하세요."); m_edtSupply.SetFocus(); return FALSE; }
+    if (m_eMode == MODE_CREDIT_CANCEL || m_eMode == MODE_CASH_CANCEL) {
         m_edtOrgDate.GetWindowText(s); s.Trim();
-        if (s.IsEmpty()) { e=_T("원거래 일자를 입력하세요."); m_edtOrgDate.SetFocus(); return FALSE; }
+        if (s.IsEmpty()) { e = _T("원거래 일자를 입력하세요."); m_edtOrgDate.SetFocus(); return FALSE; }
         m_edtOrgAppNo.GetWindowText(s); s.Trim();
-        if (s.IsEmpty()) { e=_T("원거래 승인번호를 입력하세요."); m_edtOrgAppNo.SetFocus(); return FALSE; }
+        if (s.IsEmpty()) { e = _T("원거래 승인번호를 입력하세요."); m_edtOrgAppNo.SetFocus(); return FALSE; }
     }
     return TRUE;
 }
 
-void CTransDlg::DrawRoundedCard(Gdiplus::Graphics& g,const CRect& rc,int radius,
-                                  COLORREF fill,COLORREF border,int shadowAlpha)
+void CTransDlg::DrawRoundedCard(Gdiplus::Graphics& g, const CRect& rc, int radius,
+    COLORREF fill, COLORREF border, int shadowAlpha)
 {
-    if (shadowAlpha>0) {
-        for (int sh=1; sh<=3; sh++) {
-            Gdiplus::GraphicsPath sp; CRect sr=rc; sr.OffsetRect(0,sh);
-            AddRRP(sp,sr,(float)(radius+sh/2));
-            Gdiplus::SolidBrush sb(Gdiplus::Color((BYTE)(shadowAlpha-sh+1),0,20,60));
-            g.FillPath(&sb,&sp);
+    if (shadowAlpha > 0) {
+        for (int sh = 1; sh <= 3; sh++) {
+            Gdiplus::GraphicsPath sp; CRect sr = rc; sr.OffsetRect(0, sh);
+            AddRRP(sp, sr, (float)(radius + sh / 2));
+            Gdiplus::SolidBrush sb(Gdiplus::Color((BYTE)(shadowAlpha - sh + 1), 0, 20, 60));
+            g.FillPath(&sb, &sp);
         }
     }
-    Gdiplus::GraphicsPath fp; AddRRP(fp,rc,(float)radius);
-    Gdiplus::SolidBrush fb(Gdiplus::Color(255,GetRValue(fill),GetGValue(fill),GetBValue(fill)));
-    Gdiplus::Pen        bp(Gdiplus::Color(255,GetRValue(border),GetGValue(border),GetBValue(border)),1.f);
-    g.FillPath(&fb,&fp); g.DrawPath(&bp,&fp);
+    Gdiplus::GraphicsPath fp; AddRRP(fp, rc, (float)radius);
+    Gdiplus::SolidBrush fb(Gdiplus::Color(255, GetRValue(fill), GetGValue(fill), GetBValue(fill)));
+    Gdiplus::Pen        bp(Gdiplus::Color(255, GetRValue(border), GetGValue(border), GetBValue(border)), 1.f);
+    g.FillPath(&fb, &fp); g.DrawPath(&bp, &fp);
 }
 
 void CTransDlg::LayoutControls()
@@ -765,13 +738,13 @@ void CTransDlg::LayoutControls()
     // segment control near top of form card
     int segX = rcForm.left + SX(20), segW = rcForm.Width() - SX(40), segY = rcForm.top + SX(14);
     if (::IsWindow(m_segCtrl.GetSafeHwnd()))
-        m_segCtrl.MoveWindow(segX,segY,segW,segH);
+        m_segCtrl.MoveWindow(segX, segY, segW, segH);
 
     // input fields (below amount display area)
 // input fields (below amount display area)
     int amtAreaH = SX(52); // [FIX 2] 파란색 배경 박스 높이를 52로 확 줄여서 슬림하게 만듭니다.
     int fieldsTop = segY + segH + SX(12) + amtAreaH + SX(12);
-    int fl=rcForm.left+SX(14), fw=rcForm.Width()-SX(28);
+    int fl = rcForm.left + SX(14), fw = rcForm.Width() - SX(28);
     int colW = (fw - fGX) / 2;
 
     static const int kOrder[4][kNumFields] = {
@@ -794,21 +767,22 @@ void CTransDlg::LayoutControls()
         if (fp.ctrlType == 2) {
             fp.pCtrl->MoveWindow(x, y, w, h + SX(120));
             fp.pCtrl->SendMessage(CB_SETITEMHEIGHT, (WPARAM)-1, h - SX(4));
-        } else {
+        }
+        else {
             fp.pCtrl->MoveWindow(x, y, w, h);
         }
-    };
+        };
     int curY = fieldsTop;
-    for (int c=0; c<(int)vis.size(); c+=2) {
-        int idx1=vis[(size_t)c];
-        int idx2=(c+1<(int)vis.size())?vis[(size_t)(c+1)]:-1;
-        m_fieldLabels[idx1].MoveWindow(fl,curY,colW,lH);
-        mvField(idx1, fl, curY+lH+gLC, colW, cH);
-        if (idx2>=0) {
-            m_fieldLabels[idx2].MoveWindow(fl+colW+fGX,curY,colW,lH);
-            mvField(idx2, fl+colW+fGX, curY+lH+gLC, colW, cH);
+    for (int c = 0; c < (int)vis.size(); c += 2) {
+        int idx1 = vis[(size_t)c];
+        int idx2 = (c + 1 < (int)vis.size()) ? vis[(size_t)(c + 1)] : -1;
+        m_fieldLabels[idx1].MoveWindow(fl, curY, colW, lH);
+        mvField(idx1, fl, curY + lH + gLC, colW, cH);
+        if (idx2 >= 0) {
+            m_fieldLabels[idx2].MoveWindow(fl + colW + fGX, curY, colW, lH);
+            mvField(idx2, fl + colW + fGX, curY + lH + gLC, colW, cH);
         }
-        curY+=lH+gLC+cH+fGY;
+        curY += lH + gLC + cH + fGY;
     }
 
     // buttons pinned to bottom of form card
@@ -821,16 +795,16 @@ void CTransDlg::LayoutControls()
     // 2. [요청] 버튼을 [닫기] 버튼의 왼쪽(closeX)에서 8px 간격을 두고 배치
     int runX = closeX - SX(8) - bW2;
     m_btnRun.MoveWindow(runX, btnY, bW2, bH);
-    
+
     // result labels
-    const int rRowH=SX(kResRowH);
-    int rTY=rcResult.top+SX(44);
-    int rL=rcResult.left+SX(14), rR2=rcResult.right-SX(14);
-    int rLW=SX(bCmpLayout ? 105 : 90), vW=rR2-rL-rLW;
-    for (int i=0; i<kNumResults; i++) {
-        int ry=rTY+rRowH*i;
+    const int rRowH = SX(kResRowH);
+    int rTY = rcResult.top + SX(44);
+    int rL = rcResult.left + SX(14), rR2 = rcResult.right - SX(14);
+    int rLW = SX(90), vW = rR2 - rL - rLW;
+    for (int i = 0; i < kNumResults; i++) {
+        int ry = rTY + rRowH * i;
         m_resultLabels[i].MoveWindow(rL, ry + SX(5), rLW, rRowH - SX(10));
-        m_resultValues[i].MoveWindow(rL+rLW, ry + SX(5), vW, rRowH - SX(10));
+        m_resultValues[i].MoveWindow(rL + rLW, ry + SX(5), vW, rRowH - SX(10));
     }
     Invalidate(FALSE);
 }
@@ -842,9 +816,9 @@ void CTransDlg::OnPaint()
     CPaintDC dc(this); EnsureFonts();
     CRect cl; GetClientRect(&cl);
     CDC mem; mem.CreateCompatibleDC(&dc);
-    CBitmap bmp; bmp.CreateCompatibleBitmap(&dc,cl.Width(),cl.Height());
-    CBitmap* pOld=mem.SelectObject(&bmp);
-    mem.FillSolidRect(cl,kDlgBg);
+    CBitmap bmp; bmp.CreateCompatibleBitmap(&dc, cl.Width(), cl.Height());
+    CBitmap* pOld = mem.SelectObject(&bmp);
+    mem.FillSolidRect(cl, kDlgBg);
 
     CRect rcForm, rcResult; GetContentRects(rcForm, rcResult);
 
@@ -890,7 +864,7 @@ void CTransDlg::OnPaint()
         for (int sh = 1; sh <= 2; sh++) {
             Gdiplus::GraphicsPath sp;
             Gdiplus::RectF sr((Gdiplus::REAL)rcForm.left, (Gdiplus::REAL)rcForm.top + sh * 1.5f,
-                              (Gdiplus::REAL)rcForm.Width(), (Gdiplus::REAL)rcForm.Height());
+                (Gdiplus::REAL)rcForm.Width(), (Gdiplus::REAL)rcForm.Height());
             ModernUIGfx::AddRoundRect(sp, sr, (float)SX(12));
             Gdiplus::SolidBrush sb(Gdiplus::Color(8, 0, 0, 0));
             g.FillPath(&sb, &sp);
@@ -901,7 +875,7 @@ void CTransDlg::OnPaint()
         // ----------------------------------------------------
         // [여기에 아래 두 줄을 추가해 보세요!]
         // 오른쪽(응답 정보) 카드에만 아주 연한 경계선(kCardBorder)을 그려줍니다.
-        COLORREF cBorder = m_strBadge.IsEmpty() ? kCardBorder : (m_bBadgeOk ? RGB(34,139,34) : RGB(200,50,50));
+        COLORREF cBorder = m_strBadge.IsEmpty() ? kCardBorder : (m_bBadgeOk ? RGB(34, 139, 34) : RGB(200, 50, 50));
         Gdiplus::Pen borderPen(Gdiplus::Color(255, GetRValue(cBorder), GetGValue(cBorder), GetBValue(cBorder)), m_strBadge.IsEmpty() ? 1.0f : 1.5f);
         g.DrawPath(&borderPen, &pResult);
 
@@ -910,15 +884,14 @@ void CTransDlg::OnPaint()
         {
             Gdiplus::GraphicsPath bp;
             ModernUIGfx::AddRoundRect(bp,
-                Gdiplus::RectF((Gdiplus::REAL)(rcResult.left+SX(14)),
-                               (Gdiplus::REAL)(rcResult.top+SX(15)),
-                               (Gdiplus::REAL)SX(4),(Gdiplus::REAL)SX(14)),SX(2));
-            COLORREF cPill = m_strBadge.IsEmpty() ? kBlueText : (m_bBadgeOk ? RGB(34,139,34) : RGB(200,50,50));
-            Gdiplus::SolidBrush bb(Gdiplus::Color(255,GetRValue(cPill),GetGValue(cPill),GetBValue(cPill)));
-            g.FillPath(&bb,&bp);
+                Gdiplus::RectF((Gdiplus::REAL)(rcResult.left + SX(14)),
+                    (Gdiplus::REAL)(rcResult.top + SX(15)),
+                    (Gdiplus::REAL)SX(4), (Gdiplus::REAL)SX(14)), SX(2));
+            COLORREF cPill = m_strBadge.IsEmpty() ? kBlueText : (m_bBadgeOk ? RGB(34, 139, 34) : RGB(200, 50, 50));
+            Gdiplus::SolidBrush bb(Gdiplus::Color(255, GetRValue(cPill), GetGValue(cPill), GetBValue(cPill)));
+            g.FillPath(&bb, &bp);
         }
-
-        // amount display
+        // amount display bg
         {
             int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(12);
             CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52));
@@ -931,151 +904,102 @@ void CTransDlg::OnPaint()
         }
         // result dividers
         {
-            const int rRowH2=SX(kResRowH);
-            int rTY2=rcResult.top+SX(44);
-            int rL2=rcResult.left+SX(14), rR22=rcResult.right-SX(14);
-            Gdiplus::Pen pen(Gdiplus::Color(255,GetRValue(kDivider),GetGValue(kDivider),GetBValue(kDivider)),1.f);
-            for (int row=1; row<kNumResults; row++) {
-                float ly=(float)(rTY2+rRowH2*row);
-                g.DrawLine(&pen,(float)rL2,ly,(float)rR22,ly);
+            const int rRowH2 = SX(kResRowH);
+            int rTY2 = rcResult.top + SX(44);
+            int rL2 = rcResult.left + SX(14), rR22 = rcResult.right - SX(14);
+            Gdiplus::Pen pen(Gdiplus::Color(255, GetRValue(kDivider), GetGValue(kDivider), GetBValue(kDivider)), 1.f);
+            for (int row = 1; row < kNumResults; row++) {
+                float ly = (float)(rTY2 + rRowH2 * row);
+                g.DrawLine(&pen, (float)rL2, ly, (float)rR22, ly);
             }
         }
     } // GDI+ scope ends, flushed to mem
 
+    // --- Phase 2: GDI text ---
+    HDC hRaw = mem.GetSafeHdc();
+    ::SetBkMode(hRaw, TRANSPARENT);
 
-    // --- Phase 2: text rendering ---
-    // Header (GDI+ AntiAlias via ModernUIHeader::Draw)
+    // header
     {
-        HDC hRaw = mem.GetSafeHdc();
-        wchar_t wT[64]={},wS[256]={};
-        ::MultiByteToWideChar(CP_ACP,0,_T("결제"),-1,wT,64);
-        ::MultiByteToWideChar(CP_ACP,0,_T("신용 및 현금영수증 거래를 진행합니다"),-1,wS,256);
+        wchar_t wT[64] = {}, wS[256] = {};
+        ::MultiByteToWideChar(CP_ACP, 0, _T("결제"), -1, wT, 64);
+        ::MultiByteToWideChar(CP_ACP, 0, _T("신용 및 현금영수증 거래를 진행합니다"), -1, wS, 256);
         ModernUIHeader::Draw(hRaw,
-            (float)(rcMain.left+SX(14)),(float)(rcMain.top+SX(16)),(float)SX(::GetSystemMetrics(SM_CYSCREEN)<=800?36:44),
-            ModernUIHeader::IconType::Transaction,wT,wS,
-            (HFONT)m_fontTitle.GetSafeHandle(),(HFONT)m_fontSub.GetSafeHandle(),
-            rcMain.left+SX(6),rcMain.top+SX(::GetSystemMetrics(SM_CYSCREEN)<=800?60:74),rcMain.right-SX(6),
-            ::GetSystemMetrics(SM_CYSCREEN)<=800?23.0f:26.0f, ::GetSystemMetrics(SM_CYSCREEN)<=800?3.0f:0.0f);
+            (float)(rcMain.left + SX(14)), (float)(rcMain.top + SX(16)), (float)SX(::GetSystemMetrics(SM_CYSCREEN) <= 800 ? 36 : 44),
+            ModernUIHeader::IconType::Transaction, wT, wS,
+            (HFONT)m_fontTitle.GetSafeHandle(), (HFONT)m_fontSub.GetSafeHandle(),
+            rcMain.left + SX(6), rcMain.top + SX(::GetSystemMetrics(SM_CYSCREEN) <= 800 ? 60 : 74), rcMain.right - SX(6),
+            ::GetSystemMetrics(SM_CYSCREEN) <= 800 ? 23.0f : 26.0f, ::GetSystemMetrics(SM_CYSCREEN) <= 800 ? 3.0f : 0.0f);
     }
-    // GDI+ scope: section title, badge, amount text (TextRenderingHintAntiAlias)
+    // result section title
     {
-        Gdiplus::Graphics g2(mem.GetSafeHdc());
-        g2.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
-        g2.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-        // result section title: 응답 정보
-        if (m_pGdiFontSection) {
-            wchar_t wSec[32] = {}; ::MultiByteToWideChar(CP_ACP,0,_T("응답 정보"),-1,wSec,32);
-            Gdiplus::SolidBrush brSec(Gdiplus::Color(255,GetRValue(kSectionText),GetGValue(kSectionText),GetBValue(kSectionText)));
-            Gdiplus::StringFormat sfSec; sfSec.SetAlignment(Gdiplus::StringAlignmentNear); sfSec.SetLineAlignment(Gdiplus::StringAlignmentNear);
-            Gdiplus::PointF ptSec((Gdiplus::REAL)(rcResult.left+SX(26)),(Gdiplus::REAL)(rcResult.top+SX(14)));
-            g2.DrawString(wSec,-1,m_pGdiFontSection,ptSec,&sfSec,&brSec);
-        }
-        // badge
-        if (!m_strBadge.IsEmpty() && m_pGdiFontBadge) {
-            int wlen=::MultiByteToWideChar(CP_ACP,0,m_strBadge,-1,NULL,0);
-            std::vector<wchar_t> wbuf((size_t)wlen,0);
-            ::MultiByteToWideChar(CP_ACP,0,m_strBadge,-1,wbuf.data(),wlen);
-            Gdiplus::StringFormat sfC; sfC.SetAlignment(Gdiplus::StringAlignmentCenter); sfC.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-            Gdiplus::RectF rcMeasure(0,0,2000,1000),rcBnd;
-            g2.MeasureString(wbuf.data(),wlen>0?wlen-1:0,m_pGdiFontBadge,rcMeasure,&sfC,&rcBnd);
-            int bw=(int)rcBnd.Width+SX(16),bh=SX(20);
-            int bx=rcResult.right-SX(14)-bw,by2=rcResult.top+SX(12);
-            COLORREF bFill=m_bBadgeOk?RGB(230,245,235):RGB(255,235,235);
-            Gdiplus::GraphicsPath bPath; AddRRP(bPath,CRect(bx,by2,bx+bw,by2+bh),SX(6));
-            Gdiplus::SolidBrush bBr(Gdiplus::Color(255,GetRValue(bFill),GetGValue(bFill),GetBValue(bFill)));
-            g2.FillPath(&bBr,&bPath);
-            COLORREF bText=m_bBadgeOk?RGB(30,130,60):kRedText;
-            Gdiplus::SolidBrush brBT(Gdiplus::Color(255,GetRValue(bText),GetGValue(bText),GetBValue(bText)));
-            Gdiplus::RectF rcBT2((Gdiplus::REAL)bx,(Gdiplus::REAL)by2,(Gdiplus::REAL)bw,(Gdiplus::REAL)bh);
-            g2.DrawString(wbuf.data(),wlen>0?wlen-1:0,m_pGdiFontBadge,rcBT2,&sfC,&brBT);
-        }
-        // result grid labels and values
-        if (m_pGdiFontResultLabel && m_pGdiFontResultValue && !m_results.empty()) {
-            const int rRowH3 = SX(kResRowH);
-            const int rTY3   = rcResult.top + SX(44);
-            const int rL3    = rcResult.left + SX(14);
-            const int rLW3   = SX(bCmp ? 105 : 90);
-            const int vW3    = (rcResult.right - SX(14)) - rL3 - rLW3;
-            Gdiplus::StringFormat sfNear; sfNear.SetAlignment(Gdiplus::StringAlignmentNear); sfNear.SetLineAlignment(Gdiplus::StringAlignmentCenter); sfNear.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-            Gdiplus::StringFormat sfFar;  sfFar.SetAlignment(Gdiplus::StringAlignmentFar);  sfFar.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-            for (int i = 0; i < kNumResults && i < (int)m_results.size(); i++) {
-                int ry = rTY3 + rRowH3 * i;
-                Gdiplus::RectF rcLbl((Gdiplus::REAL)rL3, (Gdiplus::REAL)(ry+SX(5)), (Gdiplus::REAL)rLW3, (Gdiplus::REAL)(rRowH3-SX(10)));
-                Gdiplus::RectF rcVal((Gdiplus::REAL)(rL3+rLW3), (Gdiplus::REAL)(ry+SX(5)), (Gdiplus::REAL)vW3, (Gdiplus::REAL)(rRowH3-SX(10)));
-                // label
-                if (m_results[(size_t)i].pszLabel) {
-                    int wl=::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].pszLabel,-1,NULL,0);
-                    std::vector<wchar_t> wb((size_t)wl,0);
-                    ::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].pszLabel,-1,wb.data(),wl);
-                    Gdiplus::SolidBrush brLbl(Gdiplus::Color(255,GetRValue(kLabelText),GetGValue(kLabelText),GetBValue(kLabelText)));
-                    g2.DrawString(wb.data(),wl>0?wl-1:0,m_pGdiFontResultLabel,rcLbl,&sfNear,&brLbl);
-                }
-                // value
-                {
-                    int wl=::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].value,-1,NULL,0);
-                    std::vector<wchar_t> wb((size_t)wl,0);
-                    ::MultiByteToWideChar(CP_ACP,0,m_results[(size_t)i].value,-1,wb.data(),wl);
-                    COLORREF vc = m_results[(size_t)i].bBlue ? kBlueText :
-                                  m_results[(size_t)i].bRed  ? kRedText  : kValueText;
-                    Gdiplus::Font* pVF = m_results[(size_t)i].bBlue ? m_pGdiFontResultBlue :
-                                        m_results[(size_t)i].bRed  ? m_pGdiFontResultRed  : m_pGdiFontResultValue;
-                    Gdiplus::SolidBrush brVal(Gdiplus::Color(255,GetRValue(vc),GetGValue(vc),GetBValue(vc)));
-                    if (pVF) g2.DrawString(wb.data(),wl>0?wl-1:0,pVF,rcVal,&sfFar,&brVal);
-                }
-            }
-        }
-        // input field labels via GDI+ AntiAlias
-        if (m_pGdiFontLabel && !m_fields.empty()) {
-            Gdiplus::StringFormat sfFL; sfFL.SetAlignment(Gdiplus::StringAlignmentNear); sfFL.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-            Gdiplus::SolidBrush brFL(Gdiplus::Color(255,GetRValue(kLabelText),GetGValue(kLabelText),GetBValue(kLabelText)));
-            for (int i=0; i<kNumFields; i++) {
-                if (!m_fields[(size_t)i].pCtrl || !::IsWindowVisible(m_fields[(size_t)i].pCtrl->GetSafeHwnd())) continue;
-                CRect rcFL; m_fieldLabels[i].GetWindowRect(&rcFL); ScreenToClient(&rcFL);
-                int wl=::MultiByteToWideChar(CP_ACP,0,(LPCTSTR)m_fields[(size_t)i].caption,-1,NULL,0);
-                std::vector<wchar_t> wbFL((size_t)wl,0);
-                ::MultiByteToWideChar(CP_ACP,0,(LPCTSTR)m_fields[(size_t)i].caption,-1,wbFL.data(),wl);
-                Gdiplus::RectF rcF((Gdiplus::REAL)rcFL.left,(Gdiplus::REAL)rcFL.top,(Gdiplus::REAL)rcFL.Width(),(Gdiplus::REAL)rcFL.Height());
-                g2.DrawString(wbFL.data(),wl>0?wl-1:0,m_pGdiFontLabel,rcF,&sfFL,&brFL);
-            }
-        }
-        // amount display
+        HFONT hO = (HFONT)::SelectObject(hRaw, m_fontSection.GetSafeHandle());
+        ::SetTextColor(hRaw, kSectionText);
+        ::SetBkMode(hRaw, TRANSPARENT);
+        ::TextOut(hRaw, rcResult.left + SX(26), rcResult.top + SX(14), _T("응답 정보"), lstrlen(_T("응답 정보")));
+        ::SelectObject(hRaw, hO);
+    }
+    // badge
+    if (!m_strBadge.IsEmpty()) {
+        HFONT hOB = (HFONT)::SelectObject(hRaw, m_fontBadge.GetSafeHandle());
+        SIZE sz = {}; ::GetTextExtentPoint32(hRaw, m_strBadge, m_strBadge.GetLength(), &sz);
+        ::SelectObject(hRaw, hOB);
+        int bw = sz.cx + SX(16), bh = SX(20);
+        int bx = rcResult.right - SX(14) - bw, by2 = rcResult.top + SX(12);
         {
-            int segY2=rcForm.top+SX(14),amtY=segY2+SX(CSegmentCtrl::kBarH+6)+SX(12);
-            CRect rcAmt(rcForm.left+SX(20),amtY,rcForm.right-SX(20),amtY+SX(52));
-            if (m_pGdiFontLabel) {
-                wchar_t wLbl[64]={}; ::MultiByteToWideChar(CP_ACP,0,_T("최종 결제 예정 금액"),-1,wLbl,64);
-                Gdiplus::SolidBrush brL(Gdiplus::Color(255,51,61,75));
-                Gdiplus::StringFormat sfL; sfL.SetAlignment(Gdiplus::StringAlignmentNear); sfL.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-                Gdiplus::RectF rcLbl((Gdiplus::REAL)(rcAmt.left+SX(16)),(Gdiplus::REAL)rcAmt.top,(Gdiplus::REAL)(rcAmt.Width()-SX(16)),(Gdiplus::REAL)rcAmt.Height());
-                g2.DrawString(wLbl,-1,m_pGdiFontLabel,rcLbl,&sfL,&brL);
-            }
-            if (m_pGdiFontAmount) {
-                bool bCancelMode=(m_eMode==MODE_CREDIT_CANCEL||m_eMode==MODE_CASH_CANCEL);
-                auto parseN=[](CWnd& e)->long long {
-                    CString s; e.GetWindowText(s); s.Trim(); s.Remove(_T(','));
-                    return s.IsEmpty()?0LL:(long long)_ttoi64(s);
-                };
-                long long nTotal=parseN(m_edtSupply);
-                if (!bCancelMode) nTotal+=parseN(m_edtTax)+parseN(m_edtTip)+parseN(m_edtTaxFree);
-                CString sAmt=FormatAmountWithCommas(nTotal)+_T(" 원");
-                int wlen=::MultiByteToWideChar(CP_ACP,0,sAmt,-1,NULL,0);
-                std::vector<wchar_t> wbuf((size_t)wlen,0);
-                ::MultiByteToWideChar(CP_ACP,0,sAmt,-1,wbuf.data(),wlen);
-                Gdiplus::SolidBrush brA(Gdiplus::Color(255,49,130,246));
-                Gdiplus::StringFormat sfR; sfR.SetAlignment(Gdiplus::StringAlignmentFar); sfR.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-                Gdiplus::RectF rcAV((Gdiplus::REAL)rcAmt.left,(Gdiplus::REAL)rcAmt.top,(Gdiplus::REAL)(rcAmt.Width()-SX(16)),(Gdiplus::REAL)rcAmt.Height());
-                g2.DrawString(wbuf.data(),wlen>0?wlen-1:0,m_pGdiFontAmount,rcAV,&sfR,&brA);
-            }
+            Gdiplus::Graphics g2(hRaw);
+            g2.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+            COLORREF bFill = m_bBadgeOk ? RGB(230, 245, 235) : RGB(255, 235, 235);
+            Gdiplus::GraphicsPath bPath; AddRRP(bPath, CRect(bx, by2, bx + bw, by2 + bh), SX(6));
+            Gdiplus::SolidBrush bBr(Gdiplus::Color(255, GetRValue(bFill), GetGValue(bFill), GetBValue(bFill)));
+            g2.FillPath(&bBr, &bPath);
         }
+        COLORREF bText = m_bBadgeOk ? RGB(30, 130, 60) : kRedText;
+        hOB = (HFONT)::SelectObject(hRaw, m_fontBadge.GetSafeHandle());
+        ::SetTextColor(hRaw, bText); ::SetBkMode(hRaw, TRANSPARENT);
+        RECT rcBT = { bx,by2,bx + bw,by2 + bh };
+        ::DrawText(hRaw, m_strBadge, m_strBadge.GetLength(), &rcBT, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        ::SelectObject(hRaw, hOB);
+    }
+    // amount display text (좌/우 1줄 슬림 배치)
+    {
+        int segY2 = rcForm.top + SX(14), amtY = segY2 + SX(CSegmentCtrl::kBarH + 6) + SX(12);
+        CRect rcAmt(rcForm.left + SX(20), amtY, rcForm.right - SX(20), amtY + SX(52)); // 52로 슬림하게 맞춤
+
+        // 라벨: 진하고 큰 폰트(m_fontEdit) 적용, 좌측 세로 중앙 정렬
+        HFONT hOL = (HFONT)::SelectObject(hRaw, m_fontLabel.GetSafeHandle());
+        ::SetTextColor(hRaw, RGB(51, 61, 75)); // 까맣고 진한 텍스트
+        ::SetBkMode(hRaw, TRANSPARENT);
+        RECT rcLbl = { rcAmt.left + SX(16), rcAmt.top, rcAmt.right, rcAmt.bottom };
+        ::DrawText(hRaw, _T("최종 결제 예정 금액"), -1, &rcLbl, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        ::SelectObject(hRaw, hOL);
+
+        // 금액: 우측 세로 중앙 정렬
+        bool bCancelMode = (m_eMode == MODE_CREDIT_CANCEL || m_eMode == MODE_CASH_CANCEL);
+        auto parseN = [](CWnd& e)->long long {
+            CString s; e.GetWindowText(s); s.Trim(); s.Remove(_T(','));
+            return s.IsEmpty() ? 0LL : (long long)_ttoi64(s);
+            };
+        long long nTotal = parseN(m_edtSupply);
+        if (!bCancelMode)
+            nTotal += parseN(m_edtTax) + parseN(m_edtTip) + parseN(m_edtTaxFree);
+        CString sAmt; sAmt = FormatAmountWithCommas(nTotal) + _T(" 원");
+
+        HFONT hOA = (HFONT)::SelectObject(hRaw, m_fontAmount.GetSafeHandle());
+        ::SetTextColor(hRaw, RGB(49, 130, 246)); // 토스 스타일 프라이머리 블루
+        ::SetBkMode(hRaw, TRANSPARENT);
+        RECT rcAV = { rcAmt.left, rcAmt.top, rcAmt.right - SX(16), rcAmt.bottom };
+        ::DrawText(hRaw, sAmt, sAmt.GetLength(), &rcAV, DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        ::SelectObject(hRaw, hOA);
     }
 
-    dc.BitBlt(0,0,cl.Width(),cl.Height(),&mem,0,0,SRCCOPY);
+    dc.BitBlt(0, 0, cl.Width(), cl.Height(), &mem, 0, 0, SRCCOPY);
     mem.SelectObject(pOld);
 }
 
-void CTransDlg::OnSize(UINT t,int cx,int cy)
+void CTransDlg::OnSize(UINT t, int cx, int cy)
 {
-    CDialog::OnSize(t,cx,cy);
+    CDialog::OnSize(t, cx, cy);
     if (t == SIZE_MINIMIZED || cx == 0 || cy == 0) return;
     if (m_bUiBuilt) LayoutControls();
 }
@@ -1125,11 +1049,11 @@ HBRUSH CTransDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     return hbr;
 }
 
-void CTransDlg::OnTabSelChange(NMHDR*,LRESULT* pResult)
+void CTransDlg::OnTabSelChange(NMHDR*, LRESULT* pResult)
 {
-    int sel=m_segCtrl.GetCurSel();
-    if (sel>=0&&sel<=3) SetMode((ETransMode)sel);
-    *pResult=0;
+    int sel = m_segCtrl.GetCurSel();
+    if (sel >= 0 && sel <= 3) SetMode((ETransMode)sel);
+    *pResult = 0;
 }
 
 void CTransDlg::OnRunCreditApproval()
@@ -1142,30 +1066,30 @@ void CTransDlg::OnRunCreditApproval()
     m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree); vTaxFree.Trim();
     m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall); vInstall.Trim();
     m_fields[F_QR].pCtrl->GetWindowText(vQr);           vQr.Trim();
-    int nSupply  = ParseAmountText(vSupply);
-    int nTax     = ParseAmountText(vTax);
-    int nTip     = ParseAmountText(vTip);
+    int nSupply = ParseAmountText(vSupply);
+    int nTax = ParseAmountText(vTax);
+    int nTip = ParseAmountText(vTip);
     int nTaxFree = ParseAmountText(vTaxFree);
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);  msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAX].caption,     (LPCTSTR)vTax);     msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TIP].caption,     (LPCTSTR)vTip);     msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAX].caption, (LPCTSTR)vTax);     msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TIP].caption, (LPCTSTR)vTip);     msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption, (LPCTSTR)vTaxFree); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall); msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);      msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption, (LPCTSTR)vQr);      msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
     ResetSampleResult();
     if (m_results[1].value == _T("000")) {
         long long nTotal = (long long)ParseAmountText(vSupply)
-                         + (long long)ParseAmountText(vTax)
-                         + (long long)ParseAmountText(vTip)
-                         + (long long)ParseAmountText(vTaxFree);
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY]  = FormatAmountWithCommas(nTotal);
+            + (long long)ParseAmountText(vTax)
+            + (long long)ParseAmountText(vTip)
+            + (long long)ParseAmountText(vTaxFree);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY] = FormatAmountWithCommas(nTotal);
         m_tabValues[(int)MODE_CREDIT_CANCEL][F_INSTALL] = vInstall;
         CString dateStr = m_results[0].value;
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGDATE] = dateStr.Mid(2, 4);
         m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGAPPNO] = m_results[3].value;
     }
 }
@@ -1183,11 +1107,11 @@ void CTransDlg::OnRunCreditCancel()
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);   msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGDATE].caption, (LPCTSTR)vOrgDate);  msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption,(LPCTSTR)vOrgAppNo); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption, (LPCTSTR)vOrgAppNo); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall);  msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption,      (LPCTSTR)vQr);       msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption, (LPCTSTR)vQr);       msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
     ResetSampleResult();
 }
@@ -1201,32 +1125,32 @@ void CTransDlg::OnRunCashApproval()
     m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree);   vTaxFree.Trim();
     m_fields[F_CASHTYPE].pCtrl->GetWindowText(vCashType); vCashType.Trim();
     m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
-    int nSupply  = ParseAmountText(vSupply);
-    int nTax     = ParseAmountText(vTax);
-    int nTip     = ParseAmountText(vTip);
+    int nSupply = ParseAmountText(vSupply);
+    int nTax = ParseAmountText(vTax);
+    int nTip = ParseAmountText(vTip);
     int nTaxFree = ParseAmountText(vTaxFree);
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,   (LPCTSTR)vSupply);   msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAX].caption,      (LPCTSTR)vTax);      msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TIP].caption,      (LPCTSTR)vTip);      msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption,  (LPCTSTR)vTaxFree);  msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAX].caption, (LPCTSTR)vTax);      msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TIP].caption, (LPCTSTR)vTip);      msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption, (LPCTSTR)vTaxFree);  msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHTYPE].caption, (LPCTSTR)vCashType); msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,   (LPCTSTR)vCashNo);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption, (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
     ResetSampleResult();
     if (m_results[1].value == _T("000")) {
         long long nTotal = (long long)ParseAmountText(vSupply)
-                         + (long long)ParseAmountText(vTax)
-                         + (long long)ParseAmountText(vTip)
-                         + (long long)ParseAmountText(vTaxFree);
-        m_tabValues[(int)MODE_CASH_CANCEL][F_SUPPLY]  = FormatAmountWithCommas(nTotal);
+            + (long long)ParseAmountText(vTax)
+            + (long long)ParseAmountText(vTip)
+            + (long long)ParseAmountText(vTaxFree);
+        m_tabValues[(int)MODE_CASH_CANCEL][F_SUPPLY] = FormatAmountWithCommas(nTotal);
         CString dateStr = m_results[0].value;
-        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
+        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGDATE] = dateStr.Mid(2, 4);
         m_tabValues[(int)MODE_CASH_CANCEL][F_ORGAPPNO] = m_results[3].value;
         { LRESULT s = m_fields[F_CASHTYPE].pCtrl->SendMessage(CB_GETCURSEL); m_tabValues[(int)MODE_CASH_CANCEL][F_CASHTYPE].Format(_T("%d"), (int)s); }
-        m_tabValues[(int)MODE_CASH_CANCEL][F_CASHNO]   = vCashNo;
+        m_tabValues[(int)MODE_CASH_CANCEL][F_CASHNO] = vCashNo;
     }
 }
 void CTransDlg::OnRunCashCancel()
@@ -1242,21 +1166,21 @@ void CTransDlg::OnRunCashCancel()
 
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption,  (LPCTSTR)vSupply);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);   msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGDATE].caption, (LPCTSTR)vOrgDate);  msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption,(LPCTSTR)vOrgAppNo); msg += ln;
-    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption,  (LPCTSTR)vCashNo);   msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption, (LPCTSTR)vOrgAppNo); msg += ln;
+    ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption, (LPCTSTR)vCashNo);   msg += ln;
     AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
     ResetSampleResult();
 }
-BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
+BOOL CTransDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
-    UINT nID=LOWORD(wParam);
-    if (HIWORD(wParam)==BN_CLICKED) {
-        if (nID==IDC_TRANS_BTN_CLOSE) { EndDialog(IDCANCEL); return TRUE; }
-        if (nID==IDC_TRANS_BTN_RUN) {
+    UINT nID = LOWORD(wParam);
+    if (HIWORD(wParam) == BN_CLICKED) {
+        if (nID == IDC_TRANS_BTN_CLOSE) { EndDialog(IDCANCEL); return TRUE; }
+        if (nID == IDC_TRANS_BTN_RUN) {
             CString err;
-            if (!ValidateCurrentMode(err)) { CModernMessageBox::Warning(err,this); return TRUE; }
+            if (!ValidateCurrentMode(err)) { CModernMessageBox::Warning(err, this); return TRUE; }
             switch (m_eMode) {
             case MODE_CREDIT_APPROVAL: OnRunCreditApproval(); break;
             case MODE_CREDIT_CANCEL:   OnRunCreditCancel();   break;
@@ -1266,8 +1190,8 @@ BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
             return TRUE;
         }
     }
-    if (HIWORD(wParam)==EN_CHANGE) {
-        UINT cID=LOWORD(wParam);
+    if (HIWORD(wParam) == EN_CHANGE) {
+        UINT cID = LOWORD(wParam);
         static const UINT kAmtIDs[] = {
             IDC_TRANS_EDIT_SUPPLY, IDC_TRANS_EDIT_TAX,
             IDC_TRANS_EDIT_TIP,    IDC_TRANS_EDIT_TAXFREE };
@@ -1301,5 +1225,5 @@ BOOL CTransDlg::OnCommand(WPARAM wParam,LPARAM lParam)
             break;
         }
     }
-    return CDialog::OnCommand(wParam,lParam);
+    return CDialog::OnCommand(wParam, lParam);
 }

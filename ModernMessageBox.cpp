@@ -286,17 +286,31 @@ void CModernMessageBox::DrawIcon(Gdiplus::Graphics& g, Gdiplus::RectF rect, Mode
     // 1. 배경 그리기
     if (m_pIconBgBrush) g.FillEllipse(m_pIconBgBrush, rect);
 
-    // 2. 심볼 준비
-    CStringW strSym;
-    strSym.AppendChar(th.sym);
-    g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit); // ?? 힌팅 옵션 변경으로 가독성 향상
-
-    Gdiplus::RectF textRect = rect;
-    textRect.X += th.offsetX;
-    textRect.Y += th.offsetY;
-    Gdiplus::Font* pF = (m_pIconFont && m_pIconFont->GetLastStatus() == Gdiplus::Ok) ? m_pIconFont : m_pIconFontFallback;
-    if (pF && m_pIconFmt && m_pIconSymBrush)
-        g.DrawString(strSym.GetString(), strSym.GetLength(), pF, textRect, m_pIconFmt, m_pIconSymBrush);
+    // 2. Symbol via GDI ClearType
+    {
+        WCHAR sym[2] = { th.sym, L'\0' };
+        RECT rcSym = { (int)(rect.X + th.offsetX), (int)(rect.Y + th.offsetY),
+                       (int)(rect.X + th.offsetX + rect.Width), (int)(rect.Y + th.offsetY + rect.Height) };
+        static CFont s_iconFont;
+        static int   s_iconFontH = 0;
+        int fH = -(int)(SX(40) * 0.55f);
+        if (!s_iconFont.GetSafeHandle() || s_iconFontH != fH) {
+            s_iconFont.DeleteObject();
+            LOGFONT lf = {};
+            lf.lfHeight = fH; lf.lfWeight = FW_BOLD; lf.lfQuality = CLEARTYPE_QUALITY;
+            lf.lfCharSet = DEFAULT_CHARSET; lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+            _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("Malgun Gothic"));
+            s_iconFont.CreateFontIndirect(&lf);
+            s_iconFontH = fH;
+        }
+        HDC hdc = g.GetHDC();
+        ::SetBkMode(hdc, TRANSPARENT);
+        ::SetTextColor(hdc, RGB(th.rt, th.gt, th.bt));
+        HFONT hOld = (HFONT)::SelectObject(hdc, s_iconFont.GetSafeHandle());
+        ::DrawTextW(hdc, sym, 1, &rcSym, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        ::SelectObject(hdc, hOld);
+        g.ReleaseHDC(hdc);
+    }
 }
 HBRUSH CModernMessageBox::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
