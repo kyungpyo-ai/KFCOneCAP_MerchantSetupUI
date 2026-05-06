@@ -2308,9 +2308,10 @@ void CShopSetupDlg::CheckOptionChangesAndNotify()
     if (oldInterlockVal == _T("AOP") && newInterlockVal != _T("AOP"))
     {
         CModernMessageBox::Warning(
-            _T("AOP 포트 닫기\n")
-            _T("aop port disconnect 구현"),
+            _T("장치 연동 방식이 AOP에서 변경되었습니다.\nAOP 포트 연결이 해제됩니다. 프로그램을 재시작해 주세요."),
             this);
+
+
     }
 }
 
