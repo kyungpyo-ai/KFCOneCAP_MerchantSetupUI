@@ -4980,7 +4980,7 @@ void CTrayPopup::RefreshLayered()
 
 		// 2. 팝업 베이스 (완벽한 순백색으로 통일하여 확장감 부여)
 		{
-			Gdiplus::SolidBrush brBase(Gdiplus::Color(255, 255, 255, 255));
+			Gdiplus::SolidBrush brBase(Gdiplus::Color(255, 250, 251, 253));
 			g.FillPath(&brBase, &cardPath);
 
 			// 테두리 선은 아예 없거나, 거의 안 보이는 수준의 극연한 회색으로만 덮기
@@ -5007,7 +5007,7 @@ void CTrayPopup::RefreshLayered()
 					// 좌우 6px, 상하 2px 정도의 여백을 둔 알약 모양 하이라이트
 					ModernUIGfx::AddRoundRect(hoverPath,
 						Gdiplus::RectF(sp + 6.0f, iy + 2.0f, cW - 12.0f, (float)(m_nItemH - 4)), 6.0f);
-					Gdiplus::SolidBrush brHov(Gdiplus::Color(255, 242, 244, 246)); // 눈이 편안한 라이트 쿨그레이
+					Gdiplus::SolidBrush brHov(Gdiplus::Color(255, 220, 234, 255)); // 눈이 편안한 라이트 쿨그레이
 					g.FillPath(&brHov, &hoverPath);
 				}
 

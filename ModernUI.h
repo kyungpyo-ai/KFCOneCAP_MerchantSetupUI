@@ -902,7 +902,7 @@ private:
     HFONT m_hFont;
     int   m_nCachedFontDpi;
 
-    static const int kBaseCardW    = 190;
+    static const int kBaseCardW    = 160;
     static const int kBaseItemH    = 36;
     static const int kBaseSepH     = 9;
     static const int kBasePadX     = 16;
