@@ -826,7 +826,7 @@ void CTransDlg::LayoutControls()
     const int rRowH=SX(kResRowH);
     int rTY=rcResult.top+SX(44);
     int rL=rcResult.left+SX(14), rR2=rcResult.right-SX(14);
-    int rLW=SX(90), vW=rR2-rL-rLW;
+    int rLW=SX(bCmpLayout ? 105 : 90), vW=rR2-rL-rLW;
     for (int i=0; i<kNumResults; i++) {
         int ry=rTY+rRowH*i;
         m_resultLabels[i].MoveWindow(rL, ry + SX(5), rLW, rRowH - SX(10));
@@ -994,9 +994,9 @@ void CTransDlg::OnPaint()
             const int rRowH3 = SX(kResRowH);
             const int rTY3   = rcResult.top + SX(44);
             const int rL3    = rcResult.left + SX(14);
-            const int rLW3   = SX(90);
+            const int rLW3   = SX(bCmp ? 105 : 90);
             const int vW3    = (rcResult.right - SX(14)) - rL3 - rLW3;
-            Gdiplus::StringFormat sfNear; sfNear.SetAlignment(Gdiplus::StringAlignmentNear); sfNear.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+            Gdiplus::StringFormat sfNear; sfNear.SetAlignment(Gdiplus::StringAlignmentNear); sfNear.SetLineAlignment(Gdiplus::StringAlignmentCenter); sfNear.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
             Gdiplus::StringFormat sfFar;  sfFar.SetAlignment(Gdiplus::StringAlignmentFar);  sfFar.SetLineAlignment(Gdiplus::StringAlignmentCenter);
             for (int i = 0; i < kNumResults && i < (int)m_results.size(); i++) {
                 int ry = rTY3 + rRowH3 * i;

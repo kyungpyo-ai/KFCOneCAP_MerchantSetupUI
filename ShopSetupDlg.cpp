@@ -2310,8 +2310,8 @@ void CShopSetupDlg::CheckOptionChangesAndNotify()
     if (oldInterlockVal == _T("AOP") && newInterlockVal != _T("AOP"))
     {
         CModernMessageBox::Warning(
-            _T("AOP reader interlock has been disabled.\n")
-            _T("Please check the port settings in reader configuration after restart."),
+            _T("AOP 포트 닫기\n")
+            _T("aop port disconnect 구현"),
             this);
     }
 }
@@ -2406,6 +2406,11 @@ void CShopSetupDlg::OnOK()
         return;
     CheckOptionChangesAndNotify();
     SaveOptionsToRegistry();
+    {
+        CString interlockVal = GetSelectedComboValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock)/sizeof(kInterlock[0])), _T("NORMAL"));
+        if (interlockVal == _T("AOP"))
+            AfxGetApp()->WriteProfileString(SEC_SERIALPORT, _T("COMPORT2"), _T("미사용"));
+    }
     CDialog::OnOK();
 }
 void CShopSetupDlg::OnCancel()

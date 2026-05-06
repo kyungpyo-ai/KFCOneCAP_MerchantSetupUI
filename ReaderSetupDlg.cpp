@@ -1743,6 +1743,8 @@ void CReaderSetupDlg::OnSelchangeComport1()
 		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
 		return;
 	}
+	if (newSel != m_nComport1PrevSel && m_nComport1PrevSel >= 0)
+		CModernMessageBox::Info(_T("리더기 1번 포트가 변경되었습니다."), this);
 	m_nComport1PrevSel = m_comport1.GetCurSel();
 	CString value;
 	m_comport1.GetWindowText(value);
@@ -1758,6 +1760,8 @@ void CReaderSetupDlg::OnSelchangeComport2()
 		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
 		return;
 	}
+	if (newSel != m_nComport2PrevSel && m_nComport2PrevSel >= 0)
+		CModernMessageBox::Info(_T("리더기 2번 포트가 변경되었습니다."), this);
 	m_nComport2PrevSel = m_comport2.GetCurSel();
 	CString value;
 	m_comport2.GetWindowText(value);
