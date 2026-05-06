@@ -459,7 +459,6 @@ void CKFTCOneCAPDlg::EnsureFonts()
     // 현재 창의 DPI 세팅을 가져옵니다.
     UINT dpi = ModernUIDpi::GetDpiForHwnd(m_hWnd);
     const BOOL bCompact = IsCompactScreen();
-    if (bCompact) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
     // --- (A) MFC CFont 객체 생성 섹션 ---
 

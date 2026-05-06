@@ -129,7 +129,6 @@ void CSlipSetupDlg::EnsureFonts()
     ModernUIFont::ApplyUIFontFace(lf);
 
     BOOL bCmp = IsCompactScreen();
-    if (bCmp) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("¸¼Àº °íµñ"));
     lf.lfHeight = -SX(bCmp ? 16 : 20); lf.lfWeight = FW_BOLD;
     m_fontTitle.CreateFontIndirect(&lf);
     lf.lfHeight = -SX(bCmp ? 10 : 11); lf.lfWeight = FW_NORMAL;
