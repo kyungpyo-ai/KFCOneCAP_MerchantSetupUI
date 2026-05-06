@@ -453,6 +453,7 @@ BOOL CShopSetupDlg::OnInitDialog()
         ModernUIFont::ApplyUIFontFace(lf);
 
         BOOL bCompactHdr = IsCompactScreen();
+        if (bCompactHdr) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
         // [FIX] 콤팩트 모드에서 카드 제목이 라벨보다 작아 보이는 현상 수정
                 // GDI+ 렌더링 특성을 고려하여 라벨 크기(12)와 시각적으로 동일하게 보이도록 13으로 상향 조정
@@ -648,6 +649,7 @@ void CShopSetupDlg::EnsureFonts()
 
     // [FIX] 콤팩트 모드를 판별하여 본문 라벨/에러 문구 등의 사이즈도 일괄 축소
     BOOL bCompact = IsCompactScreen();
+    if (bCompact) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
     lf.lfHeight = -ModernUIDpi::Scale(m_hWnd, bCompact ? 16 : 20);
     lf.lfWeight = FW_BOLD;

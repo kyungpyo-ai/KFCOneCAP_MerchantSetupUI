@@ -133,6 +133,7 @@ void CReaderSetupDlg::EnsureFonts()
 	// [FIX] 폰트 페이스를 먼저 일괄 적용 (Pretendard 등)
 	ModernUIFont::ApplyUIFontFace(lf);
 	const BOOL bCF = IsCompactScreen();
+	if (bCF) _tcscpy_s(lf.lfFaceName, LF_FACESIZE, _T("맑은 고딕"));
 
 	// Title (메인 타이틀)
 	lf.lfHeight = -SX(bCF ? 15 : 18);
