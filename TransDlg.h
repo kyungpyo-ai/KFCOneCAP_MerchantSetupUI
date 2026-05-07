@@ -95,6 +95,7 @@ protected:
     afx_msg void OnSize(UINT nType, int cx, int cy);
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg void OnTabSelChange(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg LRESULT OnTransRunDone(WPARAM wParam, LPARAM lParam);
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -113,6 +114,7 @@ private:
     CFont      m_fontBadge;
     CString    m_strBadge;
     BOOL       m_bBadgeOk;
+    BOOL       m_bRunning;
 
     CSegmentCtrl     m_segCtrl;
     CModernButton    m_btnClose, m_btnRun;

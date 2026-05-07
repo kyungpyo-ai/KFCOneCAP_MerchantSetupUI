@@ -2,6 +2,25 @@
 #include "resource.h"
 #include "TransDlg.h"
 #include "ModernMessageBox.h"
+
+#define WM_TRANS_RUN_DONE  (WM_APP + 300)
+
+struct TransRunCtx {
+    HWND      hWnd;
+    int       eMode;
+    CString   msg;
+    long long nTotal;
+    CString   vInstall;
+    CString   vCashNo;
+    int       nCashTypeSel;
+};
+static UINT TransRunWorkerThread(LPVOID pParam)
+{
+    TransRunCtx* ctx = reinterpret_cast<TransRunCtx*>(pParam);
+    // Placeholder: real blocking transaction API call goes here
+    ::PostMessage(ctx->hWnd, WM_TRANS_RUN_DONE, 0, (LPARAM)ctx);
+    return 0;
+}
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -298,17 +317,18 @@ BEGIN_MESSAGE_MAP(CTransDlg, CDialog)
     ON_WM_SIZE()
     ON_WM_CTLCOLOR()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TRANS_SEG, OnTabSelChange)
+    ON_MESSAGE(WM_TRANS_RUN_DONE, OnTransRunDone)
 END_MESSAGE_MAP()
 CTransDlg::CTransDlg(CWnd* pParent)
     : CDialog(CTransDlg::IDD, pParent)
     , m_eMode(MODE_CREDIT_APPROVAL), m_bUiBuilt(FALSE)
-    , m_brBack(kDlgBg), m_bBadgeOk(FALSE)
+    , m_brBack(kDlgBg), m_bBadgeOk(FALSE), m_bRunning(FALSE)
 {
 }
 CTransDlg::~CTransDlg() {}
 void CTransDlg::DoDataExchange(CDataExchange* pDX) { CDialog::DoDataExchange(pDX); }
 void CTransDlg::OnOK() {}
-void CTransDlg::OnCancel() { EndDialog(IDCANCEL); }
+void CTransDlg::OnCancel() { if (m_bRunning) return; EndDialog(IDCANCEL); }
 int  CTransDlg::SX(int v) const { return ModernUIDpi::Scale(m_hWnd, v); }
 
 void CTransDlg::EnsureFonts()
@@ -1064,11 +1084,6 @@ void CTransDlg::OnRunCreditApproval()
     m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree); vTaxFree.Trim();
     m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall); vInstall.Trim();
     m_fields[F_QR].pCtrl->GetWindowText(vQr);           vQr.Trim();
-    int nSupply = ParseAmountText(vSupply);
-    int nTax = ParseAmountText(vTax);
-    int nTip = ParseAmountText(vTip);
-    int nTaxFree = ParseAmountText(vTaxFree);
-
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);  msg += ln;
@@ -1077,32 +1092,25 @@ void CTransDlg::OnRunCreditApproval()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption, (LPCTSTR)vTaxFree); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption, (LPCTSTR)vQr);      msg += ln;
-    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
-    ResetSampleResult();
-    if (m_results[1].value == _T("000")) {
-        long long nTotal = (long long)ParseAmountText(vSupply)
-            + (long long)ParseAmountText(vTax)
-            + (long long)ParseAmountText(vTip)
-            + (long long)ParseAmountText(vTaxFree);
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY] = FormatAmountWithCommas(nTotal);
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_INSTALL] = vInstall;
-        CString dateStr = m_results[0].value;
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGDATE] = dateStr.Mid(2, 4);
-        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGAPPNO] = m_results[3].value;
-    }
+    long long nTotal = (long long)ParseAmountText(vSupply)
+        + (long long)ParseAmountText(vTax)
+        + (long long)ParseAmountText(vTip)
+        + (long long)ParseAmountText(vTaxFree);
+    TransRunCtx* ctx = new TransRunCtx;
+    ctx->hWnd = m_hWnd; ctx->eMode = (int)m_eMode;
+    ctx->msg = msg; ctx->nTotal = nTotal; ctx->vInstall = vInstall;
+    ctx->vCashNo = _T(""); ctx->nCashTypeSel = -1;
+    AfxBeginThread(TransRunWorkerThread, (LPVOID)ctx);
 }
 void CTransDlg::OnRunCreditCancel()
 {
     ClearResult();
     CString vSupply, vOrgDate, vOrgAppNo, vInstall, vQr;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
-
     m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
     m_fields[F_INSTALL].pCtrl->GetWindowText(vInstall);   vInstall.Trim();
     m_fields[F_QR].pCtrl->GetWindowText(vQr);             vQr.Trim();
-    int nSupply = ParseAmountText(vSupply);
-
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);   msg += ln;
@@ -1110,8 +1118,11 @@ void CTransDlg::OnRunCreditCancel()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption, (LPCTSTR)vOrgAppNo); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_INSTALL].caption, (LPCTSTR)vInstall);  msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_QR].caption, (LPCTSTR)vQr);       msg += ln;
-    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
-    ResetSampleResult();
+    TransRunCtx* ctx = new TransRunCtx;
+    ctx->hWnd = m_hWnd; ctx->eMode = (int)m_eMode;
+    ctx->msg = msg; ctx->nTotal = 0; ctx->vInstall = _T("");
+    ctx->vCashNo = _T(""); ctx->nCashTypeSel = -1;
+    AfxBeginThread(TransRunWorkerThread, (LPVOID)ctx);
 }
 void CTransDlg::OnRunCashApproval()
 {
@@ -1123,11 +1134,6 @@ void CTransDlg::OnRunCashApproval()
     m_fields[F_TAXFREE].pCtrl->GetWindowText(vTaxFree);   vTaxFree.Trim();
     m_fields[F_CASHTYPE].pCtrl->GetWindowText(vCashType); vCashType.Trim();
     m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
-    int nSupply = ParseAmountText(vSupply);
-    int nTax = ParseAmountText(vTax);
-    int nTip = ParseAmountText(vTip);
-    int nTaxFree = ParseAmountText(vTaxFree);
-
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);   msg += ln;
@@ -1136,20 +1142,16 @@ void CTransDlg::OnRunCashApproval()
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_TAXFREE].caption, (LPCTSTR)vTaxFree);  msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHTYPE].caption, (LPCTSTR)vCashType); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption, (LPCTSTR)vCashNo);   msg += ln;
-    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
-    ResetSampleResult();
-    if (m_results[1].value == _T("000")) {
-        long long nTotal = (long long)ParseAmountText(vSupply)
-            + (long long)ParseAmountText(vTax)
-            + (long long)ParseAmountText(vTip)
-            + (long long)ParseAmountText(vTaxFree);
-        m_tabValues[(int)MODE_CASH_CANCEL][F_SUPPLY] = FormatAmountWithCommas(nTotal);
-        CString dateStr = m_results[0].value;
-        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGDATE] = dateStr.Mid(2, 4);
-        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGAPPNO] = m_results[3].value;
-        { LRESULT s = m_fields[F_CASHTYPE].pCtrl->SendMessage(CB_GETCURSEL); m_tabValues[(int)MODE_CASH_CANCEL][F_CASHTYPE].Format(_T("%d"), (int)s); }
-        m_tabValues[(int)MODE_CASH_CANCEL][F_CASHNO] = vCashNo;
-    }
+    long long nTotal = (long long)ParseAmountText(vSupply)
+        + (long long)ParseAmountText(vTax)
+        + (long long)ParseAmountText(vTip)
+        + (long long)ParseAmountText(vTaxFree);
+    int nCashTypeSel = (int)m_fields[F_CASHTYPE].pCtrl->SendMessage(CB_GETCURSEL);
+    TransRunCtx* ctx = new TransRunCtx;
+    ctx->hWnd = m_hWnd; ctx->eMode = (int)m_eMode;
+    ctx->msg = msg; ctx->nTotal = nTotal; ctx->vInstall = _T("");
+    ctx->vCashNo = vCashNo; ctx->nCashTypeSel = nCashTypeSel;
+    AfxBeginThread(TransRunWorkerThread, (LPVOID)ctx);
 }
 void CTransDlg::OnRunCashCancel()
 {
@@ -1160,25 +1162,33 @@ void CTransDlg::OnRunCashCancel()
     m_fields[F_ORGDATE].pCtrl->GetWindowText(vOrgDate);   vOrgDate.Trim();
     m_fields[F_ORGAPPNO].pCtrl->GetWindowText(vOrgAppNo); vOrgAppNo.Trim();
     m_fields[F_CASHNO].pCtrl->GetWindowText(vCashNo);     vCashNo.Trim();
-    int nSupply = ParseAmountText(vSupply);
-
     CString msg, ln;
     msg = _T("[") + GetCurrentModeName() + _T("]\r\n\r\n");
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_SUPPLY].caption, (LPCTSTR)vSupply);   msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGDATE].caption, (LPCTSTR)vOrgDate);  msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_ORGAPPNO].caption, (LPCTSTR)vOrgAppNo); msg += ln;
     ln.Format(_T("%s: %s\r\n"), (LPCTSTR)m_fields[F_CASHNO].caption, (LPCTSTR)vCashNo);   msg += ln;
-    AfxMessageBox(msg, MB_OK | MB_ICONINFORMATION);
-    ResetSampleResult();
+    TransRunCtx* ctx = new TransRunCtx;
+    ctx->hWnd = m_hWnd; ctx->eMode = (int)m_eMode;
+    ctx->msg = msg; ctx->nTotal = 0; ctx->vInstall = _T("");
+    ctx->vCashNo = _T(""); ctx->nCashTypeSel = -1;
+    AfxBeginThread(TransRunWorkerThread, (LPVOID)ctx);
 }
 BOOL CTransDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
     UINT nID = LOWORD(wParam);
     if (HIWORD(wParam) == BN_CLICKED) {
-        if (nID == IDC_TRANS_BTN_CLOSE) { EndDialog(IDCANCEL); return TRUE; }
+        if (nID == IDC_TRANS_BTN_CLOSE) {
+            if (m_bRunning) return TRUE;
+            EndDialog(IDCANCEL); return TRUE;
+        }
         if (nID == IDC_TRANS_BTN_RUN) {
+            if (m_bRunning) return TRUE;
             CString err;
             if (!ValidateCurrentMode(err)) { CModernMessageBox::Warning(err, this); return TRUE; }
+            m_bRunning = TRUE;
+            m_btnRun.EnableWindow(FALSE);
+            m_btnClose.EnableWindow(FALSE);
             switch (m_eMode) {
             case MODE_CREDIT_APPROVAL: OnRunCreditApproval(); break;
             case MODE_CREDIT_CANCEL:   OnRunCreditCancel();   break;
@@ -1224,4 +1234,30 @@ BOOL CTransDlg::OnCommand(WPARAM wParam, LPARAM lParam)
         }
     }
     return CDialog::OnCommand(wParam, lParam);
+}
+LRESULT CTransDlg::OnTransRunDone(WPARAM, LPARAM lParam)
+{
+    TransRunCtx* ctx = reinterpret_cast<TransRunCtx*>(lParam);
+    AfxMessageBox(ctx->msg, MB_OK | MB_ICONINFORMATION);
+    ResetSampleResult();
+    if (ctx->eMode == (int)MODE_CREDIT_APPROVAL && m_results[1].value == _T("000")) {
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_SUPPLY]  = FormatAmountWithCommas(ctx->nTotal);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_INSTALL] = ctx->vInstall;
+        CString dateStr = m_results[0].value;
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGDATE]  = dateStr.Mid(2, 4);
+        m_tabValues[(int)MODE_CREDIT_CANCEL][F_ORGAPPNO] = m_results[3].value;
+    }
+    else if (ctx->eMode == (int)MODE_CASH_APPROVAL && m_results[1].value == _T("000")) {
+        m_tabValues[(int)MODE_CASH_CANCEL][F_SUPPLY]  = FormatAmountWithCommas(ctx->nTotal);
+        CString dateStr = m_results[0].value;
+        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGDATE]   = dateStr.Mid(2, 4);
+        m_tabValues[(int)MODE_CASH_CANCEL][F_ORGAPPNO]  = m_results[3].value;
+        m_tabValues[(int)MODE_CASH_CANCEL][F_CASHTYPE].Format(_T("%d"), ctx->nCashTypeSel);
+        m_tabValues[(int)MODE_CASH_CANCEL][F_CASHNO]    = ctx->vCashNo;
+    }
+    m_bRunning = FALSE;
+    m_btnRun.EnableWindow(TRUE);
+    m_btnClose.EnableWindow(TRUE);
+    delete ctx;
+    return 0;
 }
