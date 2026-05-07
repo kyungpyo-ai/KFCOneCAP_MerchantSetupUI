@@ -903,7 +903,7 @@ private:
     int   m_nCachedFontDpi;
 
     static const int kBaseCardW    = 160;
-    static const int kBaseItemH    = 36;
+    static const int kBaseItemH    = 32;
     static const int kBaseSepH     = 9;
     static const int kBasePadX     = 16;
     static const int kBaseRadius   = 12;

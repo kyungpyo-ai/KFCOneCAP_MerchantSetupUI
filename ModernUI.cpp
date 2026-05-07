@@ -4788,7 +4788,7 @@ void CTrayPopup::Show(HWND hOwner, const std::vector<CTrayPopupItem>& items, CPo
 	m_nCardW     = ModernUIDpi::Scale(hRef, kBaseCardW);
 
 	// [모던 UI 개선] 팝업 내부 상하 여백 (Top 8px, Bottom 8px = 총 16px) 추가
-	m_nCardH = ModernUIDpi::Scale(hRef, 16);
+	m_nCardH = ModernUIDpi::Scale(hRef, 12);
 	for (const auto& it : m_items)
 		m_nCardH += it.bSeparator ? m_nSepH : m_nItemH;
 
