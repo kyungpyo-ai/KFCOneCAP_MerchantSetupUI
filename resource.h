@@ -75,6 +75,7 @@
 #define IDC_CHECK_ALARM_DUAL             2056
 #define IDC_CHECK_AUTO_RESET             2060
 #define IDC_CHECK_AUTO_REBOOT            2061
+#define IDC_CHECK_UNION_AUTO             2062
 #define IDC_STATIC_CANCEL_KEY            2070
 #define IDC_COMBO_CANCEL_KEY             2071
 #define IDC_STATIC_MSR_KEY               2072

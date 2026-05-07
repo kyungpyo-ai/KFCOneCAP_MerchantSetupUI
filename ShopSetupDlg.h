@@ -44,6 +44,9 @@
 #ifndef IDC_BTN_SIGN_PAD_PORT_INFO
 #define IDC_BTN_SIGN_PAD_PORT_INFO   60117
 #endif
+#ifndef IDC_BTN_UNION_AUTO_INFO
+#define IDC_BTN_UNION_AUTO_INFO      60118
+#endif
 
 #ifndef IDC_BTN_SIGN_PAD_USE_INFO
 #define IDC_BTN_SIGN_PAD_USE_INFO    60106
@@ -136,6 +139,7 @@ public:
     CSkinnedComboBox m_comboCashReceipt;
     CSkinnedComboBox m_comboInterlock;    CSkinnedComboBox m_comboCommType;
     CModernToggleSwitch m_chkCardDetect;
+    CModernToggleSwitch m_chkUnionAuto;
     CString m_strCardDetectParam;
     CModernToggleSwitch m_chkMultiVoice;
 
@@ -174,6 +178,7 @@ public:
     CInfoIconButton m_btnInterlockInfo;     // Tab1: 장치 연동 방식
     CInfoIconButton m_btnMultiVoiceInfo;    // Tab1: 멀티패드 음성 출력
     CInfoIconButton m_btnCardDetectInfo;   // Tab0: 우선 거래
+    CInfoIconButton m_btnUnionAutoInfo;   // Tab0: 은련 자동 거래
     CInfoIconButton m_btnScannerUseInfo;   // Tab1: 스캐너 사용
     CInfoIconButton m_btnAutoRebootInfo;   // Tab2: 자동 리부팅
     CInfoIconButton m_btnAlarmGraphInfo;   // Tab2: 알림창 그림
@@ -282,6 +287,7 @@ private:
         int    cmbAlarmPos, cmbAlarmSize, cmbCancelKey, cmbMSRKey;
         BOOL   tglCardDetect, tglMultiVoice, tglScannerUse;
         BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReboot;
+        BOOL   tglUnionAuto;
     };
     SettingsSnapshot m_snap;
     void TakeSnapshot();

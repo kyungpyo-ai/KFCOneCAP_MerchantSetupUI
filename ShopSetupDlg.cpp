@@ -100,6 +100,7 @@ namespace
     static LPCTSTR AUTO_REBOOT_FIELD = _T("AUTO_REBOOT");
     static LPCTSTR NOTIFY_IMG_FIELD = _T("NOTIFY_IMG");
     static LPCTSTR NOTIFY_DUAL_FIELD = _T("NOTIFY_DUAL_MONITOR");
+    static LPCTSTR UNION_CHECK_FIELD = _T("UNION_CHECK");
     struct ComboItem
     {
         LPCTSTR text;   // 화면 표시값
@@ -271,7 +272,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_NCACTIVATE()          // [FIX v2.1] xxxSaveDlgFocus O(N^2) 차단
     ON_WM_ACTIVATE()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
-    ON_COMMAND_RANGE(IDC_BTN_VAN_SERVER_INFO, IDC_BTN_SIGN_PAD_PORT_INFO, OnInfoButtonClicked)
+    ON_COMMAND_RANGE(IDC_BTN_VAN_SERVER_INFO, IDC_BTN_UNION_AUTO_INFO, OnInfoButtonClicked)
     ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE, OnCbnSelchangeSignPadUse)
     ON_BN_CLICKED(IDC_CHECK_CARD_DETECT, OnBnClickedCardDetectToggle)
     ON_BN_CLICKED(IDC_CHECK_SCANNER_USE, OnBnClickedScannerUseToggle)
@@ -497,6 +498,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     CreateInfoBtn(m_btnSignPadPortInfo, IDC_BTN_SIGN_PAD_PORT_INFO);
     CreateInfoBtn(m_btnSignPadSpeedInfo, IDC_BTN_SIGN_PAD_SPEED_INFO);
     CreateInfoBtn(m_btnAlarmSizeInfo, IDC_BTN_ALARM_SIZE_INFO);
+    CreateInfoBtn(m_btnUnionAutoInfo, IDC_BTN_UNION_AUTO_INFO);
     m_tabCtrl.AddTab(_T("결제 설정"), 0);
     m_tabCtrl.AddTab(_T("장치 정보"), 1);
     m_tabCtrl.AddTab(_T("시스템 설정"), 2);
@@ -785,12 +787,13 @@ void CShopSetupDlg::InitializeControls()
             sw.SetTextSizePx(labelPx_);  // fontLabel과 동일 (13px)
             sw.SetNoWrapEllipsis(TRUE);
         };
-    SetupTgl(m_chkCardDetect, IDC_CHECK_CARD_DETECT, _T("카드 감지 우선 거래 사용"), FALSE);
+    SetupTgl(m_chkCardDetect, IDC_CHECK_CARD_DETECT, _T("카드 감지 우선 거래"), FALSE);
     SetupTgl(m_chkMultiVoice, IDC_CHECK_MULTI_VOICE, _T("멀티패드 음성 출력"), FALSE);
     SetupTgl(m_chkScannerUse, IDC_CHECK_SCANNER_USE, _T("스캐너 사용"), FALSE);
     SetupTgl(m_chkAlarmGraph, IDC_CHECK_ALARM_GRAPH, _T("알림창 그림"), TRUE);
     SetupTgl(m_chkAlarmDual, IDC_CHECK_ALARM_DUAL, _T("알림창 듀얼"), FALSE);
     SetupTgl(m_chkAutoReboot, IDC_CHECK_AUTO_REBOOT, _T("자동 리부팅"), TRUE);
+    SetupTgl(m_chkUnionAuto, IDC_CHECK_UNION_AUTO, _T("은련카드 자동 핀입력"), TRUE);
     if (!::IsWindow(::GetDlgItem(m_hWnd, IDC_STATIC_CARD_DETECT_POSINFO)))
     {
         HWND hStatic = ::CreateWindowEx(
@@ -995,39 +998,53 @@ void CShopSetupDlg::ApplyLayoutTab0()
     PlaceInfoBtn(m_btnCashReceiptInfo, IDC_STATIC_CASH_RECEIPT, rx, y2, capH);
     Move(IDC_COMBO_CASH_RECEIPT, rx, y2 + capH + capGap, colW, FIELD_H);
     y2 += capH + capGap + FIELD_H + rowGap;
-    // 무서명 / 카드 감지 우선 거래 사용 (2열)
+    // 무서명 / 세금 자동 역산 (2행: 왼쪽=무서명, 오른쪽=세금 자동 역산)
     Move(IDC_STATIC_NO_SIGN_AMOUNT, innerX, y2, colW, capH);
     Move(IDC_EDIT_NO_SIGN_AMOUNT, innerX, y2 + capH + capGap, colW, FIELD_H);
     PositionValidationText(IDC_STATIC_ERR_NO_SIGN, innerX + colW - SX(88), y2, SX(88), capH);
     {
+        int rx = innerX + colW + colGap;
+        Move(IDC_STATIC_TAX_PERCENT, rx, y2, colW, capH);
+        PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, rx, y2, capH);
+        Move(IDC_EDIT_TAX_PERCENT, rx, y2 + capH + capGap, colW, FIELD_H);
+        PositionValidationText(IDC_STATIC_ERR_TAX, rx + colW - SX(88), y2, SX(88), capH);
+    }
+    y2 += capH + capGap + FIELD_H + rowGap;
+    // 카드 감지 우선 거래 사용 / 은련 자동 거래 (3행: 왼쪽=토글, 오른쪽=은련)
+    {
         const int BtnSz = SX(18);
         const int BtnGap = SX(6);
-        const int toggleY = y2 + capH + capGap;
-        const int rightX = innerX + colW + colGap;
-        // 카드 감지 우선 거래 사용: 세금 자동 역산 자리(2행 오른쪽)로 이동
-        // 토글 오른쪽에 팝오버 아이콘 영역을 확보해서 겹치지 않게 배치
+        const int toggleY = y2;
         int toggleW = colW - (BtnSz + BtnGap);
         if (toggleW < SX(110))
             toggleW = max(1, colW - (BtnSz + BtnGap));
-        Move(IDC_CHECK_CARD_DETECT, rightX, toggleY, toggleW, FIELD_H);
+        Move(IDC_CHECK_CARD_DETECT, innerX, toggleY, toggleW, FIELD_H);
         if (m_btnCardDetectInfo.GetSafeHwnd())
         {
-            int ibX = rightX + toggleW + BtnGap;
-            // (변경 전) int ibY = toggleY + (FIELD_H - BtnSz) / 2;
-                        // (변경 후) 아래와 같이 수정
+            int ibX = innerX + toggleW + BtnGap;
             int ibY = toggleY + (FIELD_H - BtnSz) / 2;
             m_btnCardDetectInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
         }
     }
-    y2 += capH + capGap + FIELD_H + rowGap;
-    // 세금 자동 역산 / 우선 거래 프로그램 (2열)
-    Move(IDC_STATIC_TAX_PERCENT, innerX, y2, colW, capH);
-    PlaceInfoBtn(m_btnTaxPercentInfo, IDC_STATIC_TAX_PERCENT, innerX, y2, capH);
-    Move(IDC_EDIT_TAX_PERCENT, innerX, y2 + capH + capGap, colW, FIELD_H);
-    PositionValidationText(IDC_STATIC_ERR_TAX, innerX + colW - SX(88), y2, SX(88), capH);
-    Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX + colW + colGap, y2, colW, capH);
-    Move(IDC_EDIT_CARD_DETECT_PARAM, innerX + colW + colGap, y2 + capH + capGap, colW, FIELD_H);
-    PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW + colGap + colW - SX(88), y2, SX(88), capH);
+    {
+        const int BtnSzU = SX(18);
+        const int BtnGapU = SX(6);
+        int rx = innerX + colW + colGap;
+        int unionW = colW - (BtnSzU + BtnGapU);
+        if (unionW < SX(110)) unionW = max(1, colW - (BtnSzU + BtnGapU));
+        Move(IDC_CHECK_UNION_AUTO, rx, y2, unionW, FIELD_H);
+        if (m_btnUnionAutoInfo.GetSafeHwnd())
+        {
+            int ibX = rx + unionW + BtnGapU;
+            int ibY = y2 + (FIELD_H - BtnSzU) / 2;
+            m_btnUnionAutoInfo.SetWindowPos(NULL, ibX, ibY, BtnSzU, BtnSzU, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+    }
+    y2 += FIELD_H + rowGap;
+    // 우선 거래 프로그램 (4행: 왼쪽)
+    Move(IDC_STATIC_CARD_DETECT_POSINFO, innerX, y2, colW, capH);
+    Move(IDC_EDIT_CARD_DETECT_PARAM, innerX, y2 + capH + capGap, colW, FIELD_H);
+    PositionValidationText(IDC_STATIC_ERR_CARD_DETECT_PROGRAM, innerX + colW - SX(88), y2, SX(88), capH);
     y2 += capH + capGap + FIELD_H;
     int payCardH = (y2 + cardPadY) - curY;
     m_rcCardPayMethod = CRect(cardLeft, curY, cardRight, curY + payCardH);
@@ -1571,6 +1588,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     m_chkAlarmDual.SetToggled(ReadToggle_DefaultOnWhenMissing(NOTIFY_DUAL_FIELD, FALSE, _T("1"), _T("0")));
     // AUTO_*: ON=0 / OFF=1
     m_chkAutoReboot.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_REBOOT_FIELD, TRUE, _T("0"), _T("1")));
+    m_chkUnionAuto.SetToggled(ReadToggle_DefaultOnWhenMissing(UNION_CHECK_FIELD, FALSE, _T("0"), _T("1")));
     // UI에 반영
     UpdateData(FALSE);
     UpdateToggleDependentEdits(FALSE);
@@ -1657,6 +1675,7 @@ void CShopSetupDlg::SaveOptionsToRegistry()
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_IMG_FIELD, m_chkAlarmGraph.IsToggled() ? _T("0") : _T("1"));
     // AUTO_*: ON=0, OFF=1
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_REBOOT_FIELD, m_chkAutoReboot.IsToggled() ? _T("0") : _T("1"));
+    WriteToggleValue(UNION_CHECK_FIELD, m_chkUnionAuto.IsToggled(), _T("0"), _T("1")); // ON=0, OFF=1
 }
 // ============================================================================
 // ShowTab - 탭 전환 시 컨트롤 show/hide
@@ -1674,7 +1693,8 @@ void CShopSetupDlg::ShowTab(int nTab)
         IDC_STATIC_COMM_TYPE, IDC_COMBO_COMM_TYPE, IDC_STATIC_CASH_RECEIPT, IDC_COMBO_CASH_RECEIPT,
         IDC_CHECK_CARD_DETECT, IDC_STATIC_CARD_DETECT_POSINFO, IDC_EDIT_CARD_DETECT_PARAM, IDC_STATIC_ERR_CARD_DETECT_PROGRAM,
         IDC_STATIC_NO_SIGN_AMOUNT, IDC_EDIT_NO_SIGN_AMOUNT, IDC_STATIC_ERR_NO_SIGN,
-        IDC_STATIC_TAX_PERCENT, IDC_EDIT_TAX_PERCENT, IDC_STATIC_ERR_TAX, 0
+        IDC_STATIC_TAX_PERCENT, IDC_EDIT_TAX_PERCENT, IDC_STATIC_ERR_TAX,
+        IDC_CHECK_UNION_AUTO, IDC_BTN_UNION_AUTO_INFO, 0
     };
     static const int s_tab1[] = {
         IDC_STATIC_CARD_TIMEOUT, IDC_EDIT_CARD_TIMEOUT, IDC_STATIC_ERR_TIMEOUT, IDC_STATIC_INTERLOCK, IDC_COMBO_INTERLOCK,
@@ -1726,6 +1746,7 @@ void CShopSetupDlg::ShowTab(int nTab)
     m_btnCommTypeInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
     m_btnCashReceiptInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
     m_btnCardDetectInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    m_btnUnionAutoInfo.ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
     m_btnCardTimeoutInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnInterlockInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnMultiVoiceInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
@@ -2208,6 +2229,7 @@ void CShopSetupDlg::TakeSnapshot()
     m_snap.tglAlarmGraph = m_chkAlarmGraph.IsToggled();
     m_snap.tglAlarmDual = m_chkAlarmDual.IsToggled();
     m_snap.tglAutoReboot = m_chkAutoReboot.IsToggled();
+    m_snap.tglUnionAuto = m_chkUnionAuto.IsToggled();
 }
 BOOL CShopSetupDlg::HasChanges() const
 {
@@ -2236,6 +2258,7 @@ BOOL CShopSetupDlg::HasChanges() const
     if (m_chkAlarmGraph.IsToggled() != m_snap.tglAlarmGraph)  return TRUE;
     if (m_chkAlarmDual.IsToggled() != m_snap.tglAlarmDual)   return TRUE;
     if (m_chkAutoReboot.IsToggled() != m_snap.tglAutoReboot)  return TRUE;
+    if (m_chkUnionAuto.IsToggled() != m_snap.tglUnionAuto)    return TRUE;
     return FALSE;
 }
 // ============================================================================
@@ -2460,12 +2483,13 @@ void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
         { &m_btnSignPadSpeedInfo, _T("서명패드 속도"), _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시") },
         { &m_btnAlarmSizeInfo, _T("알림창 크기"), _T("거래 알림창의 표시 크기를 설정합니다.\n· 기본값 : 매우작게 ") },
         { &m_btnMultiVoiceInfo, _T("음성출력"), _T("카드 리딩 시 음성 출력 여부\n· 기본값 : 미사용\n※SPAY-8800Q, DP636X 모델만 가능") },
-        { &m_btnCardDetectInfo, _T("카드 감지 우선 거래 사용"), _T("카드 감지 우선 거래 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용") },
+        { &m_btnCardDetectInfo, _T("카드 감지 우선 거래"), _T("카드 감지 우선 거래 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용") },
         { &m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용 \n※POS 프로그램에서 연동하는 경우 사용 X") },
         { &m_btnAutoRebootInfo, _T("자동 리부팅"), _T("일일 단위 KFTCOneCAP 자동 리부팅 여부\n· 기본값 : 사용") },
         { &m_btnAlarmGraphInfo, _T("알림창 그림"), _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용") },
         { &m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용") },
         { &m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용") },
+        { &m_btnUnionAutoInfo, _T("은련카드 자동 핀입력"), _T("은련카드 자동 핀입력 여부 설정\n· 기본값 : 미사용") },
         { &m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호") }
     };
     for (int i = 0; i < _countof(kTable); i++)
