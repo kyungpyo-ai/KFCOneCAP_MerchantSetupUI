@@ -24,6 +24,7 @@ public:
 
 protected:
     virtual BOOL OnInitDialog();
+    virtual void EndDialog(int nResult);
     virtual void OnOK();
     virtual void OnCancel();
     virtual BOOL PreTranslateMessage(MSG* pMsg);

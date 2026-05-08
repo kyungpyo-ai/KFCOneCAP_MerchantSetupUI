@@ -698,12 +698,19 @@ LRESULT CKeyinDlg::OnHookKey(WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+void CKeyinDlg::EndDialog(int nResult)
+{
+    m_dimDlg.Destroy();
+    CDialog::EndDialog(nResult);
+}
+
 void CKeyinDlg::OnOK()
 {
     if (m_strInputData.IsEmpty()) return;
     m_cardnum = m_strInputData;
     if (s_hKbHook) { ::UnhookWindowsHookEx(s_hKbHook); s_hKbHook = NULL; s_hWndTarget = NULL; }
     KillTimer(1);
+    m_dimDlg.Destroy();
     CDialog::OnOK();
 }
 
