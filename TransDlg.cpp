@@ -2,6 +2,7 @@
 #include "resource.h"
 #include "TransDlg.h"
 #include "ModernMessageBox.h"
+#include "KeyinDlg.h"
 
 #define WM_TRANS_RUN_DONE  (WM_APP + 300)
 
@@ -1127,6 +1128,25 @@ void CTransDlg::OnRunCreditCancel()
 void CTransDlg::OnRunCashApproval()
 {
     ClearResult();
+    // 현금영수증 번호 입력 팝업 (Mode 2 테스트)
+    {
+        CString vSPre; m_fields[F_SUPPLY].pCtrl->GetWindowText(vSPre); vSPre.Trim();
+        int nKind = (ParseAmountText(vSPre)==1000)?1:(ParseAmountText(vSPre)==2000)?2:3;
+        CKeyinDlg keyinDlg(nKind, this);
+        int nRet = keyinDlg.DoModal();
+        if (nRet != IDOK) {
+            CString strRetMsg;
+            strRetMsg.Format(_T("KeyinDlg return = %d"), nRet);
+            AfxMessageBox(strRetMsg);
+            m_bRunning = FALSE;
+            m_btnRun.EnableWindow(TRUE);
+            m_btnClose.EnableWindow(TRUE);
+            return;
+        }
+        CString strOkMsg;
+        strOkMsg.Format(_T("m_cardnum: %s"), (LPCTSTR)keyinDlg.m_cardnum);
+        AfxMessageBox(strOkMsg);
+    }
     CString vSupply, vTax, vTip, vTaxFree, vCashType, vCashNo;
     m_fields[F_SUPPLY].pCtrl->GetWindowText(vSupply);     vSupply.Trim();
     m_fields[F_TAX].pCtrl->GetWindowText(vTax);           vTax.Trim();

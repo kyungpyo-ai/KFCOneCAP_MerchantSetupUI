@@ -425,12 +425,13 @@ static const float kBtnDrawShrink     = 3.0f;  // drawing rect shrink (right/bot
 static const int   kBtnShadowAlphaNrm = 12;    // shadow alpha: normal state
 static const int   kBtnShadowAlphaPrs = 6;     // shadow alpha: pressed state
 static const float kBtnBorderWidth    = 1.2f;  // border pen width (most styles)
-static const float kBtnFontSize       = 12.5f; // button text font size (pt)
+static const float kBtnFontSize       = 12.5f;
 BEGIN_MESSAGE_MAP(CModernButton, CButton)
 	ON_WM_MOUSEMOVE()
 	ON_WM_MOUSELEAVE()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
+	ON_WM_LBUTTONDBLCLK()
 	ON_WM_ERASEBKGND()
 	ON_WM_SETCURSOR()
 	ON_MESSAGE(WM_MOUSEHOVER, OnMouseHover)
@@ -716,6 +717,11 @@ void CModernButton::OnLButtonUp(UINT nFlags, CPoint point)
 	m_bPressed = FALSE;
 	Invalidate();
 	CButton::OnLButtonUp(nFlags, point);
+}
+
+void CModernButton::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	OnLButtonDown(nFlags, point);
 }
 
 

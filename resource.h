@@ -315,3 +315,20 @@
 #define ID_TRAY_READER        61002
 #define ID_TRAY_SHOP          61003
 #define ID_TRAY_EXIT          61004
+
+// KeyinDlg resource IDs
+#define IDD_KEYIN_DIALOG     193
+#define IDC_KEYIN_BTN_0      8000
+#define IDC_KEYIN_BTN_1      8001
+#define IDC_KEYIN_BTN_2      8002
+#define IDC_KEYIN_BTN_3      8003
+#define IDC_KEYIN_BTN_4      8004
+#define IDC_KEYIN_BTN_5      8005
+#define IDC_KEYIN_BTN_6      8006
+#define IDC_KEYIN_BTN_7      8007
+#define IDC_KEYIN_BTN_8      8008
+#define IDC_KEYIN_BTN_9      8009
+#define IDC_KEYIN_BTN_DEL    8010
+#define IDC_KEYIN_BTN_SPEC   8011
+#define IDC_KEYIN_BTN_OK     8012
+#define IDC_KEYIN_BTN_CANCEL 8013

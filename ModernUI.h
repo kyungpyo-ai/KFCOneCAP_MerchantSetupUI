@@ -249,6 +249,7 @@ protected:
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
@@ -339,6 +340,7 @@ protected:
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 
 
     DECLARE_MESSAGE_MAP()
@@ -392,6 +394,7 @@ protected:
     afx_msg void OnMouseLeave();
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 
     DECLARE_MESSAGE_MAP()
 
@@ -435,6 +438,7 @@ protected:
     afx_msg void OnMouseLeave();
     afx_msg LRESULT OnMouseHover(WPARAM wParam, LPARAM lParam);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
@@ -446,7 +450,8 @@ private:
     BOOL m_bToggled;
     BOOL m_bHover;
     BOOL m_bTracking;
-    BOOL m_bPressed; // 마우스 눌림 상태 저장용 추가
+    BOOL m_bPressed;
+    int  m_nPressFlashMs; // 마우스 눌림 상태 저장용 추가
 
     int  m_nTextPx;
     BOOL m_bNoWrapEllipsis;
@@ -507,12 +512,12 @@ protected:
     afx_msg LRESULT OnSetTextMsg(WPARAM wParam, LPARAM lParam);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
-    afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
     afx_msg void OnPaint();
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
     afx_msg LRESULT OnPrintClientMsg(WPARAM wParam, LPARAM lParam);
     afx_msg void OnNcPaint();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -866,10 +871,11 @@ protected:
     afx_msg void OnPaint();
     afx_msg BOOL OnEraseBkgnd(CDC* pDC);
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+    afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
     afx_msg void OnMouseMove(UINT nFlags, CPoint point);
     afx_msg void OnMouseLeave();
-    afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
     DECLARE_MESSAGE_MAP()
 
 private:
