@@ -32,7 +32,6 @@ BEGIN_MESSAGE_MAP(CKeyinDlg, CDialog)
     ON_WM_CTLCOLOR()
     ON_WM_TIMER()
     ON_WM_DESTROY()
-    ON_WM_WINDOWPOSCHANGING()
     ON_COMMAND_RANGE(IDC_KEYIN_BTN_0, IDC_KEYIN_BTN_CANCEL, OnBtnClicked)
     ON_CONTROL_RANGE(BN_DBLCLK, IDC_KEYIN_BTN_0, IDC_KEYIN_BTN_CANCEL, OnBtnClicked)
     ON_MESSAGE(WM_KEYIN_HOOK_KEY, OnHookKey)
@@ -289,7 +288,10 @@ BOOL CKeyinDlg::OnInitDialog()
     LayoutControls();
     CenterWindow();
 
+    m_dimDlg.Create();
     ::SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (m_dimDlg.GetSafeHwnd())
+        ::SetWindowPos(m_dimDlg.GetSafeHwnd(), m_hWnd, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     SetForegroundWindow();
     ModernUIWindow::ApplyWhiteTitleBar(m_hWnd);
     SetTimer(2,300, NULL);
@@ -624,12 +626,6 @@ BOOL CKeyinDlg::PreTranslateMessage(MSG* pMsg)
     return CDialog::PreTranslateMessage(pMsg);
 }
 
-void CKeyinDlg::OnWindowPosChanging(WINDOWPOS* lpwndpos)
-{
-    if (!(lpwndpos->flags & SWP_NOZORDER))
-        lpwndpos->hwndInsertAfter = HWND_TOPMOST;
-    CDialog::OnWindowPosChanging(lpwndpos);
-}
 
 LRESULT CALLBACK CKeyinDlg::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -727,5 +723,6 @@ void CKeyinDlg::OnDestroy()
     }
     KillTimer(1);
     KillTimer(2);
+    m_dimDlg.Destroy();
     CDialog::OnDestroy();
 }

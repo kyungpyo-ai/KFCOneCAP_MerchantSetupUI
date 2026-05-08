@@ -1,6 +1,7 @@
 #pragma once
 #include "resource.h"
 #include "ModernUI.h"
+#include "DimDlg.h"
 
 #ifndef IDD_KEYIN_DIALOG
 #define IDD_KEYIN_DIALOG 193
@@ -35,7 +36,6 @@ protected:
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg LRESULT OnHookKey(WPARAM wParam, LPARAM lParam);
     afx_msg void OnDestroy();
-    afx_msg void OnWindowPosChanging(WINDOWPOS* lpwndpos);
 
     DECLARE_MESSAGE_MAP()
 
@@ -73,4 +73,6 @@ private:
     static HHOOK   s_hKbHook;
     static HWND    s_hWndTarget;
     static LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
+
+    CDimDlg m_dimDlg;
 };

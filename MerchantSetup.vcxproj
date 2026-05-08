@@ -56,6 +56,7 @@
     <ClCompile Include="RegistryUtil.cpp" />
     <ClCompile Include="ShopDownDlg.cpp" />
     <ClCompile Include="ShopSetupDlg.cpp" />
+    <ClCompile Include="DimDlg.cpp" />
     <ClCompile Include="KeyinDlg.cpp" />
     <ClCompile Include="TransDlg.cpp" />
     <ClCompile Include="stdafx.cpp" />
@@ -71,6 +72,7 @@
     <ClInclude Include="RegistryUtil.h" />
     <ClInclude Include="ShopDownDlg.h" />
     <ClInclude Include="ShopSetupDlg.h" />
+    <ClInclude Include="DimDlg.h" />
     <ClInclude Include="KeyinDlg.h" />
     <ClInclude Include="TransDlg.h" />
     <ClInclude Include="resource.h" />
