@@ -47,6 +47,8 @@ Name: "desktopicon"; Description: "바탕화면에 아이콘 만들기"; GroupDe
 [InstallDelete]
 Type: files; Name: "{commonstartup}\{#AppName}.lnk"
 Type: files; Name: "{userstartup}\{#AppName}.lnk"
+Type: files; Name: "{commondesktop}\{#AppName}.lnk"
+Type: files; Name: "{userdesktop}\{#AppName}.lnk"
 
 [Registry]
 ; 설치 경로
@@ -63,9 +65,9 @@ Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueName: 
 ; OCX 등록 배치 파일 설치 중 실행 (HideWizardWindow=0 이므로 숨김 실행)
 Filename: "{app}\OCX_Register_32bit_AsyncforPOS.bat"; Flags: runhidden waituntilterminated
 ; 작업 스케줄러 등록 - 로그온 시 관리자 권한 자동 실행
-Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""{#AppName}"" /tr ""{app}\{#AppExeName}"" /sc onlogon /rl highest /f"; Flags: runhidden waituntilterminated
+Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""{#AppName}"" /tr ""\""""{app}\{#AppExeName}"""""" /sc onlogon /rl highest /f"; Flags: runhidden waituntilterminated
 ; 설치 완료 후 앱 실행
-Filename: "{app}\{#AppExeName}"; Description: "설치 후 실행"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExeName}"; Description: "설치 후 실행"; Flags: nowait postinstall skipifsilent runascurrentuser
 
 [UninstallRun]
 Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""{#AppName}"" /f"; Flags: runhidden

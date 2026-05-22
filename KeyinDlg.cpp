@@ -31,6 +31,7 @@ BEGIN_MESSAGE_MAP(CKeyinDlg, CDialog)
     ON_WM_ERASEBKGND()
     ON_WM_CTLCOLOR()
     ON_WM_TIMER()
+    ON_WM_CLOSE()
     ON_WM_DESTROY()
     ON_COMMAND_RANGE(IDC_KEYIN_BTN_0, IDC_KEYIN_BTN_CANCEL, OnBtnClicked)
     ON_CONTROL_RANGE(BN_DBLCLK, IDC_KEYIN_BTN_0, IDC_KEYIN_BTN_CANCEL, OnBtnClicked)
@@ -719,6 +720,13 @@ void CKeyinDlg::OnCancel()
     if (s_hKbHook) { ::UnhookWindowsHookEx(s_hKbHook); s_hKbHook = NULL; s_hWndTarget = NULL; }
     KillTimer(1);
     EndDialog(RET_CANCEL);
+}
+
+void CKeyinDlg::OnClose()
+{
+    if (s_hKbHook) { ::UnhookWindowsHookEx(s_hKbHook); s_hKbHook = NULL; s_hWndTarget = NULL; }
+    KillTimer(1);
+    EndDialog(IDCANCEL);
 }
 
 void CKeyinDlg::OnDestroy()
