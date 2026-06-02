@@ -84,6 +84,7 @@ namespace
     static LPCTSTR NOSIGN_AMT_FIELD = _T("NOSIGN_AMT");
     static LPCTSTR CASH_FIRST_FIELD = _T("CASH_FIRST");
     static LPCTSTR INTERLOCK_FIELD = _T("INTERLOCK");
+    static LPCTSTR TERMINAL_SPEED_FIELD = _T("TERMINAL_SPEED");
     static LPCTSTR SOCKET_TYPE_FIELD = _T("SOCKET_TYPE");
     static LPCTSTR SIGNPAD_USE_FIELD = _T("SIGNPAD_USE");
     static LPCTSTR SIGNPAD_FIELD = _T("SIGNPAD");
@@ -151,6 +152,13 @@ namespace
         { _T("PINPAD/KEYIN"), _T("PINPAD/KEYIN") },
         { _T("MS"),           _T("MS") },
         { _T("KEYIN"),        _T("KEYIN") },
+    };
+    static const ComboItem kTerminalSpeed[] =
+    {
+        { _T("115200bps"),  _T("115200") },
+        { _T("57600bps"),   _T("57600") },
+        { _T("38400bps"),   _T("38400") },
+        { _T("9600bps"),    _T("9600") },
     };
     static const ComboItem kInterlock[] =
     {
@@ -272,7 +280,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_WM_NCACTIVATE()          // [FIX v2.1] xxxSaveDlgFocus O(N^2) Â÷´Ü
     ON_WM_ACTIVATE()
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
-    ON_COMMAND_RANGE(IDC_BTN_VAN_SERVER_INFO, IDC_BTN_UNION_AUTO_INFO, OnInfoButtonClicked)
+    ON_COMMAND_RANGE(IDC_BTN_VAN_SERVER_INFO, IDC_BTN_TERMINAL_SPEED_INFO, OnInfoButtonClicked)
     ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE, OnCbnSelchangeSignPadUse)
     ON_BN_CLICKED(IDC_CHECK_CARD_DETECT, OnBnClickedCardDetectToggle)
     ON_BN_CLICKED(IDC_CHECK_SCANNER_USE, OnBnClickedScannerUseToggle)
@@ -375,6 +383,7 @@ void CShopSetupDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_COMBO_CASH_RECEIPT, m_comboCashReceipt);
     DDX_Control(pDX, IDC_COMBO_INTERLOCK, m_comboInterlock);
     DDX_Control(pDX, IDC_COMBO_COMM_TYPE, m_comboCommType);
+    DDX_Control(pDX, IDC_COMBO_TERMINAL_SPEED, m_comboTerminalSpeed);
     DDX_Text(pDX, IDC_EDIT_CARD_DETECT_PARAM, m_strCardDetectParam);
     DDX_Control(pDX, IDC_COMBO_SIGN_PAD_USE, m_comboSignPadUse);
     { CString _s; if (!pDX->m_bSaveAndValidate) _s.Format(_T("%d"), m_intSignPadPort);  DDX_Text(pDX, IDC_EDIT_SIGN_PAD_PORT, _s); if (pDX->m_bSaveAndValidate) m_intSignPadPort = _ttoi(_s); }
@@ -489,6 +498,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     CreateInfoBtn(m_btnCardTimeoutInfo, IDC_BTN_CARD_TIMEOUT_INFO);
     CreateInfoBtn(m_btnInterlockInfo, IDC_BTN_INTERLOCK_INFO);
     CreateInfoBtn(m_btnMultiVoiceInfo, IDC_BTN_MULTI_VOICE_INFO);
+    CreateInfoBtn(m_btnTerminalSpeedInfo, IDC_BTN_TERMINAL_SPEED_INFO);
     CreateInfoBtn(m_btnCardDetectInfo, IDC_BTN_CARD_DETECT_INFO);
     CreateInfoBtn(m_btnScannerUseInfo, IDC_BTN_SCANNER_USE_INFO);
     CreateInfoBtn(m_btnAutoRebootInfo, IDC_BTN_AUTO_REBOOT_INFO);
@@ -719,6 +729,7 @@ void CShopSetupDlg::InitializeControls()
     RemoveEdges(IDC_COMBO_CASH_RECEIPT);
     RemoveEdges(IDC_COMBO_COMM_TYPE);
     RemoveEdges(IDC_COMBO_INTERLOCK);
+    RemoveEdges(IDC_COMBO_TERMINAL_SPEED);
     RemoveEdges(IDC_COMBO_MSR_KEY);
     RemoveEdges(IDC_COMBO_SIGN_PAD_SPEED);
     RemoveEdges(IDC_COMBO_SIGN_PAD_USE);
@@ -742,6 +753,7 @@ void CShopSetupDlg::InitializeControls()
     m_comboVanServer.SetUnderlayColor(bgColor);
     m_comboCashReceipt.SetUnderlayColor(bgColor);
     m_comboInterlock.SetUnderlayColor(bgColor);
+    m_comboTerminalSpeed.SetUnderlayColor(bgColor);
     m_comboCommType.SetUnderlayColor(bgColor);
     m_comboSignPadUse.SetUnderlayColor(bgColor);
     m_comboSignPadSpeed.SetUnderlayColor(bgColor);
@@ -833,6 +845,7 @@ void CShopSetupDlg::InitializeControls()
     FillCombo(m_comboVanServer, kVanServers, (int)(sizeof(kVanServers) / sizeof(kVanServers[0])));
     FillCombo(m_comboCashReceipt, kCashReceipt, (int)(sizeof(kCashReceipt) / sizeof(kCashReceipt[0])));
     FillCombo(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock) / sizeof(kInterlock[0])));
+    FillCombo(m_comboTerminalSpeed, kTerminalSpeed, (int)(sizeof(kTerminalSpeed) / sizeof(kTerminalSpeed[0])));
     FillCombo(m_comboCommType, kCommType, (int)(sizeof(kCommType) / sizeof(kCommType[0])));
     FillCombo(m_comboSignPadUse, kSignPadUse, (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])));
     FillCombo(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])));
@@ -1750,6 +1763,7 @@ void CShopSetupDlg::ShowTab(int nTab)
     m_btnCardTimeoutInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnInterlockInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnMultiVoiceInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    m_btnTerminalSpeedInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnScannerUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnSignPadUseInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     m_btnSignPadPortInfo.ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
@@ -2217,6 +2231,7 @@ void CShopSetupDlg::TakeSnapshot()
     m_snap.cmbCashReceipt = m_comboCashReceipt.GetCurSel();
     m_snap.cmbInterlock = m_comboInterlock.GetCurSel();
     m_snap.cmbCommType = m_comboCommType.GetCurSel();
+    m_snap.cmbTerminalSpeed = m_comboTerminalSpeed.GetCurSel();
     m_snap.cmbSignPadUse = m_comboSignPadUse.GetCurSel();
     m_snap.cmbSignPadSpeed = m_comboSignPadSpeed.GetCurSel();
     m_snap.cmbAlarmPos = m_comboAlarmPos.GetCurSel();
@@ -2246,6 +2261,7 @@ BOOL CShopSetupDlg::HasChanges() const
     if (m_comboCashReceipt.GetCurSel() != m_snap.cmbCashReceipt)  return TRUE;
     if (m_comboInterlock.GetCurSel() != m_snap.cmbInterlock)    return TRUE;
     if (m_comboCommType.GetCurSel() != m_snap.cmbCommType)     return TRUE;
+    if (m_comboTerminalSpeed.GetCurSel() != m_snap.cmbTerminalSpeed) return TRUE;
     if (m_comboSignPadUse.GetCurSel() != m_snap.cmbSignPadUse)   return TRUE;
     if (m_comboSignPadSpeed.GetCurSel() != m_snap.cmbSignPadSpeed) return TRUE;
     if (m_comboAlarmPos.GetCurSel() != m_snap.cmbAlarmPos)     return TRUE;
@@ -2467,7 +2483,7 @@ void CShopSetupDlg::ShowInfoPopover(CInfoIconButton& btn, LPCTSTR szTitle, LPCTS
 }
 // ============================================================================
 // OnInfoButtonClicked - unified handler for all 18 info popover buttons
-//   IDC range: IDC_BTN_VAN_SERVER_INFO (60100) .. IDC_BTN_SIGN_PAD_PORT_INFO (60117)
+//   IDC range: IDC_BTN_VAN_SERVER_INFO (60100) .. IDC_BTN_TERMINAL_SPEED_INFO (60119)
 // ============================================================================
 void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
 {

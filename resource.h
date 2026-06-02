@@ -54,6 +54,8 @@
 #define IDC_CHECK_CARD_DETECT            2024
 #define IDC_EDIT_CARD_DETECT_PARAM       2025
 #define IDC_CHECK_MULTI_VOICE            2026
+#define IDC_STATIC_TERMINAL_SPEED        2045
+#define IDC_COMBO_TERMINAL_SPEED         2046
 #define IDC_STATIC_CARD_TIMEOUT          2010
 #define IDC_EDIT_CARD_TIMEOUT            2011
 #define IDC_STATIC_SIGN_PAD_USE          2030

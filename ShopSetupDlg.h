@@ -48,6 +48,10 @@
 #define IDC_BTN_UNION_AUTO_INFO      60118
 #endif
 
+#ifndef IDC_BTN_TERMINAL_SPEED_INFO
+#define IDC_BTN_TERMINAL_SPEED_INFO  60119
+#endif
+
 #ifndef IDC_BTN_SIGN_PAD_USE_INFO
 #define IDC_BTN_SIGN_PAD_USE_INFO    60106
 #endif
@@ -138,6 +142,7 @@ public:
     int m_intTaxPercent;
     CSkinnedComboBox m_comboCashReceipt;
     CSkinnedComboBox m_comboInterlock;    CSkinnedComboBox m_comboCommType;
+    CSkinnedComboBox m_comboTerminalSpeed;
     CModernToggleSwitch m_chkCardDetect;
     CModernToggleSwitch m_chkUnionAuto;
     CString m_strCardDetectParam;
@@ -177,6 +182,7 @@ public:
     CInfoIconButton m_btnCardTimeoutInfo;   // Tab1: 카드입력 Timeout
     CInfoIconButton m_btnInterlockInfo;     // Tab1: 장치 연동 방식
     CInfoIconButton m_btnMultiVoiceInfo;    // Tab1: 멀티패드 음성 출력
+    CInfoIconButton m_btnTerminalSpeedInfo; // Tab1: 단말기 연동 속도
     CInfoIconButton m_btnCardDetectInfo;   // Tab0: 우선 거래
     CInfoIconButton m_btnUnionAutoInfo;   // Tab0: 은련 자동 거래
     CInfoIconButton m_btnScannerUseInfo;   // Tab1: 스캐너 사용
@@ -285,6 +291,7 @@ private:
         int    cmbVanServer, cmbCashReceipt, cmbInterlock, cmbCommType;
         int    cmbSignPadUse, cmbSignPadSpeed;
         int    cmbAlarmPos, cmbAlarmSize, cmbCancelKey, cmbMSRKey;
+        int    cmbTerminalSpeed;
         BOOL   tglCardDetect, tglMultiVoice, tglScannerUse;
         BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReboot;
         BOOL   tglUnionAuto;
