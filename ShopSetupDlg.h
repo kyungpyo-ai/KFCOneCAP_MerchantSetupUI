@@ -219,6 +219,7 @@ protected:
 
     // v10.1: toggle-dependent edits
     afx_msg void OnCbnSelchangeSignPadUse();
+    afx_msg void OnCbnSelchangeInterlock();
     afx_msg void OnBnClickedCardDetectToggle();
     afx_msg void OnBnClickedScannerUseToggle();
     afx_msg void OnEnChangeValidateInput();

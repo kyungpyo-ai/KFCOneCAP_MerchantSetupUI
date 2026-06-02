@@ -282,6 +282,7 @@ BEGIN_MESSAGE_MAP(CShopSetupDlg, CDialog)
     ON_NOTIFY(TCN_SELCHANGE, IDC_TAB_MAIN, OnTcnSelchange)
     ON_COMMAND_RANGE(IDC_BTN_VAN_SERVER_INFO, IDC_BTN_TERMINAL_SPEED_INFO, OnInfoButtonClicked)
     ON_CBN_SELCHANGE(IDC_COMBO_SIGN_PAD_USE, OnCbnSelchangeSignPadUse)
+    ON_CBN_SELCHANGE(IDC_COMBO_INTERLOCK, OnCbnSelchangeInterlock)
     ON_BN_CLICKED(IDC_CHECK_CARD_DETECT, OnBnClickedCardDetectToggle)
     ON_BN_CLICKED(IDC_CHECK_SCANNER_USE, OnBnClickedScannerUseToggle)
     ON_EN_CHANGE(IDC_EDIT_PORT, OnEnChangeValidateInput)
@@ -860,7 +861,8 @@ void CShopSetupDlg::InitializeControls()
         IDC_STATIC_CASH_RECEIPT, IDC_STATIC_INTERLOCK,
         IDC_STATIC_COMM_TYPE, IDC_STATIC_SIGN_PAD_USE, IDC_STATIC_SIGN_PAD_PORT,
         IDC_STATIC_SIGN_PAD_SPEED, IDC_STATIC_ALARM_POS, IDC_STATIC_ALARM_SIZE,
-        IDC_STATIC_CANCEL_KEY, IDC_STATIC_MSR_KEY, IDC_STATIC_CARD_DETECT_POSINFO, IDC_STATIC_SCANNER_PORT_LABEL
+        IDC_STATIC_CANCEL_KEY, IDC_STATIC_MSR_KEY, IDC_STATIC_CARD_DETECT_POSINFO, IDC_STATIC_SCANNER_PORT_LABEL,
+        IDC_STATIC_TERMINAL_SPEED
     };
     for (int id : lblIds)
     {
@@ -873,7 +875,7 @@ void CShopSetupDlg::InitializeControls()
         &m_editCardDetectParam, &m_editSignPadPort, &m_editScannerPort,
         &m_comboVanServer, &m_comboCashReceipt, &m_comboInterlock, &m_comboCommType,
         &m_comboSignPadUse, &m_comboSignPadSpeed, &m_comboAlarmPos, &m_comboAlarmSize,
-        &m_comboCancelKey, &m_comboMSRKey
+        &m_comboCancelKey, &m_comboMSRKey, &m_comboTerminalSpeed
     };
     // CShopSetupDlg::InitializeControls() 끝부분
     for (CWnd* w : inputControls)
@@ -881,7 +883,7 @@ void CShopSetupDlg::InitializeControls()
 
     // [FIX] 콤보박스 내부 텍스트 크기도 콤팩트 모드일 때 줄임
     int comboTextPx = IsCompactScreen() ? 12 : 14;
-    for (CSkinnedComboBox* cb : { &m_comboVanServer, &m_comboCashReceipt, &m_comboInterlock, &m_comboCommType, &m_comboSignPadUse, &m_comboSignPadSpeed, &m_comboAlarmPos, &m_comboAlarmSize, &m_comboCancelKey, &m_comboMSRKey })
+    for (CSkinnedComboBox* cb : { &m_comboVanServer, &m_comboCashReceipt, &m_comboInterlock, &m_comboCommType, &m_comboSignPadUse, &m_comboSignPadSpeed, &m_comboAlarmPos, &m_comboAlarmSize, &m_comboCancelKey, &m_comboMSRKey, &m_comboTerminalSpeed })
         cb->SetTextPx(comboTextPx);
 }
 // --- SX: DPI-aware scaling shorthand ---
@@ -1209,6 +1211,12 @@ void CShopSetupDlg::ApplyLayoutTab1()
         Move(IDC_STATIC_SCANNER_PORT_LABEL, leftX, fy, col2W, capH);
         Move(IDC_EDIT_SCANNER_PORT, leftX, fy + capH + capG, col2W, FIELD_H);
         PositionValidationText(IDC_STATIC_ERR_SCANNER_PORT, leftX + col2W - SX(88), fy, SX(88), capH);
+        // 행2 우측: 단말기 연동 속도 콤보 + 팝오버 (멀티패드 음성 출력 아래)
+        {
+            Move(IDC_STATIC_TERMINAL_SPEED, rightX, fy, col2W, capH);
+            PlaceInfoBtn(m_btnTerminalSpeedInfo, IDC_STATIC_TERMINAL_SPEED, rightX, fy, capH);
+            Move(IDC_COMBO_TERMINAL_SPEED, rightX, fy + capH + capG, col2W, FIELD_H);
+        }
         int cardH = (fy + capH + capG + FIELD_H + etcBottomPad) - curY;
         m_rcGrpEtc = CRect(cLeft, curY, cRight, curY + cardH);
         // curY = m_rcGrpEtc.bottom + cGapY;  // Tab1 끝
@@ -1564,6 +1572,11 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
         SelectComboByValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), s, 0);
     else
         SelectComboByValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), _T("57600"), 0);
+    // Combo: 단말기 연동 속도 (기본: 115200)
+    if (GetRegisterData(SEC_SERIALPORT, TERMINAL_SPEED_FIELD, s))
+        SelectComboByValue(m_comboTerminalSpeed, kTerminalSpeed, (int)(sizeof(kTerminalSpeed) / sizeof(kTerminalSpeed[0])), s, 0);
+    else
+        SelectComboByValue(m_comboTerminalSpeed, kTerminalSpeed, (int)(sizeof(kTerminalSpeed) / sizeof(kTerminalSpeed[0])), _T("115200"), 0);
     // Combo: 알림창 표시 위치 (기본: mid)
     if (GetRegisterData(SEC_SERIALPORT, NOTIFY_POS_FIELD, s))
         SelectComboByValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), s, 1);
@@ -1670,6 +1683,8 @@ void CShopSetupDlg::SaveOptionsToRegistry()
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_USE_FIELD, v);
         v = GetSelectedComboValue(m_comboSignPadSpeed, kSignPadSpeed, (int)(sizeof(kSignPadSpeed) / sizeof(kSignPadSpeed[0])), _T("57600"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, SIGNPAD_SPEED_FIELD, v);
+        v = GetSelectedComboValue(m_comboTerminalSpeed, kTerminalSpeed, (int)(sizeof(kTerminalSpeed) / sizeof(kTerminalSpeed[0])), _T("115200"));
+        AfxGetApp()->WriteProfileString(SEC_SERIALPORT, TERMINAL_SPEED_FIELD, v);
         v = GetSelectedComboValue(m_comboAlarmPos, kAlarmPos, (int)(sizeof(kAlarmPos) / sizeof(kAlarmPos[0])), _T("mid"));
         AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_POS_FIELD, v);
         v = GetSelectedComboValue(m_comboAlarmSize, kAlarmSize, (int)(sizeof(kAlarmSize) / sizeof(kAlarmSize[0])), _T("verysmall"));
@@ -1713,7 +1728,8 @@ void CShopSetupDlg::ShowTab(int nTab)
         IDC_STATIC_CARD_TIMEOUT, IDC_EDIT_CARD_TIMEOUT, IDC_STATIC_ERR_TIMEOUT, IDC_STATIC_INTERLOCK, IDC_COMBO_INTERLOCK,
         IDC_STATIC_SIGN_PAD_USE, IDC_COMBO_SIGN_PAD_USE, IDC_STATIC_SIGN_PAD_PORT, IDC_EDIT_SIGN_PAD_PORT, IDC_STATIC_ERR_SIGNPAD_PORT,
         IDC_STATIC_SIGN_PAD_SPEED, IDC_COMBO_SIGN_PAD_SPEED, IDC_CHECK_SCANNER_USE, IDC_STATIC_SCANNER_PORT_LABEL,
-        IDC_EDIT_SCANNER_PORT, IDC_STATIC_ERR_SCANNER_PORT, IDC_CHECK_MULTI_VOICE, 0
+        IDC_EDIT_SCANNER_PORT, IDC_STATIC_ERR_SCANNER_PORT, IDC_CHECK_MULTI_VOICE,
+        IDC_STATIC_TERMINAL_SPEED, IDC_COMBO_TERMINAL_SPEED, 0
     };
     static const int s_tab2[] = {
         IDC_STATIC_ALARM_SIZE, IDC_COMBO_ALARM_SIZE, IDC_STATIC_ALARM_POS, IDC_COMBO_ALARM_POS,
@@ -1826,6 +1842,8 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
             rcCtl.InflateRect(4, 4);
             RedrawWindow(&rcCtl, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_UPDATENOW);
             if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_SIGN_PAD_USE)
+                UpdateToggleDependentEdits(TRUE);
+            if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_INTERLOCK)
                 UpdateToggleDependentEdits(TRUE);
         }
         break;
@@ -2506,7 +2524,8 @@ void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
         { &m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용") },
         { &m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용") },
         { &m_btnUnionAutoInfo, _T("은련카드 자동 핀입력"), _T("은련카드 자동 핀입력 여부 설정\n· 기본값 : 미사용") },
-        { &m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호") }
+        { &m_btnSignPadPortInfo, _T("서명패드 포트번호"), _T("서명패드가 연결된 COM 포트번호") },
+        { &m_btnTerminalSpeedInfo, _T("단말기 연동 속도"), _T("단말기(forPOS) 연동 시 통신 속도 선택\n· 115200bps: 기본값 (권장)\n· 57600bps: 저속 단말기 연동 시\n· 38400bps: 저속 단말기 연동 시\n· 9600bps: 구형 단말기 연동 시\n※ 장치 연동 방식이 단말기(forPOS)인 경우에만 적용") }
     };
     for (int i = 0; i < _countof(kTable); i++)
     {
@@ -2981,8 +3000,28 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
                 m_comboSignPadSpeed.Invalidate(FALSE);
         }
     }
+    // 단말기 연동 속도 (장치 연동 방식 == FORPOS 일 때만 활성화)
+    if (m_comboTerminalSpeed.GetSafeHwnd() && m_comboInterlock.GetSafeHwnd())
+    {
+        CString interlockVal = GetSelectedComboValue(m_comboInterlock, kInterlock,
+            (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
+        const BOOL bEnable = (interlockVal == _T("FORPOS"));
+        const BOOL bPrevEnable = m_comboTerminalSpeed.IsWindowEnabled();
+        if (bPrevEnable != bEnable)
+            m_comboTerminalSpeed.EnableWindow(bEnable);
+        if (!bEnable && ::GetFocus() == m_comboTerminalSpeed.GetSafeHwnd())
+            m_tabCtrl.SetFocus();
+        if (bForceRedraw && bPrevEnable != bEnable)
+            m_comboTerminalSpeed.Invalidate(FALSE);
+    }
 }
 void CShopSetupDlg::OnCbnSelchangeSignPadUse()
+{
+    if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
+        return;
+    UpdateToggleDependentEdits(TRUE);
+}
+void CShopSetupDlg::OnCbnSelchangeInterlock()
 {
     if (!m_bUiInitialized || m_bClosing || !GetSafeHwnd())
         return;

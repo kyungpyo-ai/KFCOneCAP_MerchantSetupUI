@@ -18,6 +18,10 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_TOKEN_HERE"
       }
+    },
+    "pywinauto-mcp": {
+      "command": "C:\\Users\\kftc\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\pywinauto-mcp.exe",
+      "args": ["--stdio"]
     }
   }
 }
