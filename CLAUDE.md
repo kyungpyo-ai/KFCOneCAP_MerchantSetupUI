@@ -274,21 +274,63 @@ if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_TRIGGER)
 
 ---
 
-## Testing — pywinauto-mcp
+## Testing
 
-이 프로젝트에 Windows GUI 자동화 테스트를 위한 pywinauto-mcp MCP 서버가 설정되어 있다 (`.mcp.json`).
+### 방법 비교
 
-**UI 변경사항 테스트 예시:**
-```python
-# 창 찾기
-automation_windows(action="find", title="가맹점 설정")
+| 방법 | 속도 | 용도 |
+|---|---|---|
+| **PowerShell UIAutomation** | ⚡⚡⚡ 가장 빠름 | enabled/disabled, 텍스트, 클릭 등 기능 검증 |
+| **pywinauto-mcp** | ⚡ | 스크린샷으로 시각적 레이아웃 확인 |
 
-# 컨트롤 enabled 상태 직접 확인 (스크린샷 불필요)
-automation_elements(action="get_state", window="가맹점 설정", control="단말기 연동 속도ComboBox")
-# → { "enabled": true/false }
+### 방법 1 — PowerShell UIAutomation (권장: 기능 테스트)
+
+MCP 오버헤드 없이 Windows 접근성 API를 직접 호출한다. Bash 도구 한 번으로 처리.
+
+```powershell
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+
+$root  = [Windows.Automation.AutomationElement]::RootElement
+$cond  = New-Object Windows.Automation.PropertyCondition(
+             [Windows.Automation.AutomationElement]::NameProperty, "가맹점 설정")
+$dlg   = $root.FindFirst("Children", $cond)
+
+# 컨트롤 ID(resource.h 값)로 콤보 찾기
+$comboCond = New-Object Windows.Automation.PropertyCondition(
+                 [Windows.Automation.AutomationElement]::AutomationIdProperty, "2046")
+$combo = $dlg.FindFirst("Descendants", $comboCond)
+
+# enabled 상태 즉시 확인
+$combo.Current.IsEnabled   # → True / False
 
 # 콤보 선택
-automation_elements(action="select", window="가맹점 설정", control="장치 연동 방식ComboBox", value="단말기(forPOS)")
+$pat = $combo.GetCurrentPattern([Windows.Automation.SelectionPatternIdentifiers]::Pattern)
+$items = $combo.FindAll("Descendants",
+    (New-Object Windows.Automation.PropertyCondition(
+        [Windows.Automation.AutomationElement]::ControlTypeProperty,
+        [Windows.Automation.ControlType]::ListItem)))
+($items | Where-Object { $_.Current.Name -eq "단말기(forPOS)" }).GetCurrentPattern(
+    [Windows.Automation.InvokePatternIdentifiers]::Pattern).Invoke()
 ```
 
-좌표 계산 없이 컨트롤 이름으로 직접 접근하므로 스크린샷 기반 테스트보다 빠르고 정확하다.
+> AutomationId는 resource.h의 컨트롤 ID 값과 동일하다.
+> 예: `IDC_COMBO_TERMINAL_SPEED = 2046` → `AutomationId = "2046"`
+
+### 방법 2 — pywinauto-mcp (시각적 검증)
+
+스크린샷 캡처나 드롭다운 렌더링 확인처럼 **눈으로 봐야 하는** 검증에 사용한다.
+`.mcp.json`에 설정되어 있으며, Claude Code 세션에서 `mcp__pywinauto-mcp__*` 도구로 호출한다.
+
+```python
+# 스크린샷 캡처
+automation_visual(operation="screenshot", output_path="C:\\Temp\\result.png")
+
+# 드롭다운 열어서 아이템 배경색 육안 확인 등
+automation_mouse(operation="click", x=1117, y=822)
+```
+
+**언제 pywinauto-mcp를 쓰나:**
+- 드롭다운 아이템 배경색 이상 여부 (DrawItem 버그 확인)
+- 레이아웃/폰트/색상이 의도대로 보이는지 스크린샷으로 확인
+- 좌표 기반 클릭이 필요한 복잡한 시나리오
