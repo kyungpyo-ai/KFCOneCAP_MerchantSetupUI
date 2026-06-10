@@ -28,6 +28,7 @@ BEGIN_MESSAGE_MAP(CLogTransferDlg, CDialog)
 
     // [핵심 추가] 팝업 달력이 강제로 0번 ID로 이벤트를 보낼 때도 완벽하게 잡아냅니다!
     ON_NOTIFY(MCN_SELECT, 0, OnCalSelect)
+    ON_MESSAGE(WM_LOADING_DONE, OnLoadingDone)
 END_MESSAGE_MAP()
 
 CLogTransferDlg::CLogTransferDlg(CWnd* pParent)
@@ -364,14 +365,36 @@ void CLogTransferDlg::OnBtnSend()
         CModernMessageBox::Warning(_T("날짜를 선택해주세요"), this);
         return;
     }
+    m_btnSend.EnableWindow(FALSE);
+    m_btnCancel.EnableWindow(FALSE);
+    m_btnClose.EnableWindow(FALSE);
+
+    m_pLoadingDlg = new CLoadingDlg();
+    m_pLoadingDlg->Start(this, m_hWnd);
+}
+
+
+void CLogTransferDlg::OnBtnCancel()
+{
+    EndDialog(IDCANCEL);
+}
+void CLogTransferDlg::OnBtnClose()
+{
+    EndDialog(IDCANCEL);
+}
+LRESULT CLogTransferDlg::OnLoadingDone(WPARAM, LPARAM)
+{
+    m_pLoadingDlg = nullptr; // PostNcDestroy 로 이미 소멸됨
+
+    m_btnSend.EnableWindow(TRUE);
+    m_btnCancel.EnableWindow(TRUE);
+    m_btnClose.EnableWindow(TRUE);
+
     CString strMsg;
     strMsg.Format(_T("%s 로그 전송"), (LPCTSTR)m_strDate);
     CModernMessageBox::Info(strMsg, this);
     EndDialog(IDOK);
+    return 0;
 }
-
-
-void CLogTransferDlg::OnBtnCancel() { EndDialog(IDCANCEL); }
-void CLogTransferDlg::OnBtnClose()  { EndDialog(IDCANCEL); }
 void CLogTransferDlg::OnOK()        {}
 void CLogTransferDlg::OnCancel()    { EndDialog(IDCANCEL); }

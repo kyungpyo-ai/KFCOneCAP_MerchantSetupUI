@@ -64,6 +64,7 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="ModernUI.cpp" />
     <ClCompile Include="ModernMessageBox.cpp" />
+    <ClCompile Include="LoadingDlg.cpp" />
     <ClCompile Include="LogTransferDlg.cpp" />
     <ClCompile Include="SlipSetupDlg.cpp" />
   </ItemGroup>
@@ -81,6 +82,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="ModernUI.h" />
     <ClInclude Include="ModernMessageBox.h" />
+    <ClInclude Include="LoadingDlg.h" />
     <ClInclude Include="LogTransferDlg.h" />
     <ClInclude Include="SlipSetupDlg.h" />
   </ItemGroup>

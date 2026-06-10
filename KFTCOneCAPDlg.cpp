@@ -8,6 +8,8 @@
 #include "ModernMessageBox.h"
 #include "LogTransferDlg.h"
 #include "SlipSetupDlg.h"
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
 
 // Release 쑴니메이의하 다이아로그 오핀 지연 메시지
 // Poll until the pressed card button finishes its release animation, then open
@@ -1361,6 +1363,97 @@ public:
         return TRUE;
     }
 
+    static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ep)
+    {
+        TCHAR exePath[MAX_PATH] = {};
+        ::GetModuleFileName(NULL, exePath, MAX_PATH);
+        TCHAR* lastSlash = _tcsrchr(exePath, _T('\\'));
+        if (lastSlash) *(lastSlash + 1) = _T('\0');
+
+        TCHAR logPath[MAX_PATH] = {};
+        _tcscpy_s(logPath, exePath);
+        _tcscat_s(logPath, _T("crash.log"));
+
+        DWORD exCode = ep->ExceptionRecord->ExceptionCode;
+        void* exAddr = ep->ExceptionRecord->ExceptionAddress;
+
+        // Find which module contains the crash address
+        TCHAR moduleName[MAX_PATH] = _T("unknown");
+        DWORD modOffset = 0;
+        HANDLE hSnap = ::CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, ::GetCurrentProcessId());
+        if (hSnap != INVALID_HANDLE_VALUE)
+        {
+            MODULEENTRY32 me = {};
+            me.dwSize = sizeof(me);
+            if (::Module32First(hSnap, &me))
+            {
+                do {
+                    BYTE* base = me.modBaseAddr;
+                    if ((BYTE*)exAddr >= base && (BYTE*)exAddr < base + me.modBaseSize)
+                    {
+                        _tcscpy_s(moduleName, me.szModule);
+                        modOffset = (DWORD)((BYTE*)exAddr - base);
+                        break;
+                    }
+                } while (::Module32Next(hSnap, &me));
+            }
+            ::CloseHandle(hSnap);
+        }
+
+        // Resolve function name using debug symbols (requires PDB in same folder)
+        TCHAR funcName[512] = _T("unknown");
+        HANDLE hProc = ::GetCurrentProcess();
+        if (::SymInitialize(hProc, NULL, TRUE))
+        {
+            const DWORD kMaxNameLen = 255;
+            BYTE symBuf[sizeof(SYMBOL_INFO) + kMaxNameLen * sizeof(TCHAR)] = {};
+            SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
+            sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+            sym->MaxNameLen   = kMaxNameLen;
+            DWORD64 disp = 0;
+            if (::SymFromAddr(hProc, (DWORD64)exAddr, &disp, sym))
+                _tcscpy_s(funcName, CA2T(sym->Name));
+            ::SymCleanup(hProc);
+        }
+
+        SYSTEMTIME st = {};
+        ::GetLocalTime(&st);
+
+        // Write crash.log
+        FILE* f = _tfopen(logPath, _T("a"));
+        if (f)
+        {
+            _ftprintf(f,
+                _T("[%04d-%02d-%02d %02d:%02d:%02d] ExceptionCode=0x%08X Module=%s Offset=0x%08X Function=%s\n"),
+                st.wYear, st.wMonth, st.wDay,
+                st.wHour, st.wMinute, st.wSecond,
+                exCode, moduleName, modOffset, funcName);
+            fclose(f);
+        }
+
+        // Write minidump (.dmp) for Visual Studio analysis
+        TCHAR dmpPath[MAX_PATH] = {};
+        _stprintf_s(dmpPath,
+            _T("%scrash_%04d%02d%02d_%02d%02d%02d.dmp"),
+            exePath,
+            st.wYear, st.wMonth, st.wDay,
+            st.wHour, st.wMinute, st.wSecond);
+
+        HANDLE hFile = ::CreateFile(dmpPath, GENERIC_WRITE, 0, NULL,
+            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile != INVALID_HANDLE_VALUE)
+        {
+            MINIDUMP_EXCEPTION_INFORMATION mei = {};
+            mei.ThreadId          = ::GetCurrentThreadId();
+            mei.ExceptionPointers = ep;
+            mei.ClientPointers    = FALSE;
+            ::MiniDumpWriteDump(hProc, ::GetCurrentProcessId(), hFile,
+                MiniDumpNormal, &mei, NULL, NULL);
+            ::CloseHandle(hFile);
+        }
+
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
     virtual BOOL InitInstance()
     {
         // ---- Watchdog mode ----
@@ -1397,6 +1490,8 @@ public:
 
         // Spawn watchdog before showing UI
         SpawnWatchdog();
+
+        ::SetUnhandledExceptionFilter(CrashHandler);
 
         CKFTCOneCAPDlg dlg;
         dlg.DoModal();

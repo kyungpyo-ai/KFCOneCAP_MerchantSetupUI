@@ -2,6 +2,7 @@
 #pragma once
 #include "resource.h"
 #include "ModernUI.h"
+#include "LoadingDlg.h"
 #include <afxdtctl.h>
 
 class CLogTransferDlg : public CDialog
@@ -49,7 +50,9 @@ private:
     afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
     afx_msg void OnBtnDatePicker();
     afx_msg void OnCalSelect(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg LRESULT OnLoadingDone(WPARAM wParam, LPARAM lParam);
 
+    CLoadingDlg* m_pLoadingDlg = nullptr;
     CFont  m_fontTitle;
     CFont  m_fontDesc;
     CFont  m_fontLabel;
