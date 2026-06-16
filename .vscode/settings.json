@@ -1,4 +1,5 @@
 {
+    "files.encoding": "euc-kr",
     "[innosetup]": {
         "files.encoding": "utf8"
     },

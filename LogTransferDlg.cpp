@@ -28,7 +28,8 @@ BEGIN_MESSAGE_MAP(CLogTransferDlg, CDialog)
 
     // [핵심 추가] 팝업 달력이 강제로 0번 ID로 이벤트를 보낼 때도 완벽하게 잡아냅니다!
     ON_NOTIFY(MCN_SELECT, 0, OnCalSelect)
-    ON_MESSAGE(WM_LOADING_DONE, OnLoadingDone)
+    ON_MESSAGE(WM_LOADING_DONE,      OnLoadingDone)
+    ON_MESSAGE(WM_LOG_TRANSFER_DONE, OnLogTransferDone)
 END_MESSAGE_MAP()
 
 CLogTransferDlg::CLogTransferDlg(CWnd* pParent)
@@ -103,7 +104,7 @@ BOOL CLogTransferDlg::OnInitDialog()
     if (pGhost) { pGhost->ShowWindow(SW_HIDE); pGhost->MoveWindow(0, 0, 0, 0); }
 
     // 2. 버튼 생성 및 텍스트 셋팅 (폰트 셋팅이 먼저 와야 함)
-    m_strDate = CTime::GetCurrentTime().Format(_T("%Y-%m-%d"));
+    m_strDate = CTime::GetCurrentTime().Format(_T("%Y%m%d"));
     // 1. 글자가 테두리에 너무 딱 붙지 않도록 앞에 띄어쓰기를 살짝 추가합니다.
     CString strDisplayDate = _T("   ") + m_strDate;
 
@@ -296,7 +297,7 @@ void CLogTransferDlg::ShowCalendar()
 
     // 6. 현재 문자열로 저장된 날짜를 분석해서 달력에 셋팅합니다.
     int y, m, d;
-    if (_stscanf_s(m_strDate, _T("%d-%d-%d"), &y, &m, &d) == 3) {
+    if (_stscanf_s(m_strDate, _T("%4d%2d%2d"), &y, &m, &d) == 3) {
         CTime t(y, m, d, 0, 0, 0);
         m_calCtrl.SetCurSel(t);
     }
@@ -316,7 +317,7 @@ void CLogTransferDlg::OnCalSelect(NMHDR* pNMHDR, LRESULT* pResult)
     NMSELCHANGE* pSC = (NMSELCHANGE*)pNMHDR;
 
     // 1. 선택한 날짜로 변수 업데이트
-    m_strDate.Format(_T("%04d-%02d-%02d"), pSC->stSelStart.wYear, pSC->stSelStart.wMonth, pSC->stSelStart.wDay);
+    m_strDate.Format(_T("%04d%02d%02d"), pSC->stSelStart.wYear, pSC->stSelStart.wMonth, pSC->stSelStart.wDay);
 
     // 2. 창 즉시 닫기
     HideCalendar();
@@ -371,6 +372,11 @@ void CLogTransferDlg::OnBtnSend()
 
     m_pLoadingDlg = new CLoadingDlg();
     m_pLoadingDlg->Start(this, m_hWnd);
+
+
+
+
+
 }
 
 
@@ -391,10 +397,46 @@ LRESULT CLogTransferDlg::OnLoadingDone(WPARAM, LPARAM)
     m_btnClose.EnableWindow(TRUE);
 
     CString strMsg;
-    strMsg.Format(_T("%s 로그 전송"), (LPCTSTR)m_strDate);
-    CModernMessageBox::Info(strMsg, this);
-    EndDialog(IDOK);
+    if (m_bTransferSuccess)
+    {
+        strMsg.Format(_T("%s 로그 전송 완료"), (LPCTSTR)m_strDate);
+        CModernMessageBox::Info(strMsg, this);
+        EndDialog(IDOK);
+    }
+    else
+    {
+        CModernMessageBox::Warning(_T("로그 전송에 실패했습니다"), this);
+    }
     return 0;
 }
 void CLogTransferDlg::OnOK()        {}
 void CLogTransferDlg::OnCancel()    { EndDialog(IDCANCEL); }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// --- WM_LOG_TRANSFER_DONE 수신 → 로딩창 종료 ---
+LRESULT CLogTransferDlg::OnLogTransferDone(WPARAM wSuccess, LPARAM)
+{
+    m_bTransferSuccess = (BOOL)wSuccess;
+
+    // Stop() 호출 → CLoadingDlg::WorkerThread 즉시 깨어남
+    //             → CLoadingDlg 자신에게 WM_LOADING_DONE
+    //             → hwndNotify(m_hWnd)에 WM_LOADING_DONE 전달
+    //             → OnLoadingDone 에서 결과 표시 및 EndDialog
+    if (m_pLoadingDlg)
+        m_pLoadingDlg->Stop();
+
+    return 0;
+}

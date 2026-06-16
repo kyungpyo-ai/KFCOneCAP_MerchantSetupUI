@@ -32,6 +32,9 @@
 #ifndef IDC_BTN_AUTO_REBOOT_INFO
 #define IDC_BTN_AUTO_REBOOT_INFO     60113
 #endif
+#ifndef IDC_BTN_AUTO_UPDATE_INFO
+#define IDC_BTN_AUTO_UPDATE_INFO     60120
+#endif
 #ifndef IDC_BTN_ALARM_GRAPH_INFO
 #define IDC_BTN_ALARM_GRAPH_INFO     60114
 #endif
@@ -165,6 +168,7 @@ public:
 
     // 시스템 동작
     CModernToggleSwitch m_chkAutoReboot;
+     CModernToggleSwitch m_chkAutoUpdate;
 
     // 단축키
     CSkinnedComboBox m_comboCancelKey;
@@ -187,6 +191,7 @@ public:
     CInfoIconButton m_btnUnionAutoInfo;   // Tab0: 은련 자동 거래
     CInfoIconButton m_btnScannerUseInfo;   // Tab1: 스캐너 사용
     CInfoIconButton m_btnAutoRebootInfo;   // Tab2: 자동 리부팅
+    CInfoIconButton m_btnAutoUpdateInfo;   // Tab2: 자동 업데이트
     CInfoIconButton m_btnAlarmGraphInfo;   // Tab2: 알림창 그림
     CInfoIconButton m_btnAlarmDualInfo;    // Tab2: 알림창 듀얼
     CInfoIconButton m_btnSignPadUseInfo;    // Tab1: 서명패드 사용
@@ -295,6 +300,7 @@ private:
         int    cmbTerminalSpeed;
         BOOL   tglCardDetect, tglMultiVoice, tglScannerUse;
         BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReboot;
+        BOOL   tglAutoUpdate;
         BOOL   tglUnionAuto;
     };
     SettingsSnapshot m_snap;

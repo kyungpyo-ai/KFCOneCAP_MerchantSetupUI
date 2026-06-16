@@ -339,7 +339,7 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
 
     // Auto-update: kftc_updater.exe launch if AUTO_UPDATE=0(ON) in registry
     {
-        CString sAutoUpdate = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("AUTO_UPDATE"), _T("0"));
+        CString sAutoUpdate = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("AUTO_UPDATE"), _T("1"));
         if (sAutoUpdate == _T("0"))
         {
             TCHAR szExe[MAX_PATH] = {};

@@ -99,6 +99,7 @@ namespace
     static LPCTSTR CARD_DETECT_FIELD = _T("CARD_DETECT");
     static LPCTSTR DETECT_PROGRAM_FIELD = _T("DETECT_PROGRAM");
     static LPCTSTR AUTO_REBOOT_FIELD = _T("AUTO_REBOOT");
+    static LPCTSTR AUTO_UPDATE_FIELD = _T("AUTO_UPDATE");
     static LPCTSTR NOTIFY_IMG_FIELD = _T("NOTIFY_IMG");
     static LPCTSTR NOTIFY_DUAL_FIELD = _T("NOTIFY_DUAL_MONITOR");
     static LPCTSTR UNION_CHECK_FIELD = _T("UNION_CHECK");
@@ -503,6 +504,7 @@ BOOL CShopSetupDlg::OnInitDialog()
     CreateInfoBtn(m_btnCardDetectInfo, IDC_BTN_CARD_DETECT_INFO);
     CreateInfoBtn(m_btnScannerUseInfo, IDC_BTN_SCANNER_USE_INFO);
     CreateInfoBtn(m_btnAutoRebootInfo, IDC_BTN_AUTO_REBOOT_INFO);
+    CreateInfoBtn(m_btnAutoUpdateInfo, IDC_BTN_AUTO_UPDATE_INFO);
     CreateInfoBtn(m_btnAlarmGraphInfo, IDC_BTN_ALARM_GRAPH_INFO);
     CreateInfoBtn(m_btnAlarmDualInfo, IDC_BTN_ALARM_DUAL_INFO);
     CreateInfoBtn(m_btnSignPadUseInfo, IDC_BTN_SIGN_PAD_USE_INFO);
@@ -806,6 +808,7 @@ void CShopSetupDlg::InitializeControls()
     SetupTgl(m_chkAlarmGraph, IDC_CHECK_ALARM_GRAPH, _T("알림창 그림"), TRUE);
     SetupTgl(m_chkAlarmDual, IDC_CHECK_ALARM_DUAL, _T("알림창 듀얼"), FALSE);
     SetupTgl(m_chkAutoReboot, IDC_CHECK_AUTO_REBOOT, _T("자동 리부팅"), TRUE);
+    SetupTgl(m_chkAutoUpdate, IDC_CHECK_AUTO_UPDATE, _T("자동 업데이트"), TRUE);
     SetupTgl(m_chkUnionAuto, IDC_CHECK_UNION_AUTO, _T("은련카드 자동 핀입력"), TRUE);
     if (!::IsWindow(::GetDlgItem(m_hWnd, IDC_STATIC_CARD_DETECT_POSINFO)))
     {
@@ -1294,6 +1297,13 @@ void CShopSetupDlg::ApplyLayoutTab1()
                 int ibY = fy + (FIELD_H - BtnSz) / 2;
                 m_btnAutoRebootInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
             }
+            Move(IDC_CHECK_AUTO_UPDATE, xL + (inW - cG) / 2 + cG, fy, wL, FIELD_H);
+            if (m_btnAutoUpdateInfo.GetSafeHwnd())
+            {
+                int ibX = xL + (inW - cG) / 2 + cG + wL + BtnGap;
+                int ibY = fy + (FIELD_H - BtnSz) / 2;
+                m_btnAutoUpdateInfo.SetWindowPos(NULL, ibX, ibY, BtnSz, BtnSz, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
         }
         fy += FIELD_H;
         int cardH = (fy + cPadY) - curY;
@@ -1614,6 +1624,7 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     m_chkAlarmDual.SetToggled(ReadToggle_DefaultOnWhenMissing(NOTIFY_DUAL_FIELD, FALSE, _T("1"), _T("0")));
     // AUTO_*: ON=0 / OFF=1
     m_chkAutoReboot.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_REBOOT_FIELD, TRUE, _T("0"), _T("1")));
+    m_chkAutoUpdate.SetToggled(ReadToggle_DefaultOnWhenMissing(AUTO_UPDATE_FIELD, FALSE, _T("0"), _T("1")));
     m_chkUnionAuto.SetToggled(ReadToggle_DefaultOnWhenMissing(UNION_CHECK_FIELD, FALSE, _T("0"), _T("1")));
     // UI에 반영
     UpdateData(FALSE);
@@ -1703,6 +1714,7 @@ void CShopSetupDlg::SaveOptionsToRegistry()
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, NOTIFY_IMG_FIELD, m_chkAlarmGraph.IsToggled() ? _T("0") : _T("1"));
     // AUTO_*: ON=0, OFF=1
     AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_REBOOT_FIELD, m_chkAutoReboot.IsToggled() ? _T("0") : _T("1"));
+    AfxGetApp()->WriteProfileString(SEC_SERIALPORT, AUTO_UPDATE_FIELD, m_chkAutoUpdate.IsToggled() ? _T("0") : _T("1"));
     WriteToggleValue(UNION_CHECK_FIELD, m_chkUnionAuto.IsToggled(), _T("0"), _T("1")); // ON=0, OFF=1
 }
 // ============================================================================
@@ -1733,7 +1745,7 @@ void CShopSetupDlg::ShowTab(int nTab)
     };
     static const int s_tab2[] = {
         IDC_STATIC_ALARM_SIZE, IDC_COMBO_ALARM_SIZE, IDC_STATIC_ALARM_POS, IDC_COMBO_ALARM_POS,
-        IDC_CHECK_ALARM_GRAPH, IDC_CHECK_ALARM_DUAL, IDC_CHECK_AUTO_REBOOT,
+        IDC_CHECK_ALARM_GRAPH, IDC_CHECK_ALARM_DUAL, IDC_CHECK_AUTO_REBOOT, IDC_CHECK_AUTO_UPDATE,
         IDC_STATIC_CANCEL_KEY, IDC_COMBO_CANCEL_KEY, IDC_STATIC_MSR_KEY, IDC_COMBO_MSR_KEY, 0
     };
     const int* tabs[3] = { s_tab0, s_tab1, s_tab2 };
@@ -1788,6 +1800,7 @@ void CShopSetupDlg::ShowTab(int nTab)
     m_btnAlarmGraphInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     m_btnAlarmDualInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     m_btnAutoRebootInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    m_btnAutoUpdateInfo.ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     RefreshValidationVisibilityByTab();
     // [5] 잠금 해제 및 부모/자식 전체 부드럽게 갱신
     this->SendMessage(WM_SETREDRAW, TRUE);
@@ -2262,6 +2275,7 @@ void CShopSetupDlg::TakeSnapshot()
     m_snap.tglAlarmGraph = m_chkAlarmGraph.IsToggled();
     m_snap.tglAlarmDual = m_chkAlarmDual.IsToggled();
     m_snap.tglAutoReboot = m_chkAutoReboot.IsToggled();
+    m_snap.tglAutoUpdate = m_chkAutoUpdate.IsToggled();
     m_snap.tglUnionAuto = m_chkUnionAuto.IsToggled();
 }
 BOOL CShopSetupDlg::HasChanges() const
@@ -2292,6 +2306,7 @@ BOOL CShopSetupDlg::HasChanges() const
     if (m_chkAlarmGraph.IsToggled() != m_snap.tglAlarmGraph)  return TRUE;
     if (m_chkAlarmDual.IsToggled() != m_snap.tglAlarmDual)   return TRUE;
     if (m_chkAutoReboot.IsToggled() != m_snap.tglAutoReboot)  return TRUE;
+    if (m_chkAutoUpdate.IsToggled() != m_snap.tglAutoUpdate)   return TRUE;
     if (m_chkUnionAuto.IsToggled() != m_snap.tglUnionAuto)    return TRUE;
     return FALSE;
 }
@@ -2520,6 +2535,7 @@ void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
         { &m_btnCardDetectInfo, _T("카드 감지 우선 거래"), _T("카드 감지 우선 거래 여부 설정\n· 기본값 : 미사용\n입력창에는 POS 프로그램 정보 입력(POS 프로그램 업체 안내 필요)\n※우선 거래가 개발된 POS 프로그램만 사용") },
         { &m_btnScannerUseInfo, _T("스캐너 사용"), _T("스캐너 사용 여부 설정\n· 기본값 : 미사용\n입력창에는 포트번호 입력\n※KFTCOneCAP에서 외부 스캐너를 연동하는 경우 사용 \n※POS 프로그램에서 연동하는 경우 사용 X") },
         { &m_btnAutoRebootInfo, _T("자동 리부팅"), _T("일일 단위 KFTCOneCAP 자동 리부팅 여부\n· 기본값 : 사용") },
+        { &m_btnAutoUpdateInfo, _T("자동 업데이트"), _T("프로그램 시작 시 kftc_updater.exe 자동 실행 여부\n· 기본값 : 사용") },
         { &m_btnAlarmGraphInfo, _T("알림창 그림"), _T("거래 알림창 이미지 출력 여부\n· 기본값: 사용") },
         { &m_btnAlarmDualInfo, _T("알림창 듀얼"), _T("듀얼 모니터 사용 시 서브 모니터에 알림창 출력\n· 기본값: 미사용") },
         { &m_btnTaxPercentInfo, _T("세금 자동역산 설정"), _T("세금 자동 계산 비율 (%)\n· 기본값: 0 (0=세금 없음, 10=공급가액에서 10% 역산)\n※ POS에서 세금 필드를 채우지 않는 경우에만 적용") },

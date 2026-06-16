@@ -3,6 +3,9 @@
 #include "resource.h"
 #include "ModernUI.h"
 #include "LoadingDlg.h"
+
+// 로그 전송 스레드 완료 시 LogTransferDlg 로 전달되는 메시지
+#define WM_LOG_TRANSFER_DONE (WM_USER + 202)
 #include <afxdtctl.h>
 
 class CLogTransferDlg : public CDialog
@@ -51,8 +54,10 @@ private:
     afx_msg void OnBtnDatePicker();
     afx_msg void OnCalSelect(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg LRESULT OnLoadingDone(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnLogTransferDone(WPARAM wParam, LPARAM lParam);
 
-    CLoadingDlg* m_pLoadingDlg = nullptr;
+    CLoadingDlg* m_pLoadingDlg       = nullptr;
+    BOOL          m_bTransferSuccess  = FALSE;
     CFont  m_fontTitle;
     CFont  m_fontDesc;
     CFont  m_fontLabel;
