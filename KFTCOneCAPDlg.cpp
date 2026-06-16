@@ -337,6 +337,30 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
 {
     CDialog::OnInitDialog();
 
+    // Auto-update: kftc_updater.exe launch if AUTO_UPDATE=0(ON) in registry
+    {
+        CString sAutoUpdate = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("AUTO_UPDATE"), _T("0"));
+        if (sAutoUpdate == _T("0"))
+        {
+            TCHAR szExe[MAX_PATH] = {};
+            ::GetModuleFileName(NULL, szExe, MAX_PATH);
+            CString sDir(szExe);
+            int nSlash = sDir.ReverseFind(_T('\\'));
+            if (nSlash >= 0) sDir = sDir.Left(nSlash + 1);
+            CString sUpdater = sDir + _T("kftc_updater.exe");
+            if (::GetFileAttributes(sUpdater) != INVALID_FILE_ATTRIBUTES)
+            {
+                SHELLEXECUTEINFO sei = { sizeof(sei) };
+                sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+                sei.lpVerb = _T("open");
+                sei.lpFile = sUpdater;
+                sei.lpDirectory = sDir;
+                sei.nShow = SW_SHOWNORMAL;
+                ::ShellExecuteEx(&sei);
+            }
+        }
+    }
+
     ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
     ModernUIGfx::EnsureGdiplusStartup();
@@ -1345,11 +1369,48 @@ public:
         ::GetExitCodeProcess(hProc, &exitCode);
         ::CloseHandle(hProc);
 
-        if (exitCode == INTENTIONAL_EXIT_CODE) return TRUE;   // intentional exit, do not restart
-        if (exitCode != RESTART_EXIT_CODE && elapsedMs < 5000) return TRUE;  // startup crash guard
-
+        // Build log path (same folder as EXE)
         TCHAR exePath[MAX_PATH] = {};
         ::GetModuleFileName(NULL, exePath, MAX_PATH);
+        TCHAR exeDir[MAX_PATH] = {};
+        _tcscpy_s(exeDir, exePath);
+        TCHAR* lastSlash = _tcsrchr(exeDir, _T('\\'));
+        if (lastSlash) *(lastSlash + 1) = _T('\0');
+
+        TCHAR logPath[MAX_PATH] = {};
+        _tcscpy_s(logPath, exeDir);
+        _tcscat_s(logPath, _T("crash.log"));
+
+        // Determine exit reason
+        const TCHAR* reason = _T("UNKNOWN");
+        if (exitCode == INTENTIONAL_EXIT_CODE)
+            reason = _T("NORMAL_EXIT");
+        else if (exitCode == RESTART_EXIT_CODE)
+            reason = _T("RESTART_REQUESTED");
+        else if (exitCode == 1)
+            reason = _T("FORCE_KILLED");
+        else if (exitCode >= 0xC0000000)
+            reason = _T("CRASH");
+
+        SYSTEMTIME st = {};
+        ::GetLocalTime(&st);
+
+        if (exitCode != INTENTIONAL_EXIT_CODE)
+        {
+            FILE* f = _tfopen(logPath, _T("a"));
+            if (f)
+            {
+                _ftprintf(f,
+                    _T("[%04d-%02d-%02d %02d:%02d:%02d] [WATCHDOG] ExitCode=0x%08X Reason=%s ElapsedMs=%u\n"),
+                    st.wYear, st.wMonth, st.wDay,
+                    st.wHour, st.wMinute, st.wSecond,
+                    exitCode, reason, elapsedMs);
+                fclose(f);
+            }
+        }
+
+        if (exitCode == INTENTIONAL_EXIT_CODE) return TRUE;
+        if (exitCode != RESTART_EXIT_CODE && elapsedMs < 5000) return TRUE;  // startup crash guard
 
         STARTUPINFO si = {};
         si.cb = sizeof(si);
@@ -1362,7 +1423,6 @@ public:
         }
         return TRUE;
     }
-
     static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ep)
     {
         TCHAR exePath[MAX_PATH] = {};
