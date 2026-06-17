@@ -19,6 +19,7 @@ namespace {
     static const COLORREF kTitleColor = RGB(6, 52, 109);
 
     static const LPCTSTR SEC_SERIALPORT      = _T("SERIALPORT");
+    static const LPCTSTR KEYIN_DIM_FIELD       = _T("KEYIN_DIM");
     static const LPCTSTR CANCEL_HOTKEY_FIELD = _T("CANCEL_HOTKEY");
     static const LPCTSTR MSR_HOTKEY_FIELD    = _T("MSR_HOTKEY");
 }
@@ -289,7 +290,13 @@ BOOL CKeyinDlg::OnInitDialog()
     LayoutControls();
     CenterWindow();
 
-    m_dimDlg.Create();
+    {
+        CString sDim;
+        GetRegisterData(SEC_SERIALPORT, KEYIN_DIM_FIELD, sDim);
+        if (sDim.IsEmpty()) sDim = _T("1");  // 기본값: 미사용
+        if (sDim == _T("0"))
+            m_dimDlg.Create();
+    }
     ::SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     if (m_dimDlg.GetSafeHwnd())
         ::SetWindowPos(m_dimDlg.GetSafeHwnd(), m_hWnd, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);

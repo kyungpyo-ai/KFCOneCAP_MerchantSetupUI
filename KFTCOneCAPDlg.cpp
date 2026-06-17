@@ -311,6 +311,7 @@ void CKFTCOneCAPDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
     ON_BN_CLICKED(IDC_BTN_LOG_TRANSFER, OnLogTransfer)
+    ON_BN_CLICKED(IDC_BTN_UPDATE, OnUpdate)
     ON_BN_CLICKED(IDC_READER_SETUP, OnReaderSetup)
     ON_BN_CLICKED(IDC_SHOP_SETUP, OnShopSetup)
     ON_BN_CLICKED(IDC_TRANS, OnTrans)
@@ -355,6 +356,7 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
                 sei.lpVerb = _T("open");
                 sei.lpFile = sUpdater;
                 sei.lpDirectory = sDir;
+                sei.lpParameters = _T("fromKFTCOneCAP");
                 sei.nShow = SW_SHOWNORMAL;
                 ::ShellExecuteEx(&sei);
             }
@@ -405,6 +407,14 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     // 평소엔 배경 투명(kHomeBg) + 텍스트는 짙은 회색(kTitleText) / 마우스 올리면 연한 파랑 배경 + 파란색 텍스트
     m_btnLogTransfer.SetColors(kHomeBg, RGB(232, 243, 255), kTitleText);
     m_btnLogTransfer.SetHoverTextColor(RGB(49, 130, 246));
+
+    // [추가] 최신 버전 업데이트 버튼 동적 생성
+    m_btnUpdate.Create(_T("최신 버전 업데이트"), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, CRect(0, 0, 0, 0), this, IDC_BTN_UPDATE);
+    m_btnUpdate.SetFont(&m_fontFooter);
+    m_btnUpdate.SetButtonStyle(ButtonStyle::Auto);
+    m_btnUpdate.SetUnderlayColor(kHomeBg);
+    m_btnUpdate.SetColors(kHomeBg, RGB(232, 255, 232), kTitleText);
+    m_btnUpdate.SetHoverTextColor(RGB(34, 197, 94));
 
     if (GetDlgItem(IDC_READER_SETUP)) GetDlgItem(IDC_READER_SETUP)->ModifyStyle(WS_TABSTOP, 0);
 
@@ -576,6 +586,12 @@ void CKFTCOneCAPDlg::LayoutControls()
     const int topHeaderY = SX(bC ? 26 : 38) + SX(bC ? 6 : 8);
     if (::IsWindow(m_btnLogTransfer.m_hWnd)) {
         m_btnLogTransfer.MoveWindow(rc.right - marginX - logBtnW, topHeaderY, logBtnW, logBtnH);
+    }
+
+    const int updateBtnW = SX(bC ? 180 : 205);
+    const int updateBtnH = logBtnH;
+    if (::IsWindow(m_btnUpdate.m_hWnd)) {
+        m_btnUpdate.MoveWindow(rc.right - marginX - updateBtnW, topHeaderY + logBtnH + SX(bC ? 4 : 6), updateBtnW, updateBtnH);
     }
 
     int x = marginX;
@@ -1300,6 +1316,31 @@ void CKFTCOneCAPDlg::OnLogTransfer()
 {
     CLogTransferDlg dlg(this);
     dlg.DoModal();
+}
+
+// [추가] 최신 버전 업데이트 버튼 클릭 이벤트
+void CKFTCOneCAPDlg::OnUpdate()
+{
+    if (CModernMessageBox::Question(_T("KFTCOneCAP을 최신버전으로\n업데이트 하시겠습니까?"), this) != IDYES)
+        return;
+
+    TCHAR szExe[MAX_PATH] = {};
+    ::GetModuleFileName(NULL, szExe, MAX_PATH);
+    CString sDir(szExe);
+    int nSlash = sDir.ReverseFind(_T('\\'));
+    if (nSlash >= 0) sDir = sDir.Left(nSlash + 1);
+    CString sUpdater = sDir + _T("kftc_updater.exe");
+    if (::GetFileAttributes(sUpdater) != INVALID_FILE_ATTRIBUTES)
+    {
+        SHELLEXECUTEINFO sei = { sizeof(sei) };
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+        sei.lpVerb = _T("open");
+        sei.lpFile = sUpdater;
+        sei.lpDirectory = sDir;
+        sei.lpParameters = _T("fromKFTCOneCAP Manual");
+        sei.nShow = SW_SHOWNORMAL;
+        ::ShellExecuteEx(&sei);
+    }
 }
 
 // ============================================================

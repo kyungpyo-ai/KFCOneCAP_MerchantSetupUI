@@ -71,6 +71,7 @@ protected:
     afx_msg void OnMinimize();
     afx_msg void OnExit();
     afx_msg void OnLogTransfer();
+    afx_msg void OnUpdate();
     afx_msg void OnClose();
     afx_msg LRESULT OnTrayNotify(WPARAM wParam, LPARAM lParam);
     afx_msg void OnTrayOpen();
@@ -125,6 +126,7 @@ private:
     CModernButton  m_btnMinimize;
     CModernButton  m_btnExit;
     CModernButton m_btnLogTransfer;
+    CModernButton m_btnUpdate;
 
     CFont m_fontTitle;
     CFont m_fontSubtitle;

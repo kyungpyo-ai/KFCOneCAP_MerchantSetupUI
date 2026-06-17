@@ -815,7 +815,8 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	BOOL isProgramExit = (t.Find(_T("프로그램 종료")) >= 0);
 	// [추가] "로그 전송" 버튼임을 판별하고, 아이콘을 그리기 위해 FooterAction에도 포함시킵니다.
 	BOOL isLogTransfer = (t.Find(_T("로그 전송")) >= 0);
-	BOOL isFooterAction = (isMini || isProgramExit || isLogTransfer);
+	BOOL isUpdate = (t.Find(_T("최신 버전 업데이트")) >= 0);
+	BOOL isFooterAction = (isMini || isProgramExit || isLogTransfer || isUpdate);
 
 	if (m_style != ButtonStyle::Auto) {
 		isPrimary = (m_style == ButtonStyle::Primary) ? TRUE : FALSE;
@@ -847,7 +848,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		newW, newH);
 	// --- [Sinking 피드백 추가 끝] ---
 
-	if (!isLogTransfer) // [수정] 로그 전송(투명 버튼)일 때는 그림자를 그리지 않습니다.
+	if (!isLogTransfer && !isUpdate) // [수정] 로그 전송/업데이트(투명 버튼)일 때는 그림자를 그리지 않습니다.
 	{
 		const int shadowA = pressed ? kBtnShadowAlphaPrs : kBtnShadowAlphaNrm;
 		const float shDy = 1.0f;
@@ -915,6 +916,15 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	{
 		if (hover || pressed) {
 			COLORREF bg = pressed ? RGB(218, 233, 255) : RGB(232, 243, 255);
+			Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
+			g.FillPath(&br, &bp);
+		}
+	}
+	// [추가] 최신 버전 업데이트 버튼 전용 스타일 (평소엔 투명, 마우스 올릴 때만 초록 배경)
+	else if (isUpdate)
+	{
+		if (hover || pressed) {
+			COLORREF bg = pressed ? RGB(210, 250, 210) : RGB(232, 255, 232);
 			Gdiplus::SolidBrush br(Gdiplus::Color(255, GetRValue(bg), GetGValue(bg), GetBValue(bg)));
 			g.FillPath(&br, &bp);
 		}
@@ -1020,7 +1030,7 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 		const Gdiplus::REAL iconY = centerY - iconSize * 0.5f;
 
 		// [수정] 로그 전송 아이콘은 텍스트 색상과 별개로 항상 포인트 파란색(Toss Blue) 유지
-		Gdiplus::Color penColor = isLogTransfer ? Gdiplus::Color(255, 49, 130, 246) : txtColor;
+		Gdiplus::Color penColor = isLogTransfer ? Gdiplus::Color(255, 49, 130, 246) : (isUpdate ? Gdiplus::Color(255, 34, 197, 94) : txtColor);
 		Gdiplus::Pen iconPen(penColor, ModernUIDpi::ScaleF(m_hWnd, 1.95f));
 
 		iconPen.SetStartCap(Gdiplus::LineCapRound);
@@ -1056,6 +1066,23 @@ void CModernButton::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			const Gdiplus::REAL baseLineY = iconY + iconSize - ModernUIDpi::ScaleF(m_hWnd, 1.0f);
 			const Gdiplus::REAL baseW = ModernUIDpi::ScaleF(m_hWnd, 5.0f);
 			g.DrawLine(&iconPen, Gdiplus::PointF(cx - baseW, baseLineY), Gdiplus::PointF(cx + baseW, baseLineY));
+		}
+		// [수정] 최신 버전 업데이트 아이콘: 원형 회전 화살표 (refresh/update)
+		else if (isUpdate)
+		{
+			const Gdiplus::REAL cx   = startX + iconSize * 0.5f;
+			const Gdiplus::REAL cy   = iconY   + iconSize * 0.5f;
+			const Gdiplus::REAL r    = iconSize * 0.42f;
+			const Gdiplus::REAL aLen = ModernUIDpi::ScaleF(m_hWnd, 3.4f);
+
+			// 270 arc: -45(upper-right) clockwise to 225(upper-left)
+			g.DrawArc(&iconPen, Gdiplus::RectF(cx - r, cy - r, r * 2.0f, r * 2.0f), -45.0f, 270.0f);
+
+			// arrowhead at arc end (upper-left), pointing upper-right
+			const Gdiplus::REAL ex = cx - r * 0.70711f;
+			const Gdiplus::REAL ey = cy - r * 0.70711f;
+			g.DrawLine(&iconPen, Gdiplus::PointF(ex,               ey + aLen * 1.414f), Gdiplus::PointF(ex, ey));
+			g.DrawLine(&iconPen, Gdiplus::PointF(ex - aLen * 1.414f, ey),               Gdiplus::PointF(ex, ey));
 		}
 		else
 		{
