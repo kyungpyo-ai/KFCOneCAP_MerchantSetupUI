@@ -40,7 +40,7 @@ BOOL CDimDlg::Create()
     if (!m_hWnd) return FALSE;
 
     ::SetLayeredWindowAttributes(m_hWnd, 0, 5, LWA_ALPHA);
-    ::SetWindowPos(m_hWnd, HWND_TOPMOST, 0, 0, 0, 0,
+    ::SetWindowPos(m_hWnd, HWND_TOP, 0, 0, 0, 0,
         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     return TRUE;
 }
