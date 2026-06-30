@@ -36,6 +36,7 @@ protected:
     afx_msg void OnBtnClicked(UINT nID);
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg LRESULT OnHookKey(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
     afx_msg void OnClose();
     afx_msg void OnDestroy();
 

