@@ -1199,9 +1199,13 @@ LRESULT CReaderSetupDlg::OnPortOpenDone(WPARAM wParam, LPARAM lParam)
 	// When reader1 port is ON, set reader2 comport to unused and disable buttons
 	if (bFinalState)
 	{
-		m_comport2.SetCurSel(0);
-		m_comport2.EnableWindow(FALSE);
-		ApplyEnableStateToButtons(2, FALSE);
+		CString _ilock = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T(""));
+		if (_ilock != _T("TRANSINFO_AOP"))
+		{
+			m_comport2.SetCurSel(0);
+			m_comport2.EnableWindow(FALSE);
+			ApplyEnableStateToButtons(2, FALSE);
+		}
 		Invalidate(FALSE);
 	}
 	else
@@ -1274,7 +1278,7 @@ BOOL CReaderSetupDlg::OnInitDialog()
 	UpdateReaderEnableState(2);
     ApplyAopRestrictions();
 	// If port1 is ON, disable comport2 combobox after UpdateReaderEnableState
-	if (m_togglePortOpen1.IsToggled())
+	if (m_togglePortOpen1.IsToggled() && AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T("")) != _T("TRANSINFO_AOP"))
 		m_comport2.EnableWindow(FALSE);
 
 
@@ -1467,6 +1471,18 @@ void CReaderSetupDlg::OnPaint()
 	DrawSectionTitle(memDC, CPoint(portSection.left, portSection.top), _T("포트 설정"));
 	DrawSectionTitle(memDC, CPoint(integritySection.left, integritySection.top), _T("무결성 체크 정보"));
 
+	CString _interlockMode = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T(""));
+	const bool bTransinfoAop = (_interlockMode == _T("TRANSINFO_AOP"));
+
+	// 두 뱃지 동일 폭: KFTC/AOP 중 넓은 텍스트 기준으로 미리 계산
+	int nProtoBadgeW = 0;
+	if (bTransinfoAop) {
+		CFont* _pOldF = memDC.SelectObject(&m_fontLabel);
+		int pH = SX(8);
+		nProtoBadgeW = max(memDC.GetTextExtent(_T("KFTC")).cx, memDC.GetTextExtent(_T("AOP")).cx) + pH * 2;
+		memDC.SelectObject(_pOldF);
+	}
+
 	auto drawReaderCard = [&](const CRect& r, BOOL enabled, int num)
 		{
 			COLORREF bg = enabled ? RGB(255, 255, 255) : RGB(252, 253, 255);
@@ -1508,6 +1524,24 @@ void CReaderSetupDlg::OnPaint()
 			if (num == 1)
 				memDC.TextOut(xToggleOpenLabel, yCombo + (btnH - SX(14)) / 2, _T("포트 열기"));
 			memDC.TextOut(togglePadLabelX, yCombo + (btnH - SX(14)) / 2, _T("멀티패드 여부"));
+
+			// TRANSINFO_AOP 모드: 카드 우상단에 프로토콜 뱃지 표시
+			if (bTransinfoAop)
+			{
+				LPCTSTR szBadge = (num == 1) ? _T("KFTC") : _T("AOP");
+				COLORREF clrBadge = enabled
+					? ((num == 1) ? RGB(0, 174, 239) : RGB(16, 185, 129))
+					: RGB(190, 199, 209);
+				memDC.SelectObject(&m_fontLabel);
+				CSize sz = memDC.GetTextExtent(szBadge);
+				int pH = SX(8), pV = SX(3);
+				int bW = nProtoBadgeW, bH = sz.cy + pV * 2;
+				int bRight = r.right - SX(bCP ? 13 : 16);
+				CRect rcBadge(bRight - bW, badge.top, bRight, badge.top + bH);
+				FillRoundRect(gPaint, rcBadge, SX(4), clrBadge, clrBadge, 1);
+				memDC.SetTextColor(RGB(255, 255, 255));
+				memDC.DrawText(szBadge, rcBadge, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+			}
 		};
 
 	drawReaderCard(card1, m_bReader1Enabled, 1);
@@ -1755,7 +1789,7 @@ void CReaderSetupDlg::OnSelchangeComport1()
 void CReaderSetupDlg::OnSelchangeComport2()
 {
 	int newSel = m_comport2.GetCurSel();
-	if (m_togglePortOpen1.IsToggled() && newSel != m_nComport2PrevSel) {
+	if (m_togglePortOpen1.IsToggled() && newSel != m_nComport2PrevSel && AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T("")) != _T("TRANSINFO_AOP")) {
 		if (m_nComport2PrevSel >= 0) m_comport2.SetCurSel(m_nComport2PrevSel);
 		AfxMessageBox(_T("포트가 열려 있는 상태에서는 포트를 변경할 수 없습니다.\n포트 열기를 먼저 해제하세요."), MB_OK | MB_ICONWARNING);
 		return;
@@ -1766,6 +1800,7 @@ void CReaderSetupDlg::OnSelchangeComport2()
 	CString value;
 	m_comport2.GetWindowText(value);
 	UpdateReaderEnableState(2);
+    ApplyAopRestrictions();
 }
 
 
@@ -2021,16 +2056,23 @@ BOOL CReaderSetupDlg::HasChanges() const
 void CReaderSetupDlg::ApplyAopRestrictions()
 {
     CString interlock = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T(""));
-    if (interlock != _T("AOP")) return;
+    if (interlock != _T("AOP") && interlock != _T("TRANSINFO_AOP")) return;
 
-    // Disable all controls of reader 2
-    ApplyEnableStateToButtons(2, FALSE);
-    m_comport2.EnableWindow(FALSE);
-
-    // Disable reader 1 init and update buttons
-    m_reader_init1.EnableWindow(FALSE);
-    m_update1.EnableWindow(FALSE);
-    m_togglePortOpen1.EnableWindow(FALSE);
+    if (interlock == _T("AOP"))
+    {
+        // 순수 AOP: 리더기1만 사용. 리더기2 전체 비활성화 + 리더기1 특수 버튼 비활성화
+        ApplyEnableStateToButtons(2, FALSE);
+        m_comport2.EnableWindow(FALSE);
+        m_reader_init1.EnableWindow(FALSE);
+        m_update1.EnableWindow(FALSE);
+        m_togglePortOpen1.EnableWindow(FALSE);
+    }
+    if (interlock == _T("TRANSINFO_AOP"))
+    {
+        // 리더기2 = AOP(NPayConnect): 포트 설정 가능, 표준 초기화/업데이트 불가
+        m_reader_init2.EnableWindow(FALSE);
+        m_update2.EnableWindow(FALSE);
+    }
 
     Invalidate(FALSE);
 }

@@ -165,8 +165,9 @@ namespace
     static const ComboItem kInterlock[] =
     {
         { _T("IC/MS 리더기"),          _T("NORMAL") },
-        { _T("멀티패드(동반위)"),      _T("TRANSINFO") },
-        { _T("AOP(NpayConnect)"),  _T("AOP") },
+        { _T("멀티패드(KFTC)"),       _T("TRANSINFO") },
+        { _T("멀티패드(AOP : NPayConnect)"), _T("AOP") },
+        { _T("멀티패드(KFTC+AOP)"), _T("TRANSINFO_AOP") },
         { _T("단말기(forPOS)"),        _T("FORPOS") },
         { _T("LockType 리더기"),       _T("LOCKTYPE(TDR)") },
         { _T("AutoDriven 리더기"),     _T("LOCKTYPE(TTM)") },
@@ -2399,8 +2400,11 @@ void CShopSetupDlg::CheckOptionChangesAndNotify()
         }
     }
 
-    // [4] INTERLOCK_FIELD was "AOP" and changed to non-AOP
-    if (oldInterlockVal == _T("AOP") && newInterlockVal != _T("AOP"))
+    // [4] AOP-related interlock changed to any different value (requires restart)
+    auto isAopRelated = [](const CString& v) {
+        return v == _T("AOP") || v == _T("TRANSINFO_AOP");
+    };
+    if ((isAopRelated(oldInterlockVal) || isAopRelated(newInterlockVal)) && oldInterlockVal != newInterlockVal)
     {
         CModernMessageBox::Warning(
             _T("장치 연동 방식이 AOP에서 변경되었습니다.\nAOP 포트 연결이 해제됩니다. 프로그램을 재시작해 주세요."),
@@ -2499,10 +2503,11 @@ void CShopSetupDlg::OnOK()
     if (!ValidateComboInputs())
         return;
     CheckOptionChangesAndNotify();
+    CString oldInterlockVal = AfxGetApp()->GetProfileString(_T("SERIALPORT"), _T("INTERLOCK"), _T("NORMAL"));
     SaveOptionsToRegistry();
     {
         CString interlockVal = GetSelectedComboValue(m_comboInterlock, kInterlock, (int)(sizeof(kInterlock)/sizeof(kInterlock[0])), _T("NORMAL"));
-        if (interlockVal == _T("AOP"))
+        if (interlockVal == _T("AOP") || (oldInterlockVal == _T("TRANSINFO_AOP") && interlockVal != _T("TRANSINFO_AOP")))
             AfxGetApp()->WriteProfileString(SEC_SERIALPORT, _T("COMPORT2"), _T("미사용"));
     }
     CDialog::OnOK();
@@ -2550,7 +2555,7 @@ void CShopSetupDlg::OnInfoButtonClicked(UINT nID)
         { &m_btnCommTypeInfo, _T("통신방식"), _T("포스 프로그램 통신 방식 선택\n· CS 방식: 윈도우 포스 프로그램 (기본값)\n· WEB 방식: WEB 포스 프로그램 (EASYPOS 포함)") },
         { &m_btnCashReceiptInfo, _T("현금영수증 거래"), _T("현금영수증 승인시 입력 방식 선택\n· PINPAD/KEYIN : PINPAD/KEYIN 동시 입력 (기본값)\n· MS : MS 카드 입력\n· KEYIN : KEYIN 입력") },
         { &m_btnCardTimeoutInfo, _T("카드입력 Timeout"), _T("카드 입력 대기 시간 (초 단위)\n· 권장값: 100초 / 0 입력 시 자동 100초 설정") },
-        { &m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(동반위): 멀티패드 및 신형 리더기 사용 (권장값)\n· AOP 리더기: AOP 리더기(Naver Connect 포함)") },
+        { &m_btnInterlockInfo, _T("장치 연동 방식"), _T("카드 리더기 연동 방식 선택\n· IC/MS 리더기: 일반 리더기 (기본값)\n· LockType리더기(TDR): TDR 방식 리더기\n· AutoDriven리더기(TTM): TTM 방식 리더기\n· 단말기(forPOS): 단말기 연동 거래\n· 멀티패드(KFTC): 멀티패드 및 신형 리더기 사용 (권장값)\n· 멀티패드(KFTC+AOP): 리더기1=KFTC, 리더기2=AOP(NPayConnect) 혼합 사용\n· 멀티패드(AOP : NPayConnect): AOP 리더기(Naver Connect 포함)") },
         { &m_btnSignPadUseInfo, _T("서명패드 사용"), _T("서명패드 사용여부 설정\n· 예 : 서명패드를 사용하는 경우\n· 아니오 : 서명패드를 사용하지 않는 경우\n· 자체서명 : 포스 화면에서 서명 입력") },
         { &m_btnSignPadSpeedInfo, _T("서명패드 속도"), _T("서명패드 통신 속도 선택\n· 115200bps: 멀티패드 사용 시\n· 57600bps: 서명패드 사용 시") },
         { &m_btnAlarmSizeInfo, _T("알림창 크기"), _T("거래 알림창의 표시 크기를 설정합니다.\n· 기본값 : 매우작게 ") },
