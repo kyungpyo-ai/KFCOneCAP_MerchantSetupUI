@@ -1300,13 +1300,22 @@ void CKFTCOneCAPDlg::OnMinimize()
     ShowWindow(SW_MINIMIZE);
 }
 
+static BOOL CALLBACK CloseOwnedPopups(HWND hwnd, LPARAM lParam)
+{
+    if (::GetWindow(hwnd, GW_OWNER) == (HWND)lParam)
+        ::SendMessage(hwnd, WM_CLOSE, 0, 0);
+    return TRUE;
+}
+
 void CKFTCOneCAPDlg::OnExit()
 {
+    ::EnumThreadWindows(::GetCurrentThreadId(), CloseOwnedPopups, (LPARAM)m_hWnd);
     EndDialog(IDCANCEL);
 }
 
 void CKFTCOneCAPDlg::OnClose()
 {
+    ::EnumThreadWindows(::GetCurrentThreadId(), CloseOwnedPopups, (LPARAM)m_hWnd);
     ::Shell_NotifyIcon(NIM_DELETE, &m_nid);
     EndDialog(IDCANCEL);
 }

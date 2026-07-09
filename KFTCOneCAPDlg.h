@@ -151,6 +151,7 @@ private:
     CTrayPopup m_trayPopup;
 
     Gdiplus::Bitmap* m_pLogoBitmap;
+    CDialog* m_pActiveSubDlg;
     int m_nFooterDividerY;
 };
 

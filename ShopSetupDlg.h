@@ -309,6 +309,8 @@ private:
         BOOL   tglUnionAuto;
     };
     SettingsSnapshot m_snap;
+    int  m_nPrevInterlockSel;
+    int  m_nPrevSignPadUseSel;
     void TakeSnapshot();
     BOOL HasChanges() const;
     // 레지스트리 값을 읽어 UI에 반영한다. 값이 없으면 기본값을 사용한다.

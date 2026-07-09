@@ -1649,6 +1649,8 @@ void CShopSetupDlg::LoadOptionsFromRegistry()
     // UI에 반영
     UpdateData(FALSE);
     UpdateToggleDependentEdits(FALSE);
+    m_nPrevInterlockSel  = m_comboInterlock.GetCurSel();
+    m_nPrevSignPadUseSel = m_comboSignPadUse.GetCurSel();
     TakeSnapshot();
 }
 // ============================================================================
@@ -1877,9 +1879,49 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
             rcCtl.InflateRect(4, 4);
             RedrawWindow(&rcCtl, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_UPDATENOW);
             if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_SIGN_PAD_USE)
+            {
+                CString newSignPad = GetSelectedComboValue(m_comboSignPadUse, kSignPadUse,
+                    (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"));
+                if (newSignPad == _T("SELF"))
+                {
+                    CString curInterlock = GetSelectedComboValue(m_comboInterlock, kInterlock,
+                        (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
+                    if (curInterlock == _T("AOP") || curInterlock == _T("TRANSINFO_AOP"))
+                    {
+                        if (m_nPrevSignPadUseSel >= 0)
+                            m_comboSignPadUse.SetCurSel(m_nPrevSignPadUseSel);
+                        CModernMessageBox::Warning(
+                            _T("장치 연동 방식이 '멀티패드(AOP : NPayConnect)'로 설정되어 있어\n'자체서명'을 선택할 수 없습니다.\n먼저 장치 연동 방식을 변경하십시오."), this);
+                    }
+                    else
+                        m_nPrevSignPadUseSel = m_comboSignPadUse.GetCurSel();
+                }
+                else
+                    m_nPrevSignPadUseSel = m_comboSignPadUse.GetCurSel();
                 UpdateToggleDependentEdits(TRUE);
+            }
             if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_INTERLOCK)
+            {
+                CString newInterlock = GetSelectedComboValue(m_comboInterlock, kInterlock,
+                    (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
+                if (newInterlock == _T("AOP") || newInterlock == _T("TRANSINFO_AOP"))
+                {
+                    CString curSignPad = GetSelectedComboValue(m_comboSignPadUse, kSignPadUse,
+                        (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"));
+                    if (curSignPad == _T("SELF"))
+                    {
+                        if (m_nPrevInterlockSel >= 0)
+                            m_comboInterlock.SetCurSel(m_nPrevInterlockSel);
+                        CModernMessageBox::Warning(
+                            _T("서명패드 사용이 '자체서명'으로 설정되어 있어\n'멀티패드(AOP : NPayConnect)'를 선택할 수 없습니다.\n먼저 서명패드 사용 설정을 변경하십시오."), this);
+                    }
+                    else
+                        m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
+                }
+                else
+                    m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
                 UpdateToggleDependentEdits(TRUE);
+            }
         }
         break;
     case EN_CHANGE:
@@ -3058,6 +3100,21 @@ void CShopSetupDlg::UpdateToggleDependentEdits(BOOL bForceRedraw /*= TRUE*/)
             m_tabCtrl.SetFocus();
         if (bForceRedraw && bPrevEnable != bEnable)
             m_comboTerminalSpeed.Invalidate(FALSE);
+    }
+    // AOP 선택 시 멀티패드 음성 출력 강제 OFF + 비활성화
+    if (m_chkMultiVoice.GetSafeHwnd() && m_comboInterlock.GetSafeHwnd())
+    {
+        CString interlockVal2 = GetSelectedComboValue(m_comboInterlock, kInterlock,
+            (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
+        const BOOL bIsAop = (interlockVal2 == _T("AOP") || interlockVal2 == _T("TRANSINFO_AOP"));
+        if (bIsAop && m_chkMultiVoice.IsToggled())
+            m_chkMultiVoice.SetToggled(FALSE);
+        const BOOL bMvEnable = !bIsAop;
+        const BOOL bPrevMvEnable = m_chkMultiVoice.IsWindowEnabled();
+        if (bPrevMvEnable != bMvEnable)
+            m_chkMultiVoice.EnableWindow(bMvEnable);
+        if (bForceRedraw && bPrevMvEnable != bMvEnable)
+            m_chkMultiVoice.Invalidate(FALSE);
     }
 }
 void CShopSetupDlg::OnCbnSelchangeSignPadUse()
