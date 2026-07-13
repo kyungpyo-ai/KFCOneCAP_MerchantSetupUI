@@ -1916,7 +1916,17 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
                             _T("서명패드 사용이 '자체서명'으로 설정되어 있어\n'멀티패드(AOP : NPayConnect)'를 선택할 수 없습니다.\n먼저 서명패드 사용 설정을 변경하십시오."), this);
                     }
                     else
+                    {
                         m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
+                        if (newInterlock == _T("TRANSINFO_AOP"))
+                            CModernMessageBox::Info(
+                                _T("멀티패드(KFTC+AOP) 모드 안내\n\n")
+                                _T("? 단말기1 : KFTC 방식으로 연동됩니다.\n")
+                                _T("? 단말기2 : AOP(NPayConnect) 방식으로 연동됩니다.\n")
+                                _T("? 멀티패드 음성 출력은 이 모드에서 지원되지 않아\n")
+                                _T("  자동으로 비활성화됩니다.\n")
+                                _T("? 설정 저장 후 프로그램을 재시작하십시오."), this);
+                    }
                 }
                 else
                     m_nPrevInterlockSel = m_comboInterlock.GetCurSel();

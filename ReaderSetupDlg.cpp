@@ -1503,7 +1503,8 @@ void CReaderSetupDlg::OnPaint()
 			memDC.SelectObject(&m_fontLabel);
 			// [FIX] ShopSetupDlg 라벨과 완벽하게 동일한 색상 톤 적용
 			memDC.SetTextColor(enabled ? RGB(115, 125, 142) : RGB(156, 163, 175));
-				CRect rcLbl(r.left + SX(bCP ? 52 : 64), badge.top - SX(4), r.right - SX(8), r.top + SX(bCP ? 28 : 34) - SX(4));
+				int rcLblRight = bTransinfoAop ? (r.right - SX(bCP ? 13 : 16) - nProtoBadgeW - SX(6)) : (r.right - SX(8));
+				CRect rcLbl(r.left + SX(bCP ? 52 : 64), badge.top - SX(4), rcLblRight, r.top + SX(bCP ? 28 : 34) - SX(4));
 				memDC.DrawText(label, rcLbl, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
 			const int comboW = SX(bCP ? 152 : 178);
@@ -1537,7 +1538,8 @@ void CReaderSetupDlg::OnPaint()
 				int pH = SX(8), pV = SX(3);
 				int bW = nProtoBadgeW, bH = sz.cy + pV * 2;
 				int bRight = r.right - SX(bCP ? 13 : 16);
-				CRect rcBadge(bRight - bW, badge.top, bRight, badge.top + bH);
+				int bY = r.top + SX(bCP ? 6 : 8);
+				CRect rcBadge(bRight - bW, bY, bRight, bY + bH);
 				FillRoundRect(gPaint, rcBadge, SX(4), clrBadge, clrBadge, 1);
 				memDC.SetTextColor(RGB(255, 255, 255));
 				memDC.DrawText(szBadge, rcBadge, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
@@ -2016,6 +2018,22 @@ void CReaderSetupDlg::OnOK()
 	CString port1, port2;
 	m_comport1.GetWindowText(port1);
 	m_comport2.GetWindowText(port2);
+
+	// TRANSINFO_AOP 모드: 리더기1, 리더기2 포트 모두 지정 필수
+	CString interlock = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, _T("INTERLOCK"), _T(""));
+	if (interlock == _T("TRANSINFO_AOP"))
+	{
+		BOOL bP1Unused = (port1 == _T("미사용"));
+		BOOL bP2Unused = (port2 == _T("미사용"));
+		if (bP1Unused || bP2Unused)
+		{
+			CModernMessageBox::Warning(
+				_T("멀티패드(KFTC+AOP) 모드에서는\n리더기1과 리더기2의 포트를 모두 지정해야 합니다."), this);
+			(bP1Unused ? m_comport1 : m_comport2).SetFocus();
+			return;
+		}
+	}
+
 	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT1_FIELD, port1);
 	AfxGetApp()->WriteProfileString(SERIAL_PORT_SECTION, COMPORT2_FIELD, port2);
 	// Save multipad toggle state: "0" = ON, "1" = OFF
