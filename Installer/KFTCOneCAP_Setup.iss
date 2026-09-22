@@ -113,8 +113,8 @@ Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueName: 
 [Run]
 ; OCX 등록 배치 파일 설치 중 실행 (HideWizardWindow=0 이므로 숨김 실행)
 Filename: "{app}\OCX_Register_32bit_AsyncforPOS.bat"; Flags: runhidden waituntilterminated
-; 작업 스케줄러 등록 - 로그온 시 관리자 권한 자동 실행
-Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""{#AppName}"" /tr ""\""{app}\{#AppExeName}\"""" /sc onlogon /rl highest /f"; Flags: runhidden waituntilterminated
+; 작업 스케줄러 등록 - 로그온 30초 후 관리자 권한 자동 실행 (Win7은 OS 시작프로그램 지연이 없다)
+Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""{#AppName}"" /tr ""\""{app}\{#AppExeName}\"""" /sc onlogon /rl highest /delay 0000:30 /f"; Flags: runhidden waituntilterminated
 ; 설치 완료 후 앱 실행
 Filename: "{app}\{#AppExeName}"; Description: "설치 후 실행"; Flags: nowait postinstall skipifsilent runascurrentuser
 
