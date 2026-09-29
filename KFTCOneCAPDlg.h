@@ -74,6 +74,7 @@ protected:
     afx_msg void OnUpdate();
     afx_msg void OnClose();
     afx_msg LRESULT OnTrayNotify(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnTaskbarCreated(WPARAM wParam, LPARAM lParam);
     afx_msg void OnTrayOpen();
     afx_msg void OnTrayReader();
     afx_msg void OnTrayShop();
@@ -95,6 +96,7 @@ private:
     void LayoutControls();
     void LoadLogoImage();
     CString GetLogoPath() const;
+    BOOL AddTrayIcon();
 
     void DrawBackground(CDC& dc);
     void DrawHeader(CDC& dc);
@@ -148,6 +150,7 @@ private:
     EPendingOpen m_ePendingOpen;
     CBrush m_brBackground;
     NOTIFYICONDATA m_nid;
+    int m_nTrayRetryCount;
     CTrayPopup m_trayPopup;
 
     Gdiplus::Bitmap* m_pLogoBitmap;

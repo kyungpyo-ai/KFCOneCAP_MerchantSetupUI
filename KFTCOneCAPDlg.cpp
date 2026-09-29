@@ -14,6 +14,9 @@
 // Release 쑴니메이의하 다이아로그 오핀 지연 메시지
 // Poll until the pressed card button finishes its release animation, then open
 #define kTimerWaitRelease 201
+// Retry tray icon registration until the shell notification area exists
+#define kTimerTrayRetry 202
+#define kTrayRetryMaxCount 60
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -270,6 +273,7 @@ CKFTCOneCAPDlg::CKFTCOneCAPDlg(CWnd* pParent /*=NULL*/)
     , m_pGdiFontDesc(NULL)  // 추가: GDI+ 폰트 포인터 초기화
     , m_pGdiFontHeader(NULL)
     , m_pGdiFontSub(NULL)
+    , m_nTrayRetryCount(0)
 {
 }
 
@@ -309,6 +313,10 @@ void CKFTCOneCAPDlg::DoDataExchange(CDataExchange* pDX)
     CDialog::DoDataExchange(pDX);
 }
 
+// Broadcast by the shell when the taskbar and its notification area are
+// created or recreated. Tray icons must be re-added when this arrives.
+static UINT s_uTaskbarCreated = ::RegisterWindowMessage(_T("TaskbarCreated"));
+
 BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
     ON_BN_CLICKED(IDC_BTN_LOG_TRANSFER, OnLogTransfer)
     ON_BN_CLICKED(IDC_BTN_UPDATE, OnUpdate)
@@ -328,6 +336,7 @@ BEGIN_MESSAGE_MAP(CKFTCOneCAPDlg, CDialog)
     ON_WM_NCACTIVATE()
     ON_WM_TIMER()
     ON_MESSAGE(WM_TRAYNOTIFY, OnTrayNotify)
+    ON_REGISTERED_MESSAGE(s_uTaskbarCreated, OnTaskbarCreated)
     ON_COMMAND(ID_TRAY_OPEN,   &CKFTCOneCAPDlg::OnTrayOpen)
     ON_COMMAND(ID_TRAY_READER, &CKFTCOneCAPDlg::OnTrayReader)
     ON_COMMAND(ID_TRAY_SHOP,   &CKFTCOneCAPDlg::OnTrayShop)
@@ -452,22 +461,14 @@ BOOL CKFTCOneCAPDlg::OnInitDialog()
     CenterWindow();
     ModernUIWindow::ApplyWhiteTitleBar(this->GetSafeHwnd());
     ShowWindow(SW_SHOWMINIMIZED);
-    // Tray icon setup
+    // Tray icon setup. Right after logon the shell notification area may not
+    // exist yet and NIM_ADD fails; retry on a timer, and also re-add when the
+    // shell broadcasts TaskbarCreated. Without this the icon stays missing for
+    // the whole session and the hidden window becomes unreachable.
+    if (!AddTrayIcon())
     {
-        int cx = ::GetSystemMetrics(SM_CXSMICON);
-        int cy = ::GetSystemMetrics(SM_CYSMICON);
-        HICON hIco = (HICON)::LoadImage(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR);
-        if (!hIco) hIco = ::LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
-        ::ZeroMemory(&m_nid, sizeof(m_nid));
-        m_nid.cbSize           = sizeof(m_nid);
-        m_nid.hWnd             = GetSafeHwnd();
-        m_nid.uID              = 1;
-        m_nid.uFlags           = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-        m_nid.uCallbackMessage = WM_TRAYNOTIFY;
-        m_nid.hIcon            = hIco;
-        ::lstrcpy(m_nid.szTip, _T("KFTCOneCAP"));
-        BOOL bOk = ::Shell_NotifyIcon(NIM_ADD, &m_nid);
-        UNREFERENCED_PARAMETER(bOk);
+        m_nTrayRetryCount = 0;
+        SetTimer(kTimerTrayRetry, 1000, NULL);
     }
     return TRUE;
 }
@@ -1219,6 +1220,17 @@ void CKFTCOneCAPDlg::OnReaderSetup()
 
 void CKFTCOneCAPDlg::OnTimer(UINT_PTR nIDEvent)
 {
+    if (nIDEvent == kTimerTrayRetry)
+    {
+        // Stop once the icon is registered, or when the retry budget runs out.
+        if (AddTrayIcon() || ++m_nTrayRetryCount >= kTrayRetryMaxCount)
+        {
+            KillTimer(kTimerTrayRetry);
+            m_nTrayRetryCount = 0;
+        }
+        return;
+    }
+
     if (nIDEvent == kTimerWaitRelease)
     {
         CHomeCardButton* pBtn = (m_ePendingOpen == PENDING_SHOP) ? &m_btnShopCard :
@@ -1310,12 +1322,15 @@ static BOOL CALLBACK CloseOwnedPopups(HWND hwnd, LPARAM lParam)
 void CKFTCOneCAPDlg::OnExit()
 {
     ::EnumThreadWindows(::GetCurrentThreadId(), CloseOwnedPopups, (LPARAM)m_hWnd);
+    KillTimer(kTimerTrayRetry);
+    ::Shell_NotifyIcon(NIM_DELETE, &m_nid);
     EndDialog(IDCANCEL);
 }
 
 void CKFTCOneCAPDlg::OnClose()
 {
     ::EnumThreadWindows(::GetCurrentThreadId(), CloseOwnedPopups, (LPARAM)m_hWnd);
+    KillTimer(kTimerTrayRetry);
     ::Shell_NotifyIcon(NIM_DELETE, &m_nid);
     EndDialog(IDCANCEL);
 }
@@ -1646,6 +1661,49 @@ void CKFTCOneCAPDlg::OnTrayShop()
     ShowWindow(SW_RESTORE);
     SetForegroundWindow();
     OnShopSetup();
+}
+
+// Register (or re-register) the notification area icon.
+// Returns FALSE while the shell notification area is not ready yet.
+BOOL CKFTCOneCAPDlg::AddTrayIcon()
+{
+    if (!::IsWindow(GetSafeHwnd()))
+        return FALSE;
+
+    int cx = ::GetSystemMetrics(SM_CXSMICON);
+    int cy = ::GetSystemMetrics(SM_CYSMICON);
+    HICON hIco = (HICON)::LoadImage(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR);
+    if (!hIco) hIco = ::LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
+
+    ::ZeroMemory(&m_nid, sizeof(m_nid));
+    m_nid.cbSize           = sizeof(m_nid);
+    m_nid.hWnd             = GetSafeHwnd();
+    m_nid.uID              = 1;
+    m_nid.uFlags           = NIF_ICON | NIF_TIP | NIF_MESSAGE;
+    m_nid.uCallbackMessage = WM_TRAYNOTIFY;
+    m_nid.hIcon            = hIco;
+    ::lstrcpy(m_nid.szTip, _T("KFTCOneCAP"));
+
+    if (::Shell_NotifyIcon(NIM_ADD, &m_nid))
+        return TRUE;
+
+    // NIM_ADD also fails when the icon is already registered; treat that as success.
+    if (::Shell_NotifyIcon(NIM_MODIFY, &m_nid))
+        return TRUE;
+
+    return FALSE;
+}
+
+// Explorer broadcasts TaskbarCreated on start and on restart. The previous icon
+// is gone at that point, so it must be added again.
+LRESULT CKFTCOneCAPDlg::OnTaskbarCreated(WPARAM, LPARAM)
+{
+    m_nTrayRetryCount = 0;
+    if (AddTrayIcon())
+        KillTimer(kTimerTrayRetry);
+    else
+        SetTimer(kTimerTrayRetry, 1000, NULL);
+    return 0;
 }
 
 LRESULT CKFTCOneCAPDlg::OnTrayNotify(WPARAM wParam, LPARAM lParam)

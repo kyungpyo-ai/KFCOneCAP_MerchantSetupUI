@@ -115,6 +115,10 @@ Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueName: 
 Filename: "{app}\OCX_Register_32bit_AsyncforPOS.bat"; Flags: runhidden waituntilterminated
 ; 작업 스케줄러 등록 - 로그온 20초 후 관리자 권한 자동 실행 (트레이 준비 전 실행 방지)
 Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""{#AppName}"" /tr ""\""{app}\{#AppExeName}\"""" /sc onlogon /rl highest /delay 0000:20 /f"; Flags: runhidden waituntilterminated
+; schtasks CLI로는 아래 3개를 지정할 수 없어 Task Scheduler COM으로 보정한다.
+;   ExecutionTimeLimit 기본 72시간 -> 무기한 (상주 프로그램이 3일마다 강제 종료된다)
+;   배터리 관련 2개 -> 해제 (배터리 전원에서 미실행/중단 방지)
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NonInteractive -Command ""$s=New-Object -ComObject Schedule.Service;$s.Connect();$f=$s.GetFolder('\');$t=$f.GetTask('{#AppName}');$d=$t.Definition;$d.Settings.ExecutionTimeLimit='PT0S';$d.Settings.DisallowStartIfOnBatteries=$false;$d.Settings.StopIfGoingOnBatteries=$false;$f.RegisterTaskDefinition('{#AppName}',$d,6,$null,$null,$d.Principal.LogonType)|Out-Null"""; Flags: runhidden waituntilterminated
 ; 설치 완료 후 앱 실행
 Filename: "{app}\{#AppExeName}"; Description: "설치 후 실행"; Flags: nowait postinstall skipifsilent runascurrentuser
 
