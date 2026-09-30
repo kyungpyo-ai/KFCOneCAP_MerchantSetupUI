@@ -1005,10 +1005,13 @@ bool stopAutoRestart();
 #define RESTART_EXIT_CODE      43  // watchdog: restart requested
 
 extern BOOL g_bPendingRestart;  // TRUE = watchdog should restart after exit
+extern BOOL g_bUserExit;        // TRUE = user pressed the exit button (watchdog will not restart)
 
 
 CString GetExeDirectory();
 BOOL LaunchExeInSameDir(LPCTSTR exeName);
 BOOL TerminateExeByName(LPCTSTR exeName, DWORD gracePeriodMs = 3000);
 void RestartApplication();
+BOOL IsProcessRunningByName(LPCTSTR exeName, DWORD maxAgeMs = 0);  // maxAgeMs>0: only processes started within that time
+void AppendAppLog(LPCTSTR tag, LPCTSTR text);  // appends a line to crash.log (exe folder)
 #endif

@@ -73,6 +73,8 @@ protected:
     afx_msg void OnLogTransfer();
     afx_msg void OnUpdate();
     afx_msg void OnClose();
+    virtual void OnOK();      // Enter must not close the app
+    virtual void OnCancel();  // ESC must not close the app
     afx_msg LRESULT OnTrayNotify(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnTaskbarCreated(WPARAM wParam, LPARAM lParam);
     afx_msg void OnTrayOpen();

@@ -1319,8 +1319,19 @@ static BOOL CALLBACK CloseOwnedPopups(HWND hwnd, LPARAM lParam)
     return TRUE;
 }
 
+void CKFTCOneCAPDlg::OnOK()
+{
+    // Enter key: intentionally ignored (only the exit button closes the app)
+}
+
+void CKFTCOneCAPDlg::OnCancel()
+{
+    // ESC key: intentionally ignored (only the exit button closes the app)
+}
+
 void CKFTCOneCAPDlg::OnExit()
 {
+    g_bUserExit = TRUE;  // intentional exit: exit code 42, watchdog neither restarts nor logs
     ::EnumThreadWindows(::GetCurrentThreadId(), CloseOwnedPopups, (LPARAM)m_hWnd);
     KillTimer(kTimerTrayRetry);
     ::Shell_NotifyIcon(NIM_DELETE, &m_nid);
@@ -1434,57 +1445,72 @@ public:
         ::GetExitCodeProcess(hProc, &exitCode);
         ::CloseHandle(hProc);
 
-        // Build log path (same folder as EXE)
+        // Paths (same folder as EXE)
         TCHAR exePath[MAX_PATH] = {};
         ::GetModuleFileName(NULL, exePath, MAX_PATH);
-        TCHAR exeDir[MAX_PATH] = {};
-        _tcscpy_s(exeDir, exePath);
-        TCHAR* lastSlash = _tcsrchr(exeDir, _T('\\'));
-        if (lastSlash) *(lastSlash + 1) = _T('\0');
-
-        TCHAR logPath[MAX_PATH] = {};
-        _tcscpy_s(logPath, exeDir);
-        _tcscat_s(logPath, _T("crash.log"));
+        CString exeDir(exePath);
+        int nSlash = exeDir.ReverseFind(_T('\\'));
+        if (nSlash >= 0) exeDir = exeDir.Left(nSlash + 1);
+        CString stopFlag = exeDir + _T("stop.flag");
 
         // Determine exit reason
         const TCHAR* reason = _T("UNKNOWN");
         if (exitCode == INTENTIONAL_EXIT_CODE)
-            reason = _T("NORMAL_EXIT");
+            reason = _T("USER_EXIT");
         else if (exitCode == RESTART_EXIT_CODE)
             reason = _T("RESTART_REQUESTED");
+        else if (exitCode == 0)
+            reason = _T("EXIT_CODE_0");
         else if (exitCode == 1)
             reason = _T("FORCE_KILLED");
         else if (exitCode >= 0xC0000000)
             reason = _T("CRASH");
 
-        SYSTEMTIME st = {};
-        ::GetLocalTime(&st);
+        // Restart is suppressed only for: exit button, installer (stop.flag), updater running
+        auto skipReason = [&]() -> const TCHAR* {
+            if (::GetFileAttributes(stopFlag) != INVALID_FILE_ATTRIBUTES)
+                return _T("SKIP_STOP_FLAG");
+            // Only an updater started within the last 5 minutes counts (resident updater is ignored)
+            const DWORD kUpdaterRecentMs = 5 * 60 * 1000;
+            if (IsProcessRunningByName(_T("kftc_updater.exe"), kUpdaterRecentMs) ||
+                IsProcessRunningByName(_T("KFTCUpdater.exe"), kUpdaterRecentMs))
+                return _T("SKIP_UPDATER_RUNNING");
+            return NULL;
+        };
 
-        if (exitCode != INTENTIONAL_EXIT_CODE)
+        if (exitCode == INTENTIONAL_EXIT_CODE) return TRUE;  // exit button: nothing to log, no restart
+
+        // Wait before restarting: 10s if the app died right after start (avoid restart storm), else 3s.
+        // The updater finds every KFTCOneCAP.exe (Process32First/Next) and TerminateProcess()es them
+        // (exit code 1), so this watchdog is normally killed right after the app; waiting first
+        // gives it time to die before it can restart the app during an update.
+        // The stop.flag / recent-updater check is repeated after the wait.
+        const TCHAR* skip = skipReason();
+        if (!skip)
         {
-            FILE* f = _tfopen(logPath, _T("a"));
-            if (f)
-            {
-                _ftprintf(f,
-                    _T("[%04d-%02d-%02d %02d:%02d:%02d] [WATCHDOG] ExitCode=0x%08X Reason=%s ElapsedMs=%u\n"),
-                    st.wYear, st.wMonth, st.wDay,
-                    st.wHour, st.wMinute, st.wSecond,
-                    exitCode, reason, elapsedMs);
-                fclose(f);
-            }
+            ::Sleep(elapsedMs < 5000 ? 10000 : 3000);
+            skip = skipReason();
         }
 
-        if (exitCode == INTENTIONAL_EXIT_CODE) return TRUE;
-        if (exitCode != RESTART_EXIT_CODE && elapsedMs < 5000) return TRUE;  // startup crash guard
+        CString msg;
+        msg.Format(_T("ExitCode=0x%08X Reason=%s ElapsedMs=%u Action=%s"),
+            exitCode, reason, elapsedMs, skip ? skip : _T("RESTART"));
+        AppendAppLog(_T("WATCHDOG"), msg);
+        if (skip) return TRUE;
 
         STARTUPINFO si = {};
         si.cb = sizeof(si);
         PROCESS_INFORMATION pi = {};
 
-        if (::CreateProcess(exePath, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+        if (::CreateProcess(exePath, NULL, NULL, NULL, FALSE, 0, NULL, exeDir, &si, &pi))
         {
             ::CloseHandle(pi.hThread);
             ::CloseHandle(pi.hProcess);
+        }
+        else
+        {
+            msg.Format(_T("RESTART_FAILED error=%u"), ::GetLastError());
+            AppendAppLog(_T("WATCHDOG"), msg);
         }
         return TRUE;
     }
@@ -1603,6 +1629,9 @@ public:
             return FALSE;
         }
 
+        // ---- Clear stop signal left by a previous installer run ----
+        ::DeleteFile(GetExeDirectory() + _T("stop.flag"));
+
         // ---- Normal mode ----
         CWinApp::InitInstance();
         SetRegistryKey(_T("KFTC_VAN"));
@@ -1616,13 +1645,14 @@ public:
         // Spawn watchdog before showing UI
         SpawnWatchdog();
 
+        ::SetErrorMode(SEM_NOGPFAULTERRORBOX);  // no WER dialog: process must terminate so watchdog can restart
         ::SetUnhandledExceptionFilter(CrashHandler);
 
         CKFTCOneCAPDlg dlg;
         dlg.DoModal();
 
-        // Dialog closed normally -> mark intentional so watchdog skips restart
-        m_bIntentionalExit = TRUE;
+        // Only the exit button is an intentional exit; anything else -> watchdog restarts
+        m_bIntentionalExit = g_bUserExit;
         return FALSE;
     }
 

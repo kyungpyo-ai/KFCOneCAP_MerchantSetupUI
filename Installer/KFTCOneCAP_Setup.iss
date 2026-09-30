@@ -79,6 +79,9 @@ var
 begin
   if CurStep <> ssPostInstall then Exit;
 
+  // 설치 전에 만든 종료 신호 제거 (워치독 재실행 억제 해제)
+  DeleteFile(ExpandConstant('{app}\stop.flag'));
+
   PSPath := GetPSPath;
   if not FileExists(PSPath) then Exit;
 
@@ -95,6 +98,34 @@ begin
 
   SaveStringsToFile(ScriptFile, Lines, False);
   Exec(PSPath, '-ExecutionPolicy Bypass -NonInteractive -File "' + ScriptFile + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+// 실행 중인 앱/워치독을 종료한다. stop.flag 로 워치독의 재실행을 막고, 이미지명으로 앱+워치독을 함께 강제 종료.
+procedure StopRunningApp;
+var
+  AppDir: String;
+  Lines: TArrayOfString;
+  ResultCode: Integer;
+begin
+  AppDir := ExpandConstant('{app}');
+  ForceDirectories(AppDir);
+  SetArrayLength(Lines, 1);
+  Lines[0] := 'stop';
+  SaveStringsToFile(AppDir + '\stop.flag', Lines, False);
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im {#AppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1500);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  StopRunningApp;
+  Result := '';
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  StopRunningApp;
+  Result := True;
 end;
 
 [Registry]
@@ -121,6 +152,9 @@ Filename: "{sys}\schtasks.exe"; Parameters: "/create /tn ""{#AppName}"" /tr ""\"
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NonInteractive -Command ""$s=New-Object -ComObject Schedule.Service;$s.Connect();$f=$s.GetFolder('\');$t=$f.GetTask('{#AppName}');$d=$t.Definition;$d.Settings.ExecutionTimeLimit='PT0S';$d.Settings.DisallowStartIfOnBatteries=$false;$d.Settings.StopIfGoingOnBatteries=$false;$f.RegisterTaskDefinition('{#AppName}',$d,6,$null,$null,$d.Principal.LogonType)|Out-Null"""; Flags: runhidden waituntilterminated
 ; 설치 완료 후 앱 실행
 Filename: "{app}\{#AppExeName}"; Description: "설치 후 실행"; Flags: nowait postinstall skipifsilent runascurrentuser
+
+[UninstallDelete]
+Type: files; Name: "{app}\stop.flag"
 
 [UninstallRun]
 Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn ""{#AppName}"" /f"; Flags: runhidden
