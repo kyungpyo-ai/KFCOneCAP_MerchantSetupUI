@@ -1931,6 +1931,7 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
                 else
                     m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
                 UpdateToggleDependentEdits(TRUE);
+                ValidateControlAndUpdateUI(IDC_EDIT_CARD_TIMEOUT);  // forPOS: 타임아웃 60초 이상 재검증
             }
         }
         break;
@@ -2839,9 +2840,19 @@ BOOL CShopSetupDlg::ValidateSingleField(ValidationField field, CString& outMessa
         }
         break;
     case VF_CARD_TIMEOUT:
-        if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || (_ttoi(s) != 0 && _ttoi(s) < 30))
+    {
+        // 단말기(forPOS) 연동은 타임아웃 60초 이상 필수 (0 = 자동 100초는 허용)
+        const BOOL bForPos = (GetSelectedComboValue(m_comboInterlock, kInterlock,
+            (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL")) == _T("FORPOS"));
+        if (bForPos)
+        {
+            if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || (_ttoi(s) != 0 && _ttoi(s) < 60))
+                outMessage = _T("60초 이상 입력");
+        }
+        else if (!GetTrimmed(IDC_EDIT_CARD_TIMEOUT, s) || !IsDigitsOnly(s) || (_ttoi(s) != 0 && _ttoi(s) < 30))
             outMessage = _T("30초 이상 입력");
         break;
+    }
     case VF_SIGNPAD_PORT:
         if (m_comboSignPadUse.GetCurSel() == 0)
         {
