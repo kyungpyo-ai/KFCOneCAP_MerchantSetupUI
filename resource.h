@@ -80,6 +80,7 @@
 #define IDC_CHECK_AUTO_REBOOT            2061
 #define IDC_CHECK_AUTO_UPDATE            2063
 #define IDC_CHECK_KEYIN_DIM               2065
+#define IDC_CHECK_FOCUS_RETURN            2066
 #define IDC_CHECK_UNION_AUTO             2062
 #define IDC_STATIC_CANCEL_KEY            2070
 #define IDC_COMBO_CANCEL_KEY             2071

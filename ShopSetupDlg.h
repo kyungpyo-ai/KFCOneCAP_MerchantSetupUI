@@ -38,6 +38,9 @@
 #ifndef IDC_BTN_KEYIN_DIM_INFO
 #define IDC_BTN_KEYIN_DIM_INFO     60121
 #endif
+#ifndef IDC_BTN_FOCUS_RETURN_INFO
+#define IDC_BTN_FOCUS_RETURN_INFO  60122
+#endif
 #ifndef IDC_BTN_ALARM_GRAPH_INFO
 #define IDC_BTN_ALARM_GRAPH_INFO     60114
 #endif
@@ -172,6 +175,7 @@ public:
     // 시스템 동작
     CModernToggleSwitch m_chkAutoReboot;
     CModernToggleSwitch m_chkKeyinDim;
+    CModernToggleSwitch m_chkFocusReturn;
      CModernToggleSwitch m_chkAutoUpdate;
 
     // 단축키
@@ -196,6 +200,7 @@ public:
     CInfoIconButton m_btnScannerUseInfo;   // Tab1: 스캐너 사용
     CInfoIconButton m_btnAutoRebootInfo;   // Tab2: 자동 리부팅
     CInfoIconButton m_btnKeyinDimInfo;    // Tab2: 결제 화면 잠금
+    CInfoIconButton m_btnFocusReturnInfo; // Tab2: 포커스 반환
     CInfoIconButton m_btnAutoUpdateInfo;   // Tab2: 자동 업데이트
     CInfoIconButton m_btnAlarmGraphInfo;   // Tab2: 알림창 그림
     CInfoIconButton m_btnAlarmDualInfo;    // Tab2: 알림창 듀얼
@@ -305,7 +310,7 @@ private:
         int    cmbTerminalSpeed;
         BOOL   tglCardDetect, tglMultiVoice, tglScannerUse;
         BOOL   tglAlarmGraph, tglAlarmDual, tglAutoReboot, tglKeyinDim;
-        BOOL   tglAutoUpdate;
+        BOOL   tglAutoUpdate, tglFocusReturn;
         BOOL   tglUnionAuto;
     };
     SettingsSnapshot m_snap;
