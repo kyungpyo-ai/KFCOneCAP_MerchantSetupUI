@@ -37,6 +37,31 @@ namespace
 		return a.Compare(b) == 0;
 	}
 
+	// 멀티패드(AOP) 연동 시 포트 콤보 마지막에 추가되는 EzCtrlW 항목.
+	// 레지스트리에는 COM 00으로 저장한다.
+	static const LPCTSTR kEzCtrlWLabel     = _T("EzCtrlW");
+	static const LPCTSTR kEzCtrlWPortValue = _T("COM 00");
+
+	// CBN_SELCHANGE 시점에는 윈도우 텍스트가 갱신 전일 수 있으므로 LB 텍스트로 판단한다.
+	static BOOL IsEzCtrlWSelected(CComboBox& combo)
+	{
+		const int sel = combo.GetCurSel();
+		if (sel < 0)
+			return FALSE;
+		CString item;
+		combo.GetLBText(sel, item);
+		return IsSamePortLabel(item, kEzCtrlWLabel);
+	}
+
+	static void ShowEzCtrlWGuide(CWnd* pParent)
+	{
+		CModernMessageBox::Info(
+			_T("EzCtrlW 포트 안내\n\n")
+			_T("AOP USB 장비나 AOP 장비 2대 연동시 사용\n\n")
+			_T("※EzCtrlW 프로그램 별도 설치 필요\n")
+			_T("※자세한 내용은 별도 가이드 문서 참고"), pParent);
+	}
+
 	static void ApplyFontIfWindow(CWnd& wnd, CFont& font)
 	{
 		if (::IsWindow(wnd.GetSafeHwnd()))
@@ -804,6 +829,15 @@ void CReaderSetupDlg::InitPortComboItems()
 		m_comport1.AddString(item);
 		m_comport2.AddString(item);
 	}
+
+	// 멀티패드(AOP)는 리더기1, 멀티패드(KFTC+AOP)는 리더기2 리스트 마지막에 EzCtrlW를 추가한다.
+	CString interlock = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, _T("INTERLOCK"), _T(""));
+	const BOOL bAop          = (interlock == _T("AOP"));
+	const BOOL bTransinfoAop = (interlock == _T("TRANSINFO_AOP"));
+	if (bAop)
+		m_comport1.AddString(kEzCtrlWLabel);
+	if (bTransinfoAop)
+		m_comport2.AddString(kEzCtrlWLabel);
 }
 
 // 저장된 COM 포트를 복원하고, 현재 PC에 없는 포트는 '(사용불가)' 표기를 붙여서라도
@@ -832,7 +866,8 @@ void CReaderSetupDlg::LoadSavedPortSelections()
 			{
 				CString item;
 				combo.GetLBText(i, item);
-				if (IsSamePortLabel(item, savedValue))
+				if (IsSamePortLabel(item, savedValue) ||
+					(IsSamePortLabel(item, kEzCtrlWLabel) && IsSamePortLabel(savedValue, kEzCtrlWPortValue)))
 				{
 					combo.SetCurSel(i);
 					return;
@@ -841,9 +876,16 @@ void CReaderSetupDlg::LoadSavedPortSelections()
 
 			if (!IsSamePortLabel(savedValue, _T("미사용")))
 			{
-				CString unavailable = savedValue + _T("(사용불가)");
-				combo.AddString(unavailable);
-				combo.SetCurSel(combo.GetCount() - 1);
+				// COM 00은 EzCtrlW로 표시
+				CString unavailable = (IsSamePortLabel(savedValue, kEzCtrlWPortValue) ? CString(kEzCtrlWLabel) : savedValue) + _T("(사용불가)");
+				// EzCtrlW는 항상 마지막에 유지
+				CString last;
+				if (count > 0)
+					combo.GetLBText(count - 1, last);
+				const int idx = IsSamePortLabel(last, kEzCtrlWLabel)
+					? combo.InsertString(count - 1, unavailable)
+					: combo.AddString(unavailable);
+				combo.SetCurSel(idx);
 			}
 			else
 			{
@@ -1780,7 +1822,12 @@ void CReaderSetupDlg::OnSelchangeComport1()
 		return;
 	}
 	if (newSel != m_nComport1PrevSel && m_nComport1PrevSel >= 0)
-		CModernMessageBox::Info(_T("리더기 1번 포트가 변경되었습니다."), this);
+	{
+		if (IsEzCtrlWSelected(m_comport1))
+			ShowEzCtrlWGuide(this);
+		else
+			CModernMessageBox::Info(_T("리더기 1번 포트가 변경되었습니다."), this);
+	}
 	m_nComport1PrevSel = m_comport1.GetCurSel();
 	CString value;
 	m_comport1.GetWindowText(value);
@@ -1797,7 +1844,12 @@ void CReaderSetupDlg::OnSelchangeComport2()
 		return;
 	}
 	if (newSel != m_nComport2PrevSel && m_nComport2PrevSel >= 0)
-		CModernMessageBox::Info(_T("리더기 2번 포트가 변경되었습니다."), this);
+	{
+		if (IsEzCtrlWSelected(m_comport2))
+			ShowEzCtrlWGuide(this);
+		else
+			CModernMessageBox::Info(_T("리더기 2번 포트가 변경되었습니다."), this);
+	}
 	m_nComport2PrevSel = m_comport2.GetCurSel();
 	CString value;
 	m_comport2.GetWindowText(value);
@@ -2018,6 +2070,10 @@ void CReaderSetupDlg::OnOK()
 	CString port1, port2;
 	m_comport1.GetWindowText(port1);
 	m_comport2.GetWindowText(port2);
+
+	// EzCtrlW 선택 시 레지스트리에는 COM 00으로 저장
+	if (IsSamePortLabel(port1, kEzCtrlWLabel)) port1 = kEzCtrlWPortValue;
+	if (IsSamePortLabel(port2, kEzCtrlWLabel)) port2 = kEzCtrlWPortValue;
 
 	// TRANSINFO_AOP 모드: 리더기1, 리더기2 포트 모두 지정 필수
 	CString interlock = AfxGetApp()->GetProfileString(SERIAL_PORT_SECTION, _T("INTERLOCK"), _T(""));
