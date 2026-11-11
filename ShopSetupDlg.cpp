@@ -1894,24 +1894,7 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
             RedrawWindow(&rcCtl, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_UPDATENOW);
             if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_SIGN_PAD_USE)
             {
-                CString newSignPad = GetSelectedComboValue(m_comboSignPadUse, kSignPadUse,
-                    (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"));
-                if (newSignPad == _T("SELF"))
-                {
-                    CString curInterlock = GetSelectedComboValue(m_comboInterlock, kInterlock,
-                        (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
-                    if (curInterlock == _T("AOP") || curInterlock == _T("TRANSINFO_AOP"))
-                    {
-                        if (m_nPrevSignPadUseSel >= 0)
-                            m_comboSignPadUse.SetCurSel(m_nPrevSignPadUseSel);
-                        CModernMessageBox::Warning(
-                            _T("장치 연동 방식이 '멀티패드(AOP : NPayConnect)'로 설정되어 있어\n'자체서명'을 선택할 수 없습니다.\n먼저 장치 연동 방식을 변경하십시오."), this);
-                    }
-                    else
-                        m_nPrevSignPadUseSel = m_comboSignPadUse.GetCurSel();
-                }
-                else
-                    m_nPrevSignPadUseSel = m_comboSignPadUse.GetCurSel();
+                m_nPrevSignPadUseSel = m_comboSignPadUse.GetCurSel();
                 UpdateToggleDependentEdits(TRUE);
             }
             if (code == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBO_INTERLOCK)
@@ -1920,27 +1903,15 @@ BOOL CShopSetupDlg::OnCommand(WPARAM wParam, LPARAM lParam)
                     (int)(sizeof(kInterlock) / sizeof(kInterlock[0])), _T("NORMAL"));
                 if (newInterlock == _T("AOP") || newInterlock == _T("TRANSINFO_AOP"))
                 {
-                    CString curSignPad = GetSelectedComboValue(m_comboSignPadUse, kSignPadUse,
-                        (int)(sizeof(kSignPadUse) / sizeof(kSignPadUse[0])), _T("YES"));
-                    if (curSignPad == _T("SELF"))
-                    {
-                        if (m_nPrevInterlockSel >= 0)
-                            m_comboInterlock.SetCurSel(m_nPrevInterlockSel);
-                        CModernMessageBox::Warning(
-                            _T("서명패드 사용이 '자체서명'으로 설정되어 있어\n'멀티패드(AOP : NPayConnect)'를 선택할 수 없습니다.\n먼저 서명패드 사용 설정을 변경하십시오."), this);
-                    }
-                    else
-                    {
-                        m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
-                        if (newInterlock == _T("TRANSINFO_AOP"))
-                            CModernMessageBox::Info(
-                                _T("멀티패드(KFTC+AOP) 모드 안내\n\n")
-                                _T("? 단말기1 : KFTC 방식으로 연동됩니다.\n")
-                                _T("? 단말기2 : AOP(NPayConnect) 방식으로 연동됩니다.\n")
-                                _T("? 멀티패드 음성 출력은 이 모드에서 지원되지 않아\n")
-                                _T("  자동으로 비활성화됩니다.\n")
-                                _T("? 설정 저장 후 프로그램을 재시작하십시오."), this);
-                    }
+                    m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
+                    if (newInterlock == _T("TRANSINFO_AOP"))
+                        CModernMessageBox::Info(
+                            _T("멀티패드(KFTC+AOP) 모드 안내\n\n")
+                            _T("? 단말기1 : KFTC 방식으로 연동됩니다.\n")
+                            _T("? 단말기2 : AOP(NPayConnect) 방식으로 연동됩니다.\n")
+                            _T("? 멀티패드 음성 출력은 이 모드에서 지원되지 않아\n")
+                            _T("  자동으로 비활성화됩니다.\n")
+                            _T("? 설정 저장 후 프로그램을 재시작하십시오."), this);
                 }
                 else
                     m_nPrevInterlockSel = m_comboInterlock.GetCurSel();
